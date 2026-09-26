@@ -15,7 +15,7 @@ export async function GET(context: APIContext) {
     title: "Arturo Nava — Ensayos Técnicos & Notas de Sistemas",
     description:
       "Ingeniero de Software Senior / IA especializado en Go, Rust, Sistemas Distribuidos y Seguridad de Aplicaciones.",
-    site: context.site?.origin ?? "https://arturonavax.com",
+    site: context.site?.origin ?? "https://arturonavax.dev",
     items: sortedPosts.map((post) => ({
       title: post.data.title,
       pubDate: post.data.pubDate,

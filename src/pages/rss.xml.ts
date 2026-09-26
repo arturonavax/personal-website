@@ -15,7 +15,7 @@ export async function GET(context: APIContext) {
     title: "Arturo Nava — Technical Essays & Systems Notes",
     description:
       "Senior Software / AI Engineer specializing in Go, Rust, Distributed Systems, and Application Security.",
-    site: context.site?.origin ?? "https://arturonavax.com",
+    site: context.site?.origin ?? "https://arturonavax.dev",
     items: sortedPosts.map((post) => ({
       title: post.data.title,
       pubDate: post.data.pubDate,

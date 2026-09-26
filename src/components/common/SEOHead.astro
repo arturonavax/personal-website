@@ -23,7 +23,7 @@ const {
   alternateEsUrl,
 } = Astro.props;
 
-const siteUrl = Astro.site?.origin ?? "https://arturonavax.com";
+const siteUrl = Astro.site?.origin ?? "https://arturonavax.dev";
 const rawPath = Astro.url.pathname;
 const normalizedPath =
   rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
