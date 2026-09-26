@@ -54,7 +54,7 @@ function minifyInlineScripts() {
 }
 
 export default defineConfig({
-  site: "https://arturonavax.com",
+  site: "https://arturonavax.dev",
   output: "static",
   trailingSlash: "never",
   build: {
