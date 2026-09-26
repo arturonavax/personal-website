@@ -58,17 +58,17 @@ const detailUrl =
 
     <!-- Metrics Strip -->
     {metrics && metrics.length > 0 && (
-      <div class="metrics-strip mt-5 border-t border-[var(--color-surface-border-subtle)] pt-4">
-        <div class="metrics-grid">
+      <div class="mt-5 border-t border-[var(--color-surface-border-subtle)] pt-4">
+        <div class="grid grid-cols-3 gap-2 sm:gap-3">
           {metrics.map((m) => (
             <div
-              class="metric-item rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/40 p-2 sm:p-2.5 min-w-0"
+              class="flex flex-col justify-between min-w-0 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/40 p-2 sm:p-2.5"
               title={`${m.value} — ${m.label}`}
             >
-              <span class="metric-value font-mono text-xs sm:text-sm font-bold text-[var(--color-text-primary)] leading-tight tracking-tight">
+              <span class="block whitespace-normal break-words font-mono text-xs sm:text-sm font-bold text-[var(--color-text-primary)] leading-tight tracking-tight">
                 {m.value}
               </span>
-              <span class="metric-label text-[11px] sm:text-xs text-[var(--color-text-muted)] leading-snug">
+              <span class="block whitespace-normal break-words text-[11px] sm:text-xs text-[var(--color-text-muted)] leading-snug mt-1">
                 {m.label}
               </span>
             </div>

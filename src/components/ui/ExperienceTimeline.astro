@@ -180,11 +180,11 @@ const sortedItems = [...items].sort((a, b) => a.data.order - b.data.order);
                     ? `Buscar proyectos y notas sobre ${skill}`
                     : `Search projects & essays mentioning ${skill}`
                 }
-                class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+                class="inline-flex min-h-[28px] items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer select-none"
               >
                 <TechIcon
                   name={skill}
-                  class="h-3 w-3 text-[var(--color-accent-gold)]"
+                  class="h-3.5 w-3.5 text-[var(--color-accent-gold)]"
                 />
                 <span>{skill}</span>
               </button>

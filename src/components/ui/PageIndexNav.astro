@@ -167,25 +167,25 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           <span class="text-[10px] text-[var(--color-accent-gold)]">NAV</span>
         </div>
 
-        <nav class="space-y-1 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-[var(--color-surface-border-subtle)]">
+        <nav class="space-y-2 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-[var(--color-surface-border-subtle)]">
           {indexItems.map((item) => (
             <div>
               <a
                 href={`#${item.id}`}
                 data-index-link={item.id}
-                class="group flex items-center gap-2 py-1 pl-3.5 pr-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors"
+                class="group flex min-h-[32px] items-center gap-2 py-1.5 pl-3.5 pr-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors"
               >
                 <span class="h-1 w-1 rounded-full bg-[var(--color-surface-border)] group-hover:bg-[var(--color-accent-gold)] transition-colors shrink-0"></span>
                 <span class="truncate">{isEs ? item.labelEs : item.label}</span>
               </a>
 
               {item.subitems && (
-                <div class="pl-4 space-y-0.5 mt-0.5">
+                <div class="pl-4 space-y-2 mt-2">
                   {item.subitems.map((sub) => (
                     <a
                       href={`#${sub.id}`}
                       data-index-link={sub.id}
-                      class="group flex items-center gap-1.5 py-0.5 pl-3 pr-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors"
+                      class="group flex min-h-[28px] items-center gap-1.5 py-1 pl-3 pr-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors rounded"
                     >
                       <span class="text-[var(--color-surface-border)] group-hover:text-[var(--color-accent-gold)]">
                         &ndash;
