@@ -1,0 +1,514 @@
+---
+import type { CollectionEntry } from "astro:content";
+import type { Locale } from "@/i18n/ui";
+import { formatDate, useTranslations } from "@/i18n/utils";
+import TechIcon from "@/components/ui/TechIcon.astro";
+import { getCompanyInfo } from "@/data/companies";
+import { getSimulationCountForJob } from "@/data/simulations";
+
+interface Props {
+  items: CollectionEntry<"experience">[];
+  locale: Locale;
+}
+
+const { items, locale } = Astro.props;
+const t = useTranslations(locale);
+
+const sortedItems = [...items].sort((a, b) => a.data.order - b.data.order);
+---
+
+<div class="relative space-y-8 before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-[var(--color-surface-border)]">
+  {sortedItems.map((item) => {
+    const {
+      company,
+      role,
+      location,
+      startDate,
+      endDate,
+      skills,
+      keyAchievements,
+    } = item.data;
+    const startStr = formatDate(startDate, locale);
+    const endStr = endDate ? formatDate(endDate, locale) : t("meta.present");
+    const companyInfo = getCompanyInfo(company);
+    const slug = item.id.replace(/^en\/|^es\//, "").replace(/\.md$/, "");
+    const simCount = getSimulationCountForJob(slug);
+    const jobDetailUrl =
+      locale === "es" ? `/es/experience/${slug}` : `/experience/${slug}`;
+    const companyFilterUrl =
+      locale === "es"
+        ? `/es/experience?company=${encodeURIComponent(company.toLowerCase().trim())}`
+        : `/experience?company=${encodeURIComponent(company.toLowerCase().trim())}`;
+
+    return (
+      <div
+        data-experience-item
+        data-skills={skills.map((s) => s.toLowerCase().trim()).join("|")}
+        data-company={company.toLowerCase().trim()}
+        class="relative flex items-start gap-6 pl-10 has-[[data-company-tooltip-root]:hover]:z-50 has-[[data-tooltip-open='true']]:z-50"
+      >
+        <!-- Node indicator -->
+        <span class="absolute left-2.5 top-2.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)]"></span>
+
+        <div class="geometric-box w-full p-5 sm:p-6 rounded relative has-[[data-company-tooltip-root]:hover]:z-50 has-[[data-tooltip-open='true']]:z-50">
+          <!-- IDE-Style Sticky Scroll Header for Role & Company (Subtle glass opacity /75, backdrop blur md, elevated z-index) -->
+          <div class="sticky top-0 sm:top-14 z-20 has-[[data-company-tooltip-root]:hover]:z-50 has-[[data-tooltip-open='true']]:z-50 -mx-5 -mt-5 sm:-mx-6 sm:-mt-6 px-5 py-3 sm:px-6 sm:py-3.5 bg-[var(--color-surface-card)]/75 backdrop-blur-md border-b border-[var(--color-surface-border-subtle)]/80 rounded-t shadow-sm transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-x-4 gap-y-2">
+            <!-- Role & Company Responsive Arrangement -->
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0 flex-1">
+              <h3 class="text-sm sm:text-base font-bold text-[var(--color-text-primary)] tracking-tight">
+                <a
+                  href={jobDetailUrl}
+                  class="inline-block py-1.5 px-2 -my-1 -mx-2 rounded hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+                >
+                  {role}
+                </a>
+              </h3>
+
+              <!-- Dedicated Company Badge & Tooltip Trigger (Guaranteed shrink-0, never squeezed by long role names) -->
+              <div
+                class="relative inline-flex items-center gap-1.5 group/company shrink-0 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-0.5 shadow-xs"
+                data-company-tooltip-root
+              >
+                <!-- Click @Company links directly to timeline with company filter -->
+                <a
+                  href={companyFilterUrl}
+                  title={
+                    locale === "es"
+                      ? `Ver trayectoria filtrada para ${company}`
+                      : `Filter timeline for ${company}`
+                  }
+                  class="text-xs sm:text-sm font-semibold font-mono text-[var(--color-accent-gold)] hover:underline whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+                >
+                  @{company}
+                </a>
+
+                <!-- High-visibility Info (i) Icon Badge Trigger -->
+                <button
+                  type="button"
+                  aria-expanded="false"
+                  aria-label={`${locale === "es" ? "Ver información sobre" : "View information about"} ${company}`}
+                  title={
+                    locale === "es"
+                      ? `Información sobre ${company}`
+                      : `About ${company}`
+                  }
+                  class="inline-flex items-center justify-center h-4 w-4 rounded-full border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] text-[10px] font-mono font-bold text-[var(--color-accent-gold)] group-hover/company:bg-[var(--color-accent-gold)] group-hover/company:text-[var(--color-btn-gold-text)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shrink-0"
+                  data-company-trigger
+                >
+                  <span aria-hidden="true">i</span>
+                </button>
+
+                <!-- Tooltip Popup with Dynamic Placement (Up or Down based on viewport headroom) -->
+                <div
+                  role="tooltip"
+                  data-company-tooltip
+                  class="pointer-events-none group-hover/company:pointer-events-auto opacity-0 group-hover/company:opacity-100 translate-y-1 group-hover/company:translate-y-0 transition-all duration-200 absolute left-0 sm:left-1/2 sm:-translate-x-1/2 w-[min(280px,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)] sm:w-80 rounded-lg border border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] p-2.5 sm:p-3.5 z-[70] text-left font-sans"
+                  style="box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.35), 0 3px 6px -2px rgba(0, 0, 0, 0.25); background-color: var(--color-surface-card);"
+                >
+                  <div class="border-b border-[var(--color-surface-border-subtle)] pb-1.5 mb-1.5 sm:pb-2.5 sm:mb-2.5 space-y-0.5">
+                    <div class="font-bold font-mono text-xs text-[var(--color-text-primary)]">
+                      {companyInfo.name}
+                    </div>
+                    <p class="text-[10px] sm:text-[11px] font-sans font-medium text-[var(--color-accent-gold)] leading-snug">
+                      {locale === "es"
+                        ? companyInfo.industryEs
+                        : companyInfo.industry}
+                    </p>
+                  </div>
+
+                  <p class="text-[11px] sm:text-xs text-[var(--color-text-secondary)] leading-normal sm:leading-relaxed mb-2 sm:mb-2.5">
+                    {locale === "es"
+                      ? companyInfo.descriptionEs
+                      : companyInfo.description}
+                  </p>
+
+                  <div class="pt-1.5 sm:pt-2 border-t border-[var(--color-surface-border-subtle)] flex items-center justify-between font-mono text-xs">
+                    <span class="text-[10px] text-[var(--color-text-muted)] truncate max-w-[110px] sm:max-w-[130px]">
+                      {companyInfo.domain}
+                    </span>
+                    <a
+                      href={companyInfo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center gap-1 sm:gap-1.5 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors"
+                    >
+                      <span>
+                        {locale === "es" ? "Sitio Web" : "Visit Website"}
+                      </span>
+                      <svg
+                        class="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-current fill-none"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                      >
+                        <line x1="7" y1="17" x2="17" y2="7"></line>
+                        <polyline points="7 7 17 7 17 17"></polyline>
+                      </svg>
+                    </a>
+                  </div>
+
+                  <!-- Pointer Caret Arrow -->
+                  <div class="company-tooltip-caret absolute w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[var(--color-surface-card)] rotate-45 left-4 sm:left-1/2 sm:-translate-x-1/2"></div>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs sm:text-sm font-mono text-[var(--color-text-muted)] shrink-0">
+              <span class="text-[var(--color-text-secondary)]">
+                {startStr} &mdash; {endStr}
+              </span>
+              <span class="hidden sm:inline">&bull; {location}</span>
+            </div>
+          </div>
+
+          <!-- Achievements -->
+          <ul class="mt-4 space-y-2.5 text-sm sm:text-base text-[var(--color-text-secondary)] leading-relaxed">
+            {keyAchievements.map((achievement) => (
+              <li class="flex items-start gap-2.5">
+                <span class="mt-2 h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shrink-0"></span>
+                <span>{achievement}</span>
+              </li>
+            ))}
+          </ul>
+
+          <!-- Skills Badges (Clickable for universal search) -->
+          <div class="mt-5 flex flex-wrap gap-1.5 border-t border-[var(--color-surface-border-subtle)] pt-3.5 font-mono text-xs">
+            {skills.map((skill) => (
+              <button
+                type="button"
+                data-tech-search={skill}
+                title={
+                  locale === "es"
+                    ? `Buscar proyectos y notas sobre ${skill}`
+                    : `Search projects & essays mentioning ${skill}`
+                }
+                class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+              >
+                <TechIcon
+                  name={skill}
+                  class="h-3 w-3 text-[var(--color-accent-gold)]"
+                />
+                <span>{skill}</span>
+              </button>
+            ))}
+          </div>
+
+          <!-- Job Footer: Simulation Count Link & Role Detail Link -->
+          <div
+            class={`mt-4 pt-3.5 border-t border-[var(--color-surface-border-subtle)] flex flex-wrap items-center ${simCount > 0 ? "justify-between" : "justify-end"} gap-3 font-mono text-xs`}
+          >
+            {simCount > 0 && (
+              <a
+                href={`${jobDetailUrl}#simulations`}
+                class="inline-flex items-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all group/sim shadow-sm"
+                title={
+                  locale === "es"
+                    ? `Ver ${simCount} caso de estudio interactivo para ${company}`
+                    : `View ${simCount} interactive architecture case study for ${company}`
+                }
+              >
+                <span class="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] group-hover/sim:bg-[var(--color-btn-gold-text)] animate-pulse"></span>
+                <span>
+                  {simCount}{" "}
+                  {locale === "es"
+                    ? simCount === 1
+                      ? "caso de estudio"
+                      : "casos de estudio"
+                    : simCount === 1
+                      ? "case study"
+                      : "case studies"}
+                </span>
+                <span class="transition-transform group-hover/sim:translate-x-0.5">
+                  &rarr;
+                </span>
+              </a>
+            )}
+
+            <a
+              href={jobDetailUrl}
+              class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-bg-primary)] shadow-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] group/view"
+            >
+              <span>
+                {locale === "es" ? "Ver detalles del rol" : "View role details"}
+              </span>
+              <span
+                class="transition-transform group-hover/view:translate-x-0.5"
+                aria-hidden="true"
+              >
+                &rarr;
+              </span>
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  })}
+</div>
+
+<script is:inline>
+  (function () {
+    function initCompanyTooltips() {
+      var roots = document.querySelectorAll("[data-company-tooltip-root]");
+      roots.forEach(function (root) {
+        if (!root || root.dataset.bound) return;
+        root.dataset.bound = "true";
+
+        var trigger = root.querySelector("[data-company-trigger]");
+        var tooltip = root.querySelector("[data-company-tooltip]");
+        if (!trigger || !tooltip) return;
+
+        var hideTimeout;
+
+        function updatePlacement() {
+          var header = document.querySelector("header");
+          var headerBottom = header
+            ? header.getBoundingClientRect().bottom
+            : 56;
+          var triggerRect = trigger.getBoundingClientRect();
+          var rootRect = root.getBoundingClientRect();
+          var spaceAbove = triggerRect.top - headerBottom;
+          var ttHeight = tooltip.offsetHeight || 180;
+          if (spaceAbove < ttHeight + 16) {
+            root.dataset.placement = "bottom";
+          } else {
+            root.dataset.placement = "top";
+          }
+
+          // Horizontal bounds clamping for small screens to prevent right overflow
+          var viewportWidth =
+            window.innerWidth || document.documentElement.clientWidth;
+          var ttWidth = tooltip.offsetWidth || 280;
+          var caret = root.querySelector(".company-tooltip-caret");
+          if (viewportWidth < 640) {
+            var safeMarginRight = 18;
+            var safeMarginLeft = 12;
+            var maxViewportX = viewportWidth - ttWidth - safeMarginRight;
+            var minViewportX = safeMarginLeft;
+            var idealViewportX = rootRect.left;
+            var clampedViewportX = Math.max(
+              minViewportX,
+              Math.min(idealViewportX, maxViewportX),
+            );
+            var relativeLeft = clampedViewportX - rootRect.left;
+            tooltip.style.left = relativeLeft + "px";
+            if (caret) {
+              var caretPos =
+                rootRect.left + rootRect.width / 2 - clampedViewportX;
+              caret.style.left =
+                Math.max(16, Math.min(ttWidth - 16, caretPos)) + "px";
+            }
+          } else {
+            tooltip.style.left = "";
+            if (caret) caret.style.left = "";
+          }
+        }
+
+        function openTooltip() {
+          clearTimeout(hideTimeout);
+          closeAllTooltips(root);
+          updatePlacement();
+          root.dataset.tooltipOpen = "true";
+          trigger.setAttribute("aria-expanded", "true");
+          tooltip.classList.remove(
+            "opacity-0",
+            "pointer-events-none",
+            "translate-y-1",
+          );
+          tooltip.classList.add(
+            "opacity-100",
+            "pointer-events-auto",
+            "translate-y-0",
+          );
+        }
+
+        function closeTooltip() {
+          hideTimeout = setTimeout(function () {
+            root.dataset.tooltipOpen = "false";
+            trigger.setAttribute("aria-expanded", "false");
+            tooltip.classList.add(
+              "opacity-0",
+              "pointer-events-none",
+              "translate-y-1",
+            );
+            tooltip.classList.remove(
+              "opacity-100",
+              "pointer-events-auto",
+              "translate-y-0",
+            );
+          }, 200);
+        }
+
+        root.addEventListener("mouseenter", openTooltip);
+        root.addEventListener("mouseleave", closeTooltip);
+        window.addEventListener(
+          "scroll",
+          function () {
+            if (root.dataset.tooltipOpen === "true") {
+              updatePlacement();
+            }
+          },
+          { passive: true },
+        );
+
+        trigger.addEventListener("click", function (e) {
+          e.stopPropagation();
+          var isOpen = trigger.getAttribute("aria-expanded") === "true";
+          if (isOpen) {
+            closeTooltip();
+          } else {
+            openTooltip();
+          }
+        });
+      });
+
+      function closeAllTooltips(exceptRoot) {
+        document
+          .querySelectorAll("[data-company-tooltip-root]")
+          .forEach(function (r) {
+            if (exceptRoot && r === exceptRoot) return;
+            r.dataset.tooltipOpen = "false";
+            var tr = r.querySelector("[data-company-trigger]");
+            var tt = r.querySelector("[data-company-tooltip]");
+            if (tr) tr.setAttribute("aria-expanded", "false");
+            if (tt) {
+              tt.classList.add(
+                "opacity-0",
+                "pointer-events-none",
+                "translate-y-1",
+              );
+              tt.classList.remove(
+                "opacity-100",
+                "pointer-events-auto",
+                "translate-y-0",
+              );
+            }
+          });
+      }
+
+      if (!window.__companyTooltipDocBound) {
+        window.__companyTooltipDocBound = true;
+        document.addEventListener("click", function (e) {
+          var target = e.target;
+          if (target && !target.closest("[data-company-tooltip-root]")) {
+            closeAllTooltips();
+          }
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") {
+            closeAllTooltips();
+          }
+        });
+      }
+    }
+
+    var tooltipsInitialized = false;
+    function lazyInitTooltips() {
+      if (tooltipsInitialized) return;
+      tooltipsInitialized = true;
+      initCompanyTooltips();
+    }
+
+    document.addEventListener(
+      "pointerenter",
+      function (e) {
+        if (
+          e.target &&
+          e.target.closest &&
+          e.target.closest("[data-company-tooltip-root]")
+        ) {
+          lazyInitTooltips();
+        }
+      },
+      { capture: true, passive: true },
+    );
+
+    document.addEventListener(
+      "focusin",
+      function (e) {
+        if (
+          e.target &&
+          e.target.closest &&
+          e.target.closest("[data-company-tooltip-root]")
+        ) {
+          lazyInitTooltips();
+        }
+      },
+      { capture: true, passive: true },
+    );
+
+    document.addEventListener(
+      "touchstart",
+      function (e) {
+        if (
+          e.target &&
+          e.target.closest &&
+          e.target.closest("[data-company-tooltip-root]")
+        ) {
+          lazyInitTooltips();
+        }
+      },
+      { capture: true, passive: true },
+    );
+
+    document.addEventListener("astro:page-load", function () {
+      tooltipsInitialized = false;
+    });
+  })();
+</script>
+
+<style>
+  /* Default: Opens upward */
+  :global(
+    [data-company-tooltip-root]:not([data-placement="bottom"])
+      [data-company-tooltip]
+  ) {
+    bottom: 100%;
+    margin-bottom: 0.5rem;
+    top: auto;
+    margin-top: 0;
+  }
+  :global(
+    [data-company-tooltip-root]:not([data-placement="bottom"])
+      [data-company-tooltip]
+  )::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -0.75rem;
+    height: 0.75rem;
+  }
+  :global(
+    [data-company-tooltip-root]:not([data-placement="bottom"])
+      .company-tooltip-caret
+  ) {
+    bottom: -0.375rem;
+    top: auto;
+    border-bottom: 1px solid var(--color-accent-gold);
+    border-right: 1px solid var(--color-accent-gold);
+  }
+
+  /* When headroom is limited: Opens downward */
+  :global(
+    [data-company-tooltip-root][data-placement="bottom"] [data-company-tooltip]
+  ) {
+    top: 100%;
+    margin-top: 0.625rem;
+    bottom: auto;
+    margin-bottom: 0;
+  }
+  :global(
+    [data-company-tooltip-root][data-placement="bottom"] [data-company-tooltip]
+  )::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: -0.75rem;
+    height: 0.75rem;
+  }
+  :global(
+    [data-company-tooltip-root][data-placement="bottom"] .company-tooltip-caret
+  ) {
+    top: -0.375rem;
+    bottom: auto;
+    border-top: 1px solid var(--color-accent-gold);
+    border-left: 1px solid var(--color-accent-gold);
+  }
+</style>

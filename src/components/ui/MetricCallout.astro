@@ -1,0 +1,23 @@
+---
+interface Props {
+  value: string;
+  label: string;
+  subtext?: string | undefined;
+}
+
+const { value, label, subtext } = Astro.props;
+---
+
+<div class="geometric-box relative flex flex-col justify-between p-3.5 sm:p-5 rounded min-w-0 overflow-hidden">
+  <div class="font-mono text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold tracking-tight text-[var(--color-text-primary)] break-words leading-tight">
+    {value}
+  </div>
+  <div class="mt-2 text-xs sm:text-sm font-medium text-[var(--color-text-secondary)] break-words leading-snug">
+    {label}
+  </div>
+  {subtext && (
+    <div class="mt-1 text-xs font-mono text-[var(--color-accent-gold)] break-words">
+      {subtext}
+    </div>
+  )}
+</div>

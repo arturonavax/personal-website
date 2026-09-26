@@ -1,0 +1,302 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import HeroHeaderBanner from "@/components/ui/HeroHeaderBanner.astro";
+import MetricCallout from "@/components/ui/MetricCallout.astro";
+import ProjectCard from "@/components/ui/ProjectCard.astro";
+import ExperienceTimeline from "@/components/ui/ExperienceTimeline.astro";
+import PostCard from "@/components/ui/PostCard.astro";
+import SystemTelemetryDemo from "@/components/ui/SystemTelemetryDemo.astro";
+import ContactSection from "@/components/ui/ContactSection.astro";
+import CoffeeSponsorshipModal from "@/components/ui/CoffeeSponsorshipModal.astro";
+import PageIndexNav from "@/components/ui/PageIndexNav.astro";
+import { hasSponsorshipMethods } from "@/data/sponsorships";
+import { simulationsData } from "@/data/simulations";
+import { useTranslations } from "@/i18n/utils";
+
+const locale = "es";
+const t = useTranslations(locale);
+const hasCaseStudies = Boolean(simulationsData && simulationsData.length > 0);
+
+const allProjectsList = await getCollection(
+  "projects",
+  ({ data }) => data.locale === locale,
+);
+const allProjects = allProjectsList.filter((p) => p.data.featured);
+const featuredProjects = allProjects
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 3);
+
+const allExperience = await getCollection(
+  "experience",
+  ({ data }) => data.locale === locale,
+);
+const recentExperience = allExperience
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 4);
+
+const allPosts = await getCollection(
+  "posts",
+  ({ data }) => data.locale === locale && !data.draft,
+);
+const recentPosts = allPosts
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
+  .slice(0, 3);
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    mainEntity: {
+      "@type": "Person",
+      name: "Arturo Nava",
+      alternateName: "arturonavax",
+      jobTitle: "Ingeniero de Software Senior / IA",
+      description:
+        "Ingeniero de Software Senior / IA especializado en Go, Rust y Sistemas Distribuidos.",
+      url: "https://arturonavax.com/es",
+      sameAs: [
+        "https://github.com/arturonavax",
+        "https://www.linkedin.com/in/arturonavax",
+        "https://x.com/arturonavax",
+        "https://instagram.com/arturonavax",
+      ],
+      knowsAbout: [
+        "Golang",
+        "Rust",
+        "Sistemas de Inteligencia Artificial",
+        "Sistemas Distribuidos",
+        "Alta Concurrencia",
+        "Seguridad de Aplicaciones",
+        "Arquitectura Zero-Trust",
+        "Vectorización SIMD",
+        "Snowflake OLAP",
+        "DynamoDB",
+      ],
+    },
+  },
+];
+---
+
+<BaseLayout
+  title="Arturo Nava — Ingeniero de Software Senior / IA"
+  description="Ingeniero de Software Senior / IA especializado en Go, Rust, arquitecturas de alta concurrencia, motores antifraude en tiempo real y seguridad."
+  locale={locale}
+  jsonLd={jsonLd}
+  hideSubtleCoffee={true}
+>
+  <!-- Índice de Navegación de Página (Modo dual: Barra lateral >1600px y Botón flotante) -->
+  <PageIndexNav locale={locale} />
+
+  <div class="mx-auto max-w-5xl px-2 min-[360px]:px-3 sm:px-6 pt-1.5 sm:pt-4 lg:pt-6 pb-12 sm:pb-16 space-y-10 sm:space-y-14">
+    <!-- Hero Header Banner con Foto, Filosofías, Stack Técnico y Flujo de IA -->
+    <HeroHeaderBanner locale={locale} />
+
+    <!-- Métricas Operacionales -->
+    <section
+      id="metrics"
+      aria-label="Métricas Operacionales"
+      class="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4"
+    >
+      <MetricCallout
+        value={t("metrics.latency.value")}
+        label={t("metrics.latency.label")}
+        subtext="Strategy Pattern / Redis"
+      />
+      <MetricCallout
+        value={t("metrics.olap.value")}
+        label={t("metrics.olap.label")}
+        subtext="100% Desacople OLTP"
+      />
+      <MetricCallout
+        value={t("metrics.simd.value")}
+        label={t("metrics.simd.label")}
+        subtext="4.8x Throughput AVX2"
+      />
+      <MetricCallout
+        value={t("metrics.security.value")}
+        label={t("metrics.security.label")}
+        subtext="Cumplimiento Shift-Left"
+      />
+    </section>
+
+    <!-- Trayectoria Profesional (Validación y primero que proyectos) -->
+    {recentExperience.length > 0 && (
+      <section
+        id="experience"
+        aria-labelledby="experience-heading"
+        class="space-y-6"
+      >
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
+          <h2
+            id="experience-heading"
+            class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl"
+          >
+            {t("section.experience")}
+          </h2>
+          <a
+            href="/es/experience"
+            class="btn-secondary px-3.5 py-1.5 font-mono text-xs sm:text-sm text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] inline-flex items-center gap-1.5 min-h-[38px] transition-colors"
+          >
+            <span>{t("section.experience.viewAll")}</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+
+        <ExperienceTimeline items={recentExperience} locale={locale} />
+
+        {allExperience.length > recentExperience.length && (
+          <div class="rounded-lg border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 font-mono text-xs sm:text-sm">
+            <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
+              <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
+              <span>
+                Mostrando 4 de {allExperience.length} etapas profesionales
+                &bull;{" "}
+                <strong class="text-[var(--color-accent-gold)]">
+                  +{allExperience.length - recentExperience.length} más
+                </strong>{" "}
+                en la trayectoria completa
+              </span>
+            </div>
+            <a
+              href="/es/experience"
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+            >
+              <span>Ver trayectoria completa y roles anteriores</span>
+              <span>&rarr;</span>
+            </a>
+          </div>
+        )}
+      </section>
+    )}
+
+    <!-- Proyectos Destacados (Validación) -->
+    {featuredProjects.length > 0 && (
+      <section
+        id="projects"
+        aria-labelledby="featured-projects-heading"
+        class="space-y-6"
+      >
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
+          <h2
+            id="featured-projects-heading"
+            class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl"
+          >
+            {t("section.projects")}
+          </h2>
+          <a
+            href="/es/projects"
+            class="btn-secondary px-3.5 py-1.5 font-mono text-xs sm:text-sm text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] inline-flex items-center gap-1.5 min-h-[38px] transition-colors"
+          >
+            <span>{t("section.projects.viewAll")}</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {featuredProjects.map((project) => (
+            <ProjectCard project={project} locale={locale} />
+          ))}
+        </div>
+
+        {allProjectsList.length > featuredProjects.length && (
+          <div class="rounded-lg border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 font-mono text-xs sm:text-sm">
+            <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
+              <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
+              <span>
+                Mostrando {featuredProjects.length} de {allProjectsList.length}{" "}
+                sistemas &bull;{" "}
+                <strong class="text-[var(--color-accent-gold)]">
+                  +{allProjectsList.length - featuredProjects.length} más
+                </strong>{" "}
+                en catálogo
+              </span>
+            </div>
+            <a
+              href="/es/projects"
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+            >
+              <span>Explorar todos los proyectos</span>
+              <span>&rarr;</span>
+            </a>
+          </div>
+        )}
+      </section>
+    )}
+
+    <!-- Ensayos Técnicos (Validación) -->
+    {recentPosts.length > 0 && (
+      <section id="blog" aria-labelledby="posts-heading" class="space-y-6">
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
+          <h2
+            id="posts-heading"
+            class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl"
+          >
+            {t("section.blog")}
+          </h2>
+          <a
+            href="/es/blog"
+            class="btn-secondary px-3.5 py-1.5 font-mono text-xs sm:text-sm text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] inline-flex items-center gap-1.5 min-h-[38px] transition-colors"
+          >
+            <span>{t("section.blog.viewAll")}</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {recentPosts.map((post) => (
+            <PostCard post={post} locale={locale} />
+          ))}
+        </div>
+
+        {allPosts.length > recentPosts.length && (
+          <div class="rounded-lg border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 font-mono text-xs sm:text-sm">
+            <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
+              <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
+              <span>
+                Mostrando {recentPosts.length} de {allPosts.length} ensayos
+                &bull;{" "}
+                <strong class="text-[var(--color-accent-gold)]">
+                  +{allPosts.length - recentPosts.length} más
+                </strong>{" "}
+                en el archivo
+              </span>
+            </div>
+            <a
+              href="/es/blog"
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+            >
+              <span>Leer todos los ensayos y notas técnicas</span>
+              <span>&rarr;</span>
+            </a>
+          </div>
+        )}
+      </section>
+    )}
+
+    <!-- Casos de Estudio Interactivos de Arquitectura y Telemetría Distribuida -->
+    {hasCaseStudies && (
+      <section
+        id="telemetry"
+        aria-label="Casos de Estudio Interactivos de Arquitectura"
+        class="space-y-3"
+      >
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2 font-mono text-xs sm:text-sm text-[var(--color-text-muted)]">
+          <span class="text-[var(--color-accent-gold)] uppercase tracking-wider text-xs font-semibold">
+            Casos de Estudio de Arquitectura & Telemetría
+          </span>
+          <span class="hidden sm:inline text-xs">
+            Telemetría en Pipeline Sub-50ms
+          </span>
+        </div>
+        <SystemTelemetryDemo locale={locale} />
+      </section>
+    )}
+
+    <!-- Hub Directo de Contacto para Reclutadores -->
+    <ContactSection locale={locale} />
+
+    <!-- Modal Discreto de Café y Patrocinio -->
+    {hasSponsorshipMethods && <CoffeeSponsorshipModal locale={locale} />}
+  </div>
+</BaseLayout>

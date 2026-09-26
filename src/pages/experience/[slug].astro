@@ -1,0 +1,753 @@
+---
+import { getCollection, render } from "astro:content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PageIndexNav, {
+  type IndexItem,
+} from "@/components/ui/PageIndexNav.astro";
+import SimulationCard from "@/components/ui/SimulationCard.astro";
+import TechIcon from "@/components/ui/TechIcon.astro";
+import { getCompanyInfo } from "@/data/companies";
+import { getSimulationsForJob } from "@/data/simulations";
+import { formatDate, useTranslations } from "@/i18n/utils";
+
+export async function getStaticPaths() {
+  const experiences = await getCollection(
+    "experience",
+    ({ data }) => data.locale === "en",
+  );
+  return experiences.map((experience) => ({
+    params: {
+      slug: experience.id.replace(/^en\//, "").replace(/\.md$/, ""),
+    },
+    props: { experience },
+  }));
+}
+
+const { experience } = Astro.props;
+const { Content } = await render(experience);
+
+const {
+  company,
+  role,
+  location,
+  employmentType,
+  startDate,
+  endDate,
+  skills,
+  keyAchievements,
+} = experience.data;
+const slug = experience.id.replace(/^en\//, "").replace(/\.md$/, "");
+const simulations = getSimulationsForJob(slug);
+const companyInfo = getCompanyInfo(company, {
+  industry: experience.data.companyIndustry,
+  description: experience.data.companyDescription,
+  domain: experience.data.companyDomain,
+  url: experience.data.companyUrl,
+});
+const t = useTranslations("en");
+
+const startStr = formatDate(startDate, "en");
+const endStr = endDate ? formatDate(endDate, "en") : t("meta.present");
+
+// Retrieve all experiences for navigation rail and same-company counts
+const allExperiences = await getCollection(
+  "experience",
+  ({ data }) => data.locale === "en",
+);
+// Chronological ordering: Milestone 1 is the earliest job in career (Task 3)
+const chronologicalExperiences = [...allExperiences].sort(
+  (a, b) => a.data.startDate.getTime() - b.data.startDate.getTime(),
+);
+const chronoIndex = chronologicalExperiences.findIndex(
+  (item) => item.id.replace(/^en\//, "").replace(/\.md$/, "") === slug,
+);
+const milestoneNumber = chronoIndex + 1;
+const totalMilestones = chronologicalExperiences.length;
+
+// Left arrow: Past (older roles); Right arrow: Future/Present (newer roles) (Task 3)
+const pastExperience =
+  chronoIndex > 0 ? chronologicalExperiences[chronoIndex - 1] : null;
+const futureExperience =
+  chronoIndex < chronologicalExperiences.length - 1
+    ? chronologicalExperiences[chronoIndex + 1]
+    : null;
+
+const pastSlug = pastExperience
+  ? pastExperience.id.replace(/^en\//, "").replace(/\.md$/, "")
+  : null;
+const futureSlug = futureExperience
+  ? futureExperience.id.replace(/^en\//, "").replace(/\.md$/, "")
+  : null;
+
+const pastUrl = pastSlug ? `/experience/${pastSlug}` : null;
+const futureUrl = futureSlug ? `/experience/${futureSlug}` : null;
+
+// Multi-role company detection (Task 47)
+const sameCompanyExperiences = allExperiences.filter(
+  (e) => e.data.company.toLowerCase().trim() === company.toLowerCase().trim(),
+);
+const companyFilterUrl = `/experience?company=${encodeURIComponent(company.toLowerCase().trim())}`;
+
+const pageTitle = `${role} @ ${company} — Arturo Nava`;
+const pageDescription = `Career milestone, architecture achievements, and interactive system simulations for Arturo Nava as ${role} at ${company}.`;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  headline: `${role} at ${company} — Career Milestone & System Architecture`,
+  description: pageDescription,
+  author: {
+    "@type": "Person",
+    name: "Arturo Nava",
+    url: "https://arturonavax.com",
+  },
+  datePublished: startDate.toISOString(),
+  inLanguage: "en",
+};
+
+// Section navigation index for this job page (Task 51)
+const jobIndexItems: IndexItem[] = [
+  {
+    id: "role-header",
+    label: `${role}`,
+    labelEs: `${role}`,
+  },
+  {
+    id: "role-overview",
+    label: "Overview & Profile",
+    labelEs: "Resumen & Perfil",
+  },
+  {
+    id: "achievements",
+    label: "Key Achievements",
+    labelEs: "Hitos Clave",
+  },
+  ...(simulations.length > 0
+    ? [
+        {
+          id: "simulations",
+          label: `Architecture Case Studies (${simulations.length})`,
+          labelEs: `Casos de Estudio (${simulations.length})`,
+        },
+      ]
+    : []),
+];
+---
+
+<BaseLayout
+  title={pageTitle}
+  description={pageDescription}
+  locale="en"
+  type="article"
+  collectionName="experience"
+  jsonLd={jsonLd}
+>
+  <!-- Page Navigation Index for Job Page (Task 2 & 51) -->
+  <PageIndexNav
+    locale="en"
+    customItems={jobIndexItems}
+    containerMaxWidth="4xl"
+    alignTargetId="role-header"
+  />
+
+  <article
+    id="experience-article"
+    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 space-y-4 sm:space-y-6 lg:space-y-8"
+  >
+    <!-- Back to Experience Timeline -->
+    <div class="flex items-center justify-between gap-x-4 min-h-[1.75rem] h-[1.75rem] -mb-1 sm:-mb-2 text-xs font-mono">
+      <a
+        href="/experience"
+        class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] py-0.5 truncate"
+      >
+        &larr; Back to experience timeline
+      </a>
+
+      <div class="flex items-center gap-2.5 text-[var(--color-text-muted)] shrink-0">
+        <span>
+          Timeline milestone {milestoneNumber} of {totalMilestones}
+        </span>
+      </div>
+    </div>
+
+    <!-- Timeline Rail Container with Horizontal Line & Travel Navigation Steppers (Task 3 & 53) -->
+    <div
+      class="relative py-2 sm:py-4 my-1 sm:my-2"
+      id="timeline-rail-container"
+    >
+      <!-- Horizontal Timeline Axis Line aligned with header title row to prevent vertical jumping -->
+      <div class="absolute top-[5.5rem] sm:top-[7rem] -left-6 -right-6 sm:-left-12 sm:-right-12 -translate-y-1/2 h-0.5 bg-[var(--color-surface-border)] pointer-events-none z-0">
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--color-accent-gold)]/50 to-transparent"></div>
+        <svg
+          class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 h-3 w-3 text-[var(--color-accent-gold)] shrink-0 aspect-square"
+          viewBox="0 0 12 12"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle
+            cx="6"
+            cy="6"
+            r="4.5"
+            fill="var(--color-surface-card)"
+            stroke="currentColor"
+            stroke-width="1.5"
+          />
+        </svg>
+        <svg
+          class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-3 w-3 text-[var(--color-accent-gold)] shrink-0 aspect-square"
+          viewBox="0 0 12 12"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle
+            cx="6"
+            cy="6"
+            r="4.5"
+            fill="var(--color-surface-card)"
+            stroke="currentColor"
+            stroke-width="1.5"
+          />
+        </svg>
+      </div>
+
+      <!-- Left Stepper (Past: older roles towards beginning of career) -->
+      {pastUrl && pastExperience && (
+        <a
+          href={pastUrl}
+          data-timeline-nav="past"
+          data-astro-prefetch="load"
+          title={`Past timeline milestone: ${pastExperience.data.role} @ ${pastExperience.data.company}`}
+          class="group/timeline-nav absolute left-0 top-[5.5rem] sm:top-[7rem] -translate-x-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+          aria-label={`Past role: ${pastExperience.data.role} (press h)`}
+        >
+          <!-- Key indicator badge above arrow -->
+          <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
+            h
+          </kbd>
+          <svg
+            class="h-4 w-4 sm:h-5 sm:w-5 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <!-- Floating Tooltip -->
+          <span class="pointer-events-none opacity-0 group-hover/timeline-nav:opacity-100 transition-opacity absolute bottom-full mb-5.5 left-0 whitespace-nowrap rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-[11px] font-mono font-medium text-[var(--color-accent-gold)] shadow-xl z-30">
+            &larr; {pastExperience.data.company}
+          </span>
+        </a>
+      )}
+
+      <!-- Right Stepper (Future/Present: newer roles towards current career) -->
+      {futureUrl && futureExperience && (
+        <a
+          href={futureUrl}
+          data-timeline-nav="future"
+          data-astro-prefetch="load"
+          title={`Future timeline milestone: ${futureExperience.data.role} @ ${futureExperience.data.company}`}
+          class="group/timeline-nav absolute right-0 top-[5.5rem] sm:top-[7rem] translate-x-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+          aria-label={`Future role: ${futureExperience.data.role} (press l)`}
+        >
+          <!-- Key indicator badge above arrow -->
+          <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
+            l
+          </kbd>
+          <svg
+            class="h-4 w-4 sm:h-5 sm:w-5 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+          <!-- Floating Tooltip -->
+          <span class="pointer-events-none opacity-0 group-hover/timeline-nav:opacity-100 transition-opacity absolute bottom-full mb-5.5 right-0 whitespace-nowrap rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-[11px] font-mono font-medium text-[var(--color-accent-gold)] shadow-xl z-30">
+            {futureExperience.data.company} &rarr;
+          </span>
+        </a>
+      )}
+
+      <!-- Role Header Card sits on top with z-10 -->
+      <header
+        id="role-header"
+        class="geometric-box relative z-10 rounded-lg p-6 sm:p-8 space-y-6 bg-[var(--color-surface-card)] shadow-card"
+      >
+        <div class="space-y-3 border-b border-[var(--color-surface-border-subtle)] pb-6">
+          <div class="flex items-center justify-between gap-3 text-xs font-mono text-[var(--color-text-muted)] min-h-[2rem]">
+            <span class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-accent-gold)] shrink-0">
+              <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)]"></span>
+              <span>{employmentType}</span>
+            </span>
+            <span class="truncate">
+              {startStr} &mdash; {endStr} &bull; {location}
+            </span>
+          </div>
+
+          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--color-text-primary)] min-h-[2.5rem] sm:min-h-[3rem] lg:min-h-[3.25rem] flex items-start">
+            {role}
+          </h1>
+
+          <!-- Company Details & External Link -->
+          <div class="flex flex-wrap items-center gap-3 pt-1">
+            <div class="flex items-center gap-2 font-mono text-sm">
+              <a
+                href={companyFilterUrl}
+                title={`Filter career timeline for ${companyInfo.name}`}
+                class="font-bold text-[var(--color-accent-gold)] hover:underline"
+              >
+                @{companyInfo.name}
+              </a>
+              <span class="text-xs text-[var(--color-text-muted)]">
+                &bull; {companyInfo.industry}
+              </span>
+            </div>
+
+            <a
+              href={companyInfo.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 text-xs font-mono font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors"
+            >
+              <span>Visit {companyInfo.domain}</span>
+              <svg
+                class="h-3 w-3 stroke-current fill-none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+              >
+                <line x1="7" y1="17" x2="17" y2="7"></line>
+                <polyline points="7 7 17 7 17 17"></polyline>
+              </svg>
+            </a>
+
+            {sameCompanyExperiences.length > 1 && (
+              <a
+                href={companyFilterUrl}
+                title={`Filter timeline for all ${sameCompanyExperiences.length} roles at ${company}`}
+                class="inline-flex items-center gap-1.5 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 font-mono text-xs text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all group/same-co shadow-xs"
+              >
+                <span class="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] group-hover/same-co:bg-[var(--color-btn-gold-text)] animate-pulse"></span>
+                <span>
+                  {sameCompanyExperiences.length} positions held at {company}
+                </span>
+                <span class="transition-transform group-hover/same-co:translate-x-0.5">
+                  &rarr;
+                </span>
+              </a>
+            )}
+          </div>
+        </div>
+
+        <!-- Skills Used in this Role (Clickable Universal Search Trigger - Task 45) -->
+        <div class="space-y-2">
+          <div class="text-xs font-mono text-[var(--color-text-muted)] uppercase tracking-wider flex items-center justify-between">
+            <span>Core Technologies & Infrastructure</span>
+            <span class="text-[10px] text-[var(--color-text-muted)] lowercase">
+              click to search
+            </span>
+          </div>
+          <div class="flex flex-wrap gap-1.5 font-mono text-xs">
+            {skills.map((skill) => (
+              <button
+                type="button"
+                data-tech-search={skill}
+                title={`Search projects & essays mentioning ${skill}`}
+                class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+              >
+                <TechIcon
+                  name={skill}
+                  class="h-3 w-3 text-[var(--color-accent-gold)]"
+                />
+                <span>{skill}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+    </div>
+
+    <!-- Role Summary & Company Context -->
+    <section
+      id="role-overview"
+      class="space-y-4 text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed border-b border-[var(--color-surface-border)] pb-8"
+    >
+      <h2 class="text-lg font-bold font-mono text-[var(--color-text-primary)] uppercase tracking-wider">
+        Role Overview & Company Profile
+      </h2>
+      <div class="rounded-lg border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 sm:p-5 font-mono text-xs sm:text-sm space-y-2">
+        <div class="flex items-center gap-2 text-[var(--color-accent-gold)] font-bold">
+          <svg
+            class="h-4 w-4 shrink-0 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+          >
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+          <span>
+            {companyInfo.name} &bull; {companyInfo.industry}
+          </span>
+        </div>
+        <p class="text-[var(--color-text-secondary)] font-sans leading-relaxed">
+          {companyInfo.description}
+        </p>
+      </div>
+      <div class="mt-4 [&>p]:leading-8">
+        <Content />
+      </div>
+    </section>
+
+    <!-- Key Architectural & Engineering Achievements -->
+    <section
+      id="achievements"
+      class="space-y-5 border-b border-[var(--color-surface-border)] pb-8"
+    >
+      <h2 class="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
+        Key Architectural & Engineering Achievements
+      </h2>
+      <ul class="space-y-3.5 text-sm sm:text-base text-[var(--color-text-secondary)] leading-relaxed">
+        {keyAchievements.map((achievement) => (
+          <li class="flex items-start gap-3">
+            <span class="mt-2.5 h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shrink-0"></span>
+            <span>{achievement}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <!-- Interactive Architecture Case Studies Section -->
+    {simulations.length > 0 && (
+      <section
+        id="simulations"
+        class="space-y-6 pt-2 border-b border-[var(--color-surface-border)] pb-8"
+      >
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-surface-border)] pb-4">
+          <div>
+            <div class="inline-flex items-center gap-2 text-xs font-mono text-[var(--color-accent-gold)] uppercase tracking-wider mb-1">
+              <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
+              <span>Interactive Architecture Case Studies</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text-primary)]">
+              Production System Workloads & Benchmarks
+            </h2>
+          </div>
+
+          <span class="inline-flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1 font-mono text-xs text-[var(--color-text-secondary)] shrink-0">
+            {simulations.length}{" "}
+            {simulations.length === 1
+              ? "case study available"
+              : "case studies available"}
+          </span>
+        </div>
+
+        <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
+          The interactive case studies below demonstrate the production
+          architectures implemented during this engagement. Run each case study
+          to inspect the orchestrated pipeline phases, view live stdout
+          telemetry, and verify the measured before-and-after performance
+          impact.
+        </p>
+
+        <div class="space-y-8">
+          {simulations.map((sim) => (
+            <SimulationCard simulation={sim} locale="en" />
+          ))}
+        </div>
+      </section>
+    )}
+
+    <!-- Bottom Navigation -->
+    <div class="pt-4 flex items-center justify-between font-mono text-xs">
+      <a
+        href="/experience"
+        class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
+      >
+        &larr; View all experience records
+      </a>
+      <a
+        href="/#contact"
+        class="inline-flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
+      >
+        Discuss architecture opportunities &rarr;
+      </a>
+    </div>
+  </article>
+
+  <!-- Timeline Travel Departure & Arrival Animation Script (Fluid In-Page Swap, Zero White Flash & No Shift) -->
+  <script is:inline>
+    (function () {
+      var cache =
+        window.__timelinePageCache || (window.__timelinePageCache = {});
+      var isTransitioning = false;
+
+      function prefetchUrl(url) {
+        if (!url || cache[url]) return;
+        fetch(url, { priority: "low" })
+          .then(function (res) {
+            if (res.ok) return res.text();
+            throw new Error("Network error");
+          })
+          .then(function (html) {
+            cache[url] = html;
+          })
+          .catch(function () {});
+      }
+
+      function navigateTo(url, dir, isPop) {
+        if (isTransitioning || !url) return;
+        var article = document.getElementById("experience-article");
+        if (!article) {
+          window.location.href = url;
+          return;
+        }
+
+        isTransitioning = true;
+
+        var htmlPromise = cache[url]
+          ? Promise.resolve(cache[url])
+          : fetch(url)
+              .then(function (res) {
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                return res.text();
+              })
+              .then(function (text) {
+                cache[url] = text;
+                return text;
+              });
+
+        // 1. Fluid departure animation (pure GPU opacity to prevent title jumping)
+        article.style.willChange = "opacity";
+        article.style.transition = "opacity 0.12s cubic-bezier(0.4, 0, 1, 1)";
+        article.style.opacity = "0";
+
+        var timerPromise = new Promise(function (resolve) {
+          setTimeout(resolve, 120);
+        });
+
+        Promise.all([htmlPromise, timerPromise])
+          .then(function (results) {
+            var html = results[0];
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, "text/html");
+            var newArticle = doc.getElementById("experience-article");
+
+            if (!newArticle) {
+              window.location.href = url;
+              return;
+            }
+
+            // Update document title and browser history without page reload
+            document.title = doc.title;
+            if (!isPop) {
+              history.pushState({ url: url }, "", url);
+            }
+
+            // Update language switcher links if present
+            var oldLangLinks = document.querySelectorAll("a[hreflang]");
+            var newLangLinks = doc.querySelectorAll("a[hreflang]");
+            if (oldLangLinks.length && newLangLinks.length) {
+              oldLangLinks.forEach(function (oldLink, idx) {
+                if (newLangLinks[idx]) {
+                  oldLink.href = newLangLinks[idx].href;
+                }
+              });
+            }
+
+            // Update desktop page index navigation links
+            var oldAside = document.getElementById("desktop-page-index");
+            var newAside = doc.getElementById("desktop-page-index");
+            if (oldAside && newAside) {
+              var oldNav = oldAside.querySelector("nav");
+              var newNav = newAside.querySelector("nav");
+              if (oldNav && newNav) {
+                oldNav.innerHTML = newNav.innerHTML;
+              }
+            }
+
+            // Swap article contents
+            article.innerHTML = newArticle.innerHTML;
+            article.className = newArticle.className;
+
+            // Only reset scroll if user had scrolled deeply down into achievements/content
+            if (window.scrollY > 140) {
+              window.scrollTo({ top: 0, behavior: "instant" });
+            }
+
+            // 2. Fluid arrival animation (pure GPU opacity, 100% stable position)
+            article.style.transition = "none";
+            article.style.opacity = "0";
+            void article.offsetHeight; // Force reflow
+
+            article.style.transition =
+              "opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1)";
+            article.style.opacity = "1";
+
+            setTimeout(function () {
+              article.style.opacity = "";
+              article.style.transition = "";
+              article.style.willChange = "";
+              isTransitioning = false;
+            }, 180);
+
+            // Re-bind all scripts & components on the freshly rendered DOM
+            document.dispatchEvent(new Event("astro:page-load"));
+          })
+          .catch(function () {
+            // Graceful fallback to MPA navigation on fetch failure
+            window.location.href = url;
+          });
+      }
+
+      function setupTimelineNav() {
+        var pastLink = document.querySelector('[data-timeline-nav="past"]');
+        var futureLink = document.querySelector('[data-timeline-nav="future"]');
+
+        // Automatically prefetch adjacent milestones for instant 0ms transitions
+        if (pastLink) prefetchUrl(pastLink.href);
+        if (futureLink) prefetchUrl(futureLink.href);
+
+        var links = document.querySelectorAll("[data-timeline-nav]");
+        links.forEach(function (link) {
+          if (link.dataset.bound) return;
+          link.dataset.bound = "true";
+
+          link.addEventListener("click", function (e) {
+            e.preventDefault();
+            var dir = link.getAttribute("data-timeline-nav");
+            navigateTo(link.href, dir);
+          });
+        });
+
+        // Keyboard ArrowLeft / ArrowRight Navigation
+        if (!window.__timelineNavKeyBound) {
+          window.__timelineNavKeyBound = true;
+          document.addEventListener("keydown", function (e) {
+            var active = document.activeElement;
+            var tag =
+              active && active.tagName ? active.tagName.toLowerCase() : "";
+            if (
+              tag === "input" ||
+              tag === "textarea" ||
+              tag === "select" ||
+              (active && active.isContentEditable)
+            )
+              return;
+            var modalOpen = document.querySelector(
+              'dialog[open], [role="dialog"]:not(.hidden)',
+            );
+            if (modalOpen) return;
+
+            var isLeft =
+              (e.key === "ArrowLeft" || e.key === "h" || e.key === "H") &&
+              !e.ctrlKey &&
+              !e.metaKey &&
+              !e.altKey;
+            var isRight =
+              (e.key === "ArrowRight" || e.key === "l" || e.key === "L") &&
+              !e.ctrlKey &&
+              !e.metaKey &&
+              !e.altKey;
+
+            if (isLeft) {
+              var p = document.querySelector('[data-timeline-nav="past"]');
+              if (p) {
+                e.preventDefault();
+                navigateTo(p.href, "past");
+              }
+            } else if (isRight) {
+              var f = document.querySelector('[data-timeline-nav="future"]');
+              if (f) {
+                e.preventDefault();
+                navigateTo(f.href, "future");
+              }
+            }
+          });
+
+          // Handle browser history back/forward buttons
+          window.addEventListener("popstate", function () {
+            if (location.pathname.includes("/experience/")) {
+              navigateTo(location.href, "past", true);
+            } else {
+              window.location.reload();
+            }
+          });
+        }
+
+        // Zero-cost passive horizontal swipe navigation for mobile
+        if (!window.__timelineNavTouchBound) {
+          window.__timelineNavTouchBound = true;
+          var touchStartX = 0;
+          var touchStartY = 0;
+          var touchStartTime = 0;
+
+          document.addEventListener(
+            "touchstart",
+            function (e) {
+              if (e.touches.length !== 1) return;
+              var t = e.touches[0];
+              touchStartX = t.clientX;
+              touchStartY = t.clientY;
+              touchStartTime = Date.now();
+            },
+            { passive: true },
+          );
+
+          document.addEventListener(
+            "touchend",
+            function (e) {
+              if (e.changedTouches.length !== 1) return;
+              var target = e.target;
+              if (
+                target &&
+                target.closest(
+                  "input, textarea, select, dialog, pre, code, button, a, [data-simulation-card]",
+                )
+              )
+                return;
+              var modalOpen = document.querySelector(
+                'dialog[open], [role="dialog"]:not(.hidden)',
+              );
+              if (modalOpen) return;
+
+              var t = e.changedTouches[0];
+              var deltaX = t.clientX - touchStartX;
+              var deltaY = t.clientY - touchStartY;
+              var deltaTime = Date.now() - touchStartTime;
+
+              // Swift flick gesture: duration < 450ms, |deltaX| > 60px, dominant horizontal movement (2x vertical)
+              if (
+                deltaTime < 450 &&
+                Math.abs(deltaX) > 60 &&
+                Math.abs(deltaX) > Math.abs(deltaY) * 2
+              ) {
+                if (deltaX < 0) {
+                  // Swiped right-to-left -> Future milestone
+                  var f = document.querySelector(
+                    '[data-timeline-nav="future"]',
+                  );
+                  if (f) navigateTo(f.href, "future");
+                } else {
+                  // Swiped left-to-right -> Past milestone
+                  var p = document.querySelector('[data-timeline-nav="past"]');
+                  if (p) navigateTo(p.href, "past");
+                }
+              }
+            },
+            { passive: true },
+          );
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", setupTimelineNav);
+      } else {
+        setupTimelineNav();
+      }
+      document.addEventListener("astro:page-load", setupTimelineNav);
+    })();
+  </script>
+</BaseLayout>

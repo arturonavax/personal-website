@@ -1,0 +1,976 @@
+---
+import { getCollection } from "astro:content";
+import type { Locale } from "@/i18n/ui";
+import { useTranslations } from "@/i18n/utils";
+import { hasResume } from "@/data/cv";
+import { judgeProfiles } from "@/data/onlineJudges";
+import { simulationsData } from "@/data/simulations";
+import { getCounterpartUrl } from "@/i18n/utils";
+import LanguageSwitcher from "./LanguageSwitcher.astro";
+import ThemeToggle from "./ThemeToggle.astro";
+
+interface Props {
+  locale: Locale;
+  translationKey?: string | undefined;
+  collectionName?:
+    | "posts"
+    | "projects"
+    | "experience"
+    | "services"
+    | "case-studies"
+    | undefined;
+}
+
+const { locale, translationKey, collectionName } = Astro.props;
+const t = useTranslations(locale);
+const targetLocale: Locale = locale === "en" ? "es" : "en";
+
+const [allProjects, allExperience, allPosts, allServices, targetUrl] =
+  await Promise.all([
+    getCollection("projects", ({ data }) => data.locale === locale),
+    getCollection("experience", ({ data }) => data.locale === locale),
+    getCollection("posts", ({ data }) => data.locale === locale && !data.draft),
+    getCollection("services", ({ data }) => data.locale === locale),
+    getCounterpartUrl(
+      locale,
+      targetLocale,
+      Astro.url.pathname,
+      collectionName,
+      translationKey,
+    ),
+  ]);
+
+const hasProjects = allProjects.length > 0;
+const hasExperience = allExperience.length > 0;
+const hasPosts = allPosts.length > 0;
+const hasServices = allServices.length > 0;
+const hasCaseStudies = simulationsData && simulationsData.length > 0;
+const hasJudges = judgeProfiles && judgeProfiles.length > 0;
+const hasMoreItems = hasPosts || hasServices || hasJudges;
+
+const navBase = locale === "es" ? "/es" : "";
+const homeUrl = locale === "es" ? "/es" : "/";
+const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
+const isHomePage = currentPath === "/" || currentPath === "/es";
+
+// Section active checks
+const isAboutActive = isHomePage;
+const isProjectsActive = currentPath.includes("/projects");
+const isExperienceActive = currentPath.includes("/experience");
+const isCaseStudiesActive = currentPath.includes("/case-studies");
+const isBlogActive = currentPath.includes("/blog");
+const isServicesActive = currentPath.includes("/services");
+const isResumeActive = currentPath.includes("/resume");
+const isMoreActive = isBlogActive || isServicesActive;
+---
+
+<header
+  id="site-header"
+  class="sticky top-0 z-50 w-full border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 backdrop-blur-md"
+  style="transform: translate3d(0, 0, 0); -webkit-transform: translate3d(0, 0, 0); will-change: transform; backface-visibility: hidden; -webkit-backface-visibility: hidden; contain: layout style;"
+>
+  <div class="mx-auto flex h-14 max-w-[1700px] items-center px-4 sm:px-6 lg:px-8">
+    <!-- Left: Brand & Status -->
+    <div class="flex items-center justify-start gap-2.5 2xl:gap-3 min-w-0 min-[1400px]:flex-1">
+      <a
+        href={homeUrl}
+        class="group flex items-center gap-2.5 font-mono text-sm tracking-tight text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] shrink-0"
+      >
+        <span class="flex h-8 w-8 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-xs font-semibold text-[var(--color-accent-gold)] transition-colors group-hover:border-[var(--color-accent-gold)]">
+          AN
+        </span>
+        <span class="font-medium tracking-tight">
+          arturonavax<span class="text-[var(--color-accent-gold)]">.dev</span>
+        </span>
+      </a>
+
+      <!-- Availability Indicator (Green Status Dot) - Appears on >= 1700px screen expansion -->
+      <div class="hidden min-[1700px]:flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-0.5 text-[11px] font-mono text-[var(--color-text-secondary)] whitespace-nowrap shrink-0">
+        <span class="relative flex h-2 w-2 shrink-0">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent-status)] opacity-75"></span>
+          <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent-status)]"></span>
+        </span>
+        <span>{t("hero.badge")}</span>
+      </div>
+    </div>
+
+    <!-- Center: Main Navigation (Strict Priority Order: 1 About -> 2 Experience -> 3 Projects -> 4 Case Studies -> 5 Contact) -->
+    <nav
+      id="header-desktop-nav"
+      aria-label="Main Navigation"
+      class="hidden lg:flex h-full items-stretch mx-auto min-[1400px]:mx-0 min-[1400px]:justify-center gap-1 text-sm font-medium whitespace-nowrap shrink-0"
+    >
+      <!-- 1. Sobre mí / About -->
+      <a
+        href={isHomePage ? "#about" : homeUrl}
+        data-nav-section="about"
+        data-astro-prefetch="hover"
+        aria-current={isAboutActive ? "page" : undefined}
+        class:list={[
+          "h-full flex items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+          isAboutActive
+            ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
+            : "text-[var(--color-text-secondary)]",
+        ]}
+      >
+        <span>{t("nav.about")}</span>
+        <span
+          class:list={[
+            "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
+            isAboutActive ? "inline-block" : "hidden",
+          ]}
+          aria-hidden="true"
+        ></span>
+      </a>
+
+      <!-- 2. Trayectoria / Experience -->
+      {hasExperience && (
+        <a
+          href={`${navBase}/experience`}
+          data-nav-section="experience"
+          data-astro-prefetch="hover"
+          aria-current={isExperienceActive ? "page" : undefined}
+          class:list={[
+            "h-full flex items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            isExperienceActive
+              ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
+              : "text-[var(--color-text-secondary)]",
+          ]}
+        >
+          <span>{t("nav.experience")}</span>
+          <span
+            class:list={[
+              "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
+              isExperienceActive ? "inline-block" : "hidden",
+            ]}
+            aria-hidden="true"
+          ></span>
+        </a>
+      )}
+
+      <!-- 3. Proyectos / Projects -->
+      {hasProjects && (
+        <a
+          href={`${navBase}/projects`}
+          data-nav-section="projects"
+          data-astro-prefetch="hover"
+          aria-current={isProjectsActive ? "page" : undefined}
+          class:list={[
+            "h-full flex items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            isProjectsActive
+              ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
+              : "text-[var(--color-text-secondary)]",
+          ]}
+        >
+          <span>{t("nav.projects")}</span>
+          <span
+            class:list={[
+              "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
+              isProjectsActive ? "inline-block" : "hidden",
+            ]}
+            aria-hidden="true"
+          ></span>
+        </a>
+      )}
+
+      <!-- 4. Casos de Estudio / Case Studies (Visible on lg with main nav) -->
+      {hasCaseStudies && (
+        <a
+          href={`${navBase}/case-studies`}
+          data-nav-section="case-studies"
+          data-astro-prefetch="hover"
+          aria-current={isCaseStudiesActive ? "page" : undefined}
+          class:list={[
+            "flex h-full items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            isCaseStudiesActive
+              ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
+              : "text-[var(--color-text-secondary)]",
+          ]}
+        >
+          <span>{t("nav.caseStudies")}</span>
+          <span
+            class:list={[
+              "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
+              isCaseStudiesActive ? "inline-block" : "hidden",
+            ]}
+            aria-hidden="true"
+          ></span>
+        </a>
+      )}
+
+      <!-- 5. Contacto / Contact (Visible on 2xl+; enters More on screens < 2xl) -->
+      <a
+        href={isHomePage ? "#contact" : `${homeUrl}#contact`}
+        data-nav-section="contact"
+        class="hidden 2xl:flex h-full items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+      >
+        <span>{t("nav.contact")}</span>
+        <span
+          class="active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle hidden"
+          aria-hidden="true"
+        ></span>
+      </a>
+
+      <!-- "Más" / "More" Dropdown Menu (Houses: 1. Blog, 2. Online Judges, then Case Studies on <xl, Contact on <2xl, and lastly Resume) -->
+      {hasMoreItems && (
+        <details class="group/more relative h-full flex items-stretch">
+          <summary
+            id="header-more-summary"
+            aria-haspopup="true"
+            aria-label={t("nav.more")}
+            class:list={[
+              "h-full flex items-center gap-1 px-2.5 xl:px-3 cursor-pointer list-none select-none transition-colors border-b-2 hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+              isMoreActive
+                ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
+                : "text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] border-transparent",
+            ]}
+          >
+            <span>{t("nav.more")}</span>
+            <span
+              class:list={[
+                "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1 shrink-0 align-middle",
+                isMoreActive ? "inline-block" : "hidden",
+              ]}
+              aria-hidden="true"
+            ></span>
+            <svg
+              class="h-3.5 w-3.5 stroke-current fill-none transition-transform duration-200 group-open/more:rotate-180"
+              viewBox="0 0 24 24"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </summary>
+
+          <div class="absolute right-0 top-full mt-1 w-56 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-1.5 shadow-2xl z-50 font-mono text-xs backdrop-blur-md">
+            <!-- 1. Blog -->
+            {hasPosts && (
+              <a
+                href={`${navBase}/blog`}
+                data-nav-section="blog"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors",
+                  isBlogActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
+                    : "",
+                ]}
+              >
+                <div class="flex items-center gap-2">
+                  <span>📝</span>
+                  <span>{t("nav.blog")}</span>
+                </div>
+                <span
+                  class:list={[
+                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                    isBlogActive ? "inline-block" : "hidden",
+                  ]}
+                  aria-hidden="true"
+                ></span>
+              </a>
+            )}
+
+            <!-- 2. Online Judges -->
+            {hasJudges && (
+              <button
+                type="button"
+                data-open-judges-modal
+                class="w-full flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer text-left"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-sm">⚡</span>
+                  <span>{t("nav.judges")}</span>
+                </div>
+                <span class="text-[9px] font-mono text-[var(--color-accent-gold)] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)]">
+                  modal
+                </span>
+              </button>
+            )}
+
+            <!-- Contact (Visible in dropdown on screens < 2xl) -->
+            <a
+              href={isHomePage ? "#contact" : `${homeUrl}#contact`}
+              data-nav-section="contact"
+              class="2xl:hidden flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors"
+            >
+              <div class="flex items-center gap-2">
+                <span class="text-sm">💬</span>
+                <span>{t("nav.contact")}</span>
+              </div>
+              <span
+                class="active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0 hidden"
+                aria-hidden="true"
+              ></span>
+            </a>
+
+            <!-- Tienda/Servicios (if any) -->
+            {hasServices && (
+              <a
+                href={`${navBase}/services`}
+                data-nav-section="services"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "w-full flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors text-left",
+                  isServicesActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
+                    : "",
+                ]}
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-sm">⚡</span>
+                  <span>{t("nav.services")}</span>
+                </div>
+                <span class="text-[10px] text-[var(--color-text-muted)]">
+                  &rarr;
+                </span>
+              </a>
+            )}
+
+            <!-- Resume (Always last in More; hidden on sm+ where top button is revealed) -->
+            {hasResume && (
+              <a
+                href={locale === "es" ? "/es/resume" : "/resume"}
+                id="more-cv-item"
+                data-nav-section="resume"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "sm:hidden flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors border-t border-[var(--color-surface-border-subtle)] mt-1 pt-1.5",
+                  isResumeActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
+                    : "",
+                ]}
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-sm">📄</span>
+                  <span>{t("nav.cv")}</span>
+                </div>
+                <span class="text-[10px] text-[var(--color-text-muted)]">
+                  &rarr;
+                </span>
+              </a>
+            )}
+          </div>
+        </details>
+      )}
+    </nav>
+
+    <!-- Right: Utility Controls & Actions (Pinned right on all viewports, flex-1 on >= 1400px) -->
+    <div
+      id="header-actions"
+      class="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 ml-auto min-[1400px]:ml-0 min-[1400px]:flex-1 shrink-0"
+    >
+      <!-- CV / Resume Top Menu Button (Progressive reveal: hidden on mobile, revealed on sm+) -->
+      {hasResume && (
+        <a
+          href={locale === "es" ? "/es/resume" : "/resume"}
+          id="header-cv-btn"
+          aria-label="Arturo Nava CV / Resume"
+          data-nav-section="resume"
+          data-astro-prefetch="hover"
+          class:list={[
+            "hidden sm:inline-flex h-8 items-center justify-center gap-1.5 rounded border px-2.5 xl:px-3 text-xs font-mono font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] whitespace-nowrap shrink-0",
+            isResumeActive
+              ? "border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] font-semibold shadow-xs"
+              : "border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)]",
+          ]}
+        >
+          <svg
+            class="h-3.5 w-3.5 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          <span>{t("nav.cv")}</span>
+        </a>
+      )}
+
+      <!-- Quick Search Trigger Button (Hidden on viewport width <= 460px) -->
+      <button
+        type="button"
+        id="header-search-btn"
+        aria-label={
+          locale === "es"
+            ? "Abrir buscador universal (tecla / o Cmd+K)"
+            : "Open universal search (/ or Cmd+K)"
+        }
+        title={
+          locale === "es"
+            ? "Buscador universal (/ o Cmd+K)"
+            : "Universal search (/ or Cmd+K)"
+        }
+        class="hidden min-[461px]:inline-flex h-8 items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 text-xs font-mono text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shrink-0"
+      >
+        <svg
+          class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <span class="hidden xl:inline">
+          {locale === "es" ? "Buscar..." : "Search..."}
+        </span>
+        <kbd class="hidden sm:inline-flex h-4 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1 text-[10px] text-[var(--color-text-muted)] font-semibold leading-none">
+          /
+        </kbd>
+      </button>
+
+      <LanguageSwitcher
+        currentLocale={locale}
+        translationKey={translationKey}
+        collectionName={collectionName}
+      />
+
+      <ThemeToggle />
+
+      <!-- Mobile Navigation Details (Zero-JS CSS Popover/Details Pattern, matching strict 1-7 priority ordering) -->
+      <details
+        class="relative lg:hidden group shrink-0"
+        id="mobile-nav-details"
+      >
+        <summary
+          aria-label="Toggle navigation menu"
+          class="flex h-8 w-8 min-w-[32px] min-h-[32px] cursor-pointer items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] list-none hover:border-[var(--color-accent-gold)] hover:text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+        >
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </summary>
+
+        <nav class="absolute right-0 top-full mt-2 w-56 max-h-[min(75vh,calc(100dvh-4.5rem))] overflow-y-auto overscroll-contain rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-2 shadow-2xl z-50 font-mono text-sm scrollbar-thin">
+          <div class="flex flex-col gap-1">
+            <!-- Search Trigger -->
+            <button
+              type="button"
+              id="mobile-search-btn"
+              class="rounded px-3 py-2 text-left text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] flex items-center justify-between cursor-pointer"
+            >
+              <span>{locale === "es" ? "🔍 Buscar..." : "🔍 Search..."}</span>
+              <span class="text-xs text-[var(--color-text-muted)]">/</span>
+            </button>
+
+            <div class="my-0.5 border-t border-[var(--color-surface-border-subtle)]"></div>
+
+            <!-- 1. Sobre mí -->
+            <a
+              href={isHomePage ? "#about" : homeUrl}
+              data-nav-section="about"
+              class:list={[
+                "rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
+                isAboutActive
+                  ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/40"
+                  : "",
+              ]}
+            >
+              <span>{t("nav.about")}</span>
+              <span
+                class:list={[
+                  "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                  isAboutActive ? "inline-block" : "hidden",
+                ]}
+                aria-hidden="true"
+              ></span>
+            </a>
+
+            <!-- 2. Trayectoria -->
+            {hasExperience && (
+              <a
+                href={`${navBase}/experience`}
+                data-nav-section="experience"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
+                  isExperienceActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/40"
+                    : "",
+                ]}
+              >
+                <span>{t("nav.experience")}</span>
+                <span
+                  class:list={[
+                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                    isExperienceActive ? "inline-block" : "hidden",
+                  ]}
+                  aria-hidden="true"
+                ></span>
+              </a>
+            )}
+
+            <!-- 3. Proyectos -->
+            {hasProjects && (
+              <a
+                href={`${navBase}/projects`}
+                data-nav-section="projects"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
+                  isProjectsActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/40"
+                    : "",
+                ]}
+              >
+                <span>{t("nav.projects")}</span>
+                <span
+                  class:list={[
+                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                    isProjectsActive ? "inline-block" : "hidden",
+                  ]}
+                  aria-hidden="true"
+                ></span>
+              </a>
+            )}
+
+            <!-- 4. Casos de Estudio -->
+            {hasCaseStudies && (
+              <a
+                href={`${navBase}/case-studies`}
+                data-nav-section="case-studies"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
+                  isCaseStudiesActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/40"
+                    : "",
+                ]}
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-sm">🔬</span>
+                  <span>{t("nav.caseStudies")}</span>
+                </div>
+                <span
+                  class:list={[
+                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                    isCaseStudiesActive ? "inline-block" : "hidden",
+                  ]}
+                  aria-hidden="true"
+                ></span>
+              </a>
+            )}
+
+            <!-- 5. Contacto -->
+            <a
+              href={isHomePage ? "#contact" : `${homeUrl}#contact`}
+              data-nav-section="contact"
+              class="rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between"
+            >
+              <span>{t("nav.contact")}</span>
+              <span
+                class="active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0 hidden"
+                aria-hidden="true"
+              ></span>
+            </a>
+
+            <!-- 6. Blog -->
+            {hasPosts && (
+              <a
+                href={`${navBase}/blog`}
+                data-nav-section="blog"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
+                  isBlogActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/40"
+                    : "",
+                ]}
+              >
+                <span>{t("nav.blog")}</span>
+                <span
+                  class:list={[
+                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                    isBlogActive ? "inline-block" : "hidden",
+                  ]}
+                  aria-hidden="true"
+                ></span>
+              </a>
+            )}
+
+            <!-- 6. Tienda/Servicios -->
+            {hasServices && (
+              <a
+                href={`${navBase}/services`}
+                data-nav-section="services"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "rounded px-3 py-2 text-left text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] flex items-center justify-between cursor-pointer",
+                  isServicesActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
+                    : "",
+                ]}
+              >
+                <div class="flex items-center gap-2">
+                  <span>⚡</span>
+                  <span>{t("nav.services")}</span>
+                </div>
+                <span class="text-xs text-[var(--color-text-muted)]">
+                  &rarr;
+                </span>
+              </a>
+            )}
+
+            <!-- 7. Online Judges -->
+            {hasJudges && (
+              <button
+                type="button"
+                data-open-judges-modal
+                class="rounded px-3 py-2 text-left text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] flex items-center justify-between cursor-pointer"
+              >
+                <div class="flex items-center gap-2">
+                  <span>⚡</span>
+                  <span>{t("nav.judges")}</span>
+                </div>
+                <span class="text-[9px] font-mono text-[var(--color-accent-gold)] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)]">
+                  modal
+                </span>
+              </button>
+            )}
+
+            {hasResume && (
+              <>
+                <div class="my-1 border-t border-[var(--color-surface-border)]"></div>
+
+                <!-- Resume Link -->
+                <a
+                  href={locale === "es" ? "/es/resume" : "/resume"}
+                  data-nav-section="resume"
+                  data-astro-prefetch="hover"
+                  class:list={[
+                    "rounded px-3 py-2 font-medium flex items-center justify-between",
+                    isResumeActive
+                      ? "text-[var(--color-btn-gold-text)] bg-[var(--color-accent-gold)] font-semibold"
+                      : "text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]",
+                  ]}
+                >
+                  <span>{t("nav.cv")}</span>
+                  <span class="text-xs">&rarr;</span>
+                </a>
+              </>
+            )}
+
+            <!-- Mobile Language Switcher (Guaranteed accessible on screens <340px) -->
+            <div class="my-1 border-t border-[var(--color-surface-border-subtle)]"></div>
+            <div class="flex items-center justify-between px-3 py-1.5 text-xs text-[var(--color-text-secondary)]">
+              <span class="flex items-center gap-1.5 font-medium">
+                <svg
+                  class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m5 8 6 6"></path>
+                  <path d="m4 14 6-6 2-3"></path>
+                  <path d="M2 5h12"></path>
+                  <path d="M7 2h1"></path>
+                  <path d="m22 22-5-10-5 10"></path>
+                  <path d="M14 18h6"></path>
+                </svg>
+                <span>{locale === "es" ? "Idioma" : "Language"}</span>
+              </span>
+              <div class="flex items-center gap-1">
+                <a
+                  href={targetUrl}
+                  data-astro-prefetch="hover"
+                  data-lang-switch={targetLocale}
+                  class="rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2 py-0.5 text-[11px] font-bold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors"
+                >
+                  {targetLocale.toUpperCase()} &rarr;
+                </a>
+              </div>
+            </div>
+          </div>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+
+<script is:inline>
+  (function () {
+    var boundElements =
+      window.__headerBoundElements ||
+      (window.__headerBoundElements = new WeakSet());
+
+    function setupHeader() {
+      var headerBtn = document.getElementById("header-search-btn");
+      var mobileBtn = document.getElementById("mobile-search-btn");
+
+      function triggerSearch() {
+        if (typeof window.openUniversalSearch === "function") {
+          window.openUniversalSearch();
+        } else {
+          var dialog = document.getElementById("search-dialog");
+          if (dialog && typeof dialog.showModal === "function") {
+            dialog.showModal();
+            requestAnimationFrame(function () {
+              var input = document.getElementById("universal-search-input");
+              if (input) input.focus();
+            });
+          }
+        }
+      }
+
+      if (headerBtn && !boundElements.has(headerBtn)) {
+        boundElements.add(headerBtn);
+        headerBtn.addEventListener("click", triggerSearch);
+      }
+
+      if (mobileBtn && !boundElements.has(mobileBtn)) {
+        boundElements.add(mobileBtn);
+        mobileBtn.addEventListener("click", function () {
+          var details = mobileBtn.closest("details");
+          if (details) details.removeAttribute("open");
+          triggerSearch();
+        });
+      }
+
+      // Close open dropdowns on outside click
+      if (!window.__headerDropdownOutsideBound) {
+        window.__headerDropdownOutsideBound = true;
+        document.addEventListener("click", function (e) {
+          var openDetails = document.querySelectorAll(
+            "details.group\\/more[open], #mobile-nav-details[open]",
+          );
+          openDetails.forEach(function (d) {
+            if (!d.contains(e.target)) {
+              d.removeAttribute("open");
+            }
+          });
+        });
+      }
+
+      // Auto-close details when clicking any anchor inside them
+      document
+        .querySelectorAll("details.group\\/more a, #mobile-nav-details a")
+        .forEach(function (a) {
+          if (!boundElements.has(a)) {
+            boundElements.add(a);
+            a.addEventListener("click", function () {
+              var details = a.closest("details");
+              if (details) details.removeAttribute("open");
+            });
+          }
+        });
+
+      // Reset scroll for navigation originating from menu/header (Task 8)
+      document
+        .querySelectorAll(
+          "header a, #mobile-nav-details a, [data-nav-reset-scroll]",
+        )
+        .forEach(function (link) {
+          if (!boundElements.has(link)) {
+            boundElements.add(link);
+            link.addEventListener("click", function () {
+              var currentPath =
+                window.location.pathname.replace(/\/+$/, "") || "/";
+              var linkPath = (link.pathname || "").replace(/\/+$/, "") || "/";
+              var isContact = link.hash === "#contact";
+
+              if (linkPath !== currentPath) {
+                if (!isContact) {
+                  try {
+                    sessionStorage.setItem("nav_reset_scroll", "1");
+                    sessionStorage.removeItem("lang_switch_scroll");
+                    sessionStorage.removeItem("pending_contact_scroll");
+                  } catch (_) {}
+                } else {
+                  try {
+                    sessionStorage.removeItem("nav_reset_scroll");
+                    sessionStorage.setItem("pending_contact_scroll", "1");
+                  } catch (_) {}
+                }
+              } else if (!link.hash || link.hash === "#about") {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }
+            });
+          }
+        });
+
+      function setActiveSection(currentSection) {
+        if (window.__currentActiveNavSection === currentSection) return;
+        window.__currentActiveNavSection = currentSection;
+
+        document.querySelectorAll("a[data-nav-section]").forEach(function (a) {
+          var sec = a.getAttribute("data-nav-section");
+          var isCurrent = sec === currentSection;
+          var dot = a.querySelector(".active-dot");
+
+          if (isCurrent) {
+            a.setAttribute("aria-current", "page");
+            a.classList.add("text-[var(--color-accent-gold)]", "font-semibold");
+            if (a.classList.contains("border-b-2")) {
+              a.classList.add("border-b-[var(--color-accent-gold)]");
+              a.classList.remove("border-transparent");
+            }
+            a.classList.remove("text-[var(--color-text-secondary)]");
+            if (dot) {
+              dot.classList.remove("hidden");
+              dot.classList.add("inline-block");
+            }
+          } else {
+            a.removeAttribute("aria-current");
+            a.classList.remove(
+              "text-[var(--color-accent-gold)]",
+              "font-semibold",
+              "border-b-[var(--color-accent-gold)]",
+            );
+            if (a.classList.contains("border-b-2")) {
+              a.classList.add("border-transparent");
+            }
+            a.classList.add("text-[var(--color-text-secondary)]");
+            if (dot) {
+              dot.classList.add("hidden");
+              dot.classList.remove("inline-block");
+            }
+          }
+        });
+
+        var isMoreActive =
+          currentSection === "blog" || currentSection === "services";
+        var moreSummary = document.getElementById("header-more-summary");
+        if (moreSummary) {
+          var moreDot = moreSummary.querySelector(".active-dot");
+          if (isMoreActive) {
+            moreSummary.classList.add(
+              "text-[var(--color-accent-gold)]",
+              "font-semibold",
+              "border-b-[var(--color-accent-gold)]",
+            );
+            moreSummary.classList.remove("border-transparent");
+            if (moreDot) {
+              moreDot.classList.remove("hidden");
+              moreDot.classList.add("inline-block");
+            }
+          } else {
+            moreSummary.classList.remove(
+              "text-[var(--color-accent-gold)]",
+              "font-semibold",
+              "border-b-[var(--color-accent-gold)]",
+            );
+            moreSummary.classList.add("border-transparent");
+            if (moreDot) {
+              moreDot.classList.add("hidden");
+              moreDot.classList.remove("inline-block");
+            }
+          }
+        }
+      }
+
+      // Dynamic Active State & Dot Placement across SPA Transitions (Task 1 & Task 5)
+      function updateActiveNavState() {
+        var path = window.location.pathname.replace(/\/+$/, "") || "/";
+        var currentSection = "";
+
+        if (path.indexOf("/experience") !== -1) {
+          currentSection = "experience";
+        } else if (path.indexOf("/projects") !== -1) {
+          currentSection = "projects";
+        } else if (path.indexOf("/case-studies") !== -1) {
+          currentSection = "case-studies";
+        } else if (path.indexOf("/blog") !== -1) {
+          currentSection = "blog";
+        } else if (path.indexOf("/resume") !== -1) {
+          currentSection = "resume";
+        } else if (path.indexOf("/services") !== -1) {
+          currentSection = "services";
+        } else if (path === "" || path === "/" || path === "/es") {
+          if (window.__isContactInView) {
+            currentSection = "contact";
+          } else {
+            currentSection = "about";
+          }
+        }
+
+        if (currentSection) {
+          setActiveSection(currentSection);
+        }
+      }
+
+      window.addEventListener("hashchange", updateActiveNavState, {
+        passive: true,
+      });
+
+      // Contact Viewport Observer: Defer until first scroll to keep initial main thread 100% idle
+      var contactObsAttached = false;
+      function attachContactObserver() {
+        if (contactObsAttached) return;
+        contactObsAttached = true;
+        var contactSection = document.getElementById("contact");
+        if (contactSection && "IntersectionObserver" in window) {
+          if (window.__contactNavObserver) {
+            window.__contactNavObserver.disconnect();
+          }
+          var contactObserver = new IntersectionObserver(
+            function (entries) {
+              var entry = entries[0];
+              if (!entry) return;
+              var isContactInView = entry.isIntersecting;
+              if (window.__isContactInView === isContactInView) return;
+              window.__isContactInView = isContactInView;
+
+              var path = window.location.pathname.replace(/\/+$/, "") || "/";
+              var isHome = path === "" || path === "/" || path === "/es";
+
+              window.requestAnimationFrame(function () {
+                if (isContactInView) {
+                  setActiveSection("contact");
+                } else {
+                  if (isHome) {
+                    setActiveSection("about");
+                  } else {
+                    updateActiveNavState();
+                  }
+                }
+              });
+            },
+            {
+              threshold: 0.15,
+              rootMargin: "-70px 0px -15% 0px",
+            },
+          );
+          contactObserver.observe(contactSection);
+          window.__contactNavObserver = contactObserver;
+        }
+      }
+
+      if (window.location.hash === "#contact") {
+        attachContactObserver();
+        setActiveSection("contact");
+      } else {
+        window.addEventListener("scroll", attachContactObserver, {
+          once: true,
+          passive: true,
+        });
+      }
+
+      updateActiveNavState();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupHeader);
+    } else {
+      setupHeader();
+    }
+    document.addEventListener("astro:page-load", setupHeader);
+  })();
+</script>

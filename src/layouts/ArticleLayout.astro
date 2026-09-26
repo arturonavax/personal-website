@@ -1,0 +1,109 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import type { Locale } from "@/i18n/ui";
+import { formatDate } from "@/i18n/utils";
+import TechIcon from "@/components/ui/TechIcon.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  locale: Locale;
+  pubDate?: Date | undefined;
+  tags?: string[] | undefined;
+  translationKey?: string | undefined;
+  collectionName?: "posts" | "projects" | "experience" | "services" | undefined;
+  backHref: string;
+  backLabel: string;
+}
+
+const {
+  title,
+  description,
+  locale,
+  pubDate,
+  tags,
+  translationKey,
+  collectionName,
+  backHref,
+  backLabel,
+} = Astro.props;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  headline: title,
+  description: description,
+  author: {
+    "@type": "Person",
+    name: "Arturo Nava",
+    url: "https://arturonavax.com",
+  },
+  ...(pubDate ? { datePublished: pubDate.toISOString() } : {}),
+  inLanguage: locale,
+};
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  locale={locale}
+  type="article"
+  translationKey={translationKey}
+  collectionName={collectionName}
+  jsonLd={jsonLd}
+>
+  <article class="mx-auto max-w-3xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6">
+    <div class="mb-3 sm:mb-5 lg:mb-6">
+      <a
+        href={backHref}
+        class="inline-flex items-center gap-1.5 font-mono text-xs text-[var(--color-accent-gold)] hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+      >
+        &larr; {backLabel}
+      </a>
+
+      <header class="mt-2.5 sm:mt-4 border-b border-[var(--color-surface-border)] pb-6 sm:pb-8">
+        <h1 class="text-2xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-3xl lg:text-4xl">
+          {title}
+        </h1>
+
+        <div class="mt-4 flex flex-wrap items-center gap-4 text-xs font-mono text-[var(--color-text-muted)]">
+          {pubDate && (
+            <time
+              datetime={pubDate.toISOString()}
+              class="text-[var(--color-accent-gold)]"
+            >
+              {formatDate(pubDate, locale)}
+            </time>
+          )}
+          {tags && tags.length > 0 && (
+            <div class="flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <button
+                  type="button"
+                  data-tech-search={tag}
+                  title={
+                    locale === "es"
+                      ? `Buscar notas y proyectos sobre ${tag}`
+                      : `Search essays & projects mentioning ${tag}`
+                  }
+                  class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+                >
+                  <TechIcon
+                    name={tag}
+                    class="h-3 w-3 text-[var(--color-accent-gold)]"
+                  />
+                  <span>{tag}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </header>
+    </div>
+
+    <!-- Article Content -->
+    <div class="space-y-6 text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed [&>h2]:mt-12 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:text-[var(--color-text-primary)] [&>h2]:border-b [&>h2]:border-[var(--color-surface-border-subtle)] [&>h2]:pb-3 [&>h3]:mt-10 [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:text-[var(--color-accent-gold)] [&>p]:leading-8 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:space-y-2.5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:space-y-2.5 [&>pre]:rounded-lg [&>pre]:border [&>pre]:border-[var(--color-surface-border)] [&>pre]:bg-[var(--color-surface-card)] [&>pre]:p-5 [&>pre]:overflow-x-auto [&>pre]:text-xs sm:[&>pre]:text-sm [&>code]:rounded [&>code]:bg-[var(--color-surface-card)] [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:font-mono [&>code]:text-xs sm:[&>code]:text-sm [&>code]:text-[var(--color-accent-gold)] [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--color-accent-gold)] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-[var(--color-text-muted)]">
+      <slot />
+    </div>
+  </article>
+</BaseLayout>

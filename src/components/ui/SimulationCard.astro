@@ -1,0 +1,317 @@
+---
+import type { Locale } from "@/i18n/ui";
+import type { ArchitectureSimulation } from "@/data/simulations";
+
+interface Props {
+  simulation: ArchitectureSimulation;
+  locale: Locale;
+  showCompany?: boolean;
+}
+
+const { simulation, locale, showCompany = false } = Astro.props;
+const isEs = locale === "es";
+const rootId = `sim-card-${simulation.id}`;
+---
+
+<div
+  id={rootId}
+  class="geometric-box rounded-lg p-5 sm:p-7 space-y-6 font-mono border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]"
+  data-simulation-card
+  data-sim-id={simulation.id}
+  data-steps={JSON.stringify(simulation.steps)}
+  data-is-es={isEs ? "true" : "false"}
+>
+  <!-- Top Bar: Service Script & Status -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-surface-border-subtle)] pb-4 text-xs">
+    <div class="flex items-center gap-2.5 flex-wrap">
+      <span class="flex gap-1.5" aria-hidden="true">
+        <span class="h-2 w-2 rounded-full bg-[var(--color-accent-garnet)] shrink-0 aspect-square"></span>
+        <span class="h-2 w-2 rounded-full bg-[var(--color-accent-gold)]/60 shrink-0 aspect-square"></span>
+        <span class="h-2 w-2 rounded-full bg-[var(--color-accent-status)] shrink-0 aspect-square"></span>
+      </span>
+      <code
+        class="rounded bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-accent-gold)] font-bold text-xs truncate max-w-[170px] min-[360px]:max-w-[220px] sm:max-w-none"
+        title={simulation.scriptName}
+      >
+        {simulation.scriptName}
+      </code>
+      {showCompany && (
+        <span class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2 py-0.5 text-[11px] text-[var(--color-text-secondary)] font-sans">
+          @{simulation.company}
+        </span>
+      )}
+    </div>
+
+    <div class="flex items-center gap-2 self-start sm:self-auto">
+      <span class="inline-flex items-center gap-1.5 rounded border border-[var(--color-accent-status)]/40 bg-[var(--color-accent-status)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--color-accent-status)]">
+        <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)] shrink-0 aspect-square animate-pulse"></span>
+        <span>
+          {isEs ? "Caso de Estudio Interactivo" : "Interactive Case Study"}
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Title & Description -->
+  <div class="space-y-2 font-sans">
+    <h4 class="text-base sm:text-lg font-bold text-[var(--color-text-primary)] tracking-tight">
+      {isEs ? simulation.titleEs : simulation.title}
+    </h4>
+    <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
+      {isEs ? simulation.descriptionEs : simulation.description}
+    </p>
+  </div>
+
+  <!-- Execution Pipeline: Steps -->
+  <div class="space-y-2">
+    <div class="text-[11px] text-[var(--color-text-muted)] font-mono uppercase tracking-wider flex items-center justify-between">
+      <span>
+        {isEs ? "Pipeline de Ejecución & Fases" : "Execution Pipeline & Phases"}
+      </span>
+      <span class="sim-phase-status text-[var(--color-accent-gold)]">
+        {isEs ? "Esperando inicio..." : "Idle state"}
+      </span>
+    </div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 font-mono">
+      {simulation.steps.map((step, idx) => (
+        <div
+          class="sim-step-node rounded border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-2.5 transition-all"
+          data-step-index={idx}
+        >
+          <div class="flex items-center justify-between text-[11px] mb-1">
+            <span class="text-[var(--color-accent-gold)] font-bold">
+              {step.stepNumber}
+            </span>
+            <span class="sim-step-dot h-1.5 w-1.5 rounded-full bg-[var(--color-surface-border)]"></span>
+          </div>
+          <div class="text-xs font-bold text-[var(--color-text-primary)] truncate">
+            {isEs ? step.titleEs : step.title}
+          </div>
+          <div class="text-[10px] text-[var(--color-text-muted)] mt-0.5 line-clamp-1">
+            {isEs ? step.detailEs : step.detail}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- Real-time Terminal Log Output -->
+  <div class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 text-xs font-mono">
+    <div class="flex items-center justify-between text-[10px] text-[var(--color-text-muted)] border-b border-[var(--color-surface-border-subtle)] pb-1.5 mb-2 uppercase tracking-wider">
+      <span>{isEs ? "Salida de Terminal stdout" : "Live Terminal stdout"}</span>
+      <span class="sim-timer text-[var(--color-accent-gold)]">0.0ms</span>
+    </div>
+    <div class="sim-log-feed text-[11px] text-[var(--color-text-secondary)] space-y-1 min-h-[3.5rem] leading-relaxed">
+      <div class="text-[var(--color-text-muted)] italic">
+        {isEs
+          ? '$ Presiona "Ejecutar Simulación" para disparar la prueba de latencia...'
+          : '$ Click "Run Simulation" to execute the low-latency workload...'}
+      </div>
+    </div>
+  </div>
+
+  <!-- Before vs NOW Telemetry Impact Grid -->
+  <div class="space-y-3 pt-2 border-t border-[var(--color-surface-border-subtle)]">
+    <div class="flex items-center justify-between text-xs font-mono">
+      <span class="text-[var(--color-accent-gold)] uppercase tracking-wider font-semibold">
+        {isEs
+          ? "Métricas de Impacto: Antes vs AHORA"
+          : "Impact Telemetry: Before vs NOW"}
+      </span>
+      <span class="text-[11px] text-[var(--color-text-muted)]">
+        {isEs ? "Medido en Producción" : "Production Measured"}
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono">
+      {simulation.metrics.map((metric) => (
+        <div class="rounded border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-3 space-y-2">
+          <div class="text-xs font-semibold text-[var(--color-text-primary)] flex items-center justify-between">
+            <span>{isEs ? metric.nameEs : metric.name}</span>
+            {metric.improvement && (
+              <span class="text-[10px] rounded bg-[var(--color-accent-gold)]/10 px-1.5 py-0.2 text-[var(--color-accent-gold)]">
+                {isEs ? metric.improvementEs : metric.improvement}
+              </span>
+            )}
+          </div>
+
+          <div class="space-y-1.5 text-xs">
+            <!-- Old / Before Data -->
+            <div class="flex items-center gap-2 text-[var(--color-text-muted)]">
+              <span class="text-[10px] uppercase font-bold text-[var(--color-text-muted)] shrink-0 line-through">
+                before:
+              </span>
+              <span class="text-[11px] line-through opacity-75">
+                {metric.beforeValue}
+              </span>
+            </div>
+
+            <!-- New / NOW Data -->
+            <div class="sim-now-row flex items-center gap-2 text-[var(--color-text-primary)] bg-[var(--color-surface-card)] rounded p-1.5 border border-[var(--color-surface-border)]">
+              <span class="text-[10px] uppercase font-bold text-[var(--color-accent-status)] shrink-0 flex items-center gap-1">
+                <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)]"></span>
+                now:
+              </span>
+              <span class="text-xs font-bold text-[var(--color-accent-gold)]">
+                {metric.nowValue}
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- Run Simulation CTA Trigger -->
+  <div class="pt-2 flex items-center justify-between gap-3">
+    <button
+      type="button"
+      data-run-sim-btn
+      class="btn-gold px-5 py-2 inline-flex items-center gap-2 font-mono text-xs font-semibold tracking-wide shadow-md transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+    >
+      <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+      <span>
+        {isEs ? "Ejecutar Caso de Estudio" : "Run Architecture Case Study"}
+      </span>
+    </button>
+
+    <span class="text-[11px] text-[var(--color-text-muted)] font-mono hidden sm:inline">
+      {simulation.steps.length}{" "}
+      {isEs ? "fases orquestadas" : "orchestrated phases"}
+    </span>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    function initSimulationCards() {
+      var cards = document.querySelectorAll("[data-simulation-card]");
+      cards.forEach(function (root) {
+        if (!root || root.dataset.bound) return;
+        root.dataset.bound = "true";
+
+        var steps = [];
+        try {
+          steps = JSON.parse(root.dataset.steps || "[]");
+        } catch (_) {}
+
+        var isEs = root.dataset.isEs === "true";
+        var runBtn = root.querySelector("[data-run-sim-btn]");
+        var logFeed = root.querySelector(".sim-log-feed");
+        var phaseStatus = root.querySelector(".sim-phase-status");
+        var timerEl = root.querySelector(".sim-timer");
+        var stepNodes = root.querySelectorAll(".sim-step-node");
+        var nowRows = root.querySelectorAll(".sim-now-row");
+
+        if (!runBtn) return;
+
+        runBtn.addEventListener("click", function () {
+          if (runBtn.disabled) return;
+          runBtn.disabled = true;
+          runBtn.classList.add("opacity-60", "cursor-not-allowed");
+
+          if (logFeed) logFeed.innerHTML = "";
+          if (phaseStatus)
+            phaseStatus.textContent = isEs
+              ? "Ejecutando pipeline..."
+              : "Executing pipeline...";
+
+          // Reset step nodes
+          stepNodes.forEach(function (node) {
+            node.classList.remove(
+              "border-[var(--color-accent-gold)]",
+              "bg-[var(--color-surface-card)]",
+            );
+            var dot = node.querySelector(".sim-step-dot");
+            if (dot)
+              dot.classList.replace(
+                "bg-[var(--color-accent-status)]",
+                "bg-[var(--color-surface-border)]",
+              );
+          });
+
+          // Flash now rows
+          nowRows.forEach(function (r) {
+            r.classList.add("opacity-40");
+          });
+
+          var currentStep = 0;
+          var startTime = performance.now();
+
+          function executeNextStep() {
+            if (currentStep < steps.length) {
+              var step = steps[currentStep];
+              var node = stepNodes[currentStep];
+              if (node) {
+                node.classList.add(
+                  "border-[var(--color-accent-gold)]",
+                  "bg-[var(--color-surface-card)]",
+                );
+                var dot = node.querySelector(".sim-step-dot");
+                if (dot) {
+                  dot.classList.remove("bg-[var(--color-surface-border)]");
+                  dot.classList.add(
+                    "bg-[var(--color-accent-status)]",
+                    "animate-ping",
+                  );
+                  setTimeout(function () {
+                    dot.classList.remove("animate-ping");
+                  }, 400);
+                }
+              }
+
+              var elapsed = (performance.now() - startTime).toFixed(1);
+              if (timerEl) timerEl.textContent = elapsed + "ms";
+
+              if (logFeed) {
+                var line = document.createElement("div");
+                line.className =
+                  "text-[var(--color-text-primary)] flex items-start gap-1.5 animate-fade-in";
+                line.innerHTML =
+                  '<span class="text-[var(--color-accent-gold)]">&rarr;</span> <span>' +
+                  step.log +
+                  "</span>";
+                logFeed.appendChild(line);
+                logFeed.scrollTop = logFeed.scrollHeight;
+              }
+
+              currentStep++;
+              setTimeout(executeNextStep, step.durationMs * 25 + 150);
+            } else {
+              // Completed
+              var totalElapsed = (performance.now() - startTime).toFixed(1);
+              if (timerEl) timerEl.textContent = totalElapsed + "ms (DONE)";
+              if (phaseStatus)
+                phaseStatus.textContent = isEs
+                  ? "Completado con Éxito ✓"
+                  : "Completed Successfully ✓";
+
+              // Reveal now rows in full glory
+              nowRows.forEach(function (r) {
+                r.classList.remove("opacity-40");
+                r.classList.add("border-[var(--color-accent-status)]");
+                setTimeout(function () {
+                  r.classList.remove("border-[var(--color-accent-status)]");
+                }, 2000);
+              });
+
+              runBtn.disabled = false;
+              runBtn.classList.remove("opacity-60", "cursor-not-allowed");
+            }
+          }
+
+          executeNextStep();
+        });
+      });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initSimulationCards);
+    } else {
+      initSimulationCards();
+    }
+    document.addEventListener("astro:page-load", initSimulationCards);
+  })();
+</script>

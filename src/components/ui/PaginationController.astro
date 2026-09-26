@@ -1,0 +1,235 @@
+---
+// PaginationController.astro - High-Performance Scalable Client-Integrated Paginator
+import type { Locale } from "@/i18n/ui";
+
+interface Props {
+  locale: Locale;
+  pageSize?: number;
+  targetSelector: string; // e.g. '[data-post-card]' or '[data-project-card]'
+  totalItems: number;
+}
+
+const { locale, pageSize = 4, targetSelector, totalItems } = Astro.props;
+const isEs = locale === "es";
+---
+
+<div
+  class="pagination-container mt-8 pt-6 border-t border-[var(--color-surface-border-subtle)] font-mono text-xs"
+  data-pagination-controller
+  data-page-size={pageSize}
+  data-target-selector={targetSelector}
+  data-total-items={totalItems}
+  data-is-es={isEs ? "true" : "false"}
+>
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+    <!-- Results Telemetry Counter -->
+    <div class="text-[var(--color-text-muted)] text-center sm:text-left font-mono">
+      <span data-pagination-info class="tracking-tight"></span>
+    </div>
+
+    <!-- Pagination Navigation Controls -->
+    <nav
+      aria-label={isEs ? "Navegación de páginas" : "Page navigation"}
+      class="flex items-center gap-1.5"
+      data-pagination-nav
+    >
+      <button
+        type="button"
+        data-page-btn="prev"
+        aria-label={isEs ? "Página anterior" : "Previous page"}
+        class="inline-flex items-center justify-center h-8 px-2.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-[var(--color-surface-border)] disabled:hover:text-[var(--color-text-secondary)] transition-colors cursor-pointer"
+      >
+        <span aria-hidden="true">&larr;</span>
+        <span class="ml-1 hidden sm:inline">{isEs ? "Anterior" : "Prev"}</span>
+      </button>
+
+      <!-- Numeric Page Buttons Container -->
+      <div data-page-numbers class="flex items-center gap-1"></div>
+
+      <button
+        type="button"
+        data-page-btn="next"
+        aria-label={isEs ? "Página siguiente" : "Next page"}
+        class="inline-flex items-center justify-center h-8 px-2.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-[var(--color-surface-border)] disabled:hover:text-[var(--color-text-secondary)] transition-colors cursor-pointer"
+      >
+        <span class="mr-1 hidden sm:inline">{isEs ? "Siguiente" : "Next"}</span>
+        <span aria-hidden="true">&rarr;</span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<script>
+  function initPagination() {
+    const containers = document.querySelectorAll<HTMLElement>(
+      "[data-pagination-controller]",
+    );
+    containers.forEach((container) => {
+      if (container.dataset.initialized) return;
+      container.dataset.initialized = "true";
+
+      const pageSize = parseInt(container.dataset.pageSize || "4", 10);
+      const targetSelector = container.dataset.targetSelector || "";
+      const isEs = container.dataset.isEs === "true";
+      const infoSpan = container.querySelector<HTMLElement>(
+        "[data-pagination-info]",
+      );
+      const navEl = container.querySelector<HTMLElement>(
+        "[data-pagination-nav]",
+      );
+      const prevBtn = container.querySelector<HTMLButtonElement>(
+        '[data-page-btn="prev"]',
+      );
+      const nextBtn = container.querySelector<HTMLButtonElement>(
+        '[data-page-btn="next"]',
+      );
+      const pageNumbersContainer = container.querySelector<HTMLElement>(
+        "[data-page-numbers]",
+      );
+
+      if (
+        !targetSelector ||
+        !infoSpan ||
+        !prevBtn ||
+        !nextBtn ||
+        !pageNumbersContainer ||
+        !navEl
+      )
+        return;
+
+      let currentPage = 1;
+
+      function getMatchedCards(): HTMLElement[] {
+        const allCards = Array.from(
+          document.querySelectorAll<HTMLElement>(targetSelector),
+        );
+        // Exclude cards filtered out by filter bar (marked with .filter-excluded or data-filtered="false")
+        return allCards.filter(
+          (card) =>
+            !card.classList.contains("filter-excluded") &&
+            card.dataset.filterMatch !== "false",
+        );
+      }
+
+      function renderPagination(shouldScroll = false) {
+        const matched = getMatchedCards();
+        const total = matched.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+        if (currentPage > totalPages) {
+          currentPage = totalPages;
+        }
+        if (currentPage < 1) {
+          currentPage = 1;
+        }
+
+        // Apply visible slice
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, total);
+
+        matched.forEach((card, index) => {
+          if (index >= startIndex && index < endIndex) {
+            card.classList.remove("pagination-hidden");
+            card.style.display = "";
+          } else {
+            card.classList.add("pagination-hidden");
+            card.style.display = "none";
+          }
+        });
+
+        // Update Counter
+        if (total === 0) {
+          infoSpan!.textContent = isEs ? "0 resultados" : "0 results";
+          navEl!.style.display = "none";
+          return;
+        }
+
+        const displayStart = startIndex + 1;
+        const displayEnd = endIndex;
+        infoSpan!.textContent = isEs
+          ? `Mostrando ${displayStart}–${displayEnd} de ${total}`
+          : `Showing ${displayStart}–${displayEnd} of ${total}`;
+
+        if (totalPages <= 1) {
+          navEl!.style.display = "none";
+          return;
+        }
+
+        navEl!.style.display = "flex";
+
+        // Prev / Next button states
+        prevBtn!.disabled = currentPage === 1;
+        nextBtn!.disabled = currentPage === totalPages;
+
+        // Render Numeric Buttons
+        pageNumbersContainer!.innerHTML = "";
+        for (let p = 1; p <= totalPages; p++) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = String(p);
+          btn.setAttribute(
+            "aria-label",
+            isEs ? `Ir a página ${p}` : `Go to page ${p}`,
+          );
+          btn.className =
+            "inline-flex items-center justify-center h-8 w-8 rounded font-mono text-xs transition-colors cursor-pointer border " +
+            (p === currentPage
+              ? "border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] font-bold"
+              : "border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)]");
+
+          if (p === currentPage) {
+            btn.setAttribute("aria-current", "page");
+          }
+
+          btn.onclick = () => {
+            if (currentPage !== p) {
+              currentPage = p;
+              renderPagination(true);
+            }
+          };
+
+          pageNumbersContainer!.appendChild(btn);
+        }
+
+        if (shouldScroll) {
+          const gridEl = document.querySelector(targetSelector)?.parentElement;
+          if (gridEl) {
+            const rect = gridEl.getBoundingClientRect();
+            const topOffset = window.scrollY + rect.top - 80;
+            window.scrollTo({
+              top: Math.max(0, topOffset),
+              behavior: "smooth",
+            });
+          }
+        }
+      }
+
+      prevBtn.onclick = () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderPagination(true);
+        }
+      };
+
+      nextBtn.onclick = () => {
+        const total = getMatchedCards().length;
+        const totalPages = Math.ceil(total / pageSize);
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderPagination(true);
+        }
+      };
+
+      // Listen for filter updates from BlogFilterBar and ProjectsFilterBar
+      window.addEventListener("collection-filtered", () => {
+        currentPage = 1;
+        renderPagination(false);
+      });
+
+      renderPagination(false);
+    });
+  }
+
+  initPagination();
+  document.addEventListener("astro:page-load", initPagination);
+</script>

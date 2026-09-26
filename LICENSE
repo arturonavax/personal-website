@@ -1,0 +1,137 @@
+CUSTOM SOURCE-AVAILABLE & NON-COMMERCIAL TEMPLATE LICENSE
+WITH PROPRIETARY ASSETS RESERVATION
+
+Copyright (c) 2026 Arturo Nava <arturonavax@gmail.com> (https://arturonavax.dev)
+
+===============================================================================
+1. EXCLUDED PROPRIETARY ASSETS (NO LICENSE GRANTED - ALL RIGHTS RESERVED)
+===============================================================================
+This License does NOT grant any right, title, or license to use, reproduce, 
+redistribute, or publicly display the Author’s personal identity, likeness, or 
+original content. The following directories and assets are strictly proprietary 
+and excluded from the license grant:
+
+  (a) Identity & Likeness:
+      - /public/arturonava.png
+      - /src/assets/arturonava.png
+      - /public/og-default.png
+      - /public/favicon.svg
+
+  (b) Resumes & Biographical Records:
+      - /public/cv/**
+      - /src/content/cv/**
+      - /src/data/cv.ts
+
+  (c) Original Editorial Content, Articles & Case Studies:
+      - /src/content/posts/**
+      - /src/content/projects/**
+      - /src/content/services/**
+      - /src/content/experience/**
+      - /src/data/companies.ts
+      - /src/data/sponsorship.ts
+
+Any clone, fork, or reproduction deployed publicly MUST purge or replace all 
+assets listed above with independent, original content prior to deployment. 
+Public deployment containing the Author's unreplaced personal assets constitutes 
+immediate, willful copyright infringement and unauthorized use of likeness.
+
+===============================================================================
+2. PERMITTED SOURCE-AVAILABLE & EDUCATIONAL CODE USE
+===============================================================================
+Subject to the conditions herein, the Author grants you a non-exclusive, 
+revocable, limited license to inspect, clone, and study the underlying website 
+engine and UI architecture (/src/components/**, /src/layouts/**, /src/pages/**, 
+/src/styles/**, and root configuration files) solely for personal, educational, 
+and non-commercial study.
+
+- Platform Forking: Public forking within the hosting repository platform (e.g., 
+  GitHub) is permitted strictly to the extent required by the platform’s Terms 
+  of Service, provided all proprietary notices remain intact.
+- Nested Projects: Subdirectories located in /themes/** that contain their own 
+  explicit LICENSE file remain governed by their respective licenses.
+
+===============================================================================
+3. CONDITIONS FOR PUBLIC NON-COMMERCIAL DEPLOYMENT
+===============================================================================
+Publicly hosting, serving, or deploying the software engine or visual layout is 
+permitted EXCLUSIVELY under the following cumulative conditions, each of which 
+is an essential condition of the license grant:
+
+  (a) Non-Commercial Scope:
+      The deployed site must not generate direct or indirect revenue, display 
+      third-party advertisements, include affiliate tracking links or paid 
+      sponsorships, solicit paying corporate clients, or serve as a commercial 
+      agency/freelance portfolio to sell software engineering or design services.
+
+  (b) Asset Substitution:
+      All Proprietary Assets defined in Section 1 must be replaced with the 
+      licensee's own personal data, media, and articles before going live.
+
+  (c) Mandatory Visible Attribution:
+      Every public-facing web page rendered by the codebase must permanently, 
+      legibly, and visibly display the following attribution notice (e.g., within 
+      the rendered output of /src/components/common/Footer.astro):
+
+      "Template Engineered by Arturo Nava (arturonavax.dev)"
+
+      The notice must include an active, crawlable, direct hyperlink to 
+      https://arturonavax.dev or https://github.com/arturonavax.
+
+  (d) Anti-Tampering:
+      Hiding, obscuring, visually minimizing, or detaching the attribution notice 
+      via CSS (including display:none, opacity:0, visibility:hidden, off-screen 
+      positioning, or font sizes below 11px), JavaScript DOM manipulation, or 
+      conditional rendering constitutes an immediate failure of condition.
+
+===============================================================================
+4. COMMERCIAL USE & WHITE-LABELING
+===============================================================================
+Any use exceeding the Non-Commercial scope defined in Section 3, any commercial 
+deployment, any removal of the attribution hyperlink, or any white-label 
+distribution requires a separate, prior written commercial license executed by 
+Arturo Nava.
+
+===============================================================================
+5. ENDORSEMENT, REVIEWS & GOOD-FAITH SHOWCASE
+===============================================================================
+- Permitted Representation: Good-faith reviews, factual technical analysis, and 
+  showcase recommendations crediting the Author or linking to his services are 
+  expressly permitted.
+- Prohibited Representation: Nothing in this License authorizes any use of the 
+  Author’s name, likeness, or website references in a misleading, deceptive, or 
+  tortious manner, including any false claim of partnership, co-authorship, or 
+  unauthorized endorsement.
+
+===============================================================================
+6. AUTOMATIC TERMINATION & DMCA ENFORCEMENT
+===============================================================================
+Any breach of the conditions set forth in this License automatically and 
+immediately terminates all granted rights ab initio without notice. 
+Upon termination:
+- All licenses granted herein are void.
+- Continued hosting, deployment, or reproduction constitutes willful copyright 
+  infringement under international law and the hosting provider’s policies.
+- The Author reserves the right to issue expedited DMCA takedown notices (17 U.S.C. 
+  § 512) and platform policy reports to hosting providers (including Vercel, 
+  Netlify, Cloudflare, and GitHub) and to seek statutory damages and injunctive 
+  relief.
+
+===============================================================================
+7. GOVERNING LAW & JURISDICTION
+===============================================================================
+This License is governed by the laws of the Republic of Colombia (including 
+Ley 23 de 1982 and Decisión Andina 351), the Berne Convention for the Protection 
+of Literary and Artistic Works, and the WIPO Copyright Treaty. Any formal dispute 
+shall be submitted to the exclusive jurisdiction of the competent courts of 
+Bogotá D.C., Colombia, without limiting the Author's right to seek DMCA takedowns 
+or equitable injunctive relief in any international forum where infringing content 
+is hosted.
+
+===============================================================================
+8. DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
+===============================================================================
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS 
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE 
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN 
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

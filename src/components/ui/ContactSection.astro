@@ -1,0 +1,523 @@
+---
+import type { Locale } from "@/i18n/ui";
+import { useTranslations } from "@/i18n/utils";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+const isEs = locale === "es";
+
+const email = "arturonavax@gmail.com";
+const phone = "+57 324 200 9803";
+const phoneClean = "573242009803";
+---
+
+<section
+  id="contact"
+  aria-labelledby="contact-heading"
+  class="scroll-mt-20 sm:scroll-mt-24 geometric-box no-corner-accents relative p-6 sm:p-10 rounded overflow-hidden"
+  style="background-image: var(--contact-banner-gradient);"
+>
+  <div class="space-y-8">
+    <!-- Header -->
+    <div class="border-b border-[var(--color-surface-border-subtle)] pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div>
+        <span class="font-mono text-xs text-[var(--color-accent-gold)] tracking-wide uppercase">
+          {t("section.contact")}
+        </span>
+        <h2
+          id="contact-heading"
+          class="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)] mt-1.5"
+        >
+          {t("contact.title")}
+        </h2>
+        <p class="mt-2 text-base sm:text-lg leading-relaxed text-[var(--color-text-secondary)] max-w-xl">
+          {t("contact.subtitle")}
+        </p>
+      </div>
+
+      <!-- Live Availability Indicator -->
+      <div class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs font-mono text-[var(--color-text-secondary)] shrink-0 self-start sm:self-auto">
+        <span class="relative flex h-2 w-2 shrink-0">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent-status)] opacity-75"></span>
+          <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent-status)]"></span>
+        </span>
+        <span>{t("hero.badge")}</span>
+      </div>
+    </div>
+
+    <!-- Main Grid: Actions & Recruiter Telemetry -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <!-- Left Column: Direct Actions & One-Click Copy -->
+      <div class="lg:col-span-7 space-y-6">
+        <!-- 1-Click Copy Email Box (Protected against Cloudflare ScrapeShield obfuscation) -->
+        <!--email_off-->
+        <div class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/60 p-4 font-mono">
+          <div class="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+            <span>
+              {isEs ? "Correo Electrónico Directo" : "Direct Email Contact"}
+            </span>
+            <span class="text-[var(--color-accent-status)]">
+              {t("contact.responseTime")}
+            </span>
+          </div>
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <span
+              class="text-sm sm:text-base font-semibold text-[var(--color-text-primary)] select-all inline-block whitespace-nowrap"
+              data-email-target
+            >
+              {email}
+            </span>
+            <button
+              type="button"
+              data-copy-email-btn
+              data-email={email}
+              class="inline-flex items-center justify-center gap-1.5 rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] px-3.5 py-2 text-xs font-medium text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] shrink-0 cursor-pointer"
+            >
+              <svg
+                class="h-3.5 w-3.5 stroke-current fill-none copy-icon"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span data-copy-status-text>{t("contact.copyEmail")}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action CTAs -->
+        <div class="flex flex-wrap items-center gap-3 font-mono text-xs sm:text-sm">
+          <a
+            href={`mailto:${email}?subject=Senior%20Software%20Engineering%20Opportunity%20-%20Arturo%20Nava`}
+            class="btn-gold px-5 py-2.5 inline-flex items-center gap-2 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+          >
+            <svg
+              class="h-4 w-4 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span>{t("contact.startConversation")}</span>
+          </a>
+          <!--/email_off-->
+
+          <!-- WhatsApp Direct Link -->
+          <a
+            href={`https://wa.me/${phoneClean}?text=Hello%20Arturo,%20saw%20your%20portfolio%20and%20would%20like%20to%20connect.`}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-secondary px-4 py-2.5 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          >
+            <svg
+              class="h-4 w-4 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+            </svg>
+            <span>WhatsApp Direct</span>
+          </a>
+
+          <!-- Telegram Direct Link (Task 6) -->
+          <a
+            href="https://t.me/arturonavax"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-secondary px-4 py-2.5 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          >
+            <svg
+              class="h-4 w-4 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+            <span>Telegram Direct</span>
+          </a>
+
+          <!-- LinkedIn Direct Link -->
+          <a
+            href="https://www.linkedin.com/in/arturonavax"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-secondary px-4 py-2.5 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          >
+            <svg
+              class="h-4 w-4 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+              <rect x="2" y="9" width="4" height="12"></rect>
+              <circle cx="4" cy="4" r="2"></circle>
+            </svg>
+            <span>LinkedIn Direct</span>
+          </a>
+        </div>
+
+        <!-- Social Channels Bar (Task 10 & Telegram) -->
+        <div class="rounded border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 space-y-2.5 font-mono text-xs">
+          <span class="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider block">
+            {isEs
+              ? "Canales Directos y Redes Profesionales (@arturonavax)"
+              : "Direct Channels & Professional Networks (@arturonavax)"}
+          </span>
+          <div class="flex flex-wrap gap-2 sm:gap-2.5">
+            <a
+              href="https://github.com/arturonavax"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors whitespace-nowrap shrink-0"
+            >
+              <svg
+                class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+              </svg>
+              <span>GitHub</span>
+            </a>
+
+            <a
+              href="https://x.com/arturonavax"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors whitespace-nowrap shrink-0"
+            >
+              <svg
+                class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 4l16 16M4 20L20 4"></path>
+              </svg>
+              <span>X</span>
+            </a>
+
+            <a
+              href="https://instagram.com/arturonavax"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors whitespace-nowrap shrink-0"
+            >
+              <svg
+                class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+              <span>Instagram</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Recruiter Telemetry Factsheet -->
+      <div class="lg:col-span-5 rounded border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-5 space-y-4 font-mono text-xs">
+        <div class="text-xs uppercase tracking-wider text-[var(--color-accent-gold)] font-semibold border-b border-[var(--color-surface-border-subtle)] pb-2 flex items-center justify-between gap-2">
+          <span>
+            {isEs
+              ? "Ficha Técnica para Reclutadores"
+              : "Recruiter & Hiring Factsheet"}
+          </span>
+          <span class="inline-flex items-center gap-1.5 text-xs text-[var(--color-accent-status)] font-medium whitespace-nowrap shrink-0">
+            <span
+              class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)] shrink-0"
+              aria-hidden="true"
+            ></span>
+            <span>Verified</span>
+          </span>
+        </div>
+
+        <div class="space-y-3 text-[var(--color-text-secondary)]">
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-[var(--color-text-muted)]">
+              {isEs ? "Ubicación / Zona" : "Location / Timezone"}
+            </span>
+            <span class="text-right text-[var(--color-text-primary)] font-medium">
+              Bogotá, Colombia (UTC-5 · US-Aligned)
+            </span>
+          </div>
+
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-[var(--color-text-muted)]">
+              {isEs ? "Modalidad" : "Modality"}
+            </span>
+            <span class="text-right text-[var(--color-text-primary)] font-medium">
+              {isEs ? "Remoto / Híbrido / Global" : "Remote / Hybrid / Global"}
+            </span>
+          </div>
+
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-[var(--color-text-muted)]">
+              {isEs ? "Roles Objetivo" : "Target Roles"}
+            </span>
+            <span class="text-right text-[var(--color-accent-gold)] font-medium">
+              Senior / Staff Backend & AI Engineer
+            </span>
+          </div>
+
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-[var(--color-text-muted)]">
+              {isEs ? "Especialidad Core" : "Core Specialty"}
+            </span>
+            <span class="text-right text-[var(--color-accent-gold)] font-medium">
+              Go, Rust, Distributed Systems
+            </span>
+          </div>
+
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-[var(--color-text-muted)]">
+              {isEs ? "Respuesta SLA" : "Response SLA"}
+            </span>
+            <span class="text-right text-[var(--color-accent-status)] font-medium">
+              {t("contact.responseTime")}
+            </span>
+          </div>
+
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-[var(--color-text-muted)]">
+              {isEs ? "Teléfono Directo" : "Direct Phone"}
+            </span>
+            <a
+              href={`tel:${phoneClean}`}
+              class="text-right text-[var(--color-text-primary)] hover:text-[var(--color-accent-gold)] transition-colors"
+            >
+              {phone}
+            </a>
+          </div>
+
+          <div class="border-t border-[var(--color-surface-border-subtle)] pt-3 flex items-center justify-between text-xs">
+            <span class="text-[var(--color-text-muted)]">
+              {isEs ? "Identidad Criptográfica" : "Cryptographic Trust"}
+            </span>
+            <span class="text-[var(--color-text-secondary)] font-mono text-xs font-medium">
+              ED25519 · arturonavax
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script
+  is:inline
+  define:vars={{
+    copiedText: t("contact.copied"),
+    copyEmailText: t("contact.copyEmail"),
+  }}
+>
+  (function () {
+    function initCopyEmail() {
+      if (!window.__copyEmailClickBound) {
+        window.__copyEmailClickBound = true;
+        document.addEventListener("click", async function (e) {
+          var btn =
+            e.target && e.target.closest
+              ? e.target.closest("[data-copy-email-btn]")
+              : null;
+          if (!btn) return;
+          var targetEmail = btn.getAttribute("data-email");
+          var textSpan = btn.querySelector("[data-copy-status-text]");
+          if (!targetEmail) return;
+
+          try {
+            await navigator.clipboard.writeText(targetEmail);
+            if (textSpan) textSpan.textContent = copiedText;
+            btn.classList.add(
+              "border-[var(--color-accent-status)]",
+              "text-[var(--color-accent-status)]",
+            );
+            setTimeout(function () {
+              if (textSpan) textSpan.textContent = copyEmailText;
+              btn.classList.remove(
+                "border-[var(--color-accent-status)]",
+                "text-[var(--color-accent-status)]",
+              );
+            }, 2000);
+          } catch (err) {
+            window.location.href = "mailto:" + targetEmail;
+          }
+        });
+      }
+
+      var emailSpan = document.querySelector("[data-email-target]");
+      if (emailSpan && !emailSpan.dataset.copyCleanBound) {
+        emailSpan.dataset.copyCleanBound = "true";
+        emailSpan.addEventListener("copy", function (e) {
+          if (e.clipboardData) {
+            var sel = window.getSelection();
+            var text = (
+              sel ? sel.toString() : emailSpan.textContent || ""
+            ).trim();
+            e.clipboardData.setData("text/plain", text);
+            e.preventDefault();
+          }
+        });
+      }
+    }
+
+    function getContactSec() {
+      return document.getElementById("contact");
+    }
+
+    function highlightContact() {
+      var sec = getContactSec();
+      if (sec) sec.classList.add("highlight-active");
+    }
+
+    function removeContactHighlight() {
+      var sec = getContactSec();
+      if (sec) sec.classList.remove("highlight-active");
+    }
+
+    function smoothScrollToContact() {
+      var sec = getContactSec();
+      if (!sec) return;
+
+      var header = document.getElementById("site-header");
+      var headerHeight = header ? header.offsetHeight : 56;
+      var secRect = sec.getBoundingClientRect();
+      var currentY =
+        window.pageYOffset || document.documentElement.scrollTop || 0;
+      var targetY = Math.max(0, currentY + secRect.top - headerHeight - 16);
+
+      window.scrollTo({ top: targetY, behavior: "smooth" });
+
+      if (window.location.hash !== "#contact") {
+        try {
+          history.replaceState(null, "", "#contact");
+        } catch (_) {}
+      }
+    }
+
+    function checkContactLanding() {
+      var sec = getContactSec();
+      if (!sec) return;
+
+      var hasPending = false;
+      try {
+        if (sessionStorage.getItem("pending_contact_scroll") === "1") {
+          sessionStorage.removeItem("pending_contact_scroll");
+          hasPending = true;
+        }
+      } catch (_) {}
+
+      if (hasPending || window.location.hash === "#contact") {
+        highlightContact();
+        requestAnimationFrame(function () {
+          smoothScrollToContact();
+        });
+      }
+    }
+
+    function initContactHighlight() {
+      checkContactLanding();
+
+      if (!window.__contactHashBound) {
+        window.__contactHashBound = true;
+        window.addEventListener("hashchange", function () {
+          if (window.location.hash === "#contact") {
+            highlightContact();
+            smoothScrollToContact();
+          }
+        });
+      }
+
+      if (!window.__contactClickBound) {
+        window.__contactClickBound = true;
+        document.addEventListener(
+          "click",
+          function (e) {
+            var target = e.target;
+            var link =
+              target && target.closest
+                ? target.closest('a[href$="#contact"], a[href="#contact"]')
+                : null;
+            if (link) {
+              var href = link.getAttribute("href") || "";
+              var currentPath =
+                window.location.pathname.replace(/\/+$/, "") || "/";
+              var rawLinkPath = href.split("#")[0];
+              var linkPath = rawLinkPath
+                ? rawLinkPath.replace(/\/+$/, "") || "/"
+                : currentPath;
+
+              var isSamePage = href.startsWith("#") || linkPath === currentPath;
+              if (isSamePage) {
+                var s = getContactSec();
+                if (s) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+                  highlightContact();
+                  smoothScrollToContact();
+                }
+              } else {
+                highlightContact();
+              }
+            }
+          },
+          true,
+        );
+      }
+
+      if (!window.__contactOutsideBound) {
+        window.__contactOutsideBound = true;
+        document.addEventListener("click", function (e) {
+          var s = getContactSec();
+          if (!s || !s.classList.contains("highlight-active")) return;
+          var target = e.target;
+          if (
+            target &&
+            !s.contains(target) &&
+            !target.closest('a[href$="#contact"], a[href="#contact"]')
+          ) {
+            removeContactHighlight();
+          }
+        });
+      }
+    }
+
+    function initContactSection() {
+      initCopyEmail();
+      initContactHighlight();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initContactSection);
+    } else {
+      initContactSection();
+    }
+    document.addEventListener("astro:page-load", initContactSection);
+  })();
+</script>

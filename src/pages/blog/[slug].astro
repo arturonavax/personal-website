@@ -1,0 +1,34 @@
+---
+import { getCollection, render } from "astro:content";
+import ArticleLayout from "@/layouts/ArticleLayout.astro";
+
+export async function getStaticPaths() {
+  const posts = await getCollection(
+    "posts",
+    ({ data }) => data.locale === "en" && !data.draft,
+  );
+  return posts.map((post) => ({
+    params: {
+      slug: post.id.replace(/^en\//, "").replace(/\.(md|mdx)$/, ""),
+    },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<ArticleLayout
+  title={post.data.title}
+  description={post.data.description}
+  locale="en"
+  pubDate={post.data.pubDate}
+  tags={post.data.tags}
+  translationKey={post.data.translationKey}
+  collectionName="posts"
+  backHref="/blog"
+  backLabel="Back to essays"
+>
+  <Content />
+</ArticleLayout>

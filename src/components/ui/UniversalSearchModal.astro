@@ -1,0 +1,1356 @@
+---
+import type { Locale } from "@/i18n/ui";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const isEs = locale === "es";
+const searchUrl = isEs ? "/es/search" : "/search";
+const searchIndexPath = isEs
+  ? "/search-index-es.json"
+  : "/search-index-en.json";
+---
+
+<!-- Universal Search Dialog -->
+<dialog
+  id="search-dialog"
+  data-search-index-path={searchIndexPath}
+  aria-labelledby="search-dialog-title"
+  class="fixed inset-0 m-auto max-h-[min(88dvh,calc(100dvh-1.5rem))] sm:max-h-[85vh] w-[94vw] max-w-2xl rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-0 text-[var(--color-text-primary)] backdrop:bg-black/80 backdrop:backdrop-blur-sm open:animate-fade-in"
+  style="box-shadow: var(--shadow-modal);"
+>
+  <div class="flex flex-col h-full max-h-[min(88dvh,calc(100dvh-1.5rem))] sm:max-h-[85vh]">
+    <!-- Search Bar Input Header -->
+    <div class="relative flex items-center border-b border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/80 px-3.5 py-2.5 sm:px-5 sm:py-4">
+      <svg
+        class="h-5 w-5 text-[var(--color-accent-gold)] shrink-0 mr-2.5 sm:mr-3"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <div class="relative flex-1 flex items-center min-w-0">
+        <input
+          type="search"
+          id="universal-search-input"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder={
+            isEs
+              ? "Buscar proyectos, ensayos, experiencia... (ej. Go, Rust)"
+              : "Search projects, essays, experience... (e.g. Go, Rust)"
+          }
+          class="w-full bg-transparent font-mono text-sm sm:text-base text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none pr-10 [&::-webkit-search-cancel-button]:hidden"
+        />
+        <button
+          type="button"
+          id="clear-search-btn"
+          aria-label={
+            isEs ? "Borrar término de búsqueda" : "Clear search query"
+          }
+          title={isEs ? "Borrar búsqueda" : "Clear search"}
+          class="hidden absolute right-1 h-8 w-8 min-h-[32px] min-w-[32px] sm:h-9 sm:w-9 sm:min-h-[36px] sm:min-w-[36px] items-center justify-center rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
+        >
+          <svg
+            class="h-4 w-4 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <button
+        type="button"
+        id="close-search-btn"
+        aria-label={isEs ? "Cerrar búsqueda" : "Close search"}
+        class="ml-2.5 sm:ml-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-2 text-[var(--color-text-muted)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer shrink-0"
+      >
+        <svg
+          class="h-4 w-4 stroke-current fill-none"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Suggested Quick Queries Bar -->
+    <div
+      id="search-suggestions"
+      class="flex flex-wrap items-center gap-1.5 border-b border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 px-4 py-2 text-xs font-mono"
+    >
+      <span class="text-[var(--color-text-muted)]">
+        {isEs ? "Populares:" : "Popular:"}
+      </span>
+      {[
+        "Golang",
+        "Rust",
+        "SIMD",
+        "Snowflake",
+        "Kafka",
+        "Redis",
+        "Mercado Libre",
+        "Docker",
+      ].map((keyword) => (
+        <button
+          type="button"
+          data-search-chip={keyword}
+          class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+        >
+          {keyword}
+        </button>
+      ))}
+    </div>
+
+    <!-- Dynamic Live Search Results List (Task 2: Permanent Scroll & Bottom Overflow Hint) -->
+    <div class="relative flex-1 min-h-0">
+      <div
+        id="search-results-list"
+        class="overflow-y-auto p-4 sm:p-5 space-y-3 max-h-[50vh]"
+        data-scrollable
+      >
+        <!-- Populated via JavaScript dynamically on every keystroke -->
+        <div
+          id="search-empty-state"
+          class="py-8 text-center text-sm font-mono text-[var(--color-text-muted)]"
+        >
+          <p>
+            {isEs
+              ? "Escribe cualquier tecnología o palabra clave para ver resultados instantáneos."
+              : "Type any technology, keyword, or company to see live results."}
+          </p>
+        </div>
+      </div>
+      <!-- Subtle bottom gradient indicator showing more content can be scrolled down -->
+      <div
+        id="search-scroll-hint"
+        class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/90 to-transparent flex items-end justify-center pb-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] tracking-wide opacity-0 transition-opacity duration-200 select-none"
+        aria-hidden="true"
+      >
+        <span class="flex items-center gap-1.5 opacity-90 drop-shadow-sm font-medium">
+          <svg
+            class="h-3 w-3 animate-bounce shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          <span>{isEs ? "Más resultados abajo" : "More results below"}</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Dialog Footer -->
+    <div class="flex items-center justify-between border-t border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/80 px-4 py-2.5 sm:px-5 font-mono text-xs text-[var(--color-text-muted)]">
+      <div class="flex items-center gap-3">
+        <span class="hidden sm:inline">
+          <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.5 text-xs font-semibold">
+            Esc
+          </kbd>{" "}
+          {isEs ? "cerrar" : "close"}
+        </span>
+        <span class="hidden sm:inline">
+          <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.5 text-xs font-semibold">
+            &uarr;&darr;
+          </kbd>{" "}
+          {isEs ? "navegar" : "navigate"}
+        </span>
+        <span
+          id="search-count-badge"
+          class="text-[var(--color-accent-gold)] font-medium"
+        ></span>
+      </div>
+      <a
+        id="view-search-page-link"
+        href={searchUrl}
+        class="text-[var(--color-accent-gold)] hover:underline inline-flex items-center gap-1 font-semibold"
+      >
+        <span>
+          {isEs ? "Ver página completa" : "Open dedicated search page"}
+        </span>
+        <span>&rarr;</span>
+      </a>
+    </div>
+  </div>
+</dialog>
+
+<!-- Pure Vanilla Keystroke Search Engine (0 KB External JS, Decoupled Search Index) -->
+<script is:inline>
+  // @ts-nocheck
+  (function () {
+    var isSearchInitialized = false;
+
+    function initSearch() {
+      if (isSearchInitialized) return;
+      isSearchInitialized = true;
+      setupUniversalSearch();
+    }
+
+    // Fallback opener before full search initializes
+    window.openUniversalSearch = function (initialQuery) {
+      initSearch();
+      if (typeof window.openUniversalSearch === "function") {
+        window.openUniversalSearch(initialQuery);
+      }
+    };
+
+    // Global keyboard shortcut: '/' or 'Cmd+K' / 'Ctrl+K'
+    if (!window.__searchKeydownBound) {
+      window.__searchKeydownBound = true;
+      document.addEventListener("keydown", function (e) {
+        var active = document.activeElement;
+        var tag = active && active.tagName ? active.tagName.toUpperCase() : "";
+        var isInputFocused =
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          (active && active.isContentEditable);
+
+        if (
+          (e.key === "/" && !isInputFocused) ||
+          ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k")
+        ) {
+          e.preventDefault();
+          window.openUniversalSearch();
+        }
+      });
+    }
+
+    // Global click delegate for any technology button or badge across the entire site
+    if (!window.__techSearchClickBound) {
+      window.__techSearchClickBound = true;
+      document.addEventListener("click", function (e) {
+        var trigger = e.target.closest("[data-tech-search]");
+        if (trigger) {
+          e.preventDefault();
+          var tech =
+            trigger.getAttribute("data-tech-search") ||
+            trigger.textContent.trim();
+          if (tech) {
+            window.openUniversalSearch(tech);
+          }
+        }
+      });
+    }
+
+    function setupUniversalSearch() {
+      var dialog = document.getElementById("search-dialog");
+      var searchInput = document.getElementById("universal-search-input");
+      var closeBtn = document.getElementById("close-search-btn");
+      var resultsContainer = document.getElementById("search-results-list");
+      var countBadge = document.getElementById("search-count-badge");
+      var pageLink = document.getElementById("view-search-page-link");
+      var chips = document.querySelectorAll("[data-search-chip]");
+
+      if (!dialog || !searchInput) return;
+
+      function getCurrentLocale() {
+        var path = window.location.pathname;
+        if (path === "/es" || path.startsWith("/es/")) {
+          return "es";
+        }
+        var htmlLang = document.documentElement.lang;
+        if (htmlLang && htmlLang.toLowerCase().startsWith("es")) {
+          return "es";
+        }
+        return "en";
+      }
+
+      function getIndexPath() {
+        return getCurrentLocale() === "es"
+          ? "/search-index-es.json"
+          : "/search-index-en.json";
+      }
+
+      function getBasePath() {
+        return getCurrentLocale() === "es" ? "/es/search" : "/search";
+      }
+
+      // Preload search index in memory cache
+      if (!window.__searchIndexCache) {
+        window.__searchIndexCache = {};
+      }
+
+      function fetchSearchData(targetPath) {
+        var path = targetPath || getIndexPath();
+        if (window.__searchIndexCache[path]) {
+          return Promise.resolve(window.__searchIndexCache[path]);
+        }
+        if (
+          window.__searchIndexFetching &&
+          window.__searchIndexFetching[path]
+        ) {
+          return window.__searchIndexFetching[path];
+        }
+        if (!window.__searchIndexFetching) {
+          window.__searchIndexFetching = {};
+        }
+        window.__searchIndexFetching[path] = fetch(path)
+          .then(function (res) {
+            if (!res.ok)
+              throw new Error("Search index response not ok: " + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            window.__searchIndexCache[path] = Array.isArray(data) ? data : [];
+            return window.__searchIndexCache[path];
+          })
+          .catch(function (err) {
+            console.error("Failed to load universal search index:", err);
+            return [];
+          });
+        return window.__searchIndexFetching[path];
+      }
+
+      function syncModalLocaleUI() {
+        var isEs = getCurrentLocale() === "es";
+        var curInput = document.getElementById("universal-search-input");
+        var curLink = document.getElementById("view-search-page-link");
+        var curClear = document.getElementById("clear-search-btn");
+        var curClose = document.getElementById("close-search-btn");
+        var scrollHintSpan = document.querySelector(
+          "#search-scroll-hint span span",
+        );
+
+        if (curInput) {
+          curInput.placeholder = isEs
+            ? "Buscar proyectos, ensayos, experiencia... (ej. Go, Rust)"
+            : "Search projects, essays, experience... (e.g. Go, Rust)";
+        }
+        if (curLink) {
+          var q = curInput && curInput.value ? curInput.value.trim() : "";
+          curLink.href =
+            (isEs ? "/es/search" : "/search") +
+            (q ? "?q=" + encodeURIComponent(q) : "");
+          var textSpan = curLink.querySelector("span:first-child");
+          if (textSpan) {
+            textSpan.textContent = isEs
+              ? "Ver página completa"
+              : "Open dedicated search page";
+          }
+        }
+        if (curClear) {
+          curClear.setAttribute(
+            "aria-label",
+            isEs ? "Borrar término de búsqueda" : "Clear search query",
+          );
+          curClear.setAttribute(
+            "title",
+            isEs ? "Borrar búsqueda" : "Clear search",
+          );
+        }
+        if (curClose) {
+          curClose.setAttribute(
+            "aria-label",
+            isEs ? "Cerrar búsqueda" : "Close search",
+          );
+        }
+        if (scrollHintSpan) {
+          scrollHintSpan.textContent = isEs
+            ? "Más resultados abajo"
+            : "More results below";
+        }
+      }
+
+      // Proactively prefetch search index on intent (pointerenter, focus, touch)
+      function attachSearchPrefetchTriggers() {
+        var triggers = document.querySelectorAll(
+          '#header-search-btn, #mobile-search-btn, [data-open-search], a[href*="/search"]',
+        );
+        triggers.forEach(function (el) {
+          if (!el.dataset.searchPrefetchBound) {
+            el.dataset.searchPrefetchBound = "true";
+            el.addEventListener(
+              "pointerenter",
+              function () {
+                fetchSearchData();
+              },
+              {
+                passive: true,
+                once: true,
+              },
+            );
+            el.addEventListener(
+              "focus",
+              function () {
+                fetchSearchData();
+              },
+              {
+                passive: true,
+                once: true,
+              },
+            );
+            el.addEventListener(
+              "touchstart",
+              function () {
+                fetchSearchData();
+              },
+              {
+                passive: true,
+                once: true,
+              },
+            );
+          }
+        });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener(
+          "DOMContentLoaded",
+          attachSearchPrefetchTriggers,
+        );
+      } else {
+        attachSearchPrefetchTriggers();
+      }
+      document.addEventListener("astro:page-load", function () {
+        attachSearchPrefetchTriggers();
+        syncModalLocaleUI();
+      });
+
+      var selectedResultIndex = -1;
+
+      function openSearchModal(initialQuery) {
+        syncModalLocaleUI();
+        fetchSearchData();
+        var currentDialog = document.getElementById("search-dialog");
+        var currentInput = document.getElementById("universal-search-input");
+        if (!currentDialog) return;
+
+        var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+        if (currentPath === "/search" || currentPath === "/es/search") {
+          var onPageInput = document.getElementById("page-search-input");
+          if (onPageInput) {
+            onPageInput.focus();
+            if (initialQuery !== undefined) {
+              onPageInput.value = initialQuery;
+              onPageInput.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+          }
+          return;
+        }
+
+        if (typeof currentDialog.showModal === "function") {
+          if (!currentDialog.open) {
+            currentDialog.showModal();
+          }
+          if (currentInput) {
+            if (initialQuery !== undefined) {
+              currentInput.value = initialQuery;
+            }
+            selectedResultIndex = -1;
+            requestAnimationFrame(function () {
+              currentInput.focus();
+              adjustDialogForKeyboard();
+              var clr = document.getElementById("clear-search-btn");
+              if (clr) {
+                if (currentInput.value) {
+                  clr.classList.remove("hidden");
+                  clr.classList.add("flex");
+                } else {
+                  clr.classList.add("hidden");
+                  clr.classList.remove("flex");
+                }
+              }
+              if (currentInput.value) {
+                performSearch(currentInput.value);
+              }
+            });
+          }
+        }
+      }
+
+      window.openUniversalSearch = openSearchModal;
+
+      var boundElements =
+        window.__universalSearchBoundElements ||
+        (window.__universalSearchBoundElements = new WeakSet());
+
+      function adjustDialogForKeyboard() {
+        var currentDialog = document.getElementById("search-dialog");
+        var currentInput = document.getElementById("universal-search-input");
+        if (!currentDialog || !currentDialog.open) return;
+
+        var vv = window.visualViewport;
+        var isMobile =
+          window.innerWidth < 640 ||
+          ("ontouchstart" in window && window.innerWidth < 1024);
+        var hasKeyboard = false;
+
+        if (vv && window.innerHeight - vv.height > 120) {
+          hasKeyboard = true;
+        } else if (isMobile && document.activeElement === currentInput) {
+          hasKeyboard = true;
+        }
+
+        if (hasKeyboard) {
+          currentDialog.classList.add("keyboard-open");
+          if (vv) {
+            currentDialog.style.maxHeight =
+              Math.max(220, Math.floor(vv.height - 20)) + "px";
+            currentDialog.style.top =
+              Math.max(8, Math.floor(vv.offsetTop + 8)) + "px";
+          }
+        } else {
+          currentDialog.classList.remove("keyboard-open");
+          currentDialog.style.maxHeight = "";
+          currentDialog.style.top = "";
+        }
+      }
+
+      if (window.visualViewport && !window.__searchVisualViewportBound) {
+        window.__searchVisualViewportBound = true;
+        window.visualViewport.addEventListener(
+          "resize",
+          adjustDialogForKeyboard,
+        );
+      }
+
+      function updateSearchScrollHint() {
+        var hint = document.getElementById("search-scroll-hint");
+        var list = document.getElementById("search-results-list");
+        if (!hint || !list) return;
+        var hasMore =
+          list.scrollHeight > list.clientHeight + list.scrollTop + 14;
+        if (hasMore) {
+          hint.classList.remove("opacity-0");
+          hint.classList.add("opacity-100");
+        } else {
+          hint.classList.remove("opacity-100");
+          hint.classList.add("opacity-0");
+        }
+      }
+
+      if (resultsContainer && !boundElements.has(resultsContainer)) {
+        boundElements.add(resultsContainer);
+        resultsContainer.addEventListener("scroll", updateSearchScrollHint, {
+          passive: true,
+        });
+      }
+
+      // Direct binding to all search trigger buttons across header, mobile, and page
+      document
+        .querySelectorAll(
+          "#header-search-btn, #mobile-search-btn, [data-open-search]",
+        )
+        .forEach(function (btn) {
+          if (!boundElements.has(btn)) {
+            boundElements.add(btn);
+            btn.addEventListener("click", function (e) {
+              e.preventDefault();
+              var details = btn.closest("details");
+              if (details) details.removeAttribute("open");
+              openSearchModal();
+            });
+          }
+        });
+
+      // Close handlers
+      if (closeBtn && !boundElements.has(closeBtn)) {
+        boundElements.add(closeBtn);
+        closeBtn.addEventListener("click", function () {
+          var currentDialog = document.getElementById("search-dialog");
+          if (currentDialog) currentDialog.close();
+        });
+      }
+
+      // Dedicated search page link - close immediately before navigation to eliminate flicker
+      if (pageLink && !boundElements.has(pageLink)) {
+        boundElements.add(pageLink);
+        pageLink.addEventListener("click", function () {
+          if (dialog.open) {
+            dialog.close();
+          }
+        });
+      }
+
+      if (!boundElements.has(dialog)) {
+        boundElements.add(dialog);
+        dialog.addEventListener("close", function () {
+          dialog.classList.remove("keyboard-open");
+          dialog.style.maxHeight = "";
+          dialog.style.top = "";
+        });
+        dialog.addEventListener("click", function (e) {
+          var rect = dialog.getBoundingClientRect();
+          var isInDialog =
+            rect.top <= e.clientY &&
+            e.clientY <= rect.top + rect.height &&
+            rect.left <= e.clientX &&
+            e.clientX <= rect.left + rect.width;
+          if (!isInDialog) {
+            dialog.close();
+          }
+        });
+
+        // Dialog-level ArrowUp/ArrowDown/Enter Navigation
+        dialog.addEventListener("keydown", function (e) {
+          var currentContainer = document.getElementById("search-results-list");
+          if (!currentContainer) return;
+          var items = currentContainer.querySelectorAll("a[data-search-item]");
+          if (!items.length) return;
+
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            selectedResultIndex = Math.min(
+              selectedResultIndex + 1,
+              items.length - 1,
+            );
+            updateActiveSelection(items);
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            selectedResultIndex = selectedResultIndex - 1;
+            if (selectedResultIndex < 0) {
+              selectedResultIndex = -1;
+              items.forEach(function (item) {
+                item.classList.remove(
+                  "border-[var(--color-accent-gold)]",
+                  "ring-1",
+                  "ring-[var(--color-accent-gold)]",
+                );
+                item.classList.add(
+                  "border-[var(--color-surface-border-subtle)]",
+                );
+              });
+              var currentInp = document.getElementById(
+                "universal-search-input",
+              );
+              if (currentInp) currentInp.focus();
+            } else {
+              updateActiveSelection(items);
+            }
+          } else if (e.key === "Enter") {
+            if (selectedResultIndex >= 0 && items[selectedResultIndex]) {
+              e.preventDefault();
+              items[selectedResultIndex].click();
+            }
+          }
+        });
+      }
+
+      // Quick query chips
+      chips.forEach(function (chip) {
+        if (!boundElements.has(chip)) {
+          boundElements.add(chip);
+          chip.addEventListener("click", function () {
+            var val = chip.getAttribute("data-search-chip") || "";
+            var curInp = document.getElementById("universal-search-input");
+            if (curInp) {
+              curInp.value = val;
+              curInp.focus();
+              performSearch(val);
+            }
+          });
+        }
+      });
+
+      function updateActiveSelection(items) {
+        items.forEach(function (item, idx) {
+          if (idx === selectedResultIndex) {
+            item.classList.add(
+              "border-[var(--color-accent-gold)]",
+              "bg-[var(--color-bg-primary)]",
+              "ring-1",
+              "ring-[var(--color-accent-gold)]",
+            );
+            item.classList.remove(
+              "border-[var(--color-surface-border-subtle)]",
+              "bg-[var(--color-bg-primary)]/50",
+            );
+            item.scrollIntoView({ block: "nearest" });
+          } else {
+            item.classList.remove(
+              "border-[var(--color-accent-gold)]",
+              "ring-1",
+              "ring-[var(--color-accent-gold)]",
+            );
+            item.classList.add("border-[var(--color-surface-border-subtle)]");
+          }
+        });
+      }
+
+      var clearBtn = document.getElementById("clear-search-btn");
+      function syncClearBtn() {
+        if (!clearBtn || !searchInput) return;
+        if (searchInput.value.length > 0) {
+          clearBtn.classList.remove("hidden");
+          clearBtn.classList.add("flex");
+        } else {
+          clearBtn.classList.add("hidden");
+          clearBtn.classList.remove("flex");
+        }
+      }
+
+      if (clearBtn && !boundElements.has(clearBtn)) {
+        boundElements.add(clearBtn);
+        clearBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (searchInput) {
+            searchInput.value = "";
+            syncClearBtn();
+            selectedResultIndex = -1;
+            performSearch("");
+            searchInput.focus();
+          }
+        });
+      }
+
+      // Keystroke Search Reaction (<2ms execution)
+      if (searchInput && !boundElements.has(searchInput)) {
+        boundElements.add(searchInput);
+        searchInput.addEventListener("focus", adjustDialogForKeyboard);
+        searchInput.addEventListener("blur", function () {
+          setTimeout(adjustDialogForKeyboard, 100);
+        });
+        searchInput.addEventListener("input", function () {
+          syncClearBtn();
+          selectedResultIndex = -1;
+          performSearch(searchInput.value);
+        });
+
+        // Enter key navigation
+        searchInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            if (selectedResultIndex >= 0) {
+              var currentContainer = document.getElementById(
+                "search-results-list",
+              );
+              if (currentContainer) {
+                var items = currentContainer.querySelectorAll(
+                  "a[data-search-item]",
+                );
+                if (items[selectedResultIndex]) {
+                  e.preventDefault();
+                  items[selectedResultIndex].click();
+                  return;
+                }
+              }
+            }
+            e.preventDefault();
+            var q = searchInput.value.trim();
+            window.location.href =
+              basePath + (q ? "?q=" + encodeURIComponent(q) : "");
+          }
+        });
+      }
+
+      // Global document-level click delegation for infallible open/close resilience
+      if (!window.__globalSearchDocDelegationBound) {
+        window.__globalSearchDocDelegationBound = true;
+        document.addEventListener("click", function (e) {
+          var target = e.target;
+          if (!target) return;
+
+          var openBtnEl = target.closest(
+            "#header-search-btn, #mobile-search-btn, [data-open-search]",
+          );
+          if (openBtnEl) {
+            e.preventDefault();
+            var details = openBtnEl.closest("details");
+            if (details) details.removeAttribute("open");
+            openSearchModal();
+            return;
+          }
+
+          var closeBtnEl = target.closest("#close-search-btn");
+          if (closeBtnEl) {
+            e.preventDefault();
+            var d = document.getElementById("search-dialog");
+            if (d && typeof d.close === "function") d.close();
+            return;
+          }
+
+          var chipEl = target.closest("[data-search-chip]");
+          if (chipEl) {
+            e.preventDefault();
+            var val = chipEl.getAttribute("data-search-chip") || "";
+            var curInp = document.getElementById("universal-search-input");
+            if (curInp) {
+              curInp.value = val;
+              curInp.focus();
+              performSearch(val);
+            }
+            return;
+          }
+
+          var activeDialog = document.getElementById("search-dialog");
+          if (activeDialog && activeDialog.open && target === activeDialog) {
+            var rect = activeDialog.getBoundingClientRect();
+            var isInDialog =
+              rect.top <= e.clientY &&
+              e.clientY <= rect.top + rect.height &&
+              rect.left <= e.clientX &&
+              e.clientX <= rect.left + rect.width;
+            if (!isInDialog) {
+              activeDialog.close();
+            }
+          }
+        });
+      }
+
+      function escapeHtml(str) {
+        if (!str) return "";
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      var TECH_EQUIVALENTS = {
+        go: ["golang"],
+        golang: ["go"],
+        k8s: ["kubernetes"],
+        kubernetes: ["k8s"],
+        postgres: ["postgresql", "sql"],
+        postgresql: ["postgres", "sql"],
+        sql: ["postgresql", "postgres", "mysql", "sqlite"],
+        ts: ["typescript"],
+        typescript: ["ts"],
+        js: ["javascript"],
+        javascript: ["js"],
+      };
+
+      function getSearchVariants(word) {
+        var w = word.toLowerCase().trim();
+        var variants = [w];
+        if (TECH_EQUIVALENTS[w]) {
+          TECH_EQUIVALENTS[w].forEach(function (syn) {
+            if (variants.indexOf(syn) === -1) variants.push(syn);
+          });
+        }
+        return variants;
+      }
+
+      function matchSingleTerm(haystackLower, term) {
+        if (!haystackLower || !term) return false;
+
+        // "sql": matches as standalone word, or inside SQL-family database names ("postgresql", "sqlite", "mysql", "nosql", "tsql")
+        if (term === "sql") {
+          var sqlRegex =
+            /(?:^|[^a-zA-Z0-9])sql(?=$|[^a-zA-Z0-9])|(?:postgre|my|lite|no|t|pl)sql/i;
+          return sqlRegex.test(haystackLower);
+        }
+
+        // "go": must match as standalone word or technical compound prefix ("golang", "gosnowflake", "goroutine"),
+        // but never inside unrelated words ("algorithm", "category", "ongoing", "cargo").
+        if (term === "go") {
+          var goRegex =
+            /(?:^|[^a-zA-Z0-9])go(?:lang|snowflake|routine|fmt|pkg)?(?=$|[^a-zA-Z0-9])/i;
+          return goRegex.test(haystackLower);
+        }
+
+        // Query starting with "rus" or "rust" (e.g. "rus", "rust", "rustlang", "rustacean"):
+        // Must start at a word boundary!
+        // It CANNOT be preceded by an alphanumeric character (so "trust", "zero-trust", "crust", "thrust" NEVER match!)
+        if (/^rust?/i.test(term)) {
+          var rustTermClean = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          var rustRegex = new RegExp("(?:^|[^a-zA-Z0-9])" + rustTermClean, "i");
+          return rustRegex.test(haystackLower);
+        }
+
+        // Very short acronyms/terms (length <= 2, e.g. "ts", "js", "c", "r"):
+        // Enforce word boundaries
+        if (term.length <= 2) {
+          var shortRegex = new RegExp(
+            "(?:^|[^a-zA-Z0-9])" +
+              term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+              "(?=$|[^a-zA-Z0-9])",
+            "i",
+          );
+          return shortRegex.test(haystackLower);
+        }
+
+        // General terms (length >= 3):
+        // Check if a word in haystack starts with the term (e.g. "crypto" -> "cryptographic", "postgre" -> "postgresql")
+        var termClean = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        var wordStartRegex = new RegExp("(?:^|[^a-zA-Z0-9])" + termClean, "i");
+        if (wordStartRegex.test(haystackLower)) {
+          return true;
+        }
+
+        // Allow compound tech substring if term is at least 4 chars long (e.g. "snowflake" in "gosnowflake")
+        if (term.length >= 4 && haystackLower.indexOf(term) !== -1) {
+          if (term.indexOf("rust") !== -1) {
+            return wordStartRegex.test(haystackLower);
+          }
+          return true;
+        }
+
+        return false;
+      }
+
+      function matchesSearchTerm(haystack, rawWord) {
+        if (!haystack || !rawWord) return false;
+        var haystackLower = haystack.toLowerCase();
+        var variants = getSearchVariants(rawWord);
+
+        for (var i = 0; i < variants.length; i++) {
+          if (matchSingleTerm(haystackLower, variants[i])) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function highlightMatch(text, query) {
+        if (!query || !text) return escapeHtml(text);
+        var words = query.trim().split(/\s+/).filter(Boolean);
+        if (!words.length) return escapeHtml(text);
+
+        var allTerms = [];
+        words.forEach(function (w) {
+          var variants = getSearchVariants(w);
+          variants.forEach(function (v) {
+            if (allTerms.indexOf(v) === -1) allTerms.push(v);
+          });
+        });
+
+        allTerms.sort(function (a, b) {
+          return b.length - a.length;
+        });
+
+        var escaped = escapeHtml(text);
+        allTerms.forEach(function (term) {
+          var tClean = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          var regex;
+
+          // For "rus" or "rust": must match at word boundary so it NEVER highlights inside "trust"
+          if (/^rust?/i.test(term)) {
+            regex = new RegExp(
+              "(^|[^a-zA-Z0-9])(" + tClean + "[a-zA-Z0-9]*)",
+              "gi",
+            );
+          } else if (term === "go") {
+            regex = new RegExp(
+              "(^|[^a-zA-Z0-9])(go(?:lang|snowflake|routine|fmt|pkg)?)(?=[^a-zA-Z0-9]|$)",
+              "gi",
+            );
+          } else if (term.length <= 2) {
+            regex = new RegExp(
+              "(^|[^a-zA-Z0-9])(" + tClean + ")(?=[^a-zA-Z0-9]|$)",
+              "gi",
+            );
+          } else {
+            // General terms: match at word boundary (or after "go" in compounds like "gosnowflake")
+            regex = new RegExp(
+              "(^|[^a-zA-Z0-9]|go)(" + tClean + "[a-zA-Z0-9]*)",
+              "gi",
+            );
+          }
+
+          escaped = escaped.replace(regex, function (fullMatch, p1, p2) {
+            var prefix = typeof p1 === "string" ? p1 : "";
+            var content = typeof p2 === "string" ? p2 : fullMatch;
+            return (
+              prefix +
+              '<mark class="bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] px-0.5 rounded font-semibold">' +
+              content +
+              "</mark>"
+            );
+          });
+        });
+        return escaped;
+      }
+
+      function hasExactMatch(item, rawQuery) {
+        if (!item || !rawQuery) return false;
+        var q = rawQuery.trim().toLowerCase();
+        if (!q) return false;
+
+        var titleLower = (item.title || "").toLowerCase();
+        var metaLower = (item.meta || "").toLowerCase();
+        var tagsList = Array.isArray(item.tags) ? item.tags : [];
+        var keywordsList = Array.isArray(item.keywords) ? item.keywords : [];
+
+        // 1. Direct equality with title or company/meta
+        if (titleLower === q || metaLower === q) return true;
+
+        // 2. Exact match against any tag or keyword
+        for (var i = 0; i < tagsList.length; i++) {
+          if (tagsList[i].toLowerCase() === q) return true;
+        }
+        for (var j = 0; j < keywordsList.length; j++) {
+          if (keywordsList[j].toLowerCase() === q) return true;
+        }
+
+        // 3. Whole-word or phrase regex in title, meta, tags, or keywords
+        var qClean = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        var wholeWordRegex = new RegExp(
+          "(?:^|[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ])" +
+            qClean +
+            "(?=$|[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ])",
+          "i",
+        );
+
+        if (wholeWordRegex.test(titleLower) || wholeWordRegex.test(metaLower))
+          return true;
+        if (
+          tagsList.some(function (t) {
+            return wholeWordRegex.test(t);
+          })
+        )
+          return true;
+        if (
+          keywordsList.some(function (k) {
+            return wholeWordRegex.test(k);
+          })
+        )
+          return true;
+
+        // 4. Multi-word query check: every single word must match as an exact whole word in title, meta, tags, or keywords
+        var words = q.split(/\s+/).filter(Boolean);
+        if (words.length > 1) {
+          var allExact = words.every(function (w) {
+            var wClean = w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            var wRegex = new RegExp(
+              "(?:^|[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ])" +
+                wClean +
+                "(?=$|[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ])",
+              "i",
+            );
+            if (wRegex.test(titleLower) || wRegex.test(metaLower)) return true;
+            if (
+              tagsList.some(function (t) {
+                return t.toLowerCase() === w || wRegex.test(t);
+              })
+            )
+              return true;
+            if (
+              keywordsList.some(function (k) {
+                return k.toLowerCase() === w || wRegex.test(k);
+              })
+            )
+              return true;
+            return false;
+          });
+          if (allExact) return true;
+        }
+
+        return false;
+      }
+
+      function performSearch(rawQuery) {
+        selectedResultIndex = -1;
+        var currentLocale = getCurrentLocale();
+        var isEsLocale = currentLocale === "es";
+        var pageLang = currentLocale;
+        var otherLang = isEsLocale ? "en" : "es";
+        var indexPath = getIndexPath();
+        var basePath = getBasePath();
+
+        var q = rawQuery.trim().toLowerCase();
+        if (pageLink) {
+          pageLink.href =
+            basePath + (q ? "?q=" + encodeURIComponent(rawQuery.trim()) : "");
+          var linkTextSpan = pageLink.querySelector("span:first-child");
+          if (linkTextSpan) {
+            linkTextSpan.textContent = isEsLocale
+              ? "Ver página completa"
+              : "Open dedicated search page";
+          }
+        }
+
+        if (!q) {
+          resultsContainer.innerHTML =
+            '<div id="search-empty-state" class="py-8 text-center text-sm font-mono text-[var(--color-text-muted)]">' +
+            "<p>" +
+            (isEsLocale
+              ? "Escribe cualquier tecnología o palabra clave para ver resultados instantáneos."
+              : "Type any technology, keyword, or company to see live results.") +
+            "</p>" +
+            "</div>";
+          if (countBadge) countBadge.textContent = "";
+          updateSearchScrollHint();
+          return;
+        }
+
+        if (!window.__searchIndexCache[indexPath]) {
+          resultsContainer.innerHTML =
+            '<div class="py-8 text-center font-mono text-xs text-[var(--color-accent-gold)] flex items-center justify-center gap-2">' +
+            '<span class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></span>' +
+            "<span>" +
+            (isEsLocale
+              ? "Cargando índice de búsqueda..."
+              : "Loading search index...") +
+            "</span>" +
+            "</div>";
+          fetchSearchData(indexPath).then(function () {
+            if (searchInput.value.trim() === rawQuery.trim()) {
+              performSearch(rawQuery);
+            }
+          });
+          return;
+        }
+
+        var searchData = window.__searchIndexCache[indexPath] || [];
+        var words = q.split(/\s+/).filter(Boolean);
+
+        var matches = searchData.filter(function (item) {
+          var titleStr = item.title || "";
+          var descStr = item.description || "";
+          var metaStr = item.meta || "";
+          var tagsList = Array.isArray(item.tags) ? item.tags : [];
+          var keywordsList = Array.isArray(item.keywords) ? item.keywords : [];
+
+          return words.every(function (w) {
+            if (matchesSearchTerm(titleStr, w)) return true;
+            if (matchesSearchTerm(descStr, w)) return true;
+            if (matchesSearchTerm(metaStr, w)) return true;
+            if (
+              tagsList.some(function (t) {
+                return matchesSearchTerm(t, w);
+              })
+            )
+              return true;
+            if (
+              keywordsList.some(function (k) {
+                return matchesSearchTerm(k, w);
+              })
+            )
+              return true;
+            return false;
+          });
+        });
+
+        // 1. Group all raw matches by entityId (or fallback to normalized id)
+        var entityMatches = {};
+        matches.forEach(function (item) {
+          var entId = item.entityId || item.id.replace(/-(en|es)-/, "-");
+          if (!entityMatches[entId]) {
+            entityMatches[entId] = {};
+          }
+          entityMatches[entId][item.locale] = item;
+        });
+
+        // 2. Intelligent Language Deduplication:
+        // - Prioritize current page's language: if matched in current language, ALWAYS display that language version!
+        // - Show other language version ONLY if current language didn't match AND the other language has an EXACT match!
+        var finalMatches = [];
+        Object.keys(entityMatches).forEach(function (entId) {
+          var pair = entityMatches[entId];
+          if (pair[pageLang]) {
+            finalMatches.push(pair[pageLang]);
+          } else if (
+            pair[otherLang] &&
+            hasExactMatch(pair[otherLang], rawQuery)
+          ) {
+            finalMatches.push(pair[otherLang]);
+          }
+        });
+
+        // 3. Score and rank: massive +5000 bonus for current page language, plus field relevancies
+        function computeScore(item) {
+          var score = 0;
+          if (item.locale === pageLang) score += 5000;
+
+          var titleL = (item.title || "").toLowerCase();
+          var metaL = (item.meta || "").toLowerCase();
+          var descL = (item.description || "").toLowerCase();
+          var tagsL = (item.tags || []).map(function (t) {
+            return t.toLowerCase();
+          });
+          var keysL = (item.keywords || []).map(function (k) {
+            return k.toLowerCase();
+          });
+
+          // Exact query match bonuses
+          if (titleL === q) score += 1000;
+          if (metaL === q) score += 500;
+          if (tagsL.indexOf(q) !== -1) score += 400;
+          if (keysL.indexOf(q) !== -1) score += 300;
+
+          words.forEach(function (w) {
+            if (titleL.indexOf(w) !== -1) score += 150;
+            if (
+              tagsL.some(function (t) {
+                return t.indexOf(w) !== -1;
+              })
+            )
+              score += 100;
+            if (
+              keysL.some(function (k) {
+                return k.indexOf(w) !== -1;
+              })
+            )
+              score += 80;
+            if (metaL.indexOf(w) !== -1) score += 60;
+            if (descL.indexOf(w) !== -1) score += 20;
+          });
+          return score;
+        }
+
+        finalMatches.sort(function (a, b) {
+          return computeScore(b) - computeScore(a);
+        });
+
+        matches = finalMatches;
+
+        if (countBadge) {
+          countBadge.textContent = isEsLocale
+            ? matches.length + " resultado" + (matches.length === 1 ? "" : "s")
+            : matches.length + " result" + (matches.length === 1 ? "" : "s");
+        }
+
+        if (matches.length === 0) {
+          resultsContainer.innerHTML =
+            '<div class="py-8 text-center font-mono space-y-2">' +
+            '<p class="text-sm text-[var(--color-text-muted)]">' +
+            (isEsLocale
+              ? 'No se encontraron resultados para "'
+              : 'No results found for "') +
+            escapeHtml(rawQuery) +
+            '"</p>' +
+            '<p class="text-xs text-[var(--color-text-secondary)]">' +
+            (isEsLocale
+              ? "Intenta buscar con términos como Golang, Rust, SIMD, Redis, Snowflake, o Mercado Libre."
+              : "Try searching for terms like Golang, Rust, SIMD, Redis, Snowflake, or Mercado Libre.") +
+            "</p>" +
+            "</div>";
+          updateSearchScrollHint();
+          return;
+        }
+
+        var html = "";
+        matches.forEach(function (item) {
+          var tagPills = "";
+          if (Array.isArray(item.tags)) {
+            tagPills = item.tags
+              .slice(0, 4)
+              .map(function (tag) {
+                return (
+                  '<span class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)]">' +
+                  escapeHtml(tag) +
+                  "</span>"
+                );
+              })
+              .join(" ");
+          }
+
+          var typeBadgeClass = "text-[var(--color-accent-gold)]";
+          if (item.type === "project")
+            typeBadgeClass = "text-[var(--color-accent-gold)]";
+          if (item.type === "post")
+            typeBadgeClass = "text-[var(--color-accent-status)]";
+          if (item.type === "experience")
+            typeBadgeClass = "text-[var(--color-text-secondary)]";
+
+          var lang = item.langBadge || (item.locale === "es" ? "ES" : "EN");
+          var langBadgeClass =
+            item.locale === "en"
+              ? "border-[var(--color-accent-gold)]/60 text-[var(--color-accent-gold)]"
+              : "border-[var(--color-surface-border)] text-[var(--color-text-muted)]";
+
+          html +=
+            '<a href="' +
+            item.url +
+            '" data-search-item class="group block rounded-lg border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/50 p-3.5 sm:p-4 font-mono transition-all hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-bg-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-gold)]">' +
+            '<div class="flex items-center justify-between gap-2 text-xs mb-1.5">' +
+            '<div class="flex items-center gap-1.5">' +
+            '<span class="rounded border ' +
+            langBadgeClass +
+            ' bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-bold uppercase tracking-wider">' +
+            escapeHtml(lang) +
+            "</span>" +
+            '<span class="font-semibold uppercase tracking-wider text-[11px] ' +
+            typeBadgeClass +
+            '">' +
+            escapeHtml(item.category) +
+            "</span>" +
+            "</div>" +
+            (item.meta
+              ? '<span class="text-[var(--color-text-muted)] text-[11px] truncate max-w-[200px]">' +
+                escapeHtml(item.meta) +
+                "</span>"
+              : "") +
+            "</div>" +
+            '<h4 class="text-sm sm:text-base font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-gold)] transition-colors leading-snug">' +
+            highlightMatch(item.title, rawQuery) +
+            "</h4>" +
+            '<p class="mt-1.5 text-xs sm:text-sm text-[var(--color-text-secondary)] font-sans line-clamp-2 leading-relaxed">' +
+            highlightMatch(item.description, rawQuery) +
+            "</p>" +
+            (tagPills
+              ? '<div class="mt-2.5 flex flex-wrap gap-1">' +
+                tagPills +
+                "</div>"
+              : "") +
+            "</a>";
+        });
+
+        resultsContainer.innerHTML = html;
+        requestAnimationFrame(updateSearchScrollHint);
+      }
+    }
+
+    // Pre-warm search engine on pointerenter or focusin on any search trigger across header, mobile, or page
+    document.addEventListener(
+      "pointerenter",
+      function (e) {
+        if (
+          e.target &&
+          e.target.closest &&
+          e.target.closest(
+            '#header-search-btn, #mobile-search-btn, [data-open-search], [data-tech-search], a[href*="/search"]',
+          )
+        ) {
+          initSearch();
+        }
+      },
+      { passive: true, capture: true },
+    );
+
+    document.addEventListener(
+      "focusin",
+      function (e) {
+        if (
+          e.target &&
+          e.target.closest &&
+          e.target.closest(
+            '#header-search-btn, #mobile-search-btn, [data-open-search], [data-tech-search], a[href*="/search"]',
+          )
+        ) {
+          initSearch();
+        }
+      },
+      { passive: true, capture: true },
+    );
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initSearch);
+    } else {
+      initSearch();
+    }
+
+    document.addEventListener("astro:page-load", function () {
+      setupUniversalSearch();
+    });
+  })();
+</script>
+
+<style>
+  :global(dialog#search-dialog.keyboard-open) {
+    top: 0.5rem !important;
+    bottom: auto !important;
+    margin-top: 0 !important;
+    margin-bottom: auto !important;
+  }
+</style>
