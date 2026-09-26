@@ -1,0 +1,82 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ExperienceTimeline from "@/components/ui/ExperienceTimeline.astro";
+import ExperienceFilterBar from "@/components/ui/ExperienceFilterBar.astro";
+import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
+import { useTranslations } from "@/i18n/utils";
+
+const locale = "es";
+const t = useTranslations(locale);
+
+const allExperience = await getCollection(
+  "experience",
+  ({ data }) => data.locale === locale,
+);
+const sortedExperience = allExperience.sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+// Calcular frecuencia de habilidades
+const skillCounts: Record<string, number> = {};
+sortedExperience.forEach((item) => {
+  item.data.skills.forEach((skill) => {
+    skillCounts[skill] = (skillCounts[skill] || 0) + 1;
+  });
+});
+const sortedSkills = Object.entries(skillCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 12)
+  .map(([skill, count]) => ({ skill, count }));
+
+// Calcular empresas
+const companyCounts: Record<string, number> = {};
+sortedExperience.forEach((item) => {
+  const comp = item.data.company;
+  companyCounts[comp] = (companyCounts[comp] || 0) + 1;
+});
+const companies = Object.entries(companyCounts).map(([name, count]) => ({
+  name,
+  count,
+}));
+---
+
+<BaseLayout
+  title="Trayectoria Profesional — Arturo Nava"
+  description="+8 años diseñando backends tolerantes a fallos, motores antifraude en tiempo real y seguridad de aplicaciones en Leal, Mercado Libre, FYLD e Imagemaker."
+  locale={locale}
+>
+  <div class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3.5 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-5 sm:space-y-8">
+    <div>
+      <BackToHomeButton locale={locale} />
+      <header class="border-b border-[var(--color-surface-border)] pb-8">
+        <h1 class="text-3xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-4xl">
+          {t("section.experience")}
+        </h1>
+        <p class="mt-3 max-w-2xl text-base text-[var(--color-text-secondary)]">
+          Registro detallado de trayectoria, iniciativas arquitecturales e
+          impacto técnico en sistemas distribuidos empresariales, alta
+          concurrencia y seguridad de infraestructuras.
+        </p>
+      </header>
+    </div>
+
+    <!-- Barra de Filtros de Trayectoria y Competencias Plegable -->
+    {sortedExperience.length > 0 && (
+      <ExperienceFilterBar
+        locale={locale}
+        skills={sortedSkills}
+        companies={companies}
+        totalExperience={sortedExperience.length}
+      />
+    )}
+
+    {sortedExperience.length > 0 ? (
+      <ExperienceTimeline items={sortedExperience} locale={locale} />
+    ) : (
+      <div class="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-8 text-center font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">
+        No hay registros de trayectoria disponibles aún.
+      </div>
+    )}
+  </div>
+</BaseLayout>

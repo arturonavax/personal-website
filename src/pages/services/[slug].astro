@@ -1,0 +1,172 @@
+---
+import { getCollection, render } from "astro:content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import TechIcon from "@/components/ui/TechIcon.astro";
+
+export async function getStaticPaths() {
+  const services = await getCollection(
+    "services",
+    ({ data }) => data.locale === "en",
+  );
+  return services.map((service) => ({
+    params: {
+      slug: service.id.replace(/^en\//, "").replace(/\.(md|mdx)$/, ""),
+    },
+    props: { service },
+  }));
+}
+
+const { service } = Astro.props;
+const { Content } = await render(service);
+const {
+  title,
+  description,
+  type,
+  price,
+  deliveryTime,
+  tags = [],
+  deliverables = [],
+  ctaUrl = "/#contact",
+  ctaText = "Get in Touch",
+  translationKey,
+} = service.data;
+
+const typeLabels: Record<string, string> = {
+  service: "Technical Advisory & Consulting",
+  product: "Engineering Kit & Blueprint",
+  mentorship: "1-on-1 Engineering Mentorship",
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Service",
+  name: title,
+  description: description,
+  provider: {
+    "@type": "Person",
+    name: "Arturo Nava",
+    url: "https://arturonavax.com",
+  },
+  inLanguage: "en",
+};
+---
+
+<BaseLayout
+  title={`${title} — Arturo Nava`}
+  description={description}
+  locale="en"
+  type="article"
+  collectionName="services"
+  translationKey={translationKey}
+  jsonLd={jsonLd}
+>
+  <article class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-8">
+    <!-- Back to Services Hub -->
+    <div>
+      <a
+        href="/services"
+        class="inline-flex items-center gap-1.5 font-mono text-xs text-[var(--color-accent-gold)] hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+      >
+        &larr; Back to store & services
+      </a>
+    </div>
+
+    <!-- Header Card -->
+    <header class="geometric-box rounded-lg p-6 sm:p-8 space-y-6 bg-[var(--color-surface-card)]">
+      <div class="space-y-3 border-b border-[var(--color-surface-border-subtle)] pb-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-[var(--color-text-muted)]">
+          <span class="inline-flex items-center gap-2 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 text-[var(--color-accent-gold)] uppercase tracking-wider font-semibold">
+            {typeLabels[type] ?? type}
+          </span>
+          {price && (
+            <span class="text-sm font-bold text-[var(--color-text-primary)]">
+              {price}
+            </span>
+          )}
+        </div>
+
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--color-text-primary)]">
+          {title}
+        </h1>
+
+        <p class="text-sm sm:text-base text-[var(--color-text-secondary)] leading-relaxed font-sans">
+          {description}
+        </p>
+
+        {deliveryTime && (
+          <div class="flex items-center gap-2 text-xs font-mono text-[var(--color-text-muted)] pt-1">
+            <span class="text-[var(--color-accent-gold)]">
+              ⏱ Estimated Timeline:
+            </span>
+            <span>{deliveryTime}</span>
+          </div>
+        )}
+      </div>
+
+      <!-- Deliverables Section -->
+      {deliverables.length > 0 && (
+        <div class="space-y-3">
+          <div class="text-xs font-mono text-[var(--color-text-muted)] uppercase tracking-wider">
+            Included Deliverables & Scope
+          </div>
+          <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-[var(--color-text-secondary)]">
+            {deliverables.map((item) => (
+              <li class="flex items-start gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] p-2.5">
+                <span class="text-[var(--color-accent-gold)] shrink-0 font-bold">
+                  ✓
+                </span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <!-- Tags & Action CTA -->
+      <div class="pt-4 border-t border-[var(--color-surface-border-subtle)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex flex-wrap gap-1.5 font-mono text-xs">
+          {tags.map((tag) => (
+            <span class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)]">
+              <TechIcon
+                name={tag}
+                class="h-3 w-3 text-[var(--color-accent-gold)]"
+              />
+              <span>{tag}</span>
+            </span>
+          ))}
+        </div>
+
+        <a
+          href={ctaUrl}
+          target={ctaUrl.startsWith("http") ? "_blank" : undefined}
+          rel={ctaUrl.startsWith("http") ? "noopener noreferrer" : undefined}
+          class="btn-gold px-5 py-2.5 inline-flex items-center gap-2 font-mono text-xs sm:text-sm font-semibold tracking-wide shrink-0"
+        >
+          <span>{ctaText}</span>
+          <span>&rarr;</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Detailed Content Body -->
+    <section class="space-y-6 text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed [&>h2]:mt-10 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:text-[var(--color-text-primary)] [&>h2]:border-b [&>h2]:border-[var(--color-surface-border-subtle)] [&>h2]:pb-3 [&>h3]:mt-8 [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:text-[var(--color-accent-gold)] [&>p]:leading-8 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:space-y-2.5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:space-y-2.5 [&>pre]:rounded-lg [&>pre]:border [&>pre]:border-[var(--color-surface-border)] [&>pre]:bg-[var(--color-surface-card)] [&>pre]:p-5 [&>pre]:overflow-x-auto [&>pre]:text-xs sm:[&>pre]:text-sm [&>code]:rounded [&>code]:bg-[var(--color-surface-card)] [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:font-mono [&>code]:text-xs sm:[&>code]:text-sm [&>code]:text-[var(--color-accent-gold)]">
+      <Content />
+    </section>
+
+    <!-- Bottom Navigation -->
+    <div class="pt-6 border-t border-[var(--color-surface-border)] flex items-center justify-between font-mono text-xs">
+      <a
+        href="/services"
+        class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
+      >
+        &larr; View all store items & services
+      </a>
+      <a
+        href="/#contact"
+        class="inline-flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
+      >
+        Discuss custom requirements &rarr;
+      </a>
+    </div>
+  </article>
+</BaseLayout>

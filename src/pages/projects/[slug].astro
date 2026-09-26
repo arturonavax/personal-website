@@ -1,0 +1,33 @@
+---
+import { getCollection, render } from "astro:content";
+import ArticleLayout from "@/layouts/ArticleLayout.astro";
+
+export async function getStaticPaths() {
+  const projects = await getCollection(
+    "projects",
+    ({ data }) => data.locale === "en",
+  );
+  return projects.map((project) => ({
+    params: {
+      slug: project.id.replace(/^en\//, "").replace(/\.md$/, ""),
+    },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+---
+
+<ArticleLayout
+  title={`${project.data.title} — Architecture Breakdown`}
+  description={project.data.description}
+  locale="en"
+  translationKey={project.data.translationKey}
+  collectionName="projects"
+  backHref="/projects"
+  backLabel="Back to projects"
+  tags={project.data.techStack}
+>
+  <Content />
+</ArticleLayout>

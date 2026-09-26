@@ -1,0 +1,698 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
+
+const locale = "es";
+---
+
+<BaseLayout
+  title="Buscador Universal — Arturo Nava"
+  description="Búsqueda instantánea en proyectos de sistemas distribuidos, ensayos técnicos, trayectoria profesional y notas de ingeniería."
+  locale={locale}
+>
+  <div class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-6 sm:space-y-8">
+    <div>
+      <BackToHomeButton locale={locale} />
+      <header class="border-b border-[var(--color-surface-border)] pb-8">
+        <h1 class="text-3xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-4xl">
+          Buscador Universal
+        </h1>
+        <p class="mt-3 max-w-2xl text-base text-[var(--color-text-secondary)]">
+          Búsqueda reactiva a cada pulsación de tecla sobre proyectos
+          arquitecturales, ensayos técnicos, trayectoria profesional y
+          tecnologías clave.
+        </p>
+      </header>
+    </div>
+
+    <!-- Search Input Form -->
+    <div class="space-y-4">
+      <div class="relative flex items-center rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-3 shadow-sm focus-within:border-[var(--color-accent-gold)] focus-within:ring-1 focus-within:ring-[var(--color-accent-gold)]">
+        <svg
+          class="h-5 w-5 text-[var(--color-accent-gold)] shrink-0 mr-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input
+          type="search"
+          id="page-search-input"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Buscar ej. Golang, Rust, SIMD, Redis, Snowflake, Mercado Libre..."
+          class="w-full bg-transparent font-mono text-sm sm:text-base text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
+        />
+      </div>
+
+      <!-- Quick query keywords -->
+      <div class="flex flex-wrap items-center gap-2 font-mono text-xs text-[var(--color-text-muted)]">
+        <span>Búsquedas populares:</span>
+        {[
+          "Golang",
+          "Rust",
+          "SIMD",
+          "Snowflake",
+          "Kafka",
+          "Redis",
+          "Mercado Libre",
+          "Docker",
+          "AWS",
+        ].map((term) => (
+          <button
+            type="button"
+            data-search-chip={term}
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+          >
+            {term}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-[var(--color-surface-border-subtle)] pb-4 font-mono text-xs">
+      <button
+        type="button"
+        data-filter-tab="all"
+        class="tab-btn rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] font-semibold px-3 py-1.5 transition-colors cursor-pointer"
+      >
+        Todos (<span id="count-all">0</span>)
+      </button>
+      <button
+        type="button"
+        data-filter-tab="project"
+        class="tab-btn rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] px-3 py-1.5 hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
+      >
+        Proyectos (<span id="count-projects">0</span>)
+      </button>
+      <button
+        type="button"
+        data-filter-tab="post"
+        class="tab-btn rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] px-3 py-1.5 hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
+      >
+        Ensayos (<span id="count-posts">0</span>)
+      </button>
+      <button
+        type="button"
+        data-filter-tab="experience"
+        class="tab-btn rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] px-3 py-1.5 hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
+      >
+        Trayectoria (<span id="count-experience">0</span>)
+      </button>
+    </div>
+
+    <!-- Search Results Container -->
+    <div id="page-search-results" class="space-y-4">
+      <!-- Populated via script -->
+    </div>
+  </div>
+</BaseLayout>
+
+<script is:inline>
+  (function () {
+    function setupPageSearch() {
+      var input = document.getElementById("page-search-input");
+      var resultsContainer = document.getElementById("page-search-results");
+      var tabBtns = document.querySelectorAll("[data-filter-tab]");
+      var chips = document.querySelectorAll("[data-search-chip]");
+
+      if (!input || !resultsContainer) return;
+
+      var indexPath = "/search-index-es.json";
+
+      if (!window.__searchIndexCache) {
+        window.__searchIndexCache = {};
+      }
+
+      function fetchSearchData() {
+        if (window.__searchIndexCache[indexPath]) {
+          return Promise.resolve(window.__searchIndexCache[indexPath]);
+        }
+        if (
+          window.__searchIndexFetching &&
+          window.__searchIndexFetching[indexPath]
+        ) {
+          return window.__searchIndexFetching[indexPath];
+        }
+        if (!window.__searchIndexFetching) {
+          window.__searchIndexFetching = {};
+        }
+        window.__searchIndexFetching[indexPath] = fetch(indexPath)
+          .then(function (res) {
+            if (!res.ok)
+              throw new Error("Search index response not ok: " + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            window.__searchIndexCache[indexPath] = Array.isArray(data)
+              ? data
+              : [];
+            return window.__searchIndexCache[indexPath];
+          })
+          .catch(function (err) {
+            console.error("Failed to load search index:", err);
+            return [];
+          });
+        return window.__searchIndexFetching[indexPath];
+      }
+
+      var currentFilter = "all";
+
+      // Parse initial URL ?q=
+      var urlParams = new URLSearchParams(window.location.search);
+      var initialQ = urlParams.get("q") || "";
+      if (initialQ) {
+        input.value = initialQ;
+      }
+
+      function escapeHtml(str) {
+        if (!str) return "";
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      var TECH_EQUIVALENTS = {
+        go: ["golang"],
+        golang: ["go"],
+        k8s: ["kubernetes"],
+        kubernetes: ["k8s"],
+        postgres: ["postgresql", "sql"],
+        postgresql: ["postgres", "sql"],
+        sql: ["postgresql", "postgres", "mysql", "sqlite"],
+        ts: ["typescript"],
+        typescript: ["ts"],
+        js: ["javascript"],
+        javascript: ["js"],
+      };
+
+      function getSearchVariants(word) {
+        var w = word.toLowerCase().trim();
+        var variants = [w];
+        if (TECH_EQUIVALENTS[w]) {
+          TECH_EQUIVALENTS[w].forEach(function (syn) {
+            if (variants.indexOf(syn) === -1) variants.push(syn);
+          });
+        }
+        return variants;
+      }
+
+      function matchSingleTerm(haystackLower, term) {
+        if (!haystackLower || !term) return false;
+
+        // "sql": matches as standalone word, or inside SQL-family database names ("postgresql", "sqlite", "mysql", "nosql", "tsql")
+        if (term === "sql") {
+          var sqlRegex =
+            /(?:^|[^a-zA-Z0-9])sql(?=$|[^a-zA-Z0-9])|(?:postgre|my|lite|no|t|pl)sql/i;
+          return sqlRegex.test(haystackLower);
+        }
+
+        // "go": must match as standalone word or technical compound prefix ("golang", "gosnowflake", "goroutine"),
+        // but never inside unrelated words ("algorithm", "category", "ongoing", "cargo").
+        if (term === "go") {
+          var goRegex =
+            /(?:^|[^a-zA-Z0-9])go(?:lang|snowflake|routine|fmt|pkg)?(?=$|[^a-zA-Z0-9])/i;
+          return goRegex.test(haystackLower);
+        }
+
+        // Query starting with "rus" or "rust" (e.g. "rus", "rust", "rustlang", "rustacean"):
+        // Must start at a word boundary!
+        // It CANNOT be preceded by an alphanumeric character (so "trust", "zero-trust", "crust", "thrust" NEVER match!)
+        if (/^rust?/i.test(term)) {
+          var rustTermClean = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          var rustRegex = new RegExp("(?:^|[^a-zA-Z0-9])" + rustTermClean, "i");
+          return rustRegex.test(haystackLower);
+        }
+
+        // Very short acronyms/terms (length <= 2, e.g. "ts", "js", "c", "r"):
+        // Enforce word boundaries
+        if (term.length <= 2) {
+          var shortRegex = new RegExp(
+            "(?:^|[^a-zA-Z0-9])" +
+              term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+              "(?=$|[^a-zA-Z0-9])",
+            "i",
+          );
+          return shortRegex.test(haystackLower);
+        }
+
+        // General terms (length >= 3):
+        // Check if a word in haystack starts with the term (e.g. "crypto" -> "cryptographic", "postgre" -> "postgresql")
+        var termClean = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        var wordStartRegex = new RegExp("(?:^|[^a-zA-Z0-9])" + termClean, "i");
+        if (wordStartRegex.test(haystackLower)) {
+          return true;
+        }
+
+        // Allow compound tech substring if term is at least 4 chars long (e.g. "snowflake" in "gosnowflake")
+        if (term.length >= 4 && haystackLower.indexOf(term) !== -1) {
+          if (term.indexOf("rust") !== -1) {
+            return wordStartRegex.test(haystackLower);
+          }
+          return true;
+        }
+
+        return false;
+      }
+
+      function matchesSearchTerm(haystack, rawWord) {
+        if (!haystack || !rawWord) return false;
+        var haystackLower = haystack.toLowerCase();
+        var variants = getSearchVariants(rawWord);
+
+        for (var i = 0; i < variants.length; i++) {
+          if (matchSingleTerm(haystackLower, variants[i])) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function highlight(text, query) {
+        if (!query || !text) return escapeHtml(text);
+        var words = query.trim().split(/\s+/).filter(Boolean);
+        if (!words.length) return escapeHtml(text);
+
+        var allTerms = [];
+        words.forEach(function (w) {
+          var variants = getSearchVariants(w);
+          variants.forEach(function (v) {
+            if (allTerms.indexOf(v) === -1) allTerms.push(v);
+          });
+        });
+
+        allTerms.sort(function (a, b) {
+          return b.length - a.length;
+        });
+
+        var escaped = escapeHtml(text);
+        allTerms.forEach(function (term) {
+          var tClean = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          var regex;
+
+          // For "rus" or "rust": must match at word boundary so it NEVER highlights inside "trust"
+          if (/^rust?/i.test(term)) {
+            regex = new RegExp(
+              "(^|[^a-zA-Z0-9])(" + tClean + "[a-zA-Z0-9]*)",
+              "gi",
+            );
+          } else if (term === "go") {
+            regex = new RegExp(
+              "(^|[^a-zA-Z0-9])(go(?:lang|snowflake|routine|fmt|pkg)?)(?=[^a-zA-Z0-9]|$)",
+              "gi",
+            );
+          } else if (term.length <= 2) {
+            regex = new RegExp(
+              "(^|[^a-zA-Z0-9])(" + tClean + ")(?=[^a-zA-Z0-9]|$)",
+              "gi",
+            );
+          } else {
+            // General terms: match at word boundary (or after "go" in compounds like "gosnowflake")
+            regex = new RegExp(
+              "(^|[^a-zA-Z0-9]|go)(" + tClean + "[a-zA-Z0-9]*)",
+              "gi",
+            );
+          }
+
+          escaped = escaped.replace(regex, function (fullMatch, p1, p2) {
+            var prefix = typeof p1 === "string" ? p1 : "";
+            var content = typeof p2 === "string" ? p2 : fullMatch;
+            return (
+              prefix +
+              '<mark class="bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] px-0.5 rounded font-semibold">' +
+              content +
+              "</mark>"
+            );
+          });
+        });
+        return escaped;
+      }
+
+      function hasExactMatch(item, rawQuery) {
+        if (!item || !rawQuery) return false;
+        var q = rawQuery.trim().toLowerCase();
+        if (!q) return false;
+
+        var titleLower = (item.title || "").toLowerCase();
+        var metaLower = (item.meta || "").toLowerCase();
+        var tagsList = Array.isArray(item.tags) ? item.tags : [];
+        var keywordsList = Array.isArray(item.keywords) ? item.keywords : [];
+
+        // 1. Direct equality with title or company/meta
+        if (titleLower === q || metaLower === q) return true;
+
+        // 2. Exact match against any tag or keyword
+        for (var i = 0; i < tagsList.length; i++) {
+          if (tagsList[i].toLowerCase() === q) return true;
+        }
+        for (var j = 0; j < keywordsList.length; j++) {
+          if (keywordsList[j].toLowerCase() === q) return true;
+        }
+
+        // 3. Whole-word or phrase regex in title, meta, tags, or keywords
+        var qClean = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        var wholeWordRegex = new RegExp(
+          "(?:^|[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ])" +
+            qClean +
+            "(?=$|[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ])",
+          "i",
+        );
+
+        if (wholeWordRegex.test(titleLower) || wholeWordRegex.test(metaLower))
+          return true;
+        if (
+          tagsList.some(function (t) {
+            return wholeWordRegex.test(t);
+          })
+        )
+          return true;
+        if (
+          keywordsList.some(function (k) {
+            return wholeWordRegex.test(k);
+          })
+        )
+          return true;
+
+        // 4. Multi-word query check: every single word must match as an exact whole word in title, meta, tags, or keywords
+        var words = q.split(/\s+/).filter(Boolean);
+        if (words.length > 1) {
+          var allExact = words.every(function (w) {
+            var wClean = w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            var wRegex = new RegExp(
+              "(?:^|[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ])" +
+                wClean +
+                "(?=$|[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ])",
+              "i",
+            );
+            if (wRegex.test(titleLower) || wRegex.test(metaLower)) return true;
+            if (
+              tagsList.some(function (t) {
+                return t.toLowerCase() === w || wRegex.test(t);
+              })
+            )
+              return true;
+            if (
+              keywordsList.some(function (k) {
+                return k.toLowerCase() === w || wRegex.test(k);
+              })
+            )
+              return true;
+            return false;
+          });
+          if (allExact) return true;
+        }
+
+        return false;
+      }
+
+      function renderResults() {
+        var rawQuery = input.value.trim();
+        var q = rawQuery.toLowerCase();
+        var words = q.split(/\s+/).filter(Boolean);
+
+        // Update URL
+        if (window.history.replaceState) {
+          var newUrl =
+            window.location.pathname +
+            (rawQuery ? "?q=" + encodeURIComponent(rawQuery) : "");
+          window.history.replaceState(null, "", newUrl);
+        }
+
+        if (!window.__searchIndexCache[indexPath]) {
+          resultsContainer.innerHTML =
+            '<div class="rounded-lg border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)] p-8 text-center font-mono text-sm text-[var(--color-accent-gold)] flex items-center justify-center gap-2">' +
+            '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>' +
+            "<span>Cargando índice de búsqueda...</span>" +
+            "</div>";
+          fetchSearchData().then(function () {
+            renderResults();
+          });
+          return;
+        }
+
+        var searchData = window.__searchIndexCache[indexPath] || [];
+
+        var matched = searchData.filter(function (item) {
+          if (words.length === 0) return true;
+          var titleStr = item.title || "";
+          var descStr = item.description || "";
+          var metaStr = item.meta || "";
+          var tagsList = Array.isArray(item.tags) ? item.tags : [];
+          var keywordsList = Array.isArray(item.keywords) ? item.keywords : [];
+
+          return words.every(function (w) {
+            if (matchesSearchTerm(titleStr, w)) return true;
+            if (matchesSearchTerm(descStr, w)) return true;
+            if (matchesSearchTerm(metaStr, w)) return true;
+            if (
+              tagsList.some(function (t) {
+                return matchesSearchTerm(t, w);
+              })
+            )
+              return true;
+            if (
+              keywordsList.some(function (k) {
+                return matchesSearchTerm(k, w);
+              })
+            )
+              return true;
+            return false;
+          });
+        });
+
+        var pageLang = "es";
+        var otherLang = "en";
+
+        // 1. Group all raw matches by entityId (or fallback to normalized id)
+        var entityMatches = {};
+        matched.forEach(function (item) {
+          var entId = item.entityId || item.id.replace(/-(en|es)-/, "-");
+          if (!entityMatches[entId]) {
+            entityMatches[entId] = {};
+          }
+          entityMatches[entId][item.locale] = item;
+        });
+
+        // 2. Intelligent Language Deduplication:
+        // - Prioritize Spanish: if matched in Spanish, ALWAYS display the Spanish version!
+        // - Show English version ONLY if Spanish didn't match AND English has an EXACT match!
+        var finalMatches = [];
+        Object.keys(entityMatches).forEach(function (entId) {
+          var pair = entityMatches[entId];
+          if (pair[pageLang]) {
+            finalMatches.push(pair[pageLang]);
+          } else if (
+            pair[otherLang] &&
+            hasExactMatch(pair[otherLang], rawQuery)
+          ) {
+            finalMatches.push(pair[otherLang]);
+          }
+        });
+
+        // 3. Score and rank: massive +5000 bonus for Spanish, plus field relevancies
+        function computeScore(item) {
+          var score = 0;
+          if (item.locale === pageLang) score += 5000;
+
+          var titleL = (item.title || "").toLowerCase();
+          var metaL = (item.meta || "").toLowerCase();
+          var descL = (item.description || "").toLowerCase();
+          var tagsL = (item.tags || []).map(function (t) {
+            return t.toLowerCase();
+          });
+          var keysL = (item.keywords || []).map(function (k) {
+            return k.toLowerCase();
+          });
+
+          // Exact query match bonuses
+          if (titleL === q) score += 1000;
+          if (metaL === q) score += 500;
+          if (tagsL.indexOf(q) !== -1) score += 400;
+          if (keysL.indexOf(q) !== -1) score += 300;
+
+          words.forEach(function (w) {
+            if (titleL.indexOf(w) !== -1) score += 150;
+            if (
+              tagsL.some(function (t) {
+                return t.indexOf(w) !== -1;
+              })
+            )
+              score += 100;
+            if (
+              keysL.some(function (k) {
+                return k.indexOf(w) !== -1;
+              })
+            )
+              score += 80;
+            if (metaL.indexOf(w) !== -1) score += 60;
+            if (descL.indexOf(w) !== -1) score += 20;
+          });
+          return score;
+        }
+
+        finalMatches.sort(function (a, b) {
+          return computeScore(b) - computeScore(a);
+        });
+
+        matched = finalMatches;
+
+        // Update counts
+        var pCount = matched.filter(function (m) {
+          return m.type === "project";
+        }).length;
+        var postCount = matched.filter(function (m) {
+          return m.type === "post";
+        }).length;
+        var expCount = matched.filter(function (m) {
+          return m.type === "experience";
+        }).length;
+
+        var elAll = document.getElementById("count-all");
+        var elProjects = document.getElementById("count-projects");
+        var elPosts = document.getElementById("count-posts");
+        var elExp = document.getElementById("count-experience");
+
+        if (elAll) elAll.textContent = matched.length;
+        if (elProjects) elProjects.textContent = pCount;
+        if (elPosts) elPosts.textContent = postCount;
+        if (elExp) elExp.textContent = expCount;
+
+        var filtered = matched;
+        if (currentFilter !== "all") {
+          filtered = matched.filter(function (m) {
+            return m.type === currentFilter;
+          });
+        }
+
+        if (filtered.length === 0) {
+          resultsContainer.innerHTML =
+            '<div class="rounded-lg border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)] p-8 text-center font-mono space-y-3">' +
+            '<p class="text-base text-[var(--color-text-primary)] font-bold">No se encontraron resultados' +
+            (rawQuery ? ' para "' + escapeHtml(rawQuery) + '"' : "") +
+            "</p>" +
+            '<p class="text-sm text-[var(--color-text-secondary)]">Intenta buscar términos como Golang, Rust, SIMD, Redis, Snowflake, o Mercado Libre.</p>' +
+            "</div>";
+          return;
+        }
+
+        var html = "";
+        filtered.forEach(function (item) {
+          var tagPills = "";
+          if (Array.isArray(item.tags)) {
+            tagPills = item.tags
+              .map(function (tag) {
+                return (
+                  '<span class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)]">' +
+                  escapeHtml(tag) +
+                  "</span>"
+                );
+              })
+              .join(" ");
+          }
+
+          var typeBadgeClass = "text-[var(--color-accent-gold)]";
+          if (item.type === "post")
+            typeBadgeClass = "text-[var(--color-accent-status)]";
+          if (item.type === "experience")
+            typeBadgeClass = "text-[var(--color-text-secondary)]";
+
+          var lang = item.langBadge || (item.locale === "es" ? "ES" : "EN");
+          var langBadgeClass =
+            item.locale === "en"
+              ? "border-[var(--color-accent-gold)]/60 text-[var(--color-accent-gold)]"
+              : "border-[var(--color-surface-border)] text-[var(--color-text-muted)]";
+
+          html +=
+            '<article class="geometric-box rounded p-5 sm:p-6 transition-all font-mono">' +
+            '<div class="flex items-center justify-between gap-2 text-xs mb-2">' +
+            '<div class="flex items-center gap-1.5">' +
+            '<span class="rounded border ' +
+            langBadgeClass +
+            ' bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-bold uppercase tracking-wider">' +
+            escapeHtml(lang) +
+            "</span>" +
+            '<span class="font-bold uppercase tracking-wider text-xs ' +
+            typeBadgeClass +
+            '">' +
+            escapeHtml(item.category) +
+            "</span>" +
+            "</div>" +
+            (item.meta
+              ? '<span class="text-[var(--color-text-muted)] text-xs">' +
+                escapeHtml(item.meta) +
+                "</span>"
+              : "") +
+            "</div>" +
+            '<h3 class="text-lg sm:text-xl font-bold text-[var(--color-text-primary)] hover:text-[var(--color-accent-gold)] transition-colors">' +
+            '<a href="' +
+            item.url +
+            '">' +
+            highlight(item.title, rawQuery) +
+            "</a>" +
+            "</h3>" +
+            '<p class="mt-2 text-sm sm:text-base text-[var(--color-text-secondary)] font-sans leading-relaxed">' +
+            highlight(item.description, rawQuery) +
+            "</p>" +
+            (tagPills
+              ? '<div class="mt-4 flex flex-wrap gap-1.5 border-t border-[var(--color-surface-border-subtle)] pt-3">' +
+                tagPills +
+                "</div>"
+              : "") +
+            '<div class="mt-4 flex justify-end">' +
+            '<a href="' +
+            item.url +
+            '" class="text-xs text-[var(--color-accent-gold)] font-bold hover:underline inline-flex items-center gap-1.5 py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-accent-gold-subtle)] transition-colors">' +
+            "<span>Ver especificación</span> &rarr;" +
+            "</a>" +
+            "</div>" +
+            "</article>";
+        });
+
+        resultsContainer.innerHTML = html;
+      }
+
+      if (!input.dataset.bound) {
+        input.dataset.bound = "true";
+        input.addEventListener("input", renderResults);
+
+        chips.forEach(function (chip) {
+          chip.addEventListener("click", function () {
+            input.value = chip.getAttribute("data-search-chip") || "";
+            renderResults();
+          });
+        });
+
+        tabBtns.forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            tabBtns.forEach(function (b) {
+              b.className =
+                "tab-btn rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] px-3 py-1.5 hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer";
+            });
+            btn.className =
+              "tab-btn rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] font-semibold px-3 py-1.5 transition-colors cursor-pointer";
+            currentFilter = btn.getAttribute("data-filter-tab") || "all";
+            renderResults();
+          });
+        });
+      }
+
+      // Initial render
+      renderResults();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupPageSearch);
+    } else {
+      setupPageSearch();
+    }
+    document.addEventListener("astro:page-load", setupPageSearch);
+  })();
+</script>

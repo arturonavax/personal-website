@@ -1,0 +1,95 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ProjectCard from "@/components/ui/ProjectCard.astro";
+import ProjectsFilterBar from "@/components/ui/ProjectsFilterBar.astro";
+import PaginationController from "@/components/ui/PaginationController.astro";
+import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
+import { useTranslations } from "@/i18n/utils";
+
+const locale = "es";
+const t = useTranslations(locale);
+
+const allProjects = await getCollection(
+  "projects",
+  ({ data }) => data.locale === locale,
+);
+const sortedProjects = allProjects.sort((a, b) => a.data.order - b.data.order);
+
+// Calcular frecuencia de tecnologías
+const techCounts: Record<string, number> = {};
+sortedProjects.forEach((p) => {
+  p.data.techStack.forEach((tech) => {
+    techCounts[tech] = (techCounts[tech] || 0) + 1;
+  });
+});
+const sortedTags = Object.entries(techCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 10)
+  .map(([tag, count]) => ({ tag, count }));
+
+// Calcular empresas / contextos
+const companyCounts: Record<string, number> = {};
+sortedProjects.forEach((p) => {
+  const comp = p.data.company ?? "Independent";
+  companyCounts[comp] = (companyCounts[comp] || 0) + 1;
+});
+const companies = Object.entries(companyCounts).map(([name, count]) => ({
+  name,
+  count,
+}));
+---
+
+<BaseLayout
+  title="Proyectos & Arquitectura — Arturo Nava"
+  description="Sistemas distribuidos, motores antifraude en tiempo real, plataformas criptográficas e infraestructura de baja latencia por Arturo Nava."
+  locale={locale}
+>
+  <div class="mx-auto max-w-5xl px-2 min-[360px]:px-4 pt-1 sm:pt-3.5 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-5 sm:space-y-8">
+    <div>
+      <BackToHomeButton locale={locale} />
+      <header class="border-b border-[var(--color-surface-border)] pb-8">
+        <h1 class="text-3xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-4xl">
+          {t("section.projects")}
+        </h1>
+        <p class="mt-3 max-w-2xl text-base text-[var(--color-text-secondary)]">
+          Desgloses arquitecturales, sistemas de producción críticos y
+          contribuciones técnicas enfocadas en alta concurrencia, estado
+          distribuido y aceleración por hardware.
+        </p>
+      </header>
+    </div>
+
+    <!-- Barra de Filtros de Proyectos Plegable -->
+    {sortedProjects.length > 0 && (
+      <ProjectsFilterBar
+        locale={locale}
+        tags={sortedTags}
+        companies={companies}
+        totalProjects={sortedProjects.length}
+      />
+    )}
+
+    {sortedProjects.length > 0 ? (
+      <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {sortedProjects.map((project) => (
+          <ProjectCard project={project} locale={locale} />
+        ))}
+      </div>
+    ) : (
+      <div class="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-8 text-center font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">
+        No hay proyectos publicados aún. Vuelve pronto.
+      </div>
+    )}
+
+    <!-- Scalable Pagination Controller -->
+    {sortedProjects.length > 0 && (
+      <PaginationController
+        locale={locale}
+        pageSize={4}
+        targetSelector="[data-project-card]"
+        totalItems={sortedProjects.length}
+      />
+    )}
+  </div>
+</BaseLayout>

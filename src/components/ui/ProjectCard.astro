@@ -1,0 +1,200 @@
+---
+import type { CollectionEntry } from "astro:content";
+import type { Locale } from "@/i18n/ui";
+import { useTranslations } from "@/i18n/utils";
+import TechIcon from "@/components/ui/TechIcon.astro";
+
+interface Props {
+  project: CollectionEntry<"projects">;
+  locale: Locale;
+}
+
+const { project, locale } = Astro.props;
+const t = useTranslations(locale);
+const {
+  title,
+  description,
+  role,
+  company,
+  techStack,
+  metrics,
+  repoUrl,
+  liveUrl,
+} = project.data;
+
+const slug = project.id
+  .replace(new RegExp(`^${locale}/`), "")
+  .replace(/\.md$/, "");
+const detailUrl =
+  locale === "es" ? `/es/projects/${slug}` : `/projects/${slug}`;
+---
+
+<article
+  data-project-card
+  data-tech-stack={techStack.map((t) => t.toLowerCase().trim()).join("|")}
+  data-company={(company ?? "Independent").toLowerCase().trim()}
+  class="geometric-box group relative flex flex-col justify-between p-6 sm:p-7 rounded transition-all project-card"
+>
+  <div>
+    <div class="flex items-center justify-between gap-2 text-xs sm:text-sm font-mono text-[var(--color-text-muted)]">
+      <span class="text-[var(--color-accent-gold)] font-medium">
+        {company ?? "Independent"}
+      </span>
+      <span>{role}</span>
+    </div>
+
+    <h3 class="mt-3 text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-gold)] transition-colors">
+      <a
+        href={detailUrl}
+        class="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+      >
+        {title}
+      </a>
+    </h3>
+
+    <p class="mt-3 text-sm sm:text-base leading-relaxed text-[var(--color-text-secondary)]">
+      {description}
+    </p>
+
+    <!-- Metrics Strip -->
+    {metrics && metrics.length > 0 && (
+      <div class="metrics-strip mt-5 border-t border-[var(--color-surface-border-subtle)] pt-4">
+        <div class="metrics-grid">
+          {metrics.map((m) => (
+            <div
+              class="metric-item rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/40 p-2 sm:p-2.5 min-w-0"
+              title={`${m.value} — ${m.label}`}
+            >
+              <span class="metric-value font-mono text-xs sm:text-sm font-bold text-[var(--color-text-primary)] leading-tight tracking-tight">
+                {m.value}
+              </span>
+              <span class="metric-label text-[11px] sm:text-xs text-[var(--color-text-muted)] leading-snug">
+                {m.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+
+  <div class="mt-6 border-t border-[var(--color-surface-border-subtle)] pt-4 flex flex-wrap items-center justify-between gap-3">
+    <!-- Tech Stack -->
+    <div class="flex flex-wrap gap-1.5 font-mono text-xs">
+      {techStack.map((tech) => (
+        <button
+          type="button"
+          data-tech-search={tech}
+          title={
+            locale === "es"
+              ? `Buscar proyectos y notas sobre ${tech}`
+              : `Search projects & essays mentioning ${tech}`
+          }
+          class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+        >
+          <TechIcon
+            name={tech}
+            class="h-3 w-3 text-[var(--color-accent-gold)]"
+          />
+          <span>{tech}</span>
+        </button>
+      ))}
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-3 text-xs font-mono">
+      {repoUrl && (
+        <a
+          href={repoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`GitHub Repository for ${title}`}
+          class="inline-flex items-center gap-1 text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] transition-colors"
+        >
+          <svg
+            class="h-3.5 w-3.5 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+          </svg>
+          <span>Repo</span>
+        </a>
+      )}
+      {liveUrl && (
+        <a
+          href={liveUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Live Demo for ${title}`}
+          class="inline-flex items-center gap-1 text-[var(--color-accent-gold)] hover:underline"
+        >
+          <svg
+            class="h-3.5 w-3.5 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          <span>Live</span>
+        </a>
+      )}
+      <a
+        href={detailUrl}
+        class="text-[var(--color-accent-gold)] font-medium hover:underline inline-flex items-center gap-1.5 py-2 px-3 -mx-2 -my-1.5 rounded hover:bg-[var(--color-accent-gold-subtle)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+      >
+        <span>{t("cta.viewArchitecture")}</span>
+        <span>&rarr;</span>
+      </a>
+    </div>
+  </div>
+</article>
+
+<style>
+  .project-card {
+    container-type: inline-size;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .metric-item {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .metric-value {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .metric-label {
+    min-width: 0;
+  }
+
+  @container (min-width: 380px) {
+    .metrics-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.625rem;
+    }
+
+    .metric-item {
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.25rem;
+    }
+  }
+</style>

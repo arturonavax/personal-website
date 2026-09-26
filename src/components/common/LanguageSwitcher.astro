@@ -1,0 +1,288 @@
+---
+import type { Locale } from "@/i18n/ui";
+import { getCounterpartUrl } from "@/i18n/utils";
+
+interface Props {
+  currentLocale: Locale;
+  translationKey?: string | undefined;
+  collectionName?:
+    | "posts"
+    | "projects"
+    | "experience"
+    | "services"
+    | "case-studies"
+    | undefined;
+}
+
+const { currentLocale, translationKey, collectionName } = Astro.props;
+const targetLocale: Locale = currentLocale === "en" ? "es" : "en";
+
+const targetUrl = await getCounterpartUrl(
+  currentLocale,
+  targetLocale,
+  Astro.url.pathname,
+  collectionName,
+  translationKey,
+);
+---
+
+<nav
+  aria-label="Language selector"
+  class="hidden min-[391px]:inline-flex items-center text-xs font-mono shrink-0 whitespace-nowrap"
+>
+  <div class="group inline-flex h-8 items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 gap-1.5 hover:border-[var(--color-accent-gold)] transition-colors">
+    <!-- Ingenious Translate SVG Icon (Hidden on screens < 420px for extreme compact fit) -->
+    <span
+      class="hidden min-[420px]:flex h-4 w-4 items-center justify-center text-[var(--color-text-muted)] group-hover:text-[var(--color-accent-gold)] transition-colors select-none shrink-0"
+      aria-hidden="true"
+      title={
+        currentLocale === "en"
+          ? "Switch language (Spanish)"
+          : "Cambiar idioma (Inglés)"
+      }
+    >
+      <svg
+        class="h-3.5 w-3.5 stroke-current fill-none shrink-0 transition-transform duration-300 group-hover:scale-105"
+        viewBox="0 0 24 24"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="m5 8 6 6"></path>
+        <path d="m4 14 6-6 2-3"></path>
+        <path d="M2 5h12"></path>
+        <path d="M7 2h1"></path>
+        <path d="m22 22-5-10-5 10"></path>
+        <path d="M14 18h6"></path>
+      </svg>
+    </span>
+
+    <!-- Segmented Language Toggle Pill (Whole container area is clickable) -->
+    {currentLocale === "en" ? (
+      <span class="h-6 px-2.5 min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">
+        EN
+      </span>
+    ) : (
+      <a
+        href={targetUrl}
+        hreflang="en"
+        lang="en"
+        data-astro-prefetch="hover"
+        data-lang-switch="en"
+        class="h-6 px-2.5 min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+      >
+        EN
+      </a>
+    )}
+    <span
+      class="text-[var(--color-surface-border)] select-none text-[10px] leading-none"
+      aria-hidden="true"
+    >
+      /
+    </span>
+    {currentLocale === "es" ? (
+      <span class="h-6 px-2.5 min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">
+        ES
+      </span>
+    ) : (
+      <a
+        href={targetUrl}
+        hreflang="es"
+        lang="es"
+        data-astro-prefetch="hover"
+        data-lang-switch="es"
+        class="h-6 px-2.5 min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+      >
+        ES
+      </a>
+    )}
+  </div>
+</nav>
+
+<script is:inline>
+  if (!window.__langSwitchDelegationBound) {
+    window.__langSwitchDelegationBound = true;
+
+    document.addEventListener("click", function (e) {
+      var link = e.target.closest("[data-lang-switch]");
+      if (!link) return;
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)
+        return;
+
+      var dest = link.getAttribute("href");
+      if (!dest) return;
+
+      e.preventDefault();
+      if (window.__isLangSwitching) return;
+      window.__isLangSwitching = true;
+
+      var isTargetEs = dest.indexOf("/es") === 0;
+      if (typeof window.__showBeacon === "function") {
+        window.__showBeacon(isTargetEs ? "Cargando..." : "Fetching...");
+      }
+
+      var currentY =
+        window.pageYOffset || document.documentElement.scrollTop || 0;
+
+      // Defensive backup in case of fetch network error
+      try {
+        sessionStorage.setItem("lang_switch_scroll", String(currentY));
+      } catch (_) {}
+
+      fetch(dest)
+        .then(function (res) {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.text();
+        })
+        .then(function (html) {
+          var parser = new DOMParser();
+          var newDoc = parser.parseFromString(html, "text/html");
+
+          function swapDOM() {
+            // 1. Root language attribute & document title
+            var newLang =
+              newDoc.documentElement.getAttribute("lang") ||
+              (dest.indexOf("/es") === 0 ? "es" : "en");
+            document.documentElement.setAttribute("lang", newLang);
+            document.title = newDoc.title;
+
+            // 2. SEO & Head metadata tags
+            var headSelectors = [
+              'meta[name="description"]',
+              'link[rel="canonical"]',
+              'link[rel="alternate"]',
+              'meta[property="og:title"]',
+              'meta[property="og:description"]',
+              'meta[name="twitter:title"]',
+              'meta[name="twitter:description"]',
+            ];
+            headSelectors.forEach(function (sel) {
+              var oldTags = document.head.querySelectorAll(sel);
+              var newTags = newDoc.head.querySelectorAll(sel);
+              if (oldTags.length && newTags.length) {
+                oldTags.forEach(function (tag) {
+                  tag.remove();
+                });
+                newTags.forEach(function (tag) {
+                  document.head.appendChild(tag.cloneNode(true));
+                });
+              }
+            });
+
+            // 3. Header swap (updates nav links, active sections, language buttons, mobile drawer)
+            var oldHeader = document.querySelector("header");
+            var newHeader = newDoc.querySelector("header");
+            if (oldHeader && newHeader) {
+              oldHeader.innerHTML = newHeader.innerHTML;
+            }
+
+            // 4. Main content swap
+            var oldMain = document.querySelector("main");
+            var newMain = newDoc.querySelector("main");
+            if (oldMain && newMain) {
+              oldMain.innerHTML = newMain.innerHTML;
+              oldMain.className = newMain.className;
+            }
+
+            // 5. Footer swap
+            var oldFooter = document.querySelector("footer");
+            var newFooter = newDoc.querySelector("footer");
+            if (oldFooter && newFooter) {
+              oldFooter.innerHTML = newFooter.innerHTML;
+            }
+
+            // 6. Page Index swap (Desktop left sidebar)
+            var oldDesktopIndex = document.getElementById("desktop-page-index");
+            var newDesktopIndex = newDoc.getElementById("desktop-page-index");
+            if (oldDesktopIndex && newDesktopIndex) {
+              oldDesktopIndex.innerHTML = newDesktopIndex.innerHTML;
+            }
+
+            // 7. Page Index cleanup (Mobile panel in stack)
+            var oldMobileIndex = document.querySelector(
+              "#floating-actions-stack #mobile-page-index-container",
+            );
+            if (oldMobileIndex) {
+              oldMobileIndex.remove();
+            }
+
+            // 8. Shortcuts dialog
+            var oldShortcuts = document.getElementById("shortcuts-dialog");
+            var newShortcuts = newDoc.getElementById("shortcuts-dialog");
+            if (oldShortcuts && newShortcuts) {
+              oldShortcuts.innerHTML = newShortcuts.innerHTML;
+            }
+
+            // 9. Universal search & judges dialogs
+            var oldSearch = document.getElementById("universal-search-dialog");
+            var newSearch = newDoc.getElementById("universal-search-dialog");
+            if (oldSearch && newSearch) {
+              oldSearch.innerHTML = newSearch.innerHTML;
+            }
+
+            var oldJudges = document.getElementById("judges-dialog");
+            var newJudges = newDoc.getElementById("judges-dialog");
+            if (oldJudges && newJudges) {
+              oldJudges.innerHTML = newJudges.innerHTML;
+            }
+
+            // 10. Update browser URL history without reload
+            history.pushState({ path: dest }, "", dest);
+
+            // 11. Lock scroll position strictly to currentY (ZERO scroll jump or flicker)
+            window.scrollTo({ top: currentY, behavior: "instant" });
+
+            // 12. Dispatch lifecycle events to rebind components
+            document.dispatchEvent(new Event("astro:page-load"));
+            window.dispatchEvent(new Event("scroll"));
+          }
+
+          document.documentElement.classList.add(
+            "lang-switching",
+            "lang-text-reacting",
+          );
+
+          if (typeof document.startViewTransition === "function") {
+            var transition = document.startViewTransition(function () {
+              swapDOM();
+            });
+            var finishLang = function () {
+              document.documentElement.classList.remove("lang-switching");
+              try {
+                sessionStorage.removeItem("lang_switch_scroll");
+              } catch (_) {}
+              setTimeout(function () {
+                document.documentElement.classList.remove("lang-text-reacting");
+                window.__isLangSwitching = false;
+              }, 240);
+            };
+            transition.finished.then(finishLang).catch(finishLang);
+          } else {
+            swapDOM();
+            try {
+              sessionStorage.removeItem("lang_switch_scroll");
+            } catch (_) {}
+            setTimeout(function () {
+              document.documentElement.classList.remove(
+                "lang-switching",
+                "lang-text-reacting",
+              );
+              window.__isLangSwitching = false;
+            }, 240);
+          }
+        })
+        .catch(function () {
+          if (typeof window.__hideBeacon === "function") {
+            window.__hideBeacon();
+          }
+          // Graceful fallback to MPA navigation on network failure
+          window.location.href = dest;
+        });
+    });
+
+    // Handle browser back/forward buttons between language versions
+    window.addEventListener("popstate", function () {
+      window.location.reload();
+    });
+  }
+</script>

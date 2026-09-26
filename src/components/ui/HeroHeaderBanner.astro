@@ -1,0 +1,411 @@
+---
+import type { Locale } from "@/i18n/ui";
+import { useTranslations } from "@/i18n/utils";
+import TechIcon from "@/components/ui/TechIcon.astro";
+import { Image } from "astro:assets";
+import arturoPhoto from "@/assets/arturonava.png";
+import { hasResume } from "@/data/cv";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+const isEs = locale === "es";
+
+const philosophies = [
+  {
+    title: isEs
+      ? "Arquitectura Limpia y Hexagonal"
+      : "Clean & Hexagonal Architecture",
+    desc: isEs
+      ? "Desacople estricto entre lógica de dominio, persistencia relacional y capas de transporte HTTP/gRPC."
+      : "Decoupled domain rules isolated from relational storage, message brokers, and delivery transport.",
+  },
+  {
+    title: isEs
+      ? "Concurrencia de Primeros Principios"
+      : "First-Principles Concurrency",
+    desc: isEs
+      ? "Goroutines, canales y worker pools sin bloqueos; buffers de memoria de cero alocaciones (sync.Pool)."
+      : "Non-blocking Go worker pools, channels, and zero-allocation memory abstractions (sync.Pool).",
+  },
+  {
+    title: isEs
+      ? "Seguridad Zero-Trust y Shift-Left"
+      : "Zero-Trust & Shift-Left DevSecOps",
+    desc: isEs
+      ? "Gobernanza de accesos de mínimo privilegio, detección proactiva de secretos y cumplimiento SOC 2."
+      : "Automated access governance, continuous secret detection, PII minimization, and SOC 2 hardening.",
+  },
+  {
+    title: isEs
+      ? "Desacople Riguroso OLTP / OLAP"
+      : "Strict OLTP / OLAP Workload Decoupling",
+    desc: isEs
+      ? "Aislamiento transaccional en DynamoDB/Postgres con streaming continuo hacia Snowflake y BigQuery."
+      : "Transactional POS stability preserved by streaming analytical interactions into Snowflake & BigQuery.",
+  },
+];
+
+const techStack = [
+  { name: "Go / Golang", category: "core" },
+  { name: "Rust", category: "core" },
+  { name: "Python", category: "core" },
+  { name: "TypeScript", category: "core" },
+  { name: "Assembly (SIMD)", category: "core" },
+  { name: "SQL", category: "core" },
+  { name: "AWS DynamoDB", category: "data" },
+  { name: "Snowflake OLAP", category: "data" },
+  { name: "Redis", category: "data" },
+  { name: "PostgreSQL", category: "data" },
+  { name: "GCP BigQuery", category: "data" },
+  { name: "Docker / K8s", category: "infra" },
+  { name: "gRPC / Protobuf", category: "infra" },
+  { name: "Ghostty", category: "tools" },
+  { name: "Zero-Trust / SOC 2", category: "security" },
+  { name: "Linux / eBPF", category: "infra" },
+];
+
+const aiWorkflowPillars = [
+  {
+    tool: "Ghostty Terminal",
+    badge: "GPU-Native",
+    detail: isEs
+      ? "Emulador terminal de latencia mínima acelerado por GPU para desarrollo de alto throughput."
+      : "GPU-accelerated native terminal environment for high-throughput orchestration.",
+  },
+  {
+    tool: "Multi-Agent Orchestration",
+    badge: "Parallel Loops",
+    detail: isEs
+      ? "Coordinación autónoma de agentes especializados con contratos estrictos de tool-calling."
+      : "Autonomous supervisor coordination across parallel specialized agents and tools.",
+  },
+  {
+    tool: "Hardness & Verification",
+    badge: "Deterministic",
+    detail: isEs
+      ? "Harnesses de pruebas deterministas, verificación adversarial y compuertas de regresión."
+      : "Deterministic test harnesses, adversarial verification gates, and evaluation suites.",
+  },
+  {
+    tool: "Process Herder",
+    badge: "Stateful",
+    detail: isEs
+      ? "Supervisión continua de procesos, ejecución de daemons resilientes y estado persistente."
+      : "Resilient process supervision, long-running daemons, and persistent session state.",
+  },
+];
+---
+
+<section
+  id="about"
+  aria-labelledby="hero-heading"
+  class="geometric-box no-corner-accents relative p-3.5 sm:p-7 lg:p-10 rounded overflow-hidden space-y-8 sm:space-y-10"
+  style="background-image: var(--hero-banner-gradient);"
+>
+  <!-- Top Profile + Intro Row -->
+  <div class="flex flex-col md:flex-row items-center md:items-start gap-5 sm:gap-8">
+    <!-- Rounded Photo (Task 5 & New Task: nested inside photo) -->
+    <div class="relative group shrink-0">
+      <div class="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-2 border-[var(--color-surface-border)] p-1 bg-[var(--color-bg-primary)] shadow-2xl transition-all duration-300 group-hover:border-[var(--color-accent-gold)] group-hover:shadow-[0_0_20px_rgba(212,139,56,0.3)]">
+        <Image
+          src={arturoPhoto}
+          alt="Arturo Nava — Senior Software / AI Engineer"
+          width={128}
+          height={128}
+          format="webp"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          class="h-full w-full rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      </div>
+      <span
+        class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 flex h-3.5 w-3.5 sm:h-4 sm:w-4 rounded-full border-2 border-[var(--color-surface-card)] bg-[var(--color-accent-status)] shadow-md"
+        title={isEs ? "Disponible activamente" : "Actively available"}
+        aria-hidden="true"
+      >
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent-status)] opacity-75"></span>
+      </span>
+    </div>
+
+    <!-- Text & Identity -->
+    <div class="flex-1 text-center md:text-left space-y-3.5 min-w-0 w-full">
+      <div class="flex flex-wrap items-center justify-center md:justify-start gap-2">
+        <!-- Availability Badge with Green Dot -->
+        <div class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 sm:px-3.5 py-1 text-[11px] sm:text-xs font-mono text-[var(--color-text-secondary)] shadow-sm min-w-0">
+          <span class="relative flex h-2 w-2 shrink-0">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent-status)] opacity-75"></span>
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent-status)]"></span>
+          </span>
+          <span class="break-words leading-tight text-center md:text-left">
+            {t("hero.badge")}
+          </span>
+        </div>
+
+        <span class="text-xs font-mono text-[var(--color-text-muted)] hidden sm:inline">
+          &bull;
+        </span>
+        <span class="text-[11px] sm:text-xs font-mono text-[var(--color-accent-gold)] break-words text-center md:text-left">
+          Bogotá (UTC-5 · US-Aligned)
+        </span>
+      </div>
+
+      <div class="space-y-1">
+        <h1
+          id="hero-heading"
+          class="text-2xl min-[380px]:text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text-primary)] break-words"
+        >
+          {t("hero.name")}
+        </h1>
+        <p class="text-xs min-[380px]:text-sm sm:text-base md:text-xl font-mono font-semibold text-[var(--color-accent-gold)] tracking-tight sm:tracking-wide break-words [overflow-wrap:anywhere]">
+          {t("hero.title")} &mdash; {t("hero.subtitle")}
+        </p>
+      </div>
+
+      <p class="text-xs min-[380px]:text-sm sm:text-base md:text-lg leading-relaxed text-[var(--color-text-secondary)] max-w-2xl font-normal break-words [overflow-wrap:anywhere]">
+        {t("hero.summary")}
+      </p>
+
+      <!-- Action Bar & Social Links (Task 10) -->
+      <div class="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-2.5 font-mono text-xs sm:text-sm">
+        <a
+          href="#contact"
+          class="btn-gold px-4 py-2 inline-flex items-center gap-2 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+        >
+          <svg
+            class="h-4 w-4 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <polyline points="19 12 12 19 5 12"></polyline>
+          </svg>
+          <span>{t("nav.contact")}</span>
+        </a>
+
+        <!-- LinkedIn -->
+        <a
+          href="https://www.linkedin.com/in/arturonavax"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="LinkedIn Profile @arturonavax"
+          class="btn-secondary px-3.5 py-2 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+        >
+          <svg
+            class="h-4 w-4 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+            <rect x="2" y="9" width="4" height="12"></rect>
+            <circle cx="4" cy="4" r="2"></circle>
+          </svg>
+          <span>LinkedIn</span>
+        </a>
+
+        <!-- CV / Resume -->
+        {hasResume && (
+          <a
+            href={isEs ? "/es/resume" : "/resume"}
+            data-astro-prefetch="hover"
+            class="btn-secondary px-3.5 py-2 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          >
+            <svg
+              class="h-4 w-4 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            <span>CV / Resume</span>
+          </a>
+        )}
+
+        <!-- GitHub -->
+        <a
+          href="https://github.com/arturonavax"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="GitHub Profile @arturonavax"
+          class="btn-secondary p-2 inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          title="GitHub @arturonavax"
+        >
+          <svg
+            class="h-4 w-4 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+          </svg>
+        </a>
+
+        <!-- X (Twitter) -->
+        <a
+          href="https://x.com/arturonavax"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="X (Twitter) @arturonavax"
+          class="btn-secondary p-2 inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          title="X @arturonavax"
+        >
+          <svg
+            class="h-4 w-4 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M4 4l16 16M4 20L20 4"></path>
+          </svg>
+        </a>
+
+        <!-- Instagram -->
+        <a
+          href="https://instagram.com/arturonavax"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Instagram @arturonavax"
+          class="btn-secondary p-2 inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          title="Instagram @arturonavax"
+        >
+          <svg
+            class="h-4 w-4 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Architectural Philosophies Section (Task 4) -->
+  <div
+    id="hero-philosophies"
+    class="border-t border-[var(--color-surface-border-subtle)] pt-6 space-y-4"
+  >
+    <div class="flex items-center justify-between text-xs sm:text-sm font-mono">
+      <span class="text-[var(--color-accent-gold)] uppercase tracking-wider font-semibold">
+        {isEs
+          ? "Filosofías de Arquitectura & Soluciones"
+          : "Architectural Philosophies & Engineering Principles"}
+      </span>
+      <span class="text-[var(--color-text-muted)] text-xs hidden sm:inline">
+        {isEs
+          ? "Mecánica de Sistemas Distribuidos"
+          : "Distributed Systems Mechanics"}
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      {philosophies.map((item) => (
+        <div class="rounded border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 space-y-1.5 font-mono transition-colors hover:border-[var(--color-surface-border)]">
+          <div class="text-sm sm:text-base font-bold text-[var(--color-text-primary)] flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0"></span>
+            <span>{item.title}</span>
+          </div>
+          <p class="text-sm text-[var(--color-text-secondary)] font-sans leading-relaxed pl-4">
+            {item.desc}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- Tech Stack Wall (Task 4 & Task 5: Clickable for Search) -->
+  <div class="border-t border-[var(--color-surface-border-subtle)] pt-6 space-y-3">
+    <div class="flex items-center justify-between text-xs sm:text-sm font-mono">
+      <span class="text-[var(--color-accent-gold)] uppercase tracking-wider font-semibold">
+        {isEs
+          ? "Stack Tecnológico en Producción"
+          : "Production Technical Arsenal"}
+      </span>
+      <span class="text-[var(--color-text-muted)] text-xs hidden sm:inline">
+        +8 Years Scaled Execution &bull;{" "}
+        {isEs ? "Clic para buscar" : "Click to search"}
+      </span>
+    </div>
+
+    <div class="flex flex-wrap gap-2.5 font-mono text-xs sm:text-sm">
+      {techStack.map((tech) => (
+        <button
+          type="button"
+          data-tech-search={tech.name}
+          title={
+            isEs
+              ? `Buscar proyectos y notas sobre ${tech.name}`
+              : `Search projects & essays mentioning ${tech.name}`
+          }
+          class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/70 px-3 py-1.5 text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+        >
+          <TechIcon
+            name={tech.name}
+            class="h-3.5 w-3.5 text-[var(--color-accent-gold)]"
+          />
+          <span>{tech.name}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <!-- Modern AI Engineering Workflow Banner (Responsive Intelligent Layout) -->
+  <div
+    id="hero-ai-workflow"
+    class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 sm:p-6 space-y-4 font-mono"
+  >
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--color-surface-border-subtle)] pb-3">
+      <div class="flex items-center gap-2">
+        <span class="h-2.5 w-2.5 rounded-full bg-[var(--color-accent-status)]"></span>
+        <span class="text-xs sm:text-sm uppercase tracking-wider font-bold text-[var(--color-accent-gold)]">
+          {isEs
+            ? "Flujo de Desarrollo AI Engineer & Orquestación"
+            : "Modern AI Engineer Workflow & Multi-Agent Toolchain"}
+        </span>
+      </div>
+      <span class="text-xs text-[var(--color-text-muted)]">
+        Ghostty &bull; Multi-Agent &bull; Test Harnesses
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs sm:text-sm">
+      {aiWorkflowPillars.map((p) => (
+        <div class="rounded border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 space-y-2 flex flex-col justify-between overflow-hidden min-w-0">
+          <div class="space-y-2 min-w-0">
+            <strong class="text-[var(--color-text-primary)] font-bold text-sm sm:text-base leading-snug block break-words">
+              {p.tool}
+            </strong>
+            <div>
+              <span class="inline-block rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2 py-0.5 text-xs text-[var(--color-accent-gold)] font-medium">
+                {p.badge}
+              </span>
+            </div>
+            <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] font-sans leading-relaxed pt-0.5">
+              {p.detail}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

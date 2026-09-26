@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="12" fill="#1E0103"/>
+  <rect x="1" y="1" width="62" height="62" rx="11" stroke="#7A1C16" stroke-width="2"/>
+  <!-- Corner geometric accents -->
+  <path d="M1 10V1H10" stroke="#D48B38" stroke-width="2"/>
+  <path d="M54 63H63V54" stroke="#D48B38" stroke-width="2"/>
+  <!-- Monogram AN -->
+  <path d="M18 46L32 16L46 46" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M23 37H41" stroke="#D48B38" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="50" cy="18" r="3.5" fill="#D48B38"/>
+</svg>

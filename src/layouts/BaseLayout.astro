@@ -1,0 +1,555 @@
+---
+import { ClientRouter } from "astro:transitions";
+import SEOHead from "@/components/common/SEOHead.astro";
+import Header from "@/components/common/Header.astro";
+import Footer from "@/components/common/Footer.astro";
+import MatrixBackground from "@/components/ui/MatrixBackground.astro";
+import ShortcutsModal from "@/components/ui/ShortcutsModal.astro";
+import UniversalSearchModal from "@/components/ui/UniversalSearchModal.astro";
+import CoffeeSponsorshipModal from "@/components/ui/CoffeeSponsorshipModal.astro";
+import OnlineJudgesModal from "@/components/ui/OnlineJudgesModal.astro";
+import { hasSponsorshipMethods } from "@/data/sponsorships";
+import { judgeProfiles } from "@/data/onlineJudges";
+import { shortcuts } from "@/data/shortcuts";
+import type { Locale } from "@/i18n/ui";
+import { getCounterpartUrl } from "@/i18n/utils";
+import "@/styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+  locale?: Locale | undefined;
+  canonicalUrl?: string | undefined;
+  type?: "website" | "article" | "profile" | undefined;
+  ogImage?: string | undefined;
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>> | undefined;
+  translationKey?: string | undefined;
+  collectionName?:
+    | "posts"
+    | "projects"
+    | "experience"
+    | "services"
+    | "case-studies"
+    | undefined;
+  hideSubtleCoffee?: boolean | undefined;
+}
+
+const {
+  title,
+  description,
+  locale = "en",
+  canonicalUrl,
+  type = "website",
+  ogImage,
+  jsonLd,
+  translationKey,
+  collectionName,
+  hideSubtleCoffee = false,
+} = Astro.props;
+
+const alternateEnUrl =
+  locale === "es"
+    ? await getCounterpartUrl(
+        "es",
+        "en",
+        Astro.url.pathname,
+        collectionName,
+        translationKey,
+      )
+    : undefined;
+
+const alternateEsUrl =
+  locale === "en"
+    ? await getCounterpartUrl(
+        "en",
+        "es",
+        Astro.url.pathname,
+        collectionName,
+        translationKey,
+      )
+    : undefined;
+
+const hasSponsorships = hasSponsorshipMethods;
+const hasJudges = judgeProfiles && judgeProfiles.length > 0;
+const hasShortcuts = shortcuts && shortcuts.length > 0;
+---
+
+<!doctype html>
+<html
+  lang={locale}
+  data-theme="dark"
+  class="dark"
+  style="background-color: #260205; color-scheme: dark;"
+>
+  <head>
+    <ClientRouter />
+    <SEOHead
+      title={title}
+      description={description}
+      locale={locale}
+      canonicalUrl={canonicalUrl}
+      type={type}
+      ogImage={ogImage}
+      jsonLd={jsonLd}
+      alternateEnUrl={alternateEnUrl}
+      alternateEsUrl={alternateEsUrl}
+    />
+
+    <script is:inline>
+      (function () {
+        function applyStoredTheme() {
+          try {
+            var stored = localStorage.getItem("theme");
+            var theme = stored || "dark";
+            var root = document.documentElement;
+            root.setAttribute("data-theme", theme);
+            if (theme === "light") {
+              root.classList.remove("dark");
+              root.classList.add("light");
+              root.style.backgroundColor = "#F4F6F8";
+              root.style.colorScheme = "light";
+            } else {
+              root.classList.add("dark");
+              root.classList.remove("light");
+              root.style.backgroundColor = "#260205";
+              root.style.colorScheme = "dark";
+            }
+          } catch (_) {}
+        }
+
+        applyStoredTheme();
+        document.addEventListener("astro:after-swap", applyStoredTheme);
+
+        try {
+          var navReset = sessionStorage.getItem("nav_reset_scroll");
+          var isSubpage =
+            window.location.pathname !== "/" &&
+            window.location.pathname !== "/es";
+          var hasHash = !!window.location.hash;
+          var hasContactPending =
+            sessionStorage.getItem("pending_contact_scroll") === "1" ||
+            window.location.hash === "#contact";
+
+          if (
+            !hasContactPending &&
+            (navReset === "1" || (isSubpage && !hasHash))
+          ) {
+            sessionStorage.removeItem("nav_reset_scroll");
+            sessionStorage.removeItem("lang_switch_scroll");
+            if ("scrollRestoration" in history) {
+              history.scrollRestoration = "manual";
+            }
+            window.scrollTo(0, 0);
+            document.addEventListener("DOMContentLoaded", function () {
+              window.scrollTo(0, 0);
+            });
+            window.addEventListener("load", function () {
+              window.scrollTo(0, 0);
+            });
+          } else {
+            var savedScroll = sessionStorage.getItem("lang_switch_scroll");
+            if (savedScroll !== null) {
+              var targetY = parseInt(savedScroll, 10);
+              if ("scrollRestoration" in history) {
+                history.scrollRestoration = "manual";
+              }
+              window.scrollTo(0, targetY);
+              document.addEventListener("DOMContentLoaded", function () {
+                window.scrollTo(0, targetY);
+                sessionStorage.removeItem("lang_switch_scroll");
+              });
+            }
+          }
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body class="relative flex min-h-screen flex-col bg-[var(--color-surface-bg)] text-[var(--color-text-primary)] antialiased selection:bg-[var(--color-accent-gold)] selection:text-[var(--color-btn-gold-text)]">
+    <MatrixBackground />
+    <Header
+      locale={locale}
+      translationKey={translationKey}
+      collectionName={collectionName}
+    />
+
+    <!-- Unified Floating Actions Stack in Bottom-Right Corner -->
+    <aside
+      id="floating-actions-stack"
+      class="fixed bottom-5 right-5 z-40 flex flex-col-reverse items-end gap-2.5 pointer-events-none select-none"
+      aria-label="Floating Actions"
+    >
+      {hasShortcuts && <ShortcutsModal locale={locale} />}
+      <div
+        id="global-vim-hint"
+        class="hidden sm:inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/90 backdrop-blur-md px-3.5 py-1.5 font-mono text-xs text-[var(--color-text-muted)] shadow-card pointer-events-none select-none transition-all duration-300 order-3"
+        aria-hidden="true"
+        style="display: none;"
+      >
+        <span class="text-[11px] font-medium text-[var(--color-text-secondary)]">
+          {locale === "es" ? "Desplazamiento" : "Scroll"}
+        </span>
+        <span class="flex items-center gap-1 font-semibold">
+          <kbd
+            data-vim-key="j"
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
+          >
+            j
+          </kbd>
+          <kbd
+            data-vim-key="k"
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
+          >
+            k
+          </kbd>
+        </span>
+      </div>
+    </aside>
+
+    <main class="relative z-10 flex-1">
+      <slot />
+      {!hideSubtleCoffee && hasSponsorships && (
+        <CoffeeSponsorshipModal locale={locale} variant="subtle" />
+      )}
+    </main>
+    <Footer locale={locale} />
+    <UniversalSearchModal locale={locale} />
+    {hasJudges && <OnlineJudgesModal locale={locale} />}
+
+    <!-- Discreet Edge Fetch Navigation Loading Beacon (Graceful Animation & Responsive Placement Below Header) -->
+    <div
+      id="page-navigation-beacon"
+      transition:persist="page-navigation-beacon"
+      class="pointer-events-none fixed z-[9999] top-16 sm:top-[4.25rem] left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--color-accent-gold)]/50 bg-[var(--color-surface-card)]/95 backdrop-blur-md px-3 py-1.5 font-mono text-[10px] text-[var(--color-accent-gold)] shadow-xl opacity-0 scale-95 transition-[opacity,transform] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] select-none"
+      aria-hidden="true"
+    >
+      <svg
+        class="h-3 w-3 animate-spin text-[var(--color-accent-gold)] shrink-0"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        ></circle>
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        ></path>
+      </svg>
+      <span class="tracking-wider uppercase font-semibold text-[9px]">
+        {locale === "es" ? "Cargando..." : "Fetching..."}
+      </span>
+    </div>
+
+    <script is:inline>
+      (function () {
+        if (window.__beaconBound) return;
+        window.__beaconBound = true;
+
+        var isShown = false;
+        var shownTime = 0;
+        var hideTimeout = null;
+        var MIN_VISIBLE_MS = 550;
+
+        function showBeacon(customText) {
+          clearTimeout(hideTimeout);
+          var b = document.getElementById("page-navigation-beacon");
+          if (!b) return;
+
+          var txt = b.querySelector("span");
+          if (txt) {
+            if (
+              typeof customText === "string" &&
+              customText.trim().length > 0
+            ) {
+              txt.textContent = customText;
+            } else {
+              txt.textContent =
+                document.documentElement.lang === "es"
+                  ? "Cargando..."
+                  : "Fetching...";
+            }
+          }
+
+          isShown = true;
+          shownTime = performance.now();
+          b.classList.remove("opacity-0", "scale-95");
+          b.classList.add("opacity-100", "scale-100");
+        }
+
+        function hideBeacon() {
+          if (!isShown) return;
+          var elapsed = performance.now() - shownTime;
+          var remaining = Math.max(0, MIN_VISIBLE_MS - elapsed);
+
+          clearTimeout(hideTimeout);
+          hideTimeout = setTimeout(function () {
+            var b = document.getElementById("page-navigation-beacon");
+            if (b) {
+              b.classList.remove("opacity-100", "scale-100");
+              b.classList.add("opacity-0", "scale-95");
+            }
+            isShown = false;
+          }, remaining);
+        }
+
+        window.__showBeacon = showBeacon;
+        window.__hideBeacon = hideBeacon;
+
+        document.addEventListener("astro:before-preparation", showBeacon);
+        document.addEventListener("astro:page-load", hideBeacon);
+        window.addEventListener("pageshow", hideBeacon);
+
+        document.addEventListener(
+          "click",
+          function (e) {
+            var target = e.target;
+            var link =
+              target && target.closest ? target.closest("a[href]") : null;
+            if (!link) return;
+            if (
+              e.defaultPrevented ||
+              e.ctrlKey ||
+              e.metaKey ||
+              e.shiftKey ||
+              e.altKey ||
+              e.button !== 0
+            )
+              return;
+            var href = link.getAttribute("href");
+            if (
+              !href ||
+              href.startsWith("#") ||
+              href.startsWith("mailto:") ||
+              href.startsWith("tel:") ||
+              link.target === "_blank"
+            )
+              return;
+
+            if (link.origin === window.location.origin) {
+              var currentPath =
+                window.location.pathname.replace(/\/+$/, "") || "/";
+              var destPath = link.pathname.replace(/\/+$/, "") || "/";
+              if (destPath !== currentPath) {
+                showBeacon();
+              }
+            }
+          },
+          { passive: true },
+        );
+      })();
+    </script>
+    <!-- Browser & Extension Resilience Polyfill (deferred at bottom of body) -->
+    <script is:inline>
+      (function () {
+        if (typeof Document !== "undefined") {
+          if (!Document.prototype.closest) {
+            Document.prototype.closest = function () {
+              return null;
+            };
+          }
+          if (!("tagName" in Document.prototype)) {
+            try {
+              Object.defineProperty(Document.prototype, "tagName", {
+                get: function () {
+                  return "";
+                },
+                configurable: true,
+              });
+            } catch (_) {}
+          }
+        }
+        if (typeof Window !== "undefined" && !Window.prototype.closest) {
+          Window.prototype.closest = function () {
+            return null;
+          };
+        }
+      })();
+    </script>
+    <!-- Global Vim Navigation (Page Index traveler when present, kinetic fluid scroll when absent) -->
+    <script is:inline>
+      (function () {
+        function updateVimHint() {
+          var hint = document.getElementById("global-vim-hint");
+          if (!hint) return;
+          var hasPageIndex = !!(
+            document.getElementById("desktop-page-index") ||
+            document.getElementById("mobile-page-index-root")
+          );
+          if (hasPageIndex) {
+            hint.style.display = "none";
+          } else {
+            hint.style.display = "";
+          }
+        }
+
+        function setupVimNavigation() {
+          updateVimHint();
+
+          var footer = document.querySelector("footer");
+          if (
+            footer &&
+            "IntersectionObserver" in window &&
+            !window.__vimFooterObs
+          ) {
+            window.__vimFooterObs = true;
+            var observer = new IntersectionObserver(
+              function (entries) {
+                entries.forEach(function (entry) {
+                  var hint = document.getElementById("global-vim-hint");
+                  if (!hint) return;
+                  if (entry.isIntersecting) {
+                    hint.style.opacity = "0";
+                    hint.style.transform = "translateY(8px)";
+                  } else {
+                    hint.style.opacity = "1";
+                    hint.style.transform = "translateY(0)";
+                  }
+                });
+              },
+              { threshold: 0.08 },
+            );
+            observer.observe(footer);
+          }
+
+          if (window.__vimScrollBound) return;
+          window.__vimScrollBound = true;
+
+          var isContinuousScrolling = false;
+          var scrollVelocity = 0;
+          var scrollDirection = 0;
+          var rafId = null;
+          var lastKeyRepeatTime = 0;
+
+          function setVimKeyActive(key, active) {
+            var selector =
+              key === "j" ? '[data-vim-key="j"]' : '[data-vim-key="k"]';
+            document.querySelectorAll(selector).forEach(function (el) {
+              if (active) {
+                el.classList.add(
+                  "border-[var(--color-accent-gold)]",
+                  "text-[var(--color-accent-gold)]",
+                );
+              } else {
+                el.classList.remove(
+                  "border-[var(--color-accent-gold)]",
+                  "text-[var(--color-accent-gold)]",
+                );
+              }
+            });
+          }
+
+          function kineticScrollLoop() {
+            if (!isContinuousScrolling) return;
+            var now = performance.now();
+            if (now - lastKeyRepeatTime > 180) {
+              scrollVelocity *= 0.88;
+              if (Math.abs(scrollVelocity) < 0.8) {
+                isContinuousScrolling = false;
+                cancelAnimationFrame(rafId);
+                return;
+              }
+            } else {
+              if (Math.abs(scrollVelocity) < 48) {
+                scrollVelocity += scrollDirection * 3.5;
+              }
+            }
+            window.scrollBy(0, scrollVelocity);
+            rafId = requestAnimationFrame(kineticScrollLoop);
+          }
+
+          function startKineticScroll(dir) {
+            lastKeyRepeatTime = performance.now();
+            scrollDirection = dir;
+            if (!isContinuousScrolling) {
+              isContinuousScrolling = true;
+              scrollVelocity = dir * 18;
+              rafId = requestAnimationFrame(kineticScrollLoop);
+            }
+          }
+
+          document.addEventListener("keydown", function (e) {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            var active = document.activeElement;
+            var tag =
+              active && active.tagName ? active.tagName.toUpperCase() : "";
+            var isInput =
+              tag === "INPUT" ||
+              tag === "TEXTAREA" ||
+              tag === "SELECT" ||
+              (active && active.isContentEditable);
+            if (isInput) return;
+
+            var modalOpen = document.querySelector(
+              'dialog[open], [role="dialog"]:not(.hidden)',
+            );
+            if (modalOpen) return;
+
+            var isJ = e.key === "j" || e.key === "J";
+            var isK = e.key === "k" || e.key === "K";
+            if (!isJ && !isK) return;
+
+            e.preventDefault();
+            var dir = isJ ? 1 : -1;
+            setVimKeyActive(isJ ? "j" : "k", true);
+
+            var hasPageIndex =
+              window.__hasPageIndex ||
+              !!(
+                document.getElementById("desktop-page-index") ||
+                document.getElementById("mobile-page-index-root")
+              );
+
+            // Single press with PageIndex -> jump to next/previous section
+            if (
+              !e.repeat &&
+              hasPageIndex &&
+              typeof window.__pageIndexStep === "function"
+            ) {
+              window.__pageIndexStep(dir);
+              return;
+            }
+
+            // Single press without PageIndex -> smooth section scroll
+            if (!e.repeat) {
+              window.scrollBy({ top: dir * 260, behavior: "smooth" });
+            } else {
+              // Holding down J or K (both with and without PageIndex) -> Fast continuous fluid kinetic scroll
+              startKineticScroll(dir);
+            }
+          });
+
+          document.addEventListener("keyup", function (e) {
+            var isJ = e.key === "j" || e.key === "J";
+            var isK = e.key === "k" || e.key === "K";
+            if (isJ || isK) {
+              setVimKeyActive(isJ ? "j" : "k", false);
+              if (isContinuousScrolling) {
+                lastKeyRepeatTime = 0;
+              }
+            }
+          });
+
+          window.addEventListener("blur", function () {
+            setVimKeyActive("j", false);
+            setVimKeyActive("k", false);
+            isContinuousScrolling = false;
+          });
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", setupVimNavigation);
+        } else {
+          setupVimNavigation();
+        }
+        document.addEventListener("astro:page-load", setupVimNavigation);
+      })();
+    </script>
+  </body>
+</html>

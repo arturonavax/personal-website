@@ -1,0 +1,476 @@
+---
+import type { Locale } from "@/i18n/ui";
+import TechIcon from "@/components/ui/TechIcon.astro";
+
+interface TagOption {
+  tag: string;
+  count: number;
+}
+
+interface CompanyOption {
+  name: string;
+  count: number;
+}
+
+interface Props {
+  locale: Locale;
+  tags: TagOption[];
+  companies?: CompanyOption[];
+  totalProjects: number;
+}
+
+const { locale, tags, companies = [], totalProjects } = Astro.props;
+
+const isEs = locale === "es";
+const allLabel = isEs ? "Todos los Proyectos" : "All Projects";
+const filterHeading = isEs
+  ? "Filtros & Tecnologías de Proyectos"
+  : "Project Filters & Technologies";
+const companiesHeading = isEs
+  ? "Organización / Contexto"
+  : "Organization / Context";
+const techHeading = isEs ? "Filtrar por Tecnologías" : "Filter by Tech Stack";
+const toggleLabel = isEs ? "Desplegar / Colapsar" : "Toggle Filters";
+const noResultsTitle = isEs
+  ? "No se encontraron proyectos"
+  : "No projects found";
+const noResultsDesc = isEs
+  ? "No hay proyectos catalogados con este criterio específico. Restablece los filtros para ver el catálogo completo."
+  : "There are no architectural projects cataloged with this specific filter. Reset filters to view all systems.";
+const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
+---
+
+<div
+  class="space-y-6"
+  id="project-filter-root"
+  data-all-label={allLabel}
+  data-is-es={isEs ? "true" : "false"}
+>
+  <!-- Collapsible Filter Accordion -->
+  <details class="group rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] transition-colors">
+    <summary class="flex items-start sm:items-center justify-between gap-2 p-3 sm:p-4 cursor-pointer select-none font-mono text-xs sm:text-sm list-none hover:bg-[var(--color-bg-primary)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]">
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2.5 min-w-0">
+        <svg
+          class="h-4 w-4 text-[var(--color-accent-gold)] shrink-0 mt-0.5 sm:mt-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        <span class="font-bold text-[var(--color-text-primary)]">
+          {filterHeading}
+        </span>
+        <span
+          id="active-project-filter-indicator"
+          class="rounded-full border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)] px-2 py-0.5 text-[11px] sm:text-xs font-semibold text-[var(--color-accent-gold)] whitespace-nowrap shrink-0"
+        >
+          {allLabel} ({totalProjects})
+        </span>
+      </div>
+      <div class="flex items-center gap-2 text-[var(--color-text-muted)] group-hover:text-[var(--color-accent-gold)] transition-colors shrink-0 mt-0.5 sm:mt-0">
+        <span class="text-xs hidden sm:inline">{toggleLabel}</span>
+        <svg
+          class="h-4 w-4 transition-transform duration-200 group-open:rotate-180"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+    </summary>
+
+    <div class="border-t border-[var(--color-surface-border-subtle)] p-4 sm:p-5 space-y-5 bg-[var(--color-bg-primary)]/30">
+      <!-- Quick Context / Companies Row if present -->
+      {companies.length > 0 && (
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between font-mono text-[11px] text-[var(--color-text-muted)]">
+            <span class="font-semibold text-[var(--color-accent-gold)] uppercase tracking-wider block">
+              {companiesHeading}
+            </span>
+            <span class="text-[10px]">
+              {isEs
+                ? "(Selección múltiple disponible)"
+                : "(Multi-select enabled)"}
+            </span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+            <button
+              type="button"
+              data-project-filter="all"
+              class="project-filter-pill active rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] px-3 py-1.5 font-semibold text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+            >
+              <span>{isEs ? "Todos" : "All"}</span>
+              <span data-filter-count class="ml-1 text-xs opacity-75">
+                ({totalProjects})
+              </span>
+            </button>
+            {companies.map((c) => (
+              <button
+                type="button"
+                data-project-filter={c.name.toLowerCase()}
+                class="project-filter-pill rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+              >
+                <span>{c.name}</span>
+                <span data-filter-count class="ml-1 text-xs opacity-70">
+                  ({c.count})
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <!-- Technologies Pills Row -->
+      {tags.length > 0 && (
+        <div class="space-y-2 border-t border-[var(--color-surface-border-subtle)] pt-4">
+          <div class="flex items-center justify-between font-mono text-[11px] text-[var(--color-text-muted)]">
+            <span class="font-semibold text-[var(--color-accent-gold)] uppercase tracking-wider">
+              {techHeading}
+            </span>
+            <span class="text-[10px]">
+              {isEs ? "Clic para activar / desactivar" : "Click to toggle"}
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+            {companies.length === 0 && (
+              <button
+                type="button"
+                data-project-filter="all"
+                class="project-filter-pill active rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] px-3 py-1 text-xs font-semibold text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+              >
+                <span>{isEs ? "Todos" : "All"}</span>
+                <span data-filter-count class="ml-1 text-xs opacity-75">
+                  ({totalProjects})
+                </span>
+              </button>
+            )}
+
+            {tags.map((t) => (
+              <button
+                type="button"
+                data-project-filter={t.tag.toLowerCase()}
+                class="project-filter-pill inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+              >
+                <TechIcon
+                  name={t.tag}
+                  class="h-3 w-3 text-[var(--color-accent-gold)]"
+                />
+                <span>{t.tag}</span>
+                <span data-filter-count class="opacity-60 text-xs">
+                  ({t.count})
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </details>
+
+  <!-- Zero Results Message -->
+  <div
+    id="no-projects-found"
+    class="hidden geometric-box p-8 text-center rounded space-y-4 my-6"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] font-mono text-lg font-bold">
+      !
+    </div>
+    <h3 class="text-base font-bold text-[var(--color-text-primary)]">
+      {noResultsTitle}
+    </h3>
+    <p class="text-sm text-[var(--color-text-secondary)] max-w-md mx-auto leading-relaxed">
+      {noResultsDesc}
+    </p>
+    <div>
+      <button
+        type="button"
+        id="reset-project-filter-btn"
+        class="btn-secondary px-4 py-2 text-xs font-mono inline-flex items-center gap-1.5 cursor-pointer"
+      >
+        <span>&larr;</span>
+        <span>{resetFilterLabel}</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function initProjectFilters() {
+    const root = document.getElementById("project-filter-root");
+    const filterButtons = document.querySelectorAll<HTMLButtonElement>(
+      "[data-project-filter]",
+    );
+    const cards = document.querySelectorAll<HTMLElement>("[data-project-card]");
+    const noResults = document.getElementById("no-projects-found");
+    const indicator = document.getElementById(
+      "active-project-filter-indicator",
+    );
+    const resetBtn = document.getElementById("reset-project-filter-btn");
+
+    if (!filterButtons.length || !cards.length || !root) return;
+
+    const allLabel = root.getAttribute("data-all-label") || "All Projects";
+    const isEs = root.getAttribute("data-is-es") === "true";
+    const activeFilters = new Set<string>();
+
+    const TECH_EQUIVALENTS: Record<string, string[]> = {
+      go: ["golang"],
+      golang: ["go"],
+      k8s: ["kubernetes"],
+      kubernetes: ["k8s"],
+      postgres: ["postgresql"],
+      postgresql: ["postgres"],
+      ts: ["typescript"],
+      typescript: ["ts"],
+      js: ["javascript"],
+      javascript: ["js"],
+    };
+
+    function getVariants(word: string): string[] {
+      const w = word.toLowerCase().trim();
+      const variants = [w];
+      if (TECH_EQUIVALENTS[w]) {
+        TECH_EQUIVALENTS[w].forEach((syn) => {
+          if (!variants.includes(syn)) variants.push(syn);
+        });
+      }
+      return variants;
+    }
+
+    function matchTerm(haystack: string, term: string): boolean {
+      if (!haystack || !term) return false;
+      const h = haystack.toLowerCase().trim();
+
+      // "rust" / "rus": cannot match "trust", "zero-trust", "crust"
+      if (/^rust?/i.test(term)) {
+        const rustTermClean = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const rustRegex = new RegExp("(?:^|[^a-zA-Z0-9])" + rustTermClean, "i");
+        return rustRegex.test(h);
+      }
+
+      // "go": cannot match "algorithm", "category", "ongoing", "cargo"
+      if (term === "go") {
+        const goRegex =
+          /(?:^|[^a-zA-Z0-9])go(?:lang|snowflake|routine|fmt|pkg)?(?=$|[^a-zA-Z0-9])/i;
+        return goRegex.test(h);
+      }
+
+      if (term.length <= 2) {
+        const shortRegex = new RegExp(
+          "(?:^|[^a-zA-Z0-9])" +
+            term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+            "(?=$|[^a-zA-Z0-9])",
+          "i",
+        );
+        return shortRegex.test(h);
+      }
+
+      return h.includes(term);
+    }
+
+    function smartFilterMatch(target: string, filterKey: string): boolean {
+      if (!target || !filterKey) return false;
+      const variants = getVariants(filterKey);
+      return variants.some((v) => matchTerm(target, v));
+    }
+
+    function cardMatchesFilter(card: HTMLElement, filterKey: string): boolean {
+      const company = (card.getAttribute("data-company") || "")
+        .toLowerCase()
+        .trim();
+      const rawTech = card.getAttribute("data-tech-stack") || "";
+      const techList = rawTech
+        .split("|")
+        .map((t) => t.toLowerCase().trim())
+        .filter(Boolean);
+
+      return (
+        company === filterKey ||
+        smartFilterMatch(company, filterKey) ||
+        techList.some((t) => smartFilterMatch(t, filterKey))
+      );
+    }
+
+    function updateView() {
+      const isAllActive = activeFilters.size === 0;
+      const visibleCards: HTMLElement[] = [];
+
+      cards.forEach((card) => {
+        let matches = isAllActive;
+        if (!isAllActive) {
+          matches = Array.from(activeFilters).every((f) =>
+            cardMatchesFilter(card, f),
+          );
+        }
+
+        if (matches) {
+          card.classList.remove("hidden", "filter-excluded");
+          card.dataset.filterMatch = "true";
+          visibleCards.push(card);
+        } else {
+          card.classList.add("hidden", "filter-excluded");
+          card.dataset.filterMatch = "false";
+        }
+      });
+
+      const visibleCount = visibleCards.length;
+      window.dispatchEvent(new CustomEvent("collection-filtered"));
+
+      // Update button visual styles & dynamic faceted counts
+      filterButtons.forEach((btn) => {
+        const btnFilter = (btn.getAttribute("data-project-filter") || "")
+          .toLowerCase()
+          .trim();
+        const isSelected =
+          btnFilter === "all" ? isAllActive : activeFilters.has(btnFilter);
+
+        if (isSelected) {
+          btn.classList.add(
+            "border-[var(--color-accent-gold)]",
+            "bg-[var(--color-accent-gold-subtle)]",
+            "text-[var(--color-accent-gold)]",
+            "font-semibold",
+          );
+          btn.classList.remove(
+            "border-[var(--color-surface-border)]",
+            "bg-[var(--color-surface-card)]",
+            "bg-[var(--color-bg-primary)]",
+            "text-[var(--color-text-secondary)]",
+          );
+        } else {
+          btn.classList.remove(
+            "border-[var(--color-accent-gold)]",
+            "bg-[var(--color-accent-gold-subtle)]",
+            "text-[var(--color-accent-gold)]",
+            "font-semibold",
+          );
+          btn.classList.add(
+            "border-[var(--color-surface-border)]",
+            "text-[var(--color-text-secondary)]",
+          );
+        }
+
+        // Dynamically update count in parentheses
+        const countSpan =
+          btn.querySelector("[data-filter-count]") ||
+          btn.querySelector("span:last-child");
+        if (countSpan) {
+          if (btnFilter === "all") {
+            countSpan.textContent = `(${cards.length})`;
+          } else {
+            let count = 0;
+            if (isAllActive) {
+              count = Array.from(cards).filter((card) =>
+                cardMatchesFilter(card, btnFilter),
+              ).length;
+            } else if (activeFilters.has(btnFilter)) {
+              count = visibleCount;
+            } else {
+              count = visibleCards.filter((card) =>
+                cardMatchesFilter(card, btnFilter),
+              ).length;
+            }
+            countSpan.textContent = `(${count})`;
+          }
+        }
+      });
+
+      // Update summary indicator
+      if (indicator) {
+        if (isAllActive) {
+          indicator.textContent = `${allLabel} (${visibleCount})`;
+        } else if (activeFilters.size === 1) {
+          const firstFilter = Array.from(activeFilters)[0];
+          const matchedBtn = Array.from(filterButtons).find(
+            (b) =>
+              (b.getAttribute("data-project-filter") || "")
+                .toLowerCase()
+                .trim() === firstFilter,
+          );
+          const label =
+            matchedBtn?.querySelector("span")?.textContent || firstFilter;
+          indicator.textContent = `${label} (${visibleCount})`;
+        } else {
+          const filterCountText = isEs
+            ? `${activeFilters.size} filtros activos`
+            : `${activeFilters.size} active filters`;
+          indicator.textContent = `${filterCountText} (${visibleCount})`;
+        }
+      }
+
+      // Toggle zero results banner
+      if (noResults) {
+        if (visibleCount === 0) {
+          noResults.classList.remove("hidden");
+        } else {
+          noResults.classList.add("hidden");
+        }
+      }
+
+      // Sync URL parameter without reload
+      const url = new URL(window.location.href);
+      if (isAllActive) {
+        url.searchParams.delete("tech");
+        url.searchParams.delete("filters");
+      } else {
+        url.searchParams.set("filters", Array.from(activeFilters).join(","));
+      }
+      window.history.replaceState({}, "", url.toString());
+    }
+
+    function toggleFilter(filterKey: string) {
+      const filterNorm = filterKey.toLowerCase().trim();
+      if (filterNorm === "all") {
+        activeFilters.clear();
+      } else {
+        if (activeFilters.has(filterNorm)) {
+          activeFilters.delete(filterNorm);
+        } else {
+          activeFilters.add(filterNorm);
+        }
+      }
+      updateView();
+    }
+
+    filterButtons.forEach((btn) => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = "true";
+      btn.addEventListener("click", () => {
+        const filter = btn.getAttribute("data-project-filter") || "all";
+        toggleFilter(filter);
+      });
+    });
+
+    if (resetBtn && !resetBtn.dataset.bound) {
+      resetBtn.dataset.bound = "true";
+      resetBtn.addEventListener("click", () => {
+        activeFilters.clear();
+        updateView();
+      });
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const initialFilters = params.get("filters") || params.get("tech");
+    if (initialFilters) {
+      initialFilters.split(",").forEach((f) => {
+        const clean = f.toLowerCase().trim();
+        if (clean && clean !== "all") activeFilters.add(clean);
+      });
+      updateView();
+    }
+  }
+
+  initProjectFilters();
+  document.addEventListener("astro:page-load", initProjectFilters);
+</script>

@@ -1,0 +1,32 @@
+---
+import type { Locale } from "@/i18n/ui";
+
+interface Props {
+  locale: Locale;
+  class?: string;
+}
+
+const { locale, class: className = "" } = Astro.props;
+const isEs = locale === "es";
+const homeHref = isEs ? "/es" : "/";
+---
+
+<div class={`pt-2.5 sm:pt-4 mb-3.5 sm:mb-6 ${className}`}>
+  <a
+    href={homeHref}
+    data-nav-reset-scroll="true"
+    class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3.5 py-1.5 font-mono text-xs font-medium text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-bg-primary)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] min-h-[38px]"
+  >
+    <svg
+      class="h-4 w-4 stroke-current fill-none shrink-0"
+      viewBox="0 0 24 24"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <line x1="19" y1="12" x2="5" y2="12"></line>
+      <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    <span>{isEs ? "Regresar al Inicio" : "Back to Home"}</span>
+  </a>
+</div>

@@ -1,0 +1,5 @@
+# Cloudflare Pages Edge Redirect Rules
+# Note: Cloudflare Pages _redirects file only supports relative URLs as sources (e.g., /old-path /new-path 301).
+# Apex domain redirects (arturonavax.dev -> arturonavax.com, www -> apex, http -> https)
+# are configured at the Cloudflare Zone level via Cloudflare Dashboard -> Rules -> Redirect Rules.
+

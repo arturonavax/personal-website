@@ -1,0 +1,501 @@
+---
+import { shortcuts } from "@/data/shortcuts";
+import type { Locale } from "@/i18n/ui";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const isEs = locale === "es";
+
+const pathname = Astro.url.pathname.replace(/\/+$/, "") || "/";
+const isHomePage = pathname === "/" || pathname === "/es";
+
+const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
+---
+
+{hasShortcuts && (
+  <div data-shortcuts-root class="pointer-events-auto order-1">
+    <button
+      type="button"
+      id="open-shortcuts-btn"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-controls="shortcuts-dialog"
+      class="flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-4 py-2.5 font-mono text-xs font-semibold text-[var(--color-text-secondary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+      style="box-shadow: var(--shadow-card-hover);"
+    >
+      <span
+        class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse shrink-0"
+        aria-hidden="true"
+      ></span>
+      <span class="shrink-0">{isEs ? "Shortcuts" : "Shortcuts"}</span>
+      <kbd class="hidden sm:inline-block rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] font-semibold shrink-0">
+        Esc
+      </kbd>
+    </button>
+
+    <style>
+      #open-shortcuts-btn {
+        transition:
+          transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+          border-color 0.2s ease,
+          box-shadow 0.2s ease,
+          color 0.2s ease;
+        will-change: transform;
+      }
+      #floating-actions-stack #open-shortcuts-btn {
+        position: relative;
+        bottom: auto;
+        right: auto;
+      }
+      #open-shortcuts-btn.footer-tucked {
+        transform: translateX(calc(100% - 22px));
+      }
+      /* Hover bridge extending rightward to viewport edge to eliminate jitter and maintain click area */
+      #open-shortcuts-btn.footer-tucked::after {
+        content: "";
+        position: absolute;
+        top: -12px;
+        bottom: -12px;
+        left: -8px;
+        right: -60px;
+        pointer-events: auto;
+      }
+      #open-shortcuts-btn.footer-tucked:hover,
+      #open-shortcuts-btn.footer-tucked:focus-visible {
+        transform: translateX(0);
+      }
+    </style>
+
+    <!-- Native HTML5 Dialog Modal with Intelligent Elevation -->
+    <dialog
+      id="shortcuts-dialog"
+      aria-labelledby="shortcuts-title"
+      class="fixed inset-0 m-auto max-h-[85vh] w-[92vw] max-w-xl rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-0 text-[var(--color-text-primary)] backdrop:bg-black/75 backdrop:backdrop-blur-sm open:animate-fade-in"
+      style="box-shadow: var(--shadow-modal);"
+    >
+      <div class="flex flex-col">
+        <!-- Dialog Header -->
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/80 px-5 py-4">
+          <div class="flex items-center gap-2.5 font-mono">
+            <span
+              class="flex h-2.5 w-2.5 rounded-full bg-[var(--color-accent-gold)] shrink-0 aspect-square"
+              aria-hidden="true"
+            ></span>
+            <h2
+              id="shortcuts-title"
+              class="text-sm sm:text-base font-bold text-[var(--color-text-primary)]"
+            >
+              {isEs
+                ? "Acceso Rápido a Aplicaciones y Enlaces"
+                : "Quick Access Apps & System Links"}
+            </h2>
+          </div>
+          <button
+            type="button"
+            id="close-shortcuts-btn"
+            aria-label={isEs ? "Cerrar ventana" : "Close shortcuts modal"}
+            class="min-h-[44px] min-w-[44px] flex items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-1 text-[var(--color-text-muted)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
+          >
+            <svg
+              class="h-4 w-4 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Shortcuts Grid (Task 2: Permanent Scroll & Bottom Overflow Hint) -->
+        <div class="relative flex-1 min-h-0">
+          <div
+            id="shortcuts-grid-scroll"
+            class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-5 max-h-[60vh] overflow-y-auto"
+            data-scrollable
+          >
+            {shortcuts.map((item) => {
+              const title = isEs && item.titleEs ? item.titleEs : item.title;
+              const desc =
+                isEs && item.descriptionEs
+                  ? item.descriptionEs
+                  : item.description;
+              const badge = isEs && item.badgeEs ? item.badgeEs : item.badge;
+              const linkHref =
+                !item.external && isEs ? `/es${item.url}` : item.url;
+
+              return (
+                <a
+                  href={linkHref}
+                  target={item.external ? "_blank" : undefined}
+                  rel={item.external ? "noopener noreferrer" : undefined}
+                  class="group relative flex flex-col justify-between rounded border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 font-mono transition-all hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-bg-primary)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+                >
+                  <div>
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-xs sm:text-sm font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-gold)] transition-colors">
+                        {title}
+                      </span>
+                      {badge && (
+                        <span class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2 py-0.5 text-xs text-[var(--color-accent-gold)] font-medium">
+                          {badge}
+                        </span>
+                      )}
+                    </div>
+                    <p class="mt-2 text-xs sm:text-sm leading-relaxed text-[var(--color-text-secondary)] font-sans">
+                      {desc}
+                    </p>
+                  </div>
+                  <div class="mt-4 flex items-center justify-between text-xs text-[var(--color-accent-gold)]">
+                    <span>
+                      {item.external
+                        ? isEs
+                          ? "Abrir enlace externo"
+                          : "Open external link"
+                        : isEs
+                          ? "Ver especificación"
+                          : "View specification"}
+                    </span>
+                    <span>&rarr;</span>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+          <!-- Bottom subtle gradient indicator -->
+          <div
+            id="shortcuts-scroll-hint"
+            class="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/80 to-transparent opacity-0 transition-opacity duration-200"
+            aria-hidden="true"
+          ></div>
+        </div>
+
+        <!-- Dialog Footer -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 px-5 py-3 text-xs font-mono text-[var(--color-text-muted)]">
+          <div class="flex items-center gap-3">
+            <span>
+              {isEs ? "Presiona Esc para cerrar" : "Press Esc to close"}
+            </span>
+            <span class="text-[var(--color-surface-border)]">&bull;</span>
+            <span class="flex items-center gap-1">
+              <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)]">
+                j
+              </kbd>
+              <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)]">
+                k
+              </kbd>
+              <span>{isEs ? "scroll" : "scroll"}</span>
+            </span>
+          </div>
+          <span class="text-[var(--color-accent-gold)] font-semibold">
+            arturonavax.dev
+          </span>
+        </div>
+      </div>
+    </dialog>
+  </div>
+)}
+
+<script is:inline>
+  // @ts-nocheck
+  (function () {
+    var boundElements =
+      window.__shortcutsBoundElements ||
+      (window.__shortcutsBoundElements = new WeakSet());
+
+    function setupShortcuts() {
+      var dialog = document.getElementById("shortcuts-dialog");
+      var openBtn = document.getElementById("open-shortcuts-btn");
+      var closeBtn = document.getElementById("close-shortcuts-btn");
+      var gridScroll = document.getElementById("shortcuts-grid-scroll");
+      var gridHint = document.getElementById("shortcuts-scroll-hint");
+
+      function updateShortcutsScrollHint() {
+        if (!gridScroll || !gridHint) return;
+        var hasMore =
+          gridScroll.scrollHeight >
+          gridScroll.clientHeight + gridScroll.scrollTop + 14;
+        if (hasMore) {
+          gridHint.classList.remove("opacity-0");
+          gridHint.classList.add("opacity-100");
+        } else {
+          gridHint.classList.remove("opacity-100");
+          gridHint.classList.add("opacity-0");
+        }
+      }
+
+      if (gridScroll && !boundElements.has(gridScroll)) {
+        boundElements.add(gridScroll);
+        gridScroll.addEventListener("scroll", updateShortcutsScrollHint, {
+          passive: true,
+        });
+      }
+
+      if (openBtn && dialog && !boundElements.has(openBtn)) {
+        boundElements.add(openBtn);
+
+        openBtn.addEventListener("click", function () {
+          var currentDialog = document.getElementById("shortcuts-dialog");
+          if (currentDialog && typeof currentDialog.showModal === "function") {
+            currentDialog.showModal();
+            openBtn.setAttribute("aria-expanded", "true");
+            requestAnimationFrame(updateShortcutsScrollHint);
+          }
+        });
+
+        if (closeBtn && !boundElements.has(closeBtn)) {
+          boundElements.add(closeBtn);
+          closeBtn.addEventListener("click", function () {
+            var currentDialog = document.getElementById("shortcuts-dialog");
+            if (currentDialog) currentDialog.close();
+            openBtn.setAttribute("aria-expanded", "false");
+          });
+        }
+
+        if (!boundElements.has(dialog)) {
+          boundElements.add(dialog);
+          dialog.addEventListener("click", function (e) {
+            var rect = dialog.getBoundingClientRect();
+            var isInDialog =
+              rect.top <= e.clientY &&
+              e.clientY <= rect.top + rect.height &&
+              rect.left <= e.clientX &&
+              e.clientX <= rect.left + rect.width;
+            if (!isInDialog) {
+              dialog.close();
+              openBtn.setAttribute("aria-expanded", "false");
+            }
+          });
+
+          dialog.addEventListener("close", function () {
+            openBtn.setAttribute("aria-expanded", "false");
+          });
+        }
+
+        // Tucking behavior upon reaching footer (deferred to first scroll)
+        var shortcutsFooterObsAttached = false;
+        function attachShortcutsFooterObs() {
+          if (shortcutsFooterObsAttached) return;
+          shortcutsFooterObsAttached = true;
+          var footer = document.querySelector("footer");
+          if (footer && "IntersectionObserver" in window) {
+            if (window.__shortcutsFooterObs) {
+              window.__shortcutsFooterObs.disconnect();
+            }
+            var obs = new IntersectionObserver(
+              function (entries) {
+                entries.forEach(function (entry) {
+                  if (entry.isIntersecting) {
+                    openBtn.classList.add("footer-tucked");
+                  } else {
+                    openBtn.classList.remove("footer-tucked");
+                  }
+                });
+              },
+              { threshold: 0.05 },
+            );
+            obs.observe(footer);
+            window.__shortcutsFooterObs = obs;
+          }
+        }
+        window.addEventListener("scroll", attachShortcutsFooterObs, {
+          once: true,
+          passive: true,
+        });
+      }
+
+      // Document-level delegation for opening and closing shortcuts modal
+      if (!window.__globalShortcutsDelegationBound) {
+        window.__globalShortcutsDelegationBound = true;
+        document.addEventListener("click", function (e) {
+          var target = e.target;
+          if (!target) return;
+
+          var openEl = target.closest("#open-shortcuts-btn");
+          if (openEl) {
+            e.preventDefault();
+            var d = document.getElementById("shortcuts-dialog");
+            if (d && typeof d.showModal === "function") {
+              d.showModal();
+              openEl.setAttribute("aria-expanded", "true");
+              var gs = document.getElementById("shortcuts-grid-scroll");
+              var gh = document.getElementById("shortcuts-scroll-hint");
+              if (gs && gh) {
+                var hm = gs.scrollHeight > gs.clientHeight + gs.scrollTop + 14;
+                if (hm) {
+                  gh.classList.remove("opacity-0");
+                  gh.classList.add("opacity-100");
+                } else {
+                  gh.classList.remove("opacity-100");
+                  gh.classList.add("opacity-0");
+                }
+              }
+            }
+            return;
+          }
+
+          var closeEl = target.closest("#close-shortcuts-btn");
+          if (closeEl) {
+            e.preventDefault();
+            var d = document.getElementById("shortcuts-dialog");
+            if (d && typeof d.close === "function") d.close();
+            var ob = document.getElementById("open-shortcuts-btn");
+            if (ob) ob.setAttribute("aria-expanded", "false");
+            return;
+          }
+
+          var activeDialog = document.getElementById("shortcuts-dialog");
+          if (activeDialog && activeDialog.open && target === activeDialog) {
+            var rect = activeDialog.getBoundingClientRect();
+            var isInDialog =
+              rect.top <= e.clientY &&
+              e.clientY <= rect.top + rect.height &&
+              rect.left <= e.clientX &&
+              e.clientX <= rect.left + rect.width;
+            if (!isInDialog) {
+              activeDialog.close();
+              var ob = document.getElementById("open-shortcuts-btn");
+              if (ob) ob.setAttribute("aria-expanded", "false");
+            }
+          }
+        });
+      }
+
+      // Esc key listener: Prioritize closing modals and open index before navigation/scroll (Task 6)
+      if (!window.__escListenerBound) {
+        window.__escListenerBound = true;
+
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape") {
+            // 0. If floating index panel is open, close it first and STOP before doing any scroll or back (Task 6)
+            var indexPanel = document.getElementById("index-expanded-panel");
+            if (indexPanel && !indexPanel.classList.contains("hidden")) {
+              event.preventDefault();
+              if (typeof window.__toggleIndexPanel === "function") {
+                window.__toggleIndexPanel(false);
+              } else {
+                indexPanel.classList.add("hidden");
+                var indexBtn = document.getElementById(
+                  "open-index-floating-btn",
+                );
+                if (indexBtn) indexBtn.setAttribute("aria-expanded", "false");
+              }
+              return;
+            }
+
+            // 1. If shortcuts dialog is open, close it
+            var activeDialog = document.getElementById("shortcuts-dialog");
+            if (activeDialog && activeDialog.open) {
+              activeDialog.close();
+              var ob = document.getElementById("open-shortcuts-btn");
+              if (ob) ob.setAttribute("aria-expanded", "false");
+              return;
+            }
+
+            // 2. If universal search dialog is open, close it
+            var searchDialog = document.getElementById("search-dialog");
+            if (searchDialog && searchDialog.open) {
+              searchDialog.close();
+              return;
+            }
+
+            // 3. If coffee dialog or judges dialog is open, close it
+            var coffeeDialog = document.getElementById(
+              "coffee-sponsorship-dialog",
+            );
+            if (coffeeDialog && coffeeDialog.open) {
+              coffeeDialog.close();
+              return;
+            }
+            var judgesDialog = document.getElementById("online-judges-dialog");
+            if (judgesDialog && judgesDialog.open) {
+              judgesDialog.close();
+              return;
+            }
+
+            // 4. If mobile navigation details is open, close it
+            var openDetails = document.querySelector("header details[open]");
+            if (openDetails) {
+              openDetails.removeAttribute("open");
+              return;
+            }
+
+            // 5. If active focus is in an input or textarea, blur it first
+            var activeTag = document.activeElement
+              ? document.activeElement.tagName
+              : "";
+            if (activeTag === "INPUT" || activeTag === "TEXTAREA") {
+              document.activeElement.blur();
+              return;
+            }
+
+            var currentScroll =
+              window.scrollY ||
+              window.pageYOffset ||
+              document.documentElement.scrollTop ||
+              document.body.scrollTop ||
+              0;
+
+            // 6. Determine whether we are on the homepage
+            var p = window.location.pathname.replace(/\/+$/, "") || "/";
+            var isHomePage = p === "/" || p === "/es";
+
+            if (!isHomePage) {
+              // Subpages (e.g. /experience, /projects, /blog, /search, /projects/[slug]):
+              // If not at top (> 100px margin), scroll to top
+              if (currentScroll > 100) {
+                event.preventDefault();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                return;
+              }
+
+              // If already at top (<= 100px margin), go to previous page
+              event.preventDefault();
+              var homeUrl = p.startsWith("/es") ? "/es" : "/";
+              if (
+                window.history.length > 1 &&
+                document.referrer &&
+                document.referrer.indexOf(window.location.host) !== -1
+              ) {
+                window.history.back();
+              } else {
+                window.location.href = homeUrl;
+              }
+              return;
+            }
+
+            // 7. On homepage: if scrolled, scroll to top; if at top, open shortcuts modal
+            if (currentScroll > 120) {
+              event.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            } else {
+              event.preventDefault();
+              var curDialog = document.getElementById("shortcuts-dialog");
+              var curBtn = document.getElementById("open-shortcuts-btn");
+              if (
+                curDialog &&
+                typeof curDialog.showModal === "function" &&
+                !curDialog.open
+              ) {
+                curDialog.showModal();
+                if (curBtn) curBtn.setAttribute("aria-expanded", "true");
+              }
+            }
+          }
+        });
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupShortcuts);
+    } else {
+      setupShortcuts();
+    }
+    document.addEventListener("astro:page-load", setupShortcuts);
+  })();
+</script>

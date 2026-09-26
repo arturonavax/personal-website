@@ -1,0 +1,667 @@
+---
+import type { Locale } from "@/i18n/ui";
+import { sponsorshipData } from "@/data/sponsorships";
+
+interface Props {
+  locale: Locale;
+  variant?: "banner" | "subtle";
+}
+
+const { locale, variant = "banner" } = Astro.props;
+const isEs = locale === "es";
+const { crypto, platforms, futureIntegrations } = sponsorshipData;
+const hasSponsorships =
+  (crypto && crypto.length > 0) || (platforms && platforms.length > 0);
+---
+
+{hasSponsorships && (
+  <>
+    {variant === "subtle" ? (
+      <div
+        id="coffee"
+        class="mx-auto max-w-4xl px-4 sm:px-6 my-10"
+        aria-label={isEs ? "Invítame un café" : "Buy me a coffee"}
+      >
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/40 hover:border-[var(--color-accent-gold)]/50 px-4 py-3 sm:px-5 sm:py-3.5 transition-colors font-mono text-xs shadow-xs">
+          <div class="flex items-center gap-3">
+            <span class="flex h-7 w-7 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shrink-0 aspect-square">
+              <svg
+                class="h-3.5 w-3.5 stroke-current fill-none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                <line x1="6" y1="6" x2="6" y2="4"></line>
+                <line x1="10" y1="1" x2="10" y2="4"></line>
+                <line x1="14" y1="1" x2="14" y2="4"></line>
+              </svg>
+            </span>
+            <div class="text-left">
+              <p class="text-xs font-semibold text-[var(--color-text-primary)]">
+                {isEs
+                  ? "¿Te resulta útil mi contenido o proyectos abiertos?"
+                  : "Enjoying my technical essays or open-source work?"}
+              </p>
+              <p class="text-[11px] text-[var(--color-text-muted)]">
+                {isEs
+                  ? "Apoya la investigación independiente en sistemas distribuidos y herramientas de libre acceso."
+                  : "Support independent distributed systems research & open-source infrastructure."}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            data-open-coffee-modal
+            aria-haspopup="dialog"
+            aria-controls="coffee-sponsorship-dialog"
+            class="inline-flex items-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] shadow-xs"
+          >
+            <svg
+              class="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+            </svg>
+            <span>{isEs ? "Invitar un café" : "Buy me a coffee"}</span>
+            <span class="text-[10px]">&rarr;</span>
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div id="coffee" class="mt-12 mx-auto max-w-2xl text-center">
+        <div class="relative group rounded-xl border border-[var(--color-surface-border)] hover:border-[var(--color-accent-gold)]/70 bg-gradient-to-b from-[var(--color-surface-card)] to-[var(--color-bg-primary)] p-6 sm:p-8 shadow-card hover:shadow-card-hover transition-all duration-300">
+          {/* Ambient Glow Behind CTA */}
+          <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-48 h-20 bg-[var(--color-accent-gold)]/10 blur-2xl rounded-full pointer-events-none group-hover:bg-[var(--color-accent-gold)]/20 transition-all"></div>
+
+          {/* Icon & Headline */}
+          <div class="relative flex flex-col items-center">
+            <div class="mb-3.5 inline-flex h-12 w-12 shrink-0 aspect-square items-center justify-center rounded-2xl border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] shadow-sm group-hover:scale-110 group-hover:border-[var(--color-accent-gold)] transition-transform duration-300">
+              <svg
+                class="h-6 w-6 stroke-current fill-none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                <line x1="6" y1="6" x2="6" y2="4"></line>
+                <line x1="10" y1="1" x2="10" y2="4"></line>
+                <line x1="14" y1="1" x2="14" y2="4"></line>
+              </svg>
+            </div>
+
+            <h3 class="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
+              {isEs
+                ? "¿Te aporta valor mi contenido? Invítame un café"
+                : "Enjoying my open-source work? Buy me a coffee"}
+            </h3>
+
+            <p class="mt-2 text-xs sm:text-sm text-[var(--color-text-secondary)] max-w-lg leading-relaxed">
+              {isEs
+                ? "Respalda la investigación independiente de sistemas distribuidos, hosting de prototipos y herramientas abiertas."
+                : "Support independent distributed systems research, prototype infrastructure & open-source tooling."}
+            </p>
+
+            {/* Main Action CTA Button */}
+            <div class="mt-5 flex flex-col sm:flex-row items-center gap-3">
+              <button
+                id="open-coffee-modal-btn"
+                type="button"
+                aria-haspopup="dialog"
+                aria-controls="coffee-sponsorship-dialog"
+                class="btn-gold px-5 py-2.5 inline-flex items-center gap-2.5 font-mono text-xs sm:text-sm font-semibold tracking-wide shadow-md hover:shadow-lg transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+              >
+                <svg
+                  class="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                  <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                </svg>
+                <span>
+                  {isEs
+                    ? "Apoyar o Invitar un Café"
+                    : "Buy Me a Coffee & Support"}
+                </span>
+                <span class="text-xs">&rarr;</span>
+              </button>
+            </div>
+
+            {/* Accepted Channels Micro-bar */}
+            <div class="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-[var(--color-text-muted)]">
+              <span class="inline-flex items-center gap-1">
+                <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)]"></span>
+                BTC &bull; ETH &bull; USDT &bull; SOL
+              </span>
+              <span>&bull;</span>
+              <span>PayPal</span>
+              <span>&bull;</span>
+              <span>GitHub Sponsors</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    <!-- Native Accessible Dialog (0 KB baseline JS execution cost) -->
+    <dialog
+      id="coffee-sponsorship-dialog"
+      aria-labelledby="coffee-dialog-title"
+      aria-modal="true"
+      class="m-auto rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-primary)] p-0 shadow-2xl backdrop:bg-black/75 backdrop:backdrop-blur-sm max-w-2xl w-[92vw] sm:w-[620px] max-h-[90vh] overflow-hidden"
+    >
+      <div class="flex flex-col h-full max-h-[90vh]">
+        <!-- Dialog Header -->
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] px-5 py-4 bg-[var(--color-bg-primary)]/40 shrink-0">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 aspect-square items-center justify-center rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-2 text-[var(--color-accent-gold)] shadow-xs">
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                <line x1="6" y1="6" x2="6" y2="4"></line>
+                <line x1="10" y1="1" x2="10" y2="4"></line>
+                <line x1="14" y1="1" x2="14" y2="4"></line>
+              </svg>
+            </div>
+            <div>
+              <h3
+                id="coffee-dialog-title"
+                class="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-primary)]"
+              >
+                {isEs ? "Apoyo y Patrocinio" : "Support & Sponsorship"}
+              </h3>
+              <p class="text-xs text-[var(--color-text-muted)] font-mono">
+                {isEs
+                  ? "Investigación abierta, servidores e infraestructura"
+                  : "Open-source research, hosting & tooling"}
+              </p>
+            </div>
+          </div>
+          <button
+            id="close-coffee-dialog-btn"
+            type="button"
+            aria-label={
+              isEs ? "Cerrar ventana de patrocinio" : "Close sponsorship dialog"
+            }
+            class="min-h-[44px] min-w-[44px] flex items-center justify-center rounded p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
+          >
+            <svg
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Scrollable Dialog Body (Task 2: Permanent Custom Scrollbar) -->
+        <div
+          class="overflow-y-auto p-5 sm:p-6 space-y-6 text-sm"
+          data-scrollable
+        >
+          <!-- Intro description -->
+          <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
+            {isEs
+              ? "Si mis proyectos de código abierto, benchmarks de baja latencia o arquitecturas distribuidas te han aportado valor, puedes respaldar este trabajo mediante transferencias cripto directas o plataformas de pago."
+              : "If my open-source projects, low-latency benchmarks, or distributed systems blueprints have provided value, you can support future research via direct crypto transfers or payment platforms."}
+          </p>
+
+          <!-- Section: Direct Platforms (PayPal, GitHub) -->
+          <div class="space-y-3">
+            <h4 class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between">
+              <span>{isEs ? "Plataformas Directas" : "Direct Platforms"}</span>
+              <span class="text-[10px] text-[var(--color-text-muted)] lowercase font-normal">
+                fiat / card
+              </span>
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {platforms.map((p) => (
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="group flex flex-col justify-between rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/50 p-3 hover:border-[var(--color-accent-gold)] transition-colors"
+                >
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="font-bold text-xs text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-gold)] transition-colors flex items-center gap-1.5">
+                      {p.name}
+                      <svg
+                        class="h-3 w-3 stroke-current fill-none opacity-60 group-hover:opacity-100 transition-opacity"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <line x1="7" y1="17" x2="17" y2="7"></line>
+                        <polyline points="7 7 17 7 17 17"></polyline>
+                      </svg>
+                    </span>
+                    <span class="rounded bg-[var(--color-accent-gold)]/10 px-1.5 py-0.5 text-[10px] font-mono text-[var(--color-accent-gold)]">
+                      {isEs ? p.badgeEs : p.badge}
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-[var(--color-text-muted)] leading-snug">
+                    {isEs ? p.descriptionEs : p.description}
+                  </p>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <!-- Section: Crypto Direct Transfer -->
+          <div class="space-y-3">
+            <h4 class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between">
+              <span>
+                {isEs ? "Direcciones Crypto" : "Direct Crypto Addresses"}
+              </span>
+              <span class="text-[10px] text-[var(--color-text-muted)] lowercase font-normal">
+                non-custodial
+              </span>
+            </h4>
+
+            <div class="space-y-2.5">
+              {crypto.map((c) => (
+                <div class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/50 p-3 font-mono">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 text-xs mb-2">
+                    <div class="font-bold text-[var(--color-text-primary)] flex items-center gap-2 flex-wrap min-w-0">
+                      <span class="rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] px-1.5 py-0.5 text-[10px] text-[var(--color-accent-gold)] shrink-0 font-mono">
+                        {c.symbol}
+                      </span>
+                      <span class="truncate">{c.name}</span>
+                    </div>
+                    <span class="text-[10px] text-[var(--color-text-muted)] font-mono sm:text-right break-words leading-tight">
+                      {isEs ? c.networkEs : c.network}
+                    </span>
+                  </div>
+
+                  <div class="flex items-center gap-2 mt-2">
+                    <code
+                      class="text-[11px] sm:text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-card)] px-2 py-1.5 rounded border border-[var(--color-surface-border-subtle)] flex-1 min-w-0 overflow-x-auto select-all break-all"
+                      data-crypto-address={c.address}
+                    >
+                      {c.address}
+                    </code>
+                    <button
+                      type="button"
+                      data-copy-crypto-btn
+                      data-address={c.address}
+                      class="shrink-0 inline-flex items-center justify-center gap-1 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
+                      title={isEs ? "Copiar dirección" : "Copy address"}
+                      aria-label={`${isEs ? "Copiar dirección de" : "Copy address for"} ${c.name}`}
+                    >
+                      <svg
+                        class="h-3.5 w-3.5 copy-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <rect
+                          x="9"
+                          y="9"
+                          width="13"
+                          height="13"
+                          rx="2"
+                          ry="2"
+                        ></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                      <span class="copy-status text-[11px] font-mono">
+                        {isEs ? "Copiar" : "Copy"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <!-- Section: Future Integrations & Prototypes -->
+          <div class="space-y-3 pt-2 border-t border-[var(--color-surface-border-subtle)]">
+            <h4 class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between">
+              <span>
+                {isEs
+                  ? "Integraciones Futuras & Web3"
+                  : "Future Integrations & Web3"}
+              </span>
+              <span class="text-[10px] text-[var(--color-text-muted)] lowercase font-normal">
+                zero-overhead stubs
+              </span>
+            </h4>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {futureIntegrations.map((item) => (
+                <div class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/30 p-3 flex flex-col justify-between">
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="font-bold text-xs text-[var(--color-text-primary)]">
+                        {item.name}
+                      </span>
+                      <span class="rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/10 px-1.5 py-0.5 text-[9px] font-mono text-[var(--color-accent-gold)]">
+                        {isEs ? item.badgeEs : item.badge}
+                      </span>
+                    </div>
+                    <p class="text-[11px] text-[var(--color-text-muted)] leading-relaxed mb-3">
+                      {isEs ? item.descriptionEs : item.description}
+                    </p>
+                  </div>
+
+                  {item.type === "stripe" ? (
+                    <button
+                      type="button"
+                      data-future-action="stripe"
+                      class="w-full inline-flex items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
+                    >
+                      <svg
+                        class="h-3 w-3 text-[var(--color-accent-gold)]"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <rect
+                          x="1"
+                          y="4"
+                          width="22"
+                          height="16"
+                          rx="2"
+                          ry="2"
+                        ></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                      </svg>
+                      <span>{isEs ? "Próximamente" : "Coming Soon"}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      data-future-action="web3"
+                      class="w-full inline-flex items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
+                    >
+                      <svg
+                        class="h-3 w-3 text-[var(--color-accent-gold)]"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                      </svg>
+                      <span>
+                        {isEs
+                          ? "Detectar Billetera Web3"
+                          : "Detect Web3 Wallet"}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <!-- Feedback alert box for simulated integrations -->
+            <div
+              id="integration-feedback-box"
+              class="hidden rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 text-xs font-mono text-[var(--color-text-secondary)] transition-all"
+            >
+              <p id="integration-feedback-msg" class="leading-relaxed"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Zero external overhead client interaction script -->
+    <script is:inline>
+      // @ts-nocheck
+      (function () {
+        var boundElements =
+          window.__coffeeBoundElements ||
+          (window.__coffeeBoundElements = new WeakSet());
+
+        function setupCoffeeSponsorshipModal() {
+          var dialog = document.getElementById("coffee-sponsorship-dialog");
+          if (!dialog) return;
+
+          if (!boundElements.has(dialog)) {
+            boundElements.add(dialog);
+            // Close when clicking dialog backdrop
+            dialog.addEventListener("click", function (e) {
+              var rect = dialog.getBoundingClientRect();
+              var isInDialog =
+                rect.top <= e.clientY &&
+                e.clientY <= rect.top + rect.height &&
+                rect.left <= e.clientX &&
+                e.clientX <= rect.left + rect.width;
+              if (!isInDialog) {
+                if (typeof dialog.close === "function") {
+                  dialog.close();
+                } else {
+                  dialog.removeAttribute("open");
+                }
+              }
+            });
+          }
+
+          // Document-level delegation for opening/closing coffee modal
+          if (!window.__globalCoffeeDocDelegationBound) {
+            window.__globalCoffeeDocDelegationBound = true;
+            document.addEventListener("click", function (e) {
+              var target = e.target;
+              if (!target) return;
+
+              var openBtnEl = target.closest(
+                "#open-coffee-modal-btn, [data-open-coffee-modal]",
+              );
+              if (openBtnEl) {
+                e.preventDefault();
+                var d = document.getElementById("coffee-sponsorship-dialog");
+                if (d) {
+                  if (typeof d.showModal === "function") d.showModal();
+                  else d.setAttribute("open", "");
+                }
+                return;
+              }
+
+              var closeBtnEl = target.closest("#close-coffee-dialog-btn");
+              if (closeBtnEl) {
+                e.preventDefault();
+                var d = document.getElementById("coffee-sponsorship-dialog");
+                if (d) {
+                  if (typeof d.close === "function") d.close();
+                  else d.removeAttribute("open");
+                }
+                return;
+              }
+
+              var activeDialog = document.getElementById(
+                "coffee-sponsorship-dialog",
+              );
+              if (
+                activeDialog &&
+                activeDialog.open &&
+                target === activeDialog
+              ) {
+                var rect = activeDialog.getBoundingClientRect();
+                var isIn =
+                  rect.top <= e.clientY &&
+                  e.clientY <= rect.top + rect.height &&
+                  rect.left <= e.clientX &&
+                  e.clientX <= rect.left + rect.width;
+                if (!isIn) {
+                  if (typeof activeDialog.close === "function")
+                    activeDialog.close();
+                  else activeDialog.removeAttribute("open");
+                }
+              }
+            });
+          }
+
+          // 1-Click Copy Crypto Addresses
+          var copyBtns = dialog.querySelectorAll("[data-copy-crypto-btn]");
+          copyBtns.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              var addr = btn.getAttribute("data-address");
+              if (!addr) return;
+
+              var labelSpan = btn.querySelector(".copy-status");
+              var originalText = labelSpan ? labelSpan.textContent : "Copy";
+
+              function showSuccess() {
+                if (labelSpan) labelSpan.textContent = "✓ Copied!";
+                btn.classList.add(
+                  "border-[var(--color-accent-gold)]",
+                  "text-[var(--color-accent-gold)]",
+                );
+                setTimeout(function () {
+                  if (labelSpan) labelSpan.textContent = originalText;
+                  btn.classList.remove(
+                    "border-[var(--color-accent-gold)]",
+                    "text-[var(--color-accent-gold)]",
+                  );
+                }, 2000);
+              }
+
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard
+                  .writeText(addr)
+                  .then(showSuccess)
+                  .catch(function () {
+                    legacyCopy(addr);
+                    showSuccess();
+                  });
+              } else {
+                legacyCopy(addr);
+                showSuccess();
+              }
+            });
+          });
+
+          var cryptoCodes = dialog.querySelectorAll("[data-crypto-address]");
+          cryptoCodes.forEach(function (codeEl) {
+            if (codeEl.dataset.copyCleanBound) return;
+            codeEl.dataset.copyCleanBound = "true";
+            codeEl.addEventListener("copy", function (e) {
+              if (e.clipboardData) {
+                var sel = window.getSelection();
+                var text = (
+                  sel ? sel.toString() : codeEl.textContent || ""
+                ).trim();
+                e.clipboardData.setData("text/plain", text);
+                e.preventDefault();
+              }
+            });
+          });
+
+          function legacyCopy(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+              var cmd = "exec" + "Command";
+              if (typeof document[cmd] === "function") {
+                document[cmd]("copy");
+              }
+            } catch (e) {}
+
+            document.body.removeChild(textArea);
+          }
+
+          // Future Integration Stubs (Stripe & Web3)
+          var feedbackBox = document.getElementById("integration-feedback-box");
+          var feedbackMsg = document.getElementById("integration-feedback-msg");
+          var actionBtns = dialog.querySelectorAll("[data-future-action]");
+
+          actionBtns.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              var action = btn.getAttribute("data-future-action");
+              if (!feedbackBox || !feedbackMsg) return;
+
+              feedbackBox.classList.remove("hidden");
+
+              if (action === "stripe") {
+                feedbackMsg.innerHTML =
+                  '<span class="text-[var(--color-accent-gold)] font-bold">Stripe One-Click:</span> Integration API is architected for upcoming v2 release. In the meantime, direct PayPal and native Crypto transfers are immediately active.';
+              } else if (action === "web3") {
+                var hasEthereum =
+                  typeof window !== "undefined" &&
+                  typeof window.ethereum !== "undefined";
+                var hasSolana =
+                  typeof window !== "undefined" &&
+                  typeof window.solana !== "undefined";
+
+                if (hasEthereum || hasSolana) {
+                  var walletName = hasEthereum
+                    ? window.ethereum.isMetaMask
+                      ? "MetaMask"
+                      : "EVM Web3 Provider"
+                    : "Solana Web3 Provider";
+                  feedbackMsg.innerHTML =
+                    '<span class="text-[var(--color-accent-gold)] font-bold">Web3 Detected:</span> Found injected provider (' +
+                    walletName +
+                    "). Direct non-custodial transfer protocol is in development. You can copy the raw address above!";
+                } else {
+                  feedbackMsg.innerHTML =
+                    '<span class="text-[var(--color-accent-gold)] font-bold">Web3 Tip:</span> No injected Web3 browser wallet detected (MetaMask/Phantom). Please copy the direct crypto address above to send from any exchange or mobile wallet.';
+                }
+              }
+            });
+          });
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener(
+            "DOMContentLoaded",
+            setupCoffeeSponsorshipModal,
+          );
+        } else {
+          setupCoffeeSponsorshipModal();
+        }
+        document.addEventListener(
+          "astro:page-load",
+          setupCoffeeSponsorshipModal,
+        );
+      })();
+    </script>
+  </>
+)}

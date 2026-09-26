@@ -1,0 +1,330 @@
+---
+import type { Locale } from "@/i18n/ui";
+
+interface CompanyOption {
+  name: string;
+  count: number;
+}
+
+interface Props {
+  locale: Locale;
+  companies: CompanyOption[];
+  totalSimulations: number;
+}
+
+const { locale, companies, totalSimulations } = Astro.props;
+
+const isEs = locale === "es";
+const allLabel = isEs ? "Todos los Casos de Estudio" : "All Case Studies";
+const filterHeading = isEs
+  ? "Filtros de Casos de Estudio & Telemetría"
+  : "Case Studies & Telemetry Filters";
+const companyHeading = isEs ? "Filtrar por Empresa" : "Filter by Company";
+const searchPlaceholder = isEs
+  ? "Buscar por tecnología, impacto o palabras clave..."
+  : "Search by tech, metric impact, or keywords...";
+const toggleLabel = isEs ? "Desplegar / Colapsar" : "Toggle Filters";
+const noResultsTitle = isEs
+  ? "No se encontraron casos de estudio"
+  : "No case studies found";
+const noResultsDesc = isEs
+  ? "Ningún caso de estudio coincide con los criterios de búsqueda seleccionados. Restablece el filtro para ver todas las simulaciones."
+  : "No case studies match the active filter criteria. Reset the filter to view all simulations.";
+const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
+---
+
+<div
+  class="space-y-6"
+  id="case-studies-filter-root"
+  data-all-label={allLabel}
+  data-is-es={isEs ? "true" : "false"}
+>
+  <!-- Collapsible Filter Accordion -->
+  <details
+    class="group rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] transition-colors"
+    open
+  >
+    <summary class="flex items-start sm:items-center justify-between gap-2 p-3 sm:p-4 cursor-pointer select-none font-mono text-xs sm:text-sm list-none hover:bg-[var(--color-bg-primary)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]">
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2.5 min-w-0">
+        <svg
+          class="h-4 w-4 text-[var(--color-accent-gold)] shrink-0 mt-0.5 sm:mt-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        <span class="font-bold text-[var(--color-text-primary)]">
+          {filterHeading}
+        </span>
+        <span
+          id="active-cs-filter-indicator"
+          class="rounded-full border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)] px-2 py-0.5 text-[11px] sm:text-xs font-semibold text-[var(--color-accent-gold)] whitespace-nowrap shrink-0"
+        >
+          {allLabel} ({totalSimulations})
+        </span>
+      </div>
+      <div class="flex items-center gap-2 text-[var(--color-text-muted)] group-hover:text-[var(--color-accent-gold)] transition-colors shrink-0 mt-0.5 sm:mt-0">
+        <span class="text-xs hidden sm:inline">{toggleLabel}</span>
+        <svg
+          class="h-4 w-4 transition-transform duration-200 group-open:rotate-180"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+    </summary>
+
+    <div class="border-t border-[var(--color-surface-border-subtle)] p-4 sm:p-5 space-y-4 bg-[var(--color-bg-primary)]/30">
+      <!-- Search Input -->
+      <div class="relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-[var(--color-text-muted)]">
+          <svg
+            class="h-4 w-4 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </span>
+        <input
+          type="text"
+          id="cs-search-input"
+          placeholder={searchPlaceholder}
+          class="w-full rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] pl-9 pr-8 py-2 font-mono text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent-gold)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-gold)] transition-colors"
+        />
+        <button
+          type="button"
+          id="cs-clear-search"
+          aria-label={isEs ? "Limpiar búsqueda" : "Clear search"}
+          class="hidden absolute inset-y-0 right-0 items-center pr-3 text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] cursor-pointer"
+        >
+          &times;
+        </button>
+      </div>
+
+      <!-- Companies Filter Row -->
+      {companies.length > 0 && (
+        <div class="space-y-2">
+          <div class="flex items-center justify-between font-mono text-[11px] text-[var(--color-text-muted)]">
+            <span class="font-semibold text-[var(--color-accent-gold)] uppercase tracking-wider block">
+              {companyHeading}
+            </span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+            <button
+              type="button"
+              data-cs-filter="all"
+              class="cs-filter-pill active rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] px-3 py-1.5 font-semibold text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+            >
+              <span>{isEs ? "Todas" : "All"}</span>
+              <span class="ml-1 text-xs opacity-75">({totalSimulations})</span>
+            </button>
+            {companies.map((c) => (
+              <button
+                type="button"
+                data-cs-filter={c.name.toLowerCase()}
+                class="cs-filter-pill rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+              >
+                <span>{c.name}</span>
+                <span class="ml-1 text-xs opacity-70">({c.count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </details>
+
+  <!-- Empty Filter Results Message -->
+  <div
+    id="no-case-studies-message"
+    class="hidden rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-8 text-center space-y-4"
+  >
+    <div class="font-mono text-3xl">🔍</div>
+    <div class="space-y-1">
+      <h3 class="text-base font-bold text-[var(--color-text-primary)] font-mono">
+        {noResultsTitle}
+      </h3>
+      <p class="text-xs text-[var(--color-text-secondary)] max-w-md mx-auto">
+        {noResultsDesc}
+      </p>
+    </div>
+    <button
+      type="button"
+      id="reset-cs-filters-btn"
+      class="inline-flex items-center gap-2 rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] px-3 py-1.5 font-mono text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+    >
+      <span>&larr;</span>
+      <span>{resetFilterLabel}</span>
+    </button>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    function setupCaseStudiesFilter() {
+      var root = document.getElementById("case-studies-filter-root");
+      if (!root) return;
+
+      var allLabel = root.dataset.allLabel || "All Case Studies";
+      var pills = root.querySelectorAll("[data-cs-filter]");
+      var searchInput = document.getElementById("cs-search-input");
+      var clearSearchBtn = document.getElementById("cs-clear-search");
+      var resetBtn = document.getElementById("reset-cs-filters-btn");
+      var indicator = document.getElementById("active-cs-filter-indicator");
+      var noResults = document.getElementById("no-case-studies-message");
+      var cards = document.querySelectorAll("[data-simulation-card]");
+
+      var activeCompany = "all";
+      var searchQuery = "";
+
+      function applyFilters() {
+        var visibleCount = 0;
+        var q = searchQuery.toLowerCase().trim();
+
+        cards.forEach(function (card) {
+          var cardText = (card.textContent || "").toLowerCase();
+          var cardId = card.getAttribute("data-sim-id") || "";
+          var matchesCompany =
+            activeCompany === "all" || cardText.indexOf(activeCompany) > -1;
+          var matchesSearch =
+            !q || cardText.indexOf(q) > -1 || cardId.indexOf(q) > -1;
+
+          if (matchesCompany && matchesSearch) {
+            card.classList.remove("hidden");
+            visibleCount++;
+          } else {
+            card.classList.add("hidden");
+          }
+        });
+
+        // Update pills
+        pills.forEach(function (pill) {
+          var filterVal = pill.getAttribute("data-cs-filter");
+          if (filterVal === activeCompany) {
+            pill.classList.add(
+              "active",
+              "border-[var(--color-accent-gold)]",
+              "bg-[var(--color-accent-gold-subtle)]",
+              "text-[var(--color-accent-gold)]",
+              "font-semibold",
+            );
+            pill.classList.remove(
+              "border-[var(--color-surface-border)]",
+              "bg-[var(--color-surface-card)]",
+              "text-[var(--color-text-secondary)]",
+            );
+          } else {
+            pill.classList.remove(
+              "active",
+              "border-[var(--color-accent-gold)]",
+              "bg-[var(--color-accent-gold-subtle)]",
+              "text-[var(--color-accent-gold)]",
+              "font-semibold",
+            );
+            pill.classList.add(
+              "border-[var(--color-surface-border)]",
+              "bg-[var(--color-surface-card)]",
+              "text-[var(--color-text-secondary)]",
+            );
+          }
+        });
+
+        // Update indicator
+        if (indicator) {
+          var label = activeCompany === "all" ? allLabel : "@" + activeCompany;
+          if (q) label += ' ("' + q + '")';
+          indicator.textContent = label + " (" + visibleCount + ")";
+        }
+
+        // Show/hide empty state
+        if (noResults) {
+          if (visibleCount === 0) {
+            noResults.classList.remove("hidden");
+          } else {
+            noResults.classList.add("hidden");
+          }
+        }
+      }
+
+      pills.forEach(function (pill) {
+        if (pill.dataset.bound) return;
+        pill.dataset.bound = "true";
+        pill.addEventListener("click", function () {
+          activeCompany = pill.getAttribute("data-cs-filter") || "all";
+          applyFilters();
+        });
+      });
+
+      if (searchInput && !searchInput.dataset.bound) {
+        searchInput.dataset.bound = "true";
+        searchInput.addEventListener("input", function () {
+          searchQuery = searchInput.value;
+          if (clearSearchBtn) {
+            if (searchQuery.length > 0) {
+              clearSearchBtn.classList.remove("hidden");
+              clearSearchBtn.classList.add("flex");
+            } else {
+              clearSearchBtn.classList.add("hidden");
+              clearSearchBtn.classList.remove("flex");
+            }
+          }
+          applyFilters();
+        });
+      }
+
+      if (clearSearchBtn && !clearSearchBtn.dataset.bound) {
+        clearSearchBtn.dataset.bound = "true";
+        clearSearchBtn.addEventListener("click", function () {
+          if (searchInput) {
+            searchInput.value = "";
+            searchQuery = "";
+            clearSearchBtn.classList.add("hidden");
+            clearSearchBtn.classList.remove("flex");
+            applyFilters();
+            searchInput.focus();
+          }
+        });
+      }
+
+      if (resetBtn && !resetBtn.dataset.bound) {
+        resetBtn.dataset.bound = "true";
+        resetBtn.addEventListener("click", function () {
+          activeCompany = "all";
+          searchQuery = "";
+          if (searchInput) searchInput.value = "";
+          if (clearSearchBtn) {
+            clearSearchBtn.classList.add("hidden");
+            clearSearchBtn.classList.remove("flex");
+          }
+          applyFilters();
+        });
+      }
+
+      // Check URL search parameters (e.g. ?company=Mercado+Libre)
+      var urlParams = new URLSearchParams(window.location.search);
+      var compParam = urlParams.get("company");
+      if (compParam) {
+        activeCompany = compParam.toLowerCase().trim();
+      }
+      applyFilters();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupCaseStudiesFilter);
+    } else {
+      setupCaseStudiesFilter();
+    }
+    document.addEventListener("astro:page-load", setupCaseStudiesFilter);
+  })();
+</script>

@@ -1,0 +1,903 @@
+---
+import { getCollection } from "astro:content";
+import { sponsorshipData } from "@/data/sponsorships";
+import { simulationsData } from "@/data/simulations";
+import type { Locale } from "@/i18n/ui";
+
+export interface IndexSubItem {
+  id: string;
+  label: string;
+  labelEs: string;
+}
+
+export interface IndexItem {
+  id: string;
+  label: string;
+  labelEs: string;
+  subitems?: IndexSubItem[];
+}
+
+interface Props {
+  locale: Locale;
+  customItems?: IndexItem[] | undefined;
+  containerMaxWidth?: "cv" | "4xl" | "5xl" | undefined;
+  alignTargetId?: string | undefined;
+  showPdfPrint?: boolean | undefined;
+}
+
+const {
+  locale,
+  customItems,
+  containerMaxWidth = "5xl",
+  alignTargetId = "about",
+  showPdfPrint = false,
+} = Astro.props;
+const isEs = locale === "es";
+
+const hasSponsorships =
+  (sponsorshipData.crypto && sponsorshipData.crypto.length > 0) ||
+  (sponsorshipData.platforms && sponsorshipData.platforms.length > 0);
+const hasCaseStudies = Boolean(simulationsData && simulationsData.length > 0);
+const [allProjects, allExperience, allPosts] = await Promise.all([
+  getCollection("projects", ({ data }) => data.locale === locale),
+  getCollection("experience", ({ data }) => data.locale === locale),
+  getCollection("posts", ({ data }) => data.locale === locale && !data.draft),
+]);
+const hasProjects = allProjects.length > 0;
+const hasExperience = allExperience.length > 0;
+const hasPosts = allPosts.length > 0;
+
+const defaultIndexItems: IndexItem[] = [
+  {
+    id: "about",
+    label: "Profile / Executive Summary",
+    labelEs: "Perfil / Resumen Ejecutivo",
+    subitems: [
+      {
+        id: "hero-philosophies",
+        label: "Architecture Principles",
+        labelEs: "Principios de Arquitectura",
+      },
+      {
+        id: "hero-ai-workflow",
+        label: "AI Engineer Workflow",
+        labelEs: "Flujo de Ingeniería con IA",
+      },
+    ],
+  },
+  {
+    id: "metrics",
+    label: "Operational Metrics Grid",
+    labelEs: "Métricas Operacionales",
+  },
+  ...(hasExperience
+    ? [
+        {
+          id: "experience",
+          label: "Engineering Timeline",
+          labelEs: "Trayectoria & Experiencia",
+        },
+      ]
+    : []),
+  ...(hasProjects
+    ? [
+        {
+          id: "projects",
+          label: "Distributed Architectures",
+          labelEs: "Sistemas Distribuidos",
+        },
+      ]
+    : []),
+  ...(hasPosts
+    ? [
+        {
+          id: "blog",
+          label: "Technical Essays & Notes",
+          labelEs: "Ensayos & Notas Técnicas",
+        },
+      ]
+    : []),
+  ...(hasCaseStudies
+    ? [
+        {
+          id: "telemetry",
+          label: "Architecture Case Studies & Telemetry",
+          labelEs: "Casos de Estudio & Telemetría",
+        },
+      ]
+    : []),
+  {
+    id: "contact",
+    label: "Direct Channels & Contact",
+    labelEs: "Canales Directos & Contacto",
+  },
+  ...(hasSponsorships
+    ? [
+        {
+          id: "coffee",
+          label: "Buy Me a Coffee & Support ☕",
+          labelEs: "Invítame un Café ☕",
+        },
+      ]
+    : []),
+];
+
+const indexItems: IndexItem[] = customItems ?? defaultIndexItems;
+
+const isCvPage = containerMaxWidth === "cv";
+const isJobPage = containerMaxWidth === "4xl";
+const topValue = isCvPage
+  ? "calc(5rem + 1px)"
+  : isJobPage
+    ? "7rem"
+    : "calc(5rem + 1px)";
+const containerMaxClass = isCvPage
+  ? "max-w-[210mm]"
+  : isJobPage
+    ? "max-w-4xl"
+    : "max-w-5xl";
+const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
+---
+
+<!-- ======================================================== -->
+<!-- MODE A: DESKTOP LEFT SIDEBAR (>1600px Viewport Width)     -->
+<!-- High-End Pure CSS Geometry: 100% In-Sync with Container   -->
+<!-- Zero JS Overrides, Zero Scrollbar Drift, Zero F5 Jumps    -->
+<!-- ======================================================== -->
+<div
+  id="desktop-page-index-root"
+  class="page-index-fixed hidden min-[1600px]:block fixed inset-x-0 pointer-events-none z-30 select-none"
+  style={`top: ${topValue};`}
+>
+  <div class={`mx-auto ${containerMaxClass} relative`}>
+    <aside
+      id="desktop-page-index"
+      aria-label={isEs ? "Índice de la página" : "Page Navigation Index"}
+      data-align-target={alignTargetId}
+      class={`absolute right-full top-0 ${asideGapClass} w-64 pointer-events-auto font-mono text-xs`}
+    >
+      <div class="geometric-box p-4 rounded bg-[var(--color-surface-card)]/90 backdrop-blur-md border border-[var(--color-surface-border)] shadow-card">
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2.5 mb-3 text-[11px] uppercase tracking-wider text-[var(--color-text-muted)]">
+          <span class="flex items-center gap-2">
+            <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
+            <span class="font-bold text-[var(--color-text-primary)]">
+              {isEs ? "Índice" : "Page Index"}
+            </span>
+          </span>
+          <span class="text-[10px] text-[var(--color-accent-gold)]">NAV</span>
+        </div>
+
+        <nav class="space-y-1 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-[var(--color-surface-border-subtle)]">
+          {indexItems.map((item) => (
+            <div>
+              <a
+                href={`#${item.id}`}
+                data-index-link={item.id}
+                class="group flex items-center gap-2 py-1 pl-3.5 pr-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors"
+              >
+                <span class="h-1 w-1 rounded-full bg-[var(--color-surface-border)] group-hover:bg-[var(--color-accent-gold)] transition-colors shrink-0"></span>
+                <span class="truncate">{isEs ? item.labelEs : item.label}</span>
+              </a>
+
+              {item.subitems && (
+                <div class="pl-4 space-y-0.5 mt-0.5">
+                  {item.subitems.map((sub) => (
+                    <a
+                      href={`#${sub.id}`}
+                      data-index-link={sub.id}
+                      class="group flex items-center gap-1.5 py-0.5 pl-3 pr-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors"
+                    >
+                      <span class="text-[var(--color-surface-border)] group-hover:text-[var(--color-accent-gold)]">
+                        &ndash;
+                      </span>
+                      <span class="truncate">
+                        {isEs ? sub.labelEs : sub.label}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </nav>
+
+        <!-- Subtle Navigation Hint (Task 6) -->
+        <div class="mt-3 pt-2.5 border-t border-[var(--color-surface-border-subtle)] flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none">
+          <span>{isEs ? "Desplazamiento" : "Scroll"}</span>
+          <span class="flex items-center gap-1 font-semibold">
+            <kbd
+              data-vim-key="j"
+              class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
+            >
+              j
+            </kbd>
+            <kbd
+              data-vim-key="k"
+              class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
+            >
+              k
+            </kbd>
+          </span>
+        </div>
+      </div>
+
+      {showPdfPrint && (
+        <button
+          type="button"
+          id="desktop-cv-print-btn"
+          onclick="typeof window.printCleanCV === 'function' ? window.printCleanCV() : window.print()"
+          aria-label={
+            isEs
+              ? "Imprimir o descargar CV en PDF (p)"
+              : "Print or download CV as PDF (p)"
+          }
+          title={
+            isEs
+              ? "Imprimir / Descargar en PDF (p)"
+              : "Print / Download as PDF (p)"
+          }
+          class="mt-3 w-full flex items-center justify-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+        >
+          <svg
+            class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M6 9V2h12v7"></path>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <path d="M6 14h12v8H6z"></path>
+          </svg>
+          <span class="truncate">PDF / Download</span>
+          <kbd class="ml-1 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-accent-gold)] font-semibold shrink-0">
+            p
+          </kbd>
+        </button>
+      )}
+    </aside>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODE B: FLOATING ACCORDION BUTTON (<1600px Viewport)     -->
+<!-- ======================================================== -->
+<div
+  id="mobile-page-index-root"
+  class="fixed bottom-5 right-5 z-40 block min-[1600px]:hidden pointer-events-none"
+>
+  <div
+    id="mobile-page-index-container"
+    class="block min-[1600px]:hidden relative pointer-events-auto flex flex-col items-end order-2"
+  >
+    <!-- Upward Expanding Index Panel -->
+    <div
+      id="index-expanded-panel"
+      role="region"
+      aria-label={isEs ? "Panel del índice" : "Index Panel"}
+      class="hidden absolute bottom-full mb-3 right-0 w-64 sm:w-72 max-h-[70vh] overflow-y-auto rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 backdrop-blur-md p-3.5 shadow-2xl font-mono text-xs z-50 animate-fade-in"
+      data-scrollable
+      style="box-shadow: var(--shadow-modal);"
+    >
+      <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2 mb-2.5">
+        <span class="font-bold text-[var(--color-text-primary)] flex items-center gap-1.5">
+          <svg
+            class="h-3.5 w-3.5 text-[var(--color-accent-gold)]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+          <span>{isEs ? "Índice de Secciones" : "Page Navigation"}</span>
+        </span>
+        <button
+          type="button"
+          id="close-index-panel-btn"
+          aria-label={isEs ? "Cerrar índice" : "Close index"}
+          class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <nav class="space-y-1">
+        {indexItems.map((item) => (
+          <div>
+            <a
+              href={`#${item.id}`}
+              data-mobile-index-link={item.id}
+              class="flex items-center justify-between py-1.5 px-2.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/50 transition-colors"
+            >
+              <span class="truncate">{isEs ? item.labelEs : item.label}</span>
+              <span class="text-[10px] text-[var(--color-text-muted)]">
+                &rarr;
+              </span>
+            </a>
+
+            {item.subitems && (
+              <div class="pl-3 space-y-0.5 mt-0.5">
+                {item.subitems.map((sub) => (
+                  <a
+                    href={`#${sub.id}`}
+                    data-mobile-index-link={sub.id}
+                    class="flex items-center gap-1.5 py-1 px-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors rounded"
+                  >
+                    <span>&bull;</span>
+                    <span class="truncate">
+                      {isEs ? sub.labelEs : sub.label}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </nav>
+
+      <!-- Subtle Navigation Hint (Task 6: Hidden on mobile < 640px where touch is used) -->
+      <div class="hidden sm:flex mt-3 pt-2 border-t border-[var(--color-surface-border-subtle)] items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none">
+        <span>{isEs ? "Desplazamiento" : "Scroll"}</span>
+        <span class="flex items-center gap-1 font-semibold">
+          <kbd
+            data-vim-key="j"
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
+          >
+            j
+          </kbd>
+          <kbd
+            data-vim-key="k"
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
+          >
+            k
+          </kbd>
+        </span>
+      </div>
+    </div>
+
+    <!-- Floating Trigger Button (Task 7: with "i" indicator, Task 8: smart alignment) -->
+    <button
+      type="button"
+      id="open-index-floating-btn"
+      aria-expanded="false"
+      aria-controls="index-expanded-panel"
+      class="flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-3.5 py-2 font-mono text-xs font-semibold text-[var(--color-text-secondary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shadow-card hover:shadow-card-hover self-end"
+    >
+      <svg
+        class="h-3.5 w-3.5 text-[var(--color-accent-gold)] shrink-0"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+      <span class="shrink-0">{isEs ? "Índice" : "Index"}</span>
+      <kbd class="hidden sm:inline-block rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] font-semibold shrink-0">
+        i
+      </kbd>
+    </button>
+
+    {showPdfPrint && (
+      <button
+        type="button"
+        id="mobile-cv-print-btn"
+        onclick="typeof window.printCleanCV === 'function' ? window.printCleanCV() : window.print()"
+        aria-label={
+          isEs
+            ? "Imprimir o descargar CV en PDF (p)"
+            : "Print or download CV as PDF (p)"
+        }
+        title={
+          isEs
+            ? "Imprimir / Descargar en PDF (p)"
+            : "Print / Download as PDF (p)"
+        }
+        class="mt-2.5 flex min-h-[44px] min-w-[48px] w-auto self-end items-center justify-center gap-1.5 rounded-full border border-[var(--color-accent-gold)] bg-[var(--color-surface-card)]/95 px-3 py-1.5 font-mono text-xs font-semibold text-[var(--color-accent-gold)] backdrop-blur-md hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+      >
+        <svg
+          class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M6 9V2h12v7"></path>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <path d="M6 14h12v8H6z"></path>
+        </svg>
+        <span class="shrink-0">PDF / Download</span>
+        <kbd class="hidden sm:inline-block ml-1 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-accent-gold)] font-semibold shrink-0">
+          p
+        </kbd>
+      </button>
+    )}
+  </div>
+</div>
+
+<style>
+  #mobile-page-index-container {
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  #open-index-floating-btn,
+  #mobile-cv-print-btn {
+    transition:
+      transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      color 0.2s ease;
+    will-change: transform;
+  }
+  #open-index-floating-btn.footer-tucked,
+  #mobile-cv-print-btn.footer-tucked {
+    transform: translateX(calc(100% - 22px));
+  }
+  #open-index-floating-btn.footer-tucked::after,
+  #mobile-cv-print-btn.footer-tucked::after {
+    content: "";
+    position: absolute;
+    top: -12px;
+    bottom: -12px;
+    left: -8px;
+    right: -60px;
+    pointer-events: auto;
+  }
+  #open-index-floating-btn.footer-tucked:hover,
+  #open-index-floating-btn.footer-tucked:focus-visible,
+  #mobile-cv-print-btn.footer-tucked:hover,
+  #mobile-cv-print-btn.footer-tucked:focus-visible {
+    transform: translateX(0);
+  }
+</style>
+
+<script is:inline>
+  // @ts-nocheck
+  (function () {
+    function setupPageIndex() {
+      var stack = document.getElementById("floating-actions-stack");
+      var container = document.getElementById("mobile-page-index-container");
+      if (stack && container) {
+        var existing = stack.querySelector("#mobile-page-index-container");
+        if (existing && existing !== container) {
+          existing.remove();
+        }
+        if (container.parentElement !== stack) {
+          stack.appendChild(container);
+        }
+        var root = document.getElementById("mobile-page-index-root");
+        if (root && root.children.length === 0) {
+          root.remove();
+        }
+      }
+
+      var floatingBtn = document.getElementById("open-index-floating-btn");
+      var panel = document.getElementById("index-expanded-panel");
+      var closeBtn = document.getElementById("close-index-panel-btn");
+      var desktopAside = document.getElementById("desktop-page-index");
+      var desktopLinks = document.querySelectorAll("[data-index-link]");
+      var mobileLinks = document.querySelectorAll("[data-mobile-index-link]");
+
+      function togglePanel(open) {
+        var currentPanel = document.getElementById("index-expanded-panel");
+        var currentBtn = document.getElementById("open-index-floating-btn");
+        if (!currentPanel) return;
+        var shouldOpen =
+          typeof open === "boolean"
+            ? open
+            : currentPanel.classList.contains("hidden");
+        if (shouldOpen) {
+          currentPanel.classList.remove("hidden");
+          if (currentBtn) currentBtn.setAttribute("aria-expanded", "true");
+        } else {
+          currentPanel.classList.add("hidden");
+          if (currentBtn) currentBtn.setAttribute("aria-expanded", "false");
+        }
+      }
+      window.__toggleIndexPanel = togglePanel;
+
+      var boundElements =
+        window.__pageIndexBoundElements ||
+        (window.__pageIndexBoundElements = new WeakSet());
+
+      // Global keyboard shortcut: 'i' or 'I' (Task 7)
+      if (!window.__indexKeydownBound) {
+        window.__indexKeydownBound = true;
+        document.addEventListener("keydown", function (e) {
+          var active = document.activeElement;
+          var tag =
+            active && active.tagName ? active.tagName.toUpperCase() : "";
+          var isInputFocused =
+            tag === "INPUT" ||
+            tag === "TEXTAREA" ||
+            (active && active.isContentEditable);
+          if (isInputFocused) return;
+
+          if (e.key === "i" || e.key === "I") {
+            e.preventDefault();
+            if (typeof window.__toggleIndexPanel === "function") {
+              window.__toggleIndexPanel();
+            }
+          }
+
+          if (
+            (e.key === "p" || e.key === "P") &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.altKey
+          ) {
+            var printBtn =
+              document.getElementById("desktop-cv-print-btn") ||
+              document.getElementById("mobile-cv-print-btn");
+            if (printBtn) {
+              e.preventDefault();
+              printBtn.click();
+            }
+          }
+        });
+      }
+
+      // 1. Mobile / Floating Index Interactions
+      if (floatingBtn && !boundElements.has(floatingBtn)) {
+        boundElements.add(floatingBtn);
+
+        floatingBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          togglePanel();
+        });
+
+        if (closeBtn && !boundElements.has(closeBtn)) {
+          boundElements.add(closeBtn);
+          closeBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            togglePanel(false);
+          });
+        }
+
+        // Footer Tucking via IntersectionObserver (deferred to first scroll)
+        var footerObsAttached = false;
+        function attachFooterObserver() {
+          if (footerObsAttached) return;
+          footerObsAttached = true;
+          var footer = document.querySelector("footer");
+          if (footer && "IntersectionObserver" in window) {
+            var observer = new IntersectionObserver(
+              function (entries) {
+                entries.forEach(function (entry) {
+                  var printBtn = document.getElementById("mobile-cv-print-btn");
+                  if (entry.isIntersecting) {
+                    floatingBtn.classList.add("footer-tucked");
+                    if (printBtn) printBtn.classList.add("footer-tucked");
+                    togglePanel(false);
+                  } else {
+                    floatingBtn.classList.remove("footer-tucked");
+                    if (printBtn) printBtn.classList.remove("footer-tucked");
+                  }
+                });
+              },
+              { threshold: 0.05 },
+            );
+            observer.observe(footer);
+          }
+        }
+        window.addEventListener("scroll", attachFooterObserver, {
+          once: true,
+          passive: true,
+        });
+      }
+
+      // Document-level delegation for index toggle, close, and click outside
+      if (!window.__globalIndexDocDelegationBound) {
+        window.__globalIndexDocDelegationBound = true;
+        document.addEventListener("click", function (e) {
+          var target = e.target;
+          if (!target) return;
+
+          var openBtnEl = target.closest("#open-index-floating-btn");
+          if (openBtnEl) {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePanel();
+            return;
+          }
+
+          var closeBtnEl = target.closest("#close-index-panel-btn");
+          if (closeBtnEl) {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePanel(false);
+            return;
+          }
+
+          var currentPanel = document.getElementById("index-expanded-panel");
+          var currentBtn = document.getElementById("open-index-floating-btn");
+          if (currentPanel && !currentPanel.classList.contains("hidden")) {
+            if (
+              !currentPanel.contains(target) &&
+              (!currentBtn || !currentBtn.contains(target))
+            ) {
+              togglePanel(false);
+            }
+          }
+        });
+      }
+
+      // 2. Active State Management & Section Derivation
+      var sectionIds = [];
+      desktopLinks.forEach(function (dl) {
+        var id = dl.getAttribute("data-index-link");
+        if (id && !sectionIds.includes(id)) sectionIds.push(id);
+      });
+      if (sectionIds.length === 0) {
+        mobileLinks.forEach(function (ml) {
+          var id = ml.getAttribute("data-mobile-index-link");
+          if (id && !sectionIds.includes(id)) sectionIds.push(id);
+        });
+      }
+
+      var sectionEls = sectionIds
+        .map(function (id) {
+          return document.getElementById(id);
+        })
+        .filter(Boolean);
+
+      var isProgrammaticScroll = false;
+      var scrollLockTimeout = null;
+
+      function highlightActive(activeId) {
+        desktopLinks.forEach(function (dl) {
+          if (dl.getAttribute("data-index-link") === activeId) {
+            dl.classList.add(
+              "text-[var(--color-accent-gold)]",
+              "font-bold",
+              "bg-[var(--color-accent-gold-subtle)]",
+            );
+          } else {
+            dl.classList.remove(
+              "text-[var(--color-accent-gold)]",
+              "font-bold",
+              "bg-[var(--color-accent-gold-subtle)]",
+            );
+          }
+        });
+        mobileLinks.forEach(function (ml) {
+          if (ml.getAttribute("data-mobile-index-link") === activeId) {
+            ml.classList.add(
+              "text-[var(--color-accent-gold)]",
+              "font-bold",
+              "bg-[var(--color-accent-gold-subtle)]",
+            );
+          } else {
+            ml.classList.remove(
+              "text-[var(--color-accent-gold)]",
+              "font-bold",
+              "bg-[var(--color-accent-gold-subtle)]",
+            );
+          }
+        });
+      }
+
+      function scrollToTarget(targetId) {
+        var targetEl = document.getElementById(targetId);
+        if (!targetEl) return;
+
+        // Immediately highlight the clicked item and lock scrollspy during travel (Task 4)
+        highlightActive(targetId);
+        isProgrammaticScroll = true;
+        clearTimeout(scrollLockTimeout);
+        scrollLockTimeout = setTimeout(function () {
+          isProgrammaticScroll = false;
+        }, 800);
+
+        var headerOffset = window.innerWidth < 640 ? 20 : 84;
+        var elementPosition =
+          targetEl.getBoundingClientRect().top + window.pageYOffset;
+        window.scrollTo({
+          top: Math.max(0, elementPosition - headerOffset),
+          behavior: "smooth",
+        });
+
+        if (history.pushState) {
+          history.pushState(null, "", "#" + targetId);
+        } else {
+          window.location.hash = targetId;
+        }
+      }
+
+      window.__hasPageIndex = sectionIds.length > 0;
+
+      var lastStepTime = 0;
+      window.__pageIndexStep = function (direction) {
+        if (!sectionIds || sectionIds.length === 0) return false;
+
+        var now = Date.now();
+        if (now - lastStepTime < 260) return true;
+        lastStepTime = now;
+
+        var headerOffset = window.innerWidth < 640 ? 20 : 84;
+        var threshold = headerOffset + 18;
+        var documentHeight = document.documentElement.scrollHeight || 3000;
+
+        // Determine currently active section
+        var currentIdx = -1;
+        for (var i = 0; i < sectionIds.length; i++) {
+          var el = document.getElementById(sectionIds[i]);
+          if (!el) continue;
+          var rect = el.getBoundingClientRect();
+          if (rect.top <= threshold) {
+            currentIdx = i;
+          } else {
+            break;
+          }
+        }
+
+        var targetIdx;
+        if (direction > 0) {
+          // 'j' -> Next section
+          if (currentIdx === -1) {
+            targetIdx = 0;
+          } else {
+            targetIdx = currentIdx + 1;
+          }
+
+          if (targetIdx >= sectionIds.length) {
+            window.scrollTo({
+              top: documentHeight,
+              behavior: "smooth",
+            });
+            highlightActive(sectionIds[sectionIds.length - 1]);
+            return true;
+          }
+        } else {
+          // 'k' -> Previous section
+          if (currentIdx <= 0) {
+            window.scrollTo({
+              top: 0,
+              behavior: "smooth",
+            });
+            if (sectionIds.length > 0) highlightActive(sectionIds[0]);
+            return true;
+          }
+
+          targetIdx = currentIdx - 1;
+        }
+
+        var targetId = sectionIds[targetIdx];
+        if (targetId) {
+          scrollToTarget(targetId);
+        }
+        return true;
+      };
+
+      desktopLinks.forEach(function (link) {
+        if (link.dataset.scrollBound) return;
+        link.dataset.scrollBound = "true";
+        link.addEventListener("click", function (e) {
+          var targetId = link.getAttribute("data-index-link");
+          if (targetId) {
+            e.preventDefault();
+            scrollToTarget(targetId);
+          }
+        });
+      });
+
+      mobileLinks.forEach(function (link) {
+        if (link.dataset.scrollBound) return;
+        link.dataset.scrollBound = "true";
+        link.addEventListener("click", function (e) {
+          var targetId = link.getAttribute("data-mobile-index-link");
+          if (targetId) {
+            e.preventDefault();
+            if (panel) panel.classList.add("hidden");
+            if (floatingBtn) floatingBtn.setAttribute("aria-expanded", "false");
+            scrollToTarget(targetId);
+          }
+        });
+      });
+
+      // 3. High-Precision Reading Line Scrollspy (Task 4)
+      if (sectionEls.length > 0) {
+        var ticking = false;
+
+        function updateScrollSpy() {
+          if (isProgrammaticScroll) return;
+
+          var scrollY =
+            window.pageYOffset || document.documentElement.scrollTop;
+
+          // Top of page: item 1 is active (ZERO DOM reflow or geometric queries needed)
+          if (scrollY < 60) {
+            highlightActive(sectionEls[0].id);
+            return;
+          }
+
+          var viewportHeight = window.innerHeight || 800;
+          var documentHeight = document.documentElement.scrollHeight || 3000;
+
+          // Bottom of page: last item is active
+          if (scrollY + viewportHeight >= documentHeight - 40) {
+            highlightActive(sectionEls[sectionEls.length - 1].id);
+            return;
+          }
+
+          // Reading line just below sticky header
+          var readingLine = 100;
+          var currentActiveId = sectionEls[0].id;
+
+          for (var i = 0; i < sectionEls.length; i++) {
+            var el = sectionEls[i];
+            var rect = el.getBoundingClientRect();
+            if (rect.top <= readingLine) {
+              currentActiveId = el.id;
+            } else {
+              break;
+            }
+          }
+
+          highlightActive(currentActiveId);
+        }
+
+        window.addEventListener(
+          "scroll",
+          function () {
+            if (!ticking) {
+              window.requestAnimationFrame(function () {
+                updateScrollSpy();
+                ticking = false;
+              });
+              ticking = true;
+            }
+          },
+          { passive: true },
+        );
+
+        // Immediately identify and highlight active section upon opening page without waiting for user to scroll (Task 7)
+        function assessInitialSection() {
+          if (window.location.hash) {
+            var hashTarget = window.location.hash.substring(1);
+            if (sectionIds.includes(hashTarget)) {
+              highlightActive(hashTarget);
+              return;
+            }
+          }
+          updateScrollSpy();
+        }
+
+        assessInitialSection();
+        window.addEventListener("load", assessInitialSection, { once: true });
+        window.requestAnimationFrame(assessInitialSection);
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupPageIndex);
+    } else {
+      setupPageIndex();
+    }
+    document.addEventListener("astro:page-load", setupPageIndex);
+  })();
+</script>

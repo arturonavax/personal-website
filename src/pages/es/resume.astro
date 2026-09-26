@@ -1,0 +1,395 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PageIndexNav from "@/components/ui/PageIndexNav.astro";
+import { getCVData, hasResume } from "@/data/cv";
+
+const locale = "es";
+const { html, items } = getCVData("es");
+---
+
+<BaseLayout
+  title="Arturo Nava — Senior Software Engineer | Currículum"
+  description="CV profesional de Arturo Nava, Senior Software Engineer especializado en Go, Rust y Python. Sistemas Distribuidos, Alta Concurrencia & Seguridad."
+  locale={locale}
+  canonicalUrl="https://arturonavax.dev/es/resume"
+  type="profile"
+  hideSubtleCoffee={true}
+>
+  {hasResume && (
+    <PageIndexNav
+      locale={locale}
+      customItems={items}
+      containerMaxWidth="cv"
+      alignTargetId="cv-document-sheet"
+      showPdfPrint={true}
+    />
+  )}
+
+  <main class="w-full pt-1.5 sm:pt-4 lg:pt-6 pb-12 sm:pb-16 px-2 min-[360px]:px-3 sm:px-6 flex justify-center">
+    {hasResume ? (
+      <article
+        id="cv-document-sheet"
+        class="cv-document bg-white text-[#1e293b] rounded-none border border-[var(--color-surface-border)] shadow-2xl p-3.5 min-[360px]:p-5 sm:p-9 md:p-12 w-full max-w-[210mm] relative"
+      >
+        <Fragment set:html={html} />
+      </article>
+    ) : (
+      <div class="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-8 text-center font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">
+        Archivo de currículum no disponible.
+      </div>
+    )}
+  </main>
+</BaseLayout>
+
+<style is:global>
+  /* ==========================================================================
+     PRINT STYLES: Cross-Browser Clean CV Engine (Chromium, Firefox, WebKit)
+     ========================================================================== */
+  @media print {
+    /* Base page geometry - Safe for all browsers */
+    @page {
+      size: A4;
+      margin: 12mm 14mm 14mm 14mm;
+    }
+
+    /* Chromium Margin Boxes - Isolated block to protect Firefox parser */
+    @page {
+      @top-left {
+        content: "";
+      }
+      @top-center {
+        content: "";
+      }
+      @top-right {
+        content: "";
+      }
+      @bottom-left {
+        content: "ARTURO NAVA • CV";
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 7.5pt;
+        font-weight: 500;
+        color: #64748b;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      @bottom-center {
+        content: "";
+      }
+      @bottom-right {
+        content: "";
+      }
+    }
+
+    /* Suppress default link URL expansion across all browsers */
+    a[href]::after,
+    a::after {
+      content: none !important;
+    }
+
+    /* Prevent Firefox and WebKit from stripping background colors, code boxes, and borders */
+    *,
+    *::before,
+    *::after {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+
+    :root,
+    html,
+    body {
+      color-scheme: light !important;
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+      color: #1e293b !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      --color-surface-bg: #ffffff !important;
+      --color-surface-card: #ffffff !important;
+      --color-surface-border: #e2e8f0 !important;
+      --color-text-primary: #0f172a !important;
+      --color-text-secondary: #334155 !important;
+    }
+
+    #matrix-container,
+    #matrix-canvas,
+    canvas {
+      display: none !important;
+      visibility: hidden !important;
+    }
+
+    header,
+    footer,
+    aside,
+    #desktop-page-index,
+    #mobile-page-index-root,
+    #mobile-page-index-container,
+    [data-shortcuts-root],
+    dialog,
+    nav,
+    .no-print {
+      display: none !important;
+    }
+
+    main {
+      margin: 0 !important;
+      padding: 0 !important;
+      max-width: none !important;
+      display: block !important;
+    }
+
+    #cv-document-sheet.cv-document {
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      max-width: none !important;
+      width: 100% !important;
+      background: #ffffff !important;
+    }
+
+    * {
+      content-visibility: visible !important;
+    }
+  }
+
+  /* ==========================================================================
+     SCOPED CV TYPOGRAPHY & COMPONENT STYLING (Screen & Print Preserved)
+     ========================================================================== */
+  .cv-document {
+    font-family:
+      var(--font-sans),
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+    font-size: 11.5pt;
+    line-height: 1.38;
+    color: #1e293b;
+    background-color: #ffffff;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .cv-document h1 {
+    font-size: 21pt;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin: 0 0 2px 0;
+    color: #0f172a !important;
+  }
+
+  .cv-document h1 + p > strong:first-child {
+    font-size: 11.5pt;
+    font-weight: 600;
+    color: #0f2d59 !important;
+    letter-spacing: -0.01em;
+    display: inline-block;
+    margin-bottom: 2px;
+  }
+
+  .cv-document h1 + p a {
+    color: #0369a1 !important;
+    text-decoration: none;
+    font-weight: 450;
+  }
+
+  .cv-document h1 + p a:hover {
+    text-decoration: underline;
+  }
+
+  .cv-document p a,
+  .cv-document li a {
+    color: #0369a1 !important;
+    text-decoration: none;
+  }
+
+  .cv-document p a:hover,
+  .cv-document li a:hover {
+    text-decoration: underline;
+  }
+
+  .cv-document h2 {
+    font-size: 12pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #0f172a !important;
+    border-bottom: 1.5px solid #1e293b !important;
+    padding-bottom: 2px;
+    margin: 14px 0 6px 0;
+    page-break-after: avoid;
+    break-after: avoid;
+    scroll-margin-top: 5rem;
+  }
+
+  .cv-document h3 {
+    font-size: 11.5pt;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 10px 0 1px 0;
+    color: #0f172a !important;
+    page-break-after: avoid;
+    break-after: avoid;
+    scroll-margin-top: 5rem;
+  }
+
+  .cv-document h3 + p {
+    margin: 0 0 4px 0;
+    font-size: 10pt;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .cv-document h3 + p > strong {
+    color: #1e3a8a !important;
+    font-weight: 600;
+  }
+
+  .cv-document h3 + p > em {
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+    color: #475569 !important;
+    margin-left: 2px;
+  }
+
+  .cv-document ul {
+    margin: 2px 0 6px 0;
+    padding-left: 16px;
+    list-style-type: disc;
+  }
+
+  .cv-document li {
+    margin-bottom: 3px;
+    color: #1e293b;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .cv-document li::marker {
+    color: #1e3a8a !important;
+    font-size: 0.8em;
+  }
+
+  .cv-document strong {
+    font-weight: 600;
+    color: #0f172a;
+  }
+
+  .cv-document p {
+    margin: 0 0 4px 0;
+    text-align: left;
+  }
+
+  .cv-document code {
+    font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.88em !important;
+    font-weight: 500;
+    background-color: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 2px;
+    padding: 0.5px 3px;
+    margin: 0 1px;
+    color: #0f2d59 !important;
+    vertical-align: baseline;
+    white-space: nowrap;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .cv-document li em,
+  .cv-document p em {
+    color: #1e3a8a !important;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 10pt;
+    margin-right: 2px;
+  }
+
+  .cv-document hr {
+    display: none;
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var origDocTitle = "";
+    var origTagTitle = "";
+
+    window.printCleanCV = function () {
+      if (!origDocTitle) {
+        origDocTitle = document.title;
+        var titleEl = document.querySelector("title");
+        if (titleEl && !origTagTitle) {
+          origTagTitle = titleEl.textContent;
+        }
+      }
+      document.title = "\u200E";
+      var titleEl = document.querySelector("title");
+      if (titleEl) {
+        titleEl.textContent = "\u200E";
+      }
+
+      var restored = false;
+      function restoreTitle() {
+        if (restored) return;
+        restored = true;
+        if (origDocTitle) {
+          document.title = origDocTitle;
+        }
+        if (titleEl && origTagTitle) {
+          titleEl.textContent = origTagTitle;
+        }
+        origDocTitle = "";
+        origTagTitle = "";
+      }
+
+      window.addEventListener("afterprint", restoreTitle, { once: true });
+      setTimeout(restoreTitle, 3500);
+
+      // Microtask delay so Firefox and Chromium title cache registers blank title before modal dialog opens
+      setTimeout(function () {
+        window.print();
+      }, 70);
+    };
+
+    window.addEventListener("beforeprint", function () {
+      if (!origDocTitle) {
+        origDocTitle = document.title;
+        var titleEl = document.querySelector("title");
+        if (titleEl && !origTagTitle) {
+          origTagTitle = titleEl.textContent;
+        }
+      }
+      document.title = "\u200E";
+      var titleEl = document.querySelector("title");
+      if (titleEl) {
+        titleEl.textContent = "\u200E";
+      }
+    });
+
+    window.addEventListener("afterprint", function () {
+      if (origDocTitle) {
+        document.title = origDocTitle;
+        var titleEl = document.querySelector("title");
+        if (titleEl && origTagTitle) {
+          titleEl.textContent = origTagTitle;
+        }
+        origDocTitle = "";
+        origTagTitle = "";
+      }
+    });
+  })();
+</script>
