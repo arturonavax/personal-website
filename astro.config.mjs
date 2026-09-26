@@ -24,7 +24,12 @@ function minifyInlineScripts() {
               const minified = html.replace(
                 /<script([^>]*)>([\s\S]*?)<\/script>/gi,
                 (match, attrs, body) => {
-                  if (attrs.includes("json") || !body.trim()) return match;
+                  if (
+                    attrs.includes("json") ||
+                    attrs.includes("src") ||
+                    !body.trim()
+                  )
+                    return match;
                   try {
                     const res = esbuild.transformSync(body, {
                       minify: true,
@@ -53,9 +58,12 @@ export default defineConfig({
   output: "static",
   trailingSlash: "never",
   build: {
-    inlineStylesheets: "always",
+    inlineStylesheets: "auto",
   },
-  prefetch: false,
+  prefetch: {
+    prefetchAll: false,
+    defaultStrategy: "hover",
+  },
   vite: {
     plugins: [tailwindcss()],
   },
