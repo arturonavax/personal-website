@@ -59,6 +59,7 @@ export default defineConfig({
   trailingSlash: "never",
   build: {
     inlineStylesheets: "auto",
+    format: "file",
   },
   prefetch: {
     prefetchAll: false,
