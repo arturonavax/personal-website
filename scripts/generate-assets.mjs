@@ -46,13 +46,11 @@ function generateMatrixGlyphs(width, height, density = 30) {
   const colWidth = width / density;
 
   for (let i = 0; i < density; i++) {
-    // Dispersión: saltar columnas para generar espacios negativos y evitar saturación
-    if ((i * 7 + 3) % 4 === 0) continue;
+    if ((i * 7 + 3) % 4 === 0) continue; // Salto de columnas para espaciado negativo
 
     const x = Math.round(i * colWidth + ((i * 17) % 20));
-    const streamLength = 4 + ((i * 11) % 8); // Longitud de la gota: 4 a 11 glifos
-    const startY = 32 + ((i * 53) % (height - 190));
-    // Opacidad incrementada y calibrada (0.038 - 0.085)
+    const streamLength = 4 + ((i * 11) % 8);
+    const startY = 32 + ((i * 53) % (height - 180));
     const baseOpacity = 0.038 + ((i * 19) % 5) * 0.012;
 
     let col = "";
@@ -61,7 +59,6 @@ function generateMatrixGlyphs(width, height, density = 30) {
       if (y > height - 38) break;
       const char = MATRIX_CHARS[(i * 13 + j * 7) % MATRIX_CHARS.length];
 
-      // El último glifo actúa como "lead droplet" con mayor brillo
       const isLead = j === streamLength - 1;
       const op = isLead
         ? Math.min(0.14, baseOpacity * 1.9).toFixed(3)
@@ -112,7 +109,7 @@ function getDefsAndStyles(width, height) {
 }
 
 /**
- * 1. OG-DEFAULT (1200 x 630)
+ * 1. OG-DEFAULT (1200 x 630 px — Aspect Ratio ~1.91:1)
  */
 function createOgDefaultSvg() {
   const width = 1200;
@@ -167,73 +164,57 @@ function createOgDefaultSvg() {
 }
 
 /**
- * 2. BANNERS MULTIPROPÓSITO (1584 x 396 — Ratio 4:1)
+ * 2. GENERADOR PARAMÉTRICO DE BANNERS (4:1, 3:1, 16:9, etc.)
  */
-function createBannerSvg(align = "left") {
-  const width = 1584;
-  const height = 396;
+function createBannerSvg(width, height, align = "left") {
+  // Escalado proporcional de tipografías y posiciones según el lienzo
+  const isTall = height >= 500;
+  const fontSizeName = isTall ? 66 : 58;
+  const fontSizeSub = isTall ? 31 : 28;
+  const fontSizeDesc = isTall ? 18.5 : 17;
+  const fontSizeContact = isTall ? 21.5 : 20;
 
-  let contentBlock = "";
+  const yName = Math.round(height * 0.33);
+  const ySub = yName + (isTall ? 54 : 48);
+  const yDesc = ySub + (isTall ? 54 : 50);
+  const yContact = Math.round(height * 0.81);
 
-  if (align === "left") {
-    contentBlock = `
-      <g transform="translate(84, 0)">
-        <text x="0" y="132" class="font-sans" font-size="58" font-weight="800" fill="#FFFFFF" letter-spacing="-1.5">Arturo Nava</text>
-        <text x="0" y="180" class="font-sans" font-size="28" font-weight="600" fill="#E5A93C" letter-spacing="-0.3">Senior Software / AI Engineer</text>
-        <text x="0" y="230" class="font-mono" font-size="17" font-weight="500" fill="#D1D5DB">High-Concurrency Distributed Systems • AI Agents • Zero-Trust • Go, Rust &amp; Python</text>
+  let anchorAttr = "";
+  let transX = 84;
 
-        <text x="0" y="318" class="font-mono" font-size="20" font-weight="600">
-          <tspan fill="#E5A93C" font-weight="700">arturonavax.dev</tspan>
-          <tspan fill="#E5A93C" dx="14">•</tspan>
-          <tspan fill="#FFFFFF" dx="14">@arturonavax</tspan>
-          <tspan fill="#E5A93C" dx="14">•</tspan>
-          <tspan fill="#F3F4F6" dx="14">arturonavax@gmail.com</tspan>
-        </text>
-      </g>
-    `;
-  } else if (align === "right") {
-    contentBlock = `
-      <g transform="translate(1500, 0)">
-        <text x="0" y="132" text-anchor="end" class="font-sans" font-size="58" font-weight="800" fill="#FFFFFF" letter-spacing="-1.5">Arturo Nava</text>
-        <text x="0" y="180" text-anchor="end" class="font-sans" font-size="28" font-weight="600" fill="#E5A93C" letter-spacing="-0.3">Senior Software / AI Engineer</text>
-        <text x="0" y="230" text-anchor="end" class="font-mono" font-size="17" font-weight="500" fill="#D1D5DB">High-Concurrency Distributed Systems • AI Agents • Zero-Trust • Go, Rust &amp; Python</text>
-        
-        <text x="0" y="318" text-anchor="end" class="font-mono" font-size="20" font-weight="600">
-          <tspan fill="#E5A93C" font-weight="700">arturonavax.dev</tspan>
-          <tspan fill="#E5A93C" dx="14">•</tspan>
-          <tspan fill="#FFFFFF" dx="14">@arturonavax</tspan>
-          <tspan fill="#E5A93C" dx="14">•</tspan>
-          <tspan fill="#F3F4F6" dx="14">arturonavax@gmail.com</tspan>
-        </text>
-      </g>
-    `;
-  } else {
-    contentBlock = `
-      <g transform="translate(792, 0)">
-        <text x="0" y="132" text-anchor="middle" class="font-sans" font-size="58" font-weight="800" fill="#FFFFFF" letter-spacing="-1.5">Arturo Nava</text>
-        <text x="0" y="180" text-anchor="middle" class="font-sans" font-size="28" font-weight="600" fill="#E5A93C" letter-spacing="-0.3">Senior Software / AI Engineer</text>
-        <text x="0" y="230" text-anchor="middle" class="font-mono" font-size="17" font-weight="500" fill="#D1D5DB">High-Concurrency Distributed Systems • AI Agents • Zero-Trust • Go, Rust &amp; Python</text>
-        
-        <text x="0" y="318" text-anchor="middle" class="font-mono" font-size="20" font-weight="600">
-          <tspan fill="#E5A93C" font-weight="700">arturonavax.dev</tspan>
-          <tspan fill="#E5A93C" dx="14">•</tspan>
-          <tspan fill="#FFFFFF" dx="14">@arturonavax</tspan>
-          <tspan fill="#E5A93C" dx="14">•</tspan>
-          <tspan fill="#F3F4F6" dx="14">arturonavax@gmail.com</tspan>
-        </text>
-      </g>
-    `;
+  if (align === "right") {
+    transX = width - 84;
+    anchorAttr = 'text-anchor="end"';
+  } else if (align === "center") {
+    transX = Math.round(width / 2);
+    anchorAttr = 'text-anchor="middle"';
   }
+
+  const contentBlock = `
+    <g transform="translate(${transX}, 0)">
+      <text x="0" y="${yName}" ${anchorAttr} class="font-sans" font-size="${fontSizeName}" font-weight="800" fill="#FFFFFF" letter-spacing="-1.5">Arturo Nava</text>
+      <text x="0" y="${ySub}" ${anchorAttr} class="font-sans" font-size="${fontSizeSub}" font-weight="600" fill="#E5A93C" letter-spacing="-0.3">Senior Software / AI Engineer</text>
+      <text x="0" y="${yDesc}" ${anchorAttr} class="font-mono" font-size="${fontSizeDesc}" font-weight="500" fill="#D1D5DB">High-Concurrency Distributed Systems • AI Agents • Zero-Trust • Go, Rust &amp; Python</text>
+
+      <text x="0" y="${yContact}" ${anchorAttr} class="font-mono" font-size="${fontSizeContact}" font-weight="600">
+        <tspan fill="#E5A93C" font-weight="700">arturonavax.dev</tspan>
+        <tspan fill="#E5A93C" dx="14">•</tspan>
+        <tspan fill="#FFFFFF" dx="14">@arturonavax</tspan>
+        <tspan fill="#E5A93C" dx="14">•</tspan>
+        <tspan fill="#F3F4F6" dx="14">arturonavax@gmail.com</tspan>
+      </text>
+    </g>
+  `;
 
   return `
   <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
     ${getDefsAndStyles(width, height)}
 
-    <rect x="24" y="24" width="1536" height="348" stroke="#E5A93C" stroke-width="1" stroke-opacity="0.22" fill="none" />
+    <rect x="24" y="24" width="${width - 48}" height="${height - 48}" stroke="#E5A93C" stroke-width="1" stroke-opacity="0.22" fill="none" />
     <path d="M 20 46 L 20 20 L 46 20" stroke="#E5A93C" stroke-width="3" fill="none" />
-    <path d="M 1564 46 L 1564 20 L 1538 20" stroke="#E5A93C" stroke-width="3" fill="none" />
-    <path d="M 20 350 L 20 376 L 46 376" stroke="#E5A93C" stroke-width="3" fill="none" />
-    <path d="M 1564 350 L 1564 376 L 1538 376" stroke="#E5A93C" stroke-width="3" fill="none" />
+    <path d="M ${width - 20} 46 L ${width - 20} 20 L ${width - 46} 20" stroke="#E5A93C" stroke-width="3" fill="none" />
+    <path d="M 20 ${height - 46} L 20 ${height - 20} L 46 ${height - 20}" stroke="#E5A93C" stroke-width="3" fill="none" />
+    <path d="M ${width - 20} ${height - 46} L ${width - 20} ${height - 20} L ${width - 46} ${height - 20}" stroke="#E5A93C" stroke-width="3" fill="none" />
 
     ${contentBlock}
   </svg>
@@ -252,9 +233,9 @@ async function renderOptimizedPng(
 
   const pngOptions = isUltraLight
     ? {
-        palette: true, // Cuantización a 8-bit indexado vía libimagequant (~65% menos peso)
-        colors: 128, // Suficiente para la paleta oscuro-dorado sin banding perceptible
-        effort: 10, // Nivel exhaustivo de compresión Deflate
+        palette: true,
+        colors: 128,
+        effort: 10,
         compressionLevel: 9,
         adaptiveFiltering: true,
         dither: 0.6,
@@ -277,9 +258,11 @@ async function renderOptimizedPng(
 async function main() {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
-  console.log("Generando assets gráficos optimizados...");
+  console.log(
+    "Generando assets gráficos optimizados para múltiples plataformas...",
+  );
 
-  // 1. OG Default (1200 x 630) con compresión ultra-ligera (< 50 KB)
+  // 1. OG Default (1200 x 630 — ~1.91:1) — Ultra ligero para WhatsApp, Slack, X cards
   await renderOptimizedPng(
     createOgDefaultSvg(),
     path.join(OUTPUT_DIR, "og-default.png"),
@@ -288,29 +271,27 @@ async function main() {
     true,
   );
 
-  // 2. Banners con sufijo de relación de aspecto 4:1 (1584 x 396)
-  await renderOptimizedPng(
-    createBannerSvg("left"),
-    path.join(OUTPUT_DIR, "banner-4x1-left.png"),
-    1584,
-    396,
-  );
+  // Configuraciones de Banners Multi-Aspect Ratio
+  const BANNER_RATIOS = [
+    { ratio: "4x1", width: 1584, height: 396 }, // LinkedIn Standard
+    { ratio: "3x1", width: 1500, height: 500 }, // Twitter / X Header & GitHub Profile
+    { ratio: "16x9", width: 1280, height: 720 }, // Widescreen (YouTube, Discord, Notion)
+  ];
 
-  await renderOptimizedPng(
-    createBannerSvg("center"),
-    path.join(OUTPUT_DIR, "banner-4x1-center.png"),
-    1584,
-    396,
-  );
+  const ALIGNMENTS = ["left", "center", "right"];
 
-  await renderOptimizedPng(
-    createBannerSvg("right"),
-    path.join(OUTPUT_DIR, "banner-4x1-right.png"),
-    1584,
-    396,
-  );
+  for (const { ratio, width, height } of BANNER_RATIOS) {
+    for (const align of ALIGNMENTS) {
+      await renderOptimizedPng(
+        createBannerSvg(width, height, align),
+        path.join(OUTPUT_DIR, `banner-${ratio}-${align}.png`),
+        width,
+        height,
+      );
+    }
+  }
 
-  console.log("\nGeneración completada.");
+  console.log("\nGeneración completada con éxito.");
 }
 
 main().catch((err) => {
