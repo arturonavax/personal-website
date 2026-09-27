@@ -1,4 +1,51 @@
+# ==============================================================================
+# robots.txt — https://arturonavax.dev
+# RFC 9309 Compliant: Unrestricted access for global indexing, search engines,
+# AI crawlers, professional networks, and technical recruitment scrapers.
+# ==============================================================================
+
+# 1. Default Universal Rule
 User-agent: *
 Allow: /
 
+# 2. Traditional & Semantic Search Engines
+User-agent: Googlebot
+User-agent: Googlebot-Image
+User-agent: Bingbot
+User-agent: DuckDuckBot
+User-agent: Slurp
+User-agent: Baiduspider
+User-agent: YandexBot
+Allow: /
+
+# 3. AI Search Agents & LLM Scrapers (AI Search & RAG)
+# (Used by tech recruiters, headhunting platforms, and generative search engines)
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: PerplexityBot
+User-agent: Google-Extended
+User-agent: Applebot
+User-agent: Applebot-Extended
+User-agent: Meta-ExternalAgent
+User-agent: Meta-ExternalFetcher
+User-agent: Cohere-ai
+User-agent: Bytespider
+Allow: /
+
+# 4. Professional Networks, Embeds & Preview Scrapers
+# (Generates rich metadata cards when your link is shared by recruiters)
+User-agent: LinkedInBot
+User-agent: Twitterbot
+User-agent: facebookexternalhit
+User-agent: Slackbot
+User-agent: Slackbot-LinkExpanding
+User-agent: TelegramBot
+User-agent: WhatsApp
+User-agent: Discordbot
+Allow: /
+
+# 5. Canonical Sitemap Index
 Sitemap: https://arturonavax.dev/sitemap-index.xml
