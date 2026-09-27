@@ -61,7 +61,16 @@ const resolvedOgImage = ogImage.startsWith("http")
 <!-- Global Metadata -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<!-- 1. SVG para navegadores modernos con soporte vectorial -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<!-- 2. PNG de 48px para Googlebot-Favicon -->
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+<!-- 3. Fallback clásico de compatibilidad -->
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<!-- 4. iOS / Safari Web Clip -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
 <meta name="generator" content={Astro.generator} />
 
 <!-- Critical Body Font Preload (AGENTS.md: Critical body font only) -->
