@@ -34,11 +34,11 @@ const sortedItems = [...items].sort((a, b) => a.data.order - b.data.order);
     const slug = item.id.replace(/^en\/|^es\//, "").replace(/\.md$/, "");
     const simCount = getSimulationCountForJob(slug);
     const jobDetailUrl =
-      locale === "es" ? `/es/experience/${slug}` : `/experience/${slug}`;
+      locale === "es" ? `/es/experience/${slug}/` : `/experience/${slug}/`;
     const companyFilterUrl =
       locale === "es"
-        ? `/es/experience?company=${encodeURIComponent(company.toLowerCase().trim())}`
-        : `/experience?company=${encodeURIComponent(company.toLowerCase().trim())}`;
+        ? `/es/experience/?company=${encodeURIComponent(company.toLowerCase().trim())}`
+        : `/experience/?company=${encodeURIComponent(company.toLowerCase().trim())}`;
 
     return (
       <div

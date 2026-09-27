@@ -7,7 +7,7 @@ interface Props {
 
 const { locale } = Astro.props;
 const isEs = locale === "es";
-const searchUrl = isEs ? "/es/search" : "/search";
+const searchUrl = isEs ? "/es/search/" : "/search/";
 const searchIndexPath = isEs
   ? "/search-index-es.json"
   : "/search-index-en.json";
@@ -281,7 +281,7 @@ const searchIndexPath = isEs
       }
 
       function getBasePath() {
-        return getCurrentLocale() === "es" ? "/es/search" : "/search";
+        return getCurrentLocale() === "es" ? "/es/search/" : "/search/";
       }
 
       // Preload search index in memory cache
@@ -338,7 +338,7 @@ const searchIndexPath = isEs
         if (curLink) {
           var q = curInput && curInput.value ? curInput.value.trim() : "";
           curLink.href =
-            (isEs ? "/es/search" : "/search") +
+            (isEs ? "/es/search/" : "/search/") +
             (q ? "?q=" + encodeURIComponent(q) : "");
           var textSpan = curLink.querySelector("span:first-child");
           if (textSpan) {
@@ -373,7 +373,7 @@ const searchIndexPath = isEs
       // Proactively prefetch search index on intent (pointerenter, focus, touch)
       function attachSearchPrefetchTriggers() {
         var triggers = document.querySelectorAll(
-          '#header-search-btn, #mobile-search-btn, [data-open-search], a[href*="/search"]',
+          '#header-search-btn, #mobile-search-btn, [data-open-search], a[href*="/search/"]',
         );
         triggers.forEach(function (el) {
           if (!el.dataset.searchPrefetchBound) {
@@ -435,7 +435,7 @@ const searchIndexPath = isEs
         if (!currentDialog) return;
 
         var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
-        if (currentPath === "/search" || currentPath === "/es/search") {
+        if (currentPath === "/search/" || currentPath === "/es/search/") {
           var onPageInput = document.getElementById("page-search-input");
           if (onPageInput) {
             onPageInput.focus();
@@ -1309,7 +1309,7 @@ const searchIndexPath = isEs
           e.target &&
           e.target.closest &&
           e.target.closest(
-            '#header-search-btn, #mobile-search-btn, [data-open-search], [data-tech-search], a[href*="/search"]',
+            '#header-search-btn, #mobile-search-btn, [data-open-search], [data-tech-search], a[href*="/search/"]',
           )
         ) {
           initSearch();
@@ -1325,7 +1325,7 @@ const searchIndexPath = isEs
           e.target &&
           e.target.closest &&
           e.target.closest(
-            '#header-search-btn, #mobile-search-btn, [data-open-search], [data-tech-search], a[href*="/search"]',
+            '#header-search-btn, #mobile-search-btn, [data-open-search], [data-tech-search], a[href*="/search/"]',
           )
         ) {
           initSearch();

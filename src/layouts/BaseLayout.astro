@@ -99,6 +99,23 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <!-- Anti-FOUC de tema y sincronización de Scroll previa al render -->
     <script is:inline>
       (function () {
+        var path = window.location.pathname;
+        var isEsPath = path === "/es/" || path.indexOf("/es/") === 0;
+
+        if (targetLocale === "es" && !isEsPath) {
+          var targetEs =
+            "/es" + (path === "/" ? "/" : path.replace(/\/+$/, "") + "/");
+          window.location.replace(
+            targetEs + window.location.search + window.location.hash,
+          );
+        } else if (targetLocale === "en" && isEsPath) {
+          var targetEn = path.replace(/^\/es/, "") || "/";
+          if (!targetEn.endsWith("/")) targetEn += "/";
+          window.location.replace(
+            targetEn + window.location.search + window.location.hash,
+          );
+        }
+
         function applyStoredTheme() {
           try {
             var theme = localStorage.getItem("theme") || "dark";

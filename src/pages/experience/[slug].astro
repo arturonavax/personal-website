@@ -79,14 +79,14 @@ const futureSlug = futureExperience
   ? futureExperience.id.replace(/^en\//, "").replace(/\.md$/, "")
   : null;
 
-const pastUrl = pastSlug ? `/experience/${pastSlug}` : null;
-const futureUrl = futureSlug ? `/experience/${futureSlug}` : null;
+const pastUrl = pastSlug ? `/experience/${pastSlug}/` : null;
+const futureUrl = futureSlug ? `/experience/${futureSlug}/` : null;
 
 // Multi-role company detection (Task 47)
 const sameCompanyExperiences = allExperiences.filter(
   (e) => e.data.company.toLowerCase().trim() === company.toLowerCase().trim(),
 );
-const companyFilterUrl = `/experience?company=${encodeURIComponent(company.toLowerCase().trim())}`;
+const companyFilterUrl = `/experience/?company=${encodeURIComponent(company.toLowerCase().trim())}`;
 
 const pageTitle = `${role} @ ${company} — Arturo Nava`;
 const pageDescription = `Career milestone, architecture achievements, and interactive system simulations for Arturo Nava as ${role} at ${company}.`;
@@ -157,7 +157,7 @@ const jobIndexItems: IndexItem[] = [
     <!-- Back to Experience Timeline -->
     <div class="flex items-center justify-between gap-x-4 min-h-[1.75rem] h-[1.75rem] -mb-1 sm:-mb-2 text-xs font-mono">
       <a
-        href="/experience"
+        href="/experience/"
         class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] py-0.5 truncate"
       >
         &larr; Back to experience timeline
@@ -463,7 +463,7 @@ const jobIndexItems: IndexItem[] = [
     <!-- Bottom Navigation -->
     <div class="pt-4 flex items-center justify-between font-mono text-xs">
       <a
-        href="/experience"
+        href="/experience/"
         class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
       >
         &larr; View all experience records
