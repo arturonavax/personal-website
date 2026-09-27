@@ -347,7 +347,7 @@ const { html, items } = getCVData("en");
     function getCvFileName() {
       var isEs =
         document.documentElement.lang === "es" ||
-        window.location.pathname === "/es" ||
+        window.location.pathname === "/es/" ||
         window.location.pathname.indexOf("/es/") === 0;
       return isEs ? "ArturoNava-CV-es" : "ArturoNava-CV-en";
     }
