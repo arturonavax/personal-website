@@ -112,6 +112,15 @@ const targetUrl = await getCounterpartUrl(
       var dest = link.getAttribute("href");
       if (!dest) return;
 
+      // Asegurar que dest viaje siempre con trailing slash
+      if (
+        dest.indexOf("?") === -1 &&
+        dest.indexOf("#") === -1 &&
+        !dest.endsWith("/")
+      ) {
+        dest = dest + "/";
+      }
+
       // Persistence
       var targetLang = link.getAttribute("data-lang-switch");
       try {
@@ -122,7 +131,7 @@ const targetUrl = await getCounterpartUrl(
       if (window.__isLangSwitching) return;
       window.__isLangSwitching = true;
 
-      var isTargetEs = dest.indexOf("/es") === 0;
+      var isTargetEs = dest === "/es/" || dest.indexOf("/es/") === 0;
       if (typeof window.__showBeacon === "function") {
         window.__showBeacon(isTargetEs ? "Cargando..." : "Fetching...");
       }
@@ -148,7 +157,7 @@ const targetUrl = await getCounterpartUrl(
             // 1. Root language attribute & document title
             var newLang =
               newDoc.documentElement.getAttribute("lang") ||
-              (dest.indexOf("/es") === 0 ? "es" : "en");
+              (dest.indexOf("/es/") === 0 ? "es" : "en");
             document.documentElement.setAttribute("lang", newLang);
             document.title = newDoc.title;
 

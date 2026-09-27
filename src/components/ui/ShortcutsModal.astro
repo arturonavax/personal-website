@@ -446,7 +446,7 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
             var isHomePage = p === "/" || p === "/es";
 
             if (!isHomePage) {
-              // Subpages (e.g. /experience, /projects, /blog, /search, /projects/[slug]):
+              // Subpages (e.g. /experience/, /projects/, /blog/, /search/, /projects/[slug]/):
               // If not at top (> 100px margin), scroll to top
               if (currentScroll > 100) {
                 event.preventDefault();

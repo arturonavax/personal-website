@@ -19,8 +19,8 @@ const initialCompanyInfo = initialSim
   : null;
 const initialCompanyFilterUrl = initialSim
   ? isEs
-    ? `/es/experience?company=${encodeURIComponent(initialSim.company.toLowerCase().trim())}`
-    : `/experience?company=${encodeURIComponent(initialSim.company.toLowerCase().trim())}`
+    ? `/es/experience/?company=${encodeURIComponent(initialSim.company.toLowerCase().trim())}`
+    : `/experience/?company=${encodeURIComponent(initialSim.company.toLowerCase().trim())}`
   : "";
 ---
 
@@ -228,8 +228,8 @@ const initialCompanyFilterUrl = initialSim
               id="viewer-job-link"
               href={
                 isEs
-                  ? `/es/experience/${initialSim.jobSlug}`
-                  : `/experience/${initialSim.jobSlug}`
+                  ? `/es/experience/${initialSim.jobSlug}/`
+                  : `/experience/${initialSim.jobSlug}/`
               }
               class="shrink-0 text-xs font-mono text-[var(--color-accent-gold)] hover:underline inline-flex items-center gap-1"
             >
@@ -624,7 +624,7 @@ const initialCompanyFilterUrl = initialSim
             var comp = sim.company;
             var info = getCompInfo(comp);
             var compFilterUrl =
-              (isEs ? "/es/experience?company=" : "/experience?company=") +
+              (isEs ? "/es/experience/?company=" : "/experience/?company=") +
               encodeURIComponent(comp.toLowerCase().trim());
 
             if (companyLinkEl) {
@@ -659,8 +659,8 @@ const initialCompanyFilterUrl = initialSim
             if (jobLinkEl) {
               jobLinkEl.href =
                 (isEs
-                  ? "/es/experience/" + sim.jobSlug
-                  : "/experience/" + sim.jobSlug) + "#simulations";
+                  ? "/es/experience/" + sim.jobSlug + "/"
+                  : "/experience/" + sim.jobSlug + "/") + "#simulations";
             }
             if (stepperLabel) {
               stepperLabel.textContent =

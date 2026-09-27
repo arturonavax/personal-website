@@ -29,7 +29,7 @@ export const shortcuts: ShortcutItem[] = [
             "Official verified engineering trajectory and skills breakdown.",
           descriptionEs:
             "Trayectoria técnica verificada y desglose de aptitudes.",
-          url: "/resume",
+          url: "/resume/",
           external: false,
           badge: "Live",
           badgeEs: "En Vivo",
@@ -57,7 +57,7 @@ export const shortcuts: ShortcutItem[] = [
     description: "Sub-50ms Strategy Pattern specification in Go & Redis.",
     descriptionEs:
       "Especificación de patrón Strategy en Go y Redis a sub-50ms.",
-    url: "/projects/real-time-fraud-engine",
+    url: "/projects/real-time-fraud-engine/",
     external: false,
     badge: "Spec",
     badgeEs: "Arquitectura",
@@ -71,7 +71,7 @@ export const shortcuts: ShortcutItem[] = [
       "Event-driven streaming pipeline for massive operational data.",
     descriptionEs:
       "Pipeline orientado a eventos para streaming analítico masivo.",
-    url: "/projects/gosnowflake-olap-pipeline",
+    url: "/projects/gosnowflake-olap-pipeline/",
     external: false,
     badge: "Pipeline",
     badgeEs: "Pipeline",

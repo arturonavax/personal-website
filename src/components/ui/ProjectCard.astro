@@ -26,7 +26,7 @@ const slug = project.id
   .replace(new RegExp(`^${locale}/`), "")
   .replace(/\.md$/, "");
 const detailUrl =
-  locale === "es" ? `/es/projects/${slug}` : `/projects/${slug}`;
+  locale === "es" ? `/es/projects/${slug}/` : `/projects/${slug}/`;
 ---
 
 <article

@@ -24,7 +24,7 @@ const {
 const slug = service.id
   .replace(new RegExp(`^${locale}/`), "")
   .replace(/\.(md|mdx)$/, "");
-const serviceUrl = isEs ? `/es/services/${slug}` : `/services/${slug}`;
+const serviceUrl = isEs ? `/es/services/${slug}/` : `/services/${slug}/`;
 
 /* TODO: reactivate
 const typeLabels: Record<string, { en: string; es: string }> = {

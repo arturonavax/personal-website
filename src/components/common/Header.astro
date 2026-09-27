@@ -55,12 +55,12 @@ const isHomePage = currentPath === "/" || currentPath === "/es";
 
 // Section active checks
 const isAboutActive = isHomePage;
-const isProjectsActive = currentPath.includes("/projects");
-const isExperienceActive = currentPath.includes("/experience");
-const isCaseStudiesActive = currentPath.includes("/case-studies");
-const isBlogActive = currentPath.includes("/blog");
-const isServicesActive = currentPath.includes("/services");
-const isResumeActive = currentPath.includes("/resume");
+const isProjectsActive = currentPath.includes("/projects/");
+const isExperienceActive = currentPath.includes("/experience/");
+const isCaseStudiesActive = currentPath.includes("/case-studies/");
+const isBlogActive = currentPath.includes("/blog/");
+const isServicesActive = currentPath.includes("/services/");
+const isResumeActive = currentPath.includes("/resume/");
 const isMoreActive = isBlogActive || isServicesActive;
 ---
 
@@ -126,7 +126,7 @@ const isMoreActive = isBlogActive || isServicesActive;
       <!-- 2. Trayectoria / Experience -->
       {hasExperience && (
         <a
-          href={`${navBase}/experience`}
+          href={`${navBase}/experience/`}
           data-nav-section="experience"
           data-astro-prefetch="hover"
           aria-current={isExperienceActive ? "page" : undefined}
@@ -151,7 +151,7 @@ const isMoreActive = isBlogActive || isServicesActive;
       <!-- 3. Proyectos / Projects -->
       {hasProjects && (
         <a
-          href={`${navBase}/projects`}
+          href={`${navBase}/projects/`}
           data-nav-section="projects"
           data-astro-prefetch="hover"
           aria-current={isProjectsActive ? "page" : undefined}
@@ -176,7 +176,7 @@ const isMoreActive = isBlogActive || isServicesActive;
       <!-- 4. Casos de Estudio / Case Studies (Visible on lg with main nav) -->
       {hasCaseStudies && (
         <a
-          href={`${navBase}/case-studies`}
+          href={`${navBase}/case-studies/`}
           data-nav-section="case-studies"
           data-astro-prefetch="hover"
           aria-current={isCaseStudiesActive ? "page" : undefined}
@@ -248,7 +248,7 @@ const isMoreActive = isBlogActive || isServicesActive;
             <!-- 1. Blog -->
             {hasPosts && (
               <a
-                href={`${navBase}/blog`}
+                href={`${navBase}/blog/`}
                 data-nav-section="blog"
                 data-astro-prefetch="hover"
                 class:list={[
@@ -308,7 +308,7 @@ const isMoreActive = isBlogActive || isServicesActive;
             <!-- Tienda/Servicios (if any) -->
             {hasServices && (
               <a
-                href={`${navBase}/services`}
+                href={`${navBase}/services/`}
                 data-nav-section="services"
                 data-astro-prefetch="hover"
                 class:list={[
@@ -331,7 +331,7 @@ const isMoreActive = isBlogActive || isServicesActive;
             <!-- Resume (Always last in More; hidden on sm+ where top button is revealed) -->
             {hasResume && (
               <a
-                href={locale === "es" ? "/es/resume" : "/resume"}
+                href={locale === "es" ? "/es/resume/" : "/resume/"}
                 id="more-cv-item"
                 data-nav-section="resume"
                 data-astro-prefetch="hover"
@@ -364,7 +364,7 @@ const isMoreActive = isBlogActive || isServicesActive;
       <!-- CV / Resume Top Menu Button (Progressive reveal: hidden on mobile, revealed on sm+) -->
       {hasResume && (
         <a
-          href={locale === "es" ? "/es/resume" : "/resume"}
+          href={locale === "es" ? "/es/resume/" : "/resume/"}
           id="header-cv-btn"
           aria-label="Arturo Nava CV / Resume"
           data-nav-section="resume"
@@ -496,7 +496,7 @@ const isMoreActive = isBlogActive || isServicesActive;
             <!-- 2. Trayectoria -->
             {hasExperience && (
               <a
-                href={`${navBase}/experience`}
+                href={`${navBase}/experience/`}
                 data-nav-section="experience"
                 data-astro-prefetch="hover"
                 class:list={[
@@ -520,7 +520,7 @@ const isMoreActive = isBlogActive || isServicesActive;
             <!-- 3. Proyectos -->
             {hasProjects && (
               <a
-                href={`${navBase}/projects`}
+                href={`${navBase}/projects/`}
                 data-nav-section="projects"
                 data-astro-prefetch="hover"
                 class:list={[
@@ -544,7 +544,7 @@ const isMoreActive = isBlogActive || isServicesActive;
             <!-- 4. Casos de Estudio -->
             {hasCaseStudies && (
               <a
-                href={`${navBase}/case-studies`}
+                href={`${navBase}/case-studies/`}
                 data-nav-section="case-studies"
                 data-astro-prefetch="hover"
                 class:list={[
@@ -584,7 +584,7 @@ const isMoreActive = isBlogActive || isServicesActive;
             <!-- 6. Blog -->
             {hasPosts && (
               <a
-                href={`${navBase}/blog`}
+                href={`${navBase}/blog/`}
                 data-nav-section="blog"
                 data-astro-prefetch="hover"
                 class:list={[
@@ -608,7 +608,7 @@ const isMoreActive = isBlogActive || isServicesActive;
             <!-- 6. Tienda/Servicios -->
             {hasServices && (
               <a
-                href={`${navBase}/services`}
+                href={`${navBase}/services/`}
                 data-nav-section="services"
                 data-astro-prefetch="hover"
                 class:list={[
@@ -651,7 +651,7 @@ const isMoreActive = isBlogActive || isServicesActive;
 
                 <!-- Resume Link -->
                 <a
-                  href={locale === "es" ? "/es/resume" : "/resume"}
+                  href={locale === "es" ? "/es/resume/" : "/resume/"}
                   data-nav-section="resume"
                   data-astro-prefetch="hover"
                   class:list={[
@@ -881,17 +881,17 @@ const isMoreActive = isBlogActive || isServicesActive;
         var path = window.location.pathname.replace(/\/+$/, "") || "/";
         var currentSection = "";
 
-        if (path.indexOf("/experience") !== -1) {
+        if (path.indexOf("/experience/") !== -1) {
           currentSection = "experience";
-        } else if (path.indexOf("/projects") !== -1) {
+        } else if (path.indexOf("/projects/") !== -1) {
           currentSection = "projects";
-        } else if (path.indexOf("/case-studies") !== -1) {
+        } else if (path.indexOf("/case-studies/") !== -1) {
           currentSection = "case-studies";
-        } else if (path.indexOf("/blog") !== -1) {
+        } else if (path.indexOf("/blog/") !== -1) {
           currentSection = "blog";
-        } else if (path.indexOf("/resume") !== -1) {
+        } else if (path.indexOf("/resume/") !== -1) {
           currentSection = "resume";
-        } else if (path.indexOf("/services") !== -1) {
+        } else if (path.indexOf("/services/") !== -1) {
           currentSection = "services";
         } else if (path === "" || path === "/" || path === "/es") {
           if (window.__isContactInView) {

@@ -74,7 +74,7 @@ export async function getBilingualSearchDocuments(
         meta: post.data.category,
         tags: post.data.tags,
         keywords,
-        url: `/blog/${slug}`,
+        url: `/blog/${slug}/`,
       };
     }),
     ...enExperience.map((exp, idx) => {
@@ -98,7 +98,7 @@ export async function getBilingualSearchDocuments(
         meta: `${exp.data.company} • ${exp.data.companyIndustry || compInfo.industry}`,
         tags: exp.data.skills,
         keywords,
-        url: `/experience/${slug}`,
+        url: `/experience/${slug}/`,
       };
     }),
     ...enServices.map((s) => {
@@ -116,7 +116,7 @@ export async function getBilingualSearchDocuments(
         meta: s.data.price || s.data.type,
         tags: s.data.tags,
         keywords,
-        url: `/services/${slug}`,
+        url: `/services/${slug}/`,
       };
     }),
   ];
@@ -138,7 +138,7 @@ export async function getBilingualSearchDocuments(
         meta: p.data.company ?? p.data.role,
         tags: p.data.techStack,
         keywords,
-        url: `/es/projects/${slug}`,
+        url: `/es/projects/${slug}/`,
       };
     }),
     ...esPosts.map((post) => {
@@ -156,7 +156,7 @@ export async function getBilingualSearchDocuments(
         meta: post.data.category,
         tags: post.data.tags,
         keywords,
-        url: `/es/blog/${slug}`,
+        url: `/es/blog/${slug}/`,
       };
     }),
     ...esExperience.map((exp, idx) => {
@@ -200,7 +200,7 @@ export async function getBilingualSearchDocuments(
         meta: s.data.price || s.data.type,
         tags: s.data.tags,
         keywords,
-        url: `/es/services/${slug}`,
+        url: `/es/services/${slug}/`,
       };
     }),
   ];

@@ -56,10 +56,10 @@ function minifyInlineScripts() {
 export default defineConfig({
   site: "https://arturonavax.dev",
   output: "static",
-  trailingSlash: "never",
+  trailingSlash: "always",
   build: {
     inlineStylesheets: "auto",
-    format: "file",
+    format: "directory",
   },
   prefetch: {
     prefetchAll: false,

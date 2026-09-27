@@ -13,6 +13,7 @@ export function useTranslations(locale: Locale) {
   };
 }
 
+// src/i18n/utils.ts
 export async function getCounterpartUrl(
   currentLocale: Locale,
   targetLocale: Locale,
@@ -21,11 +22,14 @@ export async function getCounterpartUrl(
     "posts" | "projects" | "experience" | "services" | "case-studies",
   translationKey?: string,
 ): Promise<string> {
+  const ensureTrailingSlash = (path: string) =>
+    path.endsWith("/") ? path : `${path}/`;
+
   if (currentLocale === targetLocale) {
-    return currentPathname;
+    return ensureTrailingSlash(currentPathname);
   }
 
-  // If translationKey and collectionName are provided, match the entry
+  // 1. Coincidencia por translationKey en colecciones
   if (collectionName && translationKey) {
     const entries = await getCollection(collectionName as CollectionKey);
     const targetEntry = entries.find((entry) => {
@@ -38,20 +42,22 @@ export async function getCounterpartUrl(
     if (targetEntry) {
       const routeSegment = collectionName === "posts" ? "blog" : collectionName;
       const slug = targetEntry.id.replace(new RegExp(`^${targetLocale}/`), "");
+      // Siempre terminar con slash
       return targetLocale === "en"
-        ? `/${routeSegment}/${slug}`
-        : `/es/${routeSegment}/${slug}`;
+        ? `/${routeSegment}/${slug}/`
+        : `/es/${routeSegment}/${slug}/`;
     }
   }
 
-  // Path mapping fallback
-  const cleanPath = currentPathname.replace(/^\/es(\/|$)/, "/");
+  // 2. Fallback de mapeo de rutas
+  const withTrailing = ensureTrailingSlash(currentPathname);
+  const cleanPath = withTrailing.replace(/^\/es(?:\/|$)/, "/") || "/";
 
   if (targetLocale === "es") {
-    return cleanPath === "/" ? "/es" : `/es${cleanPath.replace(/\/$/, "")}`;
+    return cleanPath === "/" ? "/es/" : `/es${cleanPath}`;
   }
 
-  return cleanPath === "" ? "/" : cleanPath.replace(/\/$/, "") || "/";
+  return cleanPath;
 }
 
 export function formatDate(date: Date, locale: Locale): string {
