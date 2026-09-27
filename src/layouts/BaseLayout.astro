@@ -101,6 +101,17 @@ const hasShortcuts = Boolean(shortcuts?.length);
       (function () {
         var path = window.location.pathname;
         var isEsPath = path === "/es/" || path.indexOf("/es/") === 0;
+        var savedLocale = sessionStorage.getItem("preferred_locale");
+
+        var targetLocale = savedLocale;
+        if (!targetLocale) {
+          var browserLang =
+            (navigator.languages && navigator.languages[0]) ||
+            navigator.language ||
+            "";
+          targetLocale =
+            browserLang.toLowerCase().indexOf("es") === 0 ? "es" : "en";
+        }
 
         if (targetLocale === "es" && !isEsPath) {
           var targetEs =
@@ -109,7 +120,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
             targetEs + window.location.search + window.location.hash,
           );
         } else if (targetLocale === "en" && isEsPath) {
-          var targetEn = path.replace(/^\/es/, "") || "/";
+          var targetEn = path.replace(/^\/es(?:\/|$)/, "/") || "/";
           if (!targetEn.endsWith("/")) targetEn += "/";
           window.location.replace(
             targetEn + window.location.search + window.location.hash,
