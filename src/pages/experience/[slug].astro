@@ -215,7 +215,7 @@ const jobIndexItems: IndexItem[] = [
         <a
           href={pastUrl}
           data-timeline-nav="past"
-          data-astro-prefetch="load"
+          data-astro-prefetch="viewport"
           title={`Past timeline milestone: ${pastExperience.data.role} @ ${pastExperience.data.company}`}
           class="group/timeline-nav absolute left-0 top-[5.5rem] sm:top-[7rem] -translate-x-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
           aria-label={`Past role: ${pastExperience.data.role} (press h)`}
@@ -246,7 +246,7 @@ const jobIndexItems: IndexItem[] = [
         <a
           href={futureUrl}
           data-timeline-nav="future"
-          data-astro-prefetch="load"
+          data-astro-prefetch="viewport"
           title={`Future timeline milestone: ${futureExperience.data.role} @ ${futureExperience.data.company}`}
           class="group/timeline-nav absolute right-0 top-[5.5rem] sm:top-[7rem] translate-x-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
           aria-label={`Future role: ${futureExperience.data.role} (press l)`}
@@ -519,13 +519,20 @@ const jobIndexItems: IndexItem[] = [
                 return text;
               });
 
-        // 1. Fluid departure animation (pure GPU opacity to prevent title jumping)
-        article.style.willChange = "opacity";
-        article.style.transition = "opacity 0.12s cubic-bezier(0.4, 0, 1, 1)";
+        // Vector direccional: si va al futuro se mueve a la izquierda (-), si va al pasado a la derecha (+)
+        var isFuture = dir === "future" || dir === 1;
+        var exitDistance = isFuture ? "-36px" : "36px";
+        var enterDistance = isFuture ? "36px" : "-36px";
+
+        // 1. Salida direccional acelerada (GPU compositing puro)
+        article.style.willChange = "transform, opacity";
+        article.style.transition =
+          "transform 0.13s cubic-bezier(0.4, 0, 1, 1), opacity 0.13s cubic-bezier(0.4, 0, 1, 1)";
+        article.style.transform = "translate3d(" + exitDistance + ", 0, 0)";
         article.style.opacity = "0";
 
         var timerPromise = new Promise(function (resolve) {
-          setTimeout(resolve, 120);
+          setTimeout(resolve, 130);
         });
 
         Promise.all([htmlPromise, timerPromise])
@@ -540,13 +547,13 @@ const jobIndexItems: IndexItem[] = [
               return;
             }
 
-            // Update document title and browser history without page reload
+            // Sincronizar título e historial
             document.title = doc.title;
             if (!isPop) {
               history.pushState({ url: url }, "", url);
             }
 
-            // Update language switcher links if present
+            // Sincronizar selectores de idioma
             var oldLangLinks = document.querySelectorAll("a[hreflang]");
             var newLangLinks = doc.querySelectorAll("a[hreflang]");
             if (oldLangLinks.length && newLangLinks.length) {
@@ -557,7 +564,7 @@ const jobIndexItems: IndexItem[] = [
               });
             }
 
-            // Update desktop page index navigation links
+            // Sincronizar índice lateral desktop
             var oldAside = document.getElementById("desktop-page-index");
             var newAside = doc.getElementById("desktop-page-index");
             if (oldAside && newAside) {
@@ -568,36 +575,41 @@ const jobIndexItems: IndexItem[] = [
               }
             }
 
-            // Swap article contents
+            // Reemplazo del DOM
             article.innerHTML = newArticle.innerHTML;
             article.className = newArticle.className;
 
-            // Only reset scroll if user had scrolled deeply down into achievements/content
             if (window.scrollY > 140) {
               window.scrollTo({ top: 0, behavior: "instant" });
             }
 
-            // 2. Fluid arrival animation (pure GPU opacity, 100% stable position)
+            // 2. Preparar el nodo entrante en el extremo opuesto sin transición
             article.style.transition = "none";
+            article.style.transform =
+              "translate3d(" + enterDistance + ", 0, 0)";
             article.style.opacity = "0";
-            void article.offsetHeight; // Force reflow
 
+            // Forzar reflow síncrono indispensable para asentar el punto de partida en el render tree
+            void article.offsetHeight;
+
+            // 3. Entrada fluida con curva de desaceleración elástica
             article.style.transition =
-              "opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1)";
+              "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
+            article.style.transform = "translate3d(0, 0, 0)";
             article.style.opacity = "1";
 
+            // Limpieza de estilos inline al terminar la animación
             setTimeout(function () {
+              article.style.transform = "";
               article.style.opacity = "";
               article.style.transition = "";
               article.style.willChange = "";
               isTransitioning = false;
-            }, 180);
+            }, 230);
 
-            // Re-bind all scripts & components on the freshly rendered DOM
             document.dispatchEvent(new Event("astro:page-load"));
           })
           .catch(function () {
-            // Graceful fallback to MPA navigation on fetch failure
             window.location.href = url;
           });
       }
@@ -677,21 +689,48 @@ const jobIndexItems: IndexItem[] = [
           });
         }
 
-        // Zero-cost passive horizontal swipe navigation for mobile
+        // Passive horizontal swipe navigation for mobile (Deliberate Gesture Engine)
         if (!window.__timelineNavTouchBound) {
           window.__timelineNavTouchBound = true;
+
           var touchStartX = 0;
           var touchStartY = 0;
           var touchStartTime = 0;
+          var isTouchActive = false;
+
+          // Umbrales calibrados para intencionalidad estricta
+          var MIN_SWIPE_DISTANCE_PX = 95; // Mínimo 95px de desplazamiento neto
+          var MAX_VERTICAL_DEVIATION_PX = 45; // No permitir más de 45px de desvío vertical
+          var HORIZONTAL_DOMINANCE_RATIO = 2.8; // Requiere que X sea casi 3 veces mayor que Y
+          var MIN_TIME_MS = 80; // Ignora micro-rozaduras o toques rápidos
+          var MAX_TIME_MS = 400; // Ventana para flicks/deslices voluntarios
+          var EDGE_GUTTER_PX = 28; // Ignora toques que inicien en los bordes (gestos OS)
 
           document.addEventListener(
             "touchstart",
             function (e) {
-              if (e.touches.length !== 1) return;
+              if (e.touches.length !== 1) {
+                isTouchActive = false;
+                return;
+              }
+
               var t = e.touches[0];
+              var screenWidth =
+                window.innerWidth || document.documentElement.clientWidth;
+
+              // Descartar si el gesto inicia pegado a los bordes laterales (Safari iOS / Android Back gesture)
+              if (
+                t.clientX < EDGE_GUTTER_PX ||
+                t.clientX > screenWidth - EDGE_GUTTER_PX
+              ) {
+                isTouchActive = false;
+                return;
+              }
+
               touchStartX = t.clientX;
               touchStartY = t.clientY;
-              touchStartTime = Date.now();
+              touchStartTime = performance.now();
+              isTouchActive = true;
             },
             { passive: true },
           );
@@ -699,15 +738,22 @@ const jobIndexItems: IndexItem[] = [
           document.addEventListener(
             "touchend",
             function (e) {
-              if (e.changedTouches.length !== 1) return;
+              if (!isTouchActive || e.changedTouches.length !== 1) {
+                isTouchActive = false;
+                return;
+              }
+              isTouchActive = false;
+
               var target = e.target;
               if (
                 target &&
                 target.closest(
                   "input, textarea, select, dialog, pre, code, button, a, [data-simulation-card]",
                 )
-              )
+              ) {
                 return;
+              }
+
               var modalOpen = document.querySelector(
                 'dialog[open], [role="dialog"]:not(.hidden)',
               );
@@ -716,26 +762,45 @@ const jobIndexItems: IndexItem[] = [
               var t = e.changedTouches[0];
               var deltaX = t.clientX - touchStartX;
               var deltaY = t.clientY - touchStartY;
-              var deltaTime = Date.now() - touchStartTime;
+              var deltaTime = performance.now() - touchStartTime;
 
-              // Swift flick gesture: duration < 450ms, |deltaX| > 60px, dominant horizontal movement (2x vertical)
-              if (
-                deltaTime < 450 &&
-                Math.abs(deltaX) > 60 &&
-                Math.abs(deltaX) > Math.abs(deltaY) * 2
-              ) {
-                if (deltaX < 0) {
-                  // Swiped right-to-left -> Future milestone
-                  var f = document.querySelector(
-                    '[data-timeline-nav="future"]',
-                  );
-                  if (f) navigateTo(f.href, "future");
-                } else {
-                  // Swiped left-to-right -> Past milestone
-                  var p = document.querySelector('[data-timeline-nav="past"]');
-                  if (p) navigateTo(p.href, "past");
-                }
+              var absX = Math.abs(deltaX);
+              var absY = Math.abs(deltaY);
+
+              // Evaluación del vector de intención voluntaria:
+              // 1. Debe completarse dentro de la ventana de flick (80ms - 400ms)
+              // 2. Desplazamiento horizontal neto de al menos 95px
+              // 3. Desvío vertical contenido por debajo de 45px (evita el arrastre de scroll)
+              // 4. Dominancia lateral estricta (X >= 2.8 * Y)
+              var isValidSwipe =
+                deltaTime >= MIN_TIME_MS &&
+                deltaTime <= MAX_TIME_MS &&
+                absX >= MIN_SWIPE_DISTANCE_PX &&
+                absY <= MAX_VERTICAL_DEVIATION_PX &&
+                absX >= absY * HORIZONTAL_DOMINANCE_RATIO;
+
+              if (!isValidSwipe) return;
+
+              if (deltaX < 0) {
+                // Swipe derecha a izquierda -> Siguiente hito
+                var f = document.querySelector('[data-timeline-nav="future"]');
+                if (f && typeof navigateTo === "function")
+                  navigateTo(f.href, "future");
+              } else {
+                // Swipe izquierda a derecha -> Hito anterior
+                var p = document.querySelector('[data-timeline-nav="past"]');
+                if (p && typeof navigateTo === "function")
+                  navigateTo(p.href, "past");
               }
+            },
+            { passive: true },
+          );
+
+          // Si el sistema operativo interrumpe el gesto (ej. scroll del viewport), abortar
+          document.addEventListener(
+            "touchcancel",
+            function () {
+              isTouchActive = false;
             },
             { passive: true },
           );

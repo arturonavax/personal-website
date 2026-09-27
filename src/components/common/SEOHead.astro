@@ -93,6 +93,7 @@ const resolvedOgImage = ogImage.startsWith("http")
 <link rel="alternate" hreflang="en" href={enUrl} />
 <link rel="alternate" hreflang="es" href={esUrl} />
 <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
+<meta name="google" content="notranslate" />
 
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content={type} />
@@ -100,6 +101,7 @@ const resolvedOgImage = ogImage.startsWith("http")
 <meta property="og:title" content={pageTitle} />
 <meta property="og:description" content={description} />
 <meta property="og:image" content={resolvedOgImage} />
+<meta property="og:image:secure_url" content={resolvedOgImage} />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:image:type" content="image/png" />

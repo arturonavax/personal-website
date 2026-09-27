@@ -112,6 +112,12 @@ const targetUrl = await getCounterpartUrl(
       var dest = link.getAttribute("href");
       if (!dest) return;
 
+      // Persistence
+      var targetLang = link.getAttribute("data-lang-switch");
+      try {
+        sessionStorage.setItem("preferred_locale", targetLang);
+      } catch (_) {}
+
       e.preventDefault();
       if (window.__isLangSwitching) return;
       window.__isLangSwitching = true;
