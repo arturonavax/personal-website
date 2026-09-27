@@ -1,7 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import sharp from "sharp";
 
+const execFileAsync = promisify(execFile);
 const OUTPUT_DIR = path.resolve("public");
 
 // Caracteres seguros con entidades XML
@@ -46,7 +49,7 @@ function generateMatrixGlyphs(width, height, density = 30) {
   const colWidth = width / density;
 
   for (let i = 0; i < density; i++) {
-    if ((i * 7 + 3) % 4 === 0) continue; // Salto de columnas para espaciado negativo
+    if ((i * 7 + 3) % 4 === 0) continue;
 
     const x = Math.round(i * colWidth + ((i * 17) % 20));
     const streamLength = 4 + ((i * 11) % 8);
@@ -109,7 +112,7 @@ function getDefsAndStyles(width, height) {
 }
 
 /**
- * 1. OG-DEFAULT (1200 x 630 px — Aspect Ratio ~1.91:1)
+ * 1. OG-DEFAULT (1200 x 630 px)
  */
 function createOgDefaultSvg() {
   const width = 1200;
@@ -164,10 +167,9 @@ function createOgDefaultSvg() {
 }
 
 /**
- * 2. GENERADOR PARAMÉTRICO DE BANNERS (4:1, 3:1, 16:9, etc.)
+ * 2. BANNERS MULTIPROPÓSITO (4:1, 3:1, 16:9)
  */
 function createBannerSvg(width, height, align = "left") {
-  // Escalado proporcional de tipografías y posiciones según el lienzo
   const isTall = height >= 500;
   const fontSizeName = isTall ? 66 : 58;
   const fontSizeSub = isTall ? 31 : 28;
@@ -221,7 +223,6 @@ function createBannerSvg(width, height, align = "left") {
   `;
 }
 
-// Renderizador con cuantización por paleta indexada (PNG-8) para peso mínimo
 async function renderOptimizedPng(
   svgString,
   outputPath,
@@ -255,14 +256,60 @@ async function renderOptimizedPng(
   );
 }
 
+async function generateFavicons() {
+  const svgFaviconPath = path.join(OUTPUT_DIR, "favicon.svg");
+  const favicon48Path = path.join(OUTPUT_DIR, "favicon-48x48.png");
+  const favicon180Path = path.join(OUTPUT_DIR, "apple-touch-icon.png");
+  const faviconIcoPath = path.join(OUTPUT_DIR, "favicon.ico");
+
+  const svgBuffer = await fs.readFile(svgFaviconPath);
+
+  // 1. Generar PNGs con Sharp
+  await sharp(svgBuffer)
+    .resize(48, 48)
+    .png({ compressionLevel: 9 })
+    .toFile(favicon48Path);
+
+  await sharp(svgBuffer)
+    .resize(180, 180)
+    .png({ compressionLevel: 9 })
+    .toFile(favicon180Path);
+
+  console.log("✓ Generados: favicon-48x48.png y apple-touch-icon.png");
+
+  // 2. Ejecutar 'convert' de ImageMagick para empaquetar favicon.ico multi-tamaño
+  const args = [
+    favicon48Path,
+    "-define",
+    "icon:auto-resize=48,32,16",
+    faviconIcoPath,
+  ];
+
+  try {
+    await execFileAsync("convert", args);
+    console.log(
+      "✓ Generado: favicon.ico (multi-resolución 48, 32, 16px vía convert)",
+    );
+  } catch (err) {
+    // Fallback para entornos con ImageMagick 7 (magick ...)
+    try {
+      await execFileAsync("magick", args);
+      console.log("✓ Generado: favicon.ico (vía magick)");
+    } catch (fallbackErr) {
+      console.warn(
+        "⚠️ No se pudo ejecutar convert/magick:",
+        fallbackErr.message,
+      );
+    }
+  }
+}
+
 async function main() {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
-  console.log(
-    "Generando assets gráficos optimizados para múltiples plataformas...",
-  );
+  console.log("Generando assets gráficos optimizados...");
 
-  // 1. OG Default (1200 x 630 — ~1.91:1) — Ultra ligero para WhatsApp, Slack, X cards
+  // 1. OG Default (1200 x 630)
   await renderOptimizedPng(
     createOgDefaultSvg(),
     path.join(OUTPUT_DIR, "og-default.png"),
@@ -271,11 +318,11 @@ async function main() {
     true,
   );
 
-  // Configuraciones de Banners Multi-Aspect Ratio
+  // 2. Banners (4:1, 3:1, 16:9)
   const BANNER_RATIOS = [
-    { ratio: "4x1", width: 1584, height: 396 }, // LinkedIn Standard
-    { ratio: "3x1", width: 1500, height: 500 }, // Twitter / X Header & GitHub Profile
-    { ratio: "16x9", width: 1280, height: 720 }, // Widescreen (YouTube, Discord, Notion)
+    { ratio: "4x1", width: 1584, height: 396 },
+    { ratio: "3x1", width: 1500, height: 500 },
+    { ratio: "16x9", width: 1280, height: 720 },
   ];
 
   const ALIGNMENTS = ["left", "center", "right"];
@@ -290,6 +337,9 @@ async function main() {
       );
     }
   }
+
+  // 3. Generación de Favicons y ejecución de ImageMagick convert
+  await generateFavicons();
 
   console.log("\nGeneración completada con éxito.");
 }
