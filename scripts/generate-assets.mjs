@@ -5,346 +5,685 @@ import { promisify } from "node:util";
 import sharp from "sharp";
 
 const execFileAsync = promisify(execFile);
-const OUTPUT_DIR = path.resolve("public");
 
-// Caracteres seguros con entidades XML
-const MATRIX_CHARS = [
-  "0",
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "A",
-  "B",
-  "C",
-  "D",
-  "E",
-  "F",
-  "λ",
-  "μ",
-  "σ",
-  "π",
-  "&lt;",
-  "&gt;",
-  "/",
-  "{",
-  "}",
-  "=",
-  "+",
-  "*",
-  "#",
-  "_",
-  ":",
-  ";",
-];
-
-// Generador de lluvia Matrix dispersa con gotas de código y cabezales brillantes
-function generateMatrixGlyphs(width, height, density = 30) {
-  let svg = `<g class="font-mono" font-size="11.5">`;
-  const colWidth = width / density;
-
-  for (let i = 0; i < density; i++) {
-    if ((i * 7 + 3) % 4 === 0) continue;
-
-    const x = Math.round(i * colWidth + ((i * 17) % 20));
-    const streamLength = 4 + ((i * 11) % 8);
-    const startY = 32 + ((i * 53) % (height - 180));
-    const baseOpacity = 0.038 + ((i * 19) % 5) * 0.012;
-
-    let col = "";
-    for (let j = 0; j < streamLength; j++) {
-      const y = startY + j * 21;
-      if (y > height - 38) break;
-      const char = MATRIX_CHARS[(i * 13 + j * 7) % MATRIX_CHARS.length];
-
-      const isLead = j === streamLength - 1;
-      const op = isLead
-        ? Math.min(0.14, baseOpacity * 1.9).toFixed(3)
-        : baseOpacity.toFixed(3);
-      const fill = isLead ? "#FDE68A" : "#E5A93C";
-
-      col += `<text x="${x}" y="${y}" opacity="${op}" fill="${fill}">${char}</text>`;
+// ============================================================================
+// XML ESCAPING UTILITY
+// ============================================================================
+function escapeXml(unsafe) {
+  if (typeof unsafe !== "string") return unsafe;
+  return unsafe.replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case "&":
+        return "&amp;";
+      case "'":
+        return "&apos;";
+      case '"':
+        return "&quot;";
+      default:
+        return c;
     }
-    svg += col;
+  });
+}
+
+// ============================================================================
+// HIGH-ENTROPY INTEGER HASH (NON-LINEAR PSEUDORANDOM SEEDING)
+// ============================================================================
+function hashGlyph(col, stream, step) {
+  let h =
+    (col * 374761393 + stream * 668265263 + step * 3628273133) ^ 0x5bf03635;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+// ============================================================================
+// CENTRALIZED CONFIGURATION (METADATA, PALETTE, FONTS, AND ENGINE SPECS)
+// ============================================================================
+const CONFIG = {
+  paths: {
+    outputDir: path.resolve("public"),
+    faviconSvg: path.resolve("public", "favicon.svg"),
+  },
+  profile: {
+    name: "Arturo Nava",
+    role: "Senior Software / AI Engineer",
+    badgeText: "AVAILABLE FOR SENIOR / STAFF ROLES",
+    techPillars: "Distributed Systems • High Concurrency • AppSec",
+    coreStack:
+      "High-Concurrency Distributed Systems • Low-Latency Backends • Go & Rust",
+    secondaryStack:
+      "Enterprise AI Agents • Autonomous RAG • Zero-Trust • Edge Architecture",
+    bannerSummary:
+      "High-Concurrency Distributed Systems • AI Agents • Zero-Trust • Go, Rust & Python",
+    domain: "arturonavax.dev",
+    handle: "@arturonavax",
+    email: "arturonavax@gmail.com",
+  },
+  theme: {
+    colors: {
+      bgDark: "#0E0102",
+      bgMid: "#160103",
+      bgLight: "#260205",
+      amberPrimary: "#E5A93C",
+      amberLead: "#FEF08A",
+      amberTail: "#8E5E1C",
+      textWhite: "#FFFFFF",
+      textMuted: "#E5E7EB",
+      textDim: "#9CA3AF",
+      statusGreen: "#22C55E",
+      badgeBg: "#34060A",
+      badgeBorder: "#68131B",
+    },
+    fonts: {
+      sans: '"Geist Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      mono: '"Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    },
+  },
+  matrix: {
+    // Exotic characters strictly reserved for the stream heads
+    headChars: ["λ", "μ", "σ", "π", "θ", "§", "ø", "Δ", "Ψ", "Ω", "Ξ", "ζ"],
+    // Monospace hex and alphanumeric set for descending trails
+    bodyChars: [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "X",
+      "Y",
+      "Z",
+      "V",
+      "R",
+      "K",
+      "T",
+      "n",
+      "t",
+      "s",
+      "p",
+    ],
+    columnWidth: 22, // High column density (~54 columns across 1200px)
+    verticalStep: 18, // Snapped vertical step for clean rasterization
+    glyphSize: 14.5, // Scaled glyph size for crisp high-contrast definition
+  },
+  rendering: {
+    supersampleFactor: 2, // 2x density supersampling for pin-sharp anti-aliasing
+    sharpPngOptions: {
+      compressionLevel: 9,
+      effort: 10,
+      adaptiveFiltering: true,
+      palette: false, // Pure RGB lossless without quantization banding
+    },
+  },
+};
+
+// ============================================================================
+// SPATIAL DETECTION UTILITIES
+// ============================================================================
+function isPointInZones(x, y, zones, padding = 16) {
+  for (let i = 0; i < zones.length; i++) {
+    const z = zones[i];
+    if (
+      x >= z.x - padding &&
+      x <= z.x + z.w + padding &&
+      y >= z.y - padding &&
+      y <= z.y + z.h + padding
+    ) {
+      return true;
+    }
   }
+  return false;
+}
+
+// ============================================================================
+// MATRIX BACKGROUND GENERATOR (ZERO COLOR SHIFT + GLYPH-ONLY BOKEH BLUR)
+// ============================================================================
+function generateMatrixGlyphs(width, height, textZones = [], frameInset = 28) {
+  const { headChars, bodyChars, columnWidth, verticalStep, glyphSize } =
+    CONFIG.matrix;
+
+  const TONE_HEAD = "#D9822B";
+  const TONE_BODY = "#9E471E";
+  const TONE_TAIL = "#631F16";
+
+  // RIGID MARGIN BOUNDS: Matrix never touches or crosses the outer frame
+  const safeMinX = frameInset + 20;
+  const safeMaxX = width - frameInset - 20;
+  const safeMinY = frameInset + 24;
+  const safeMaxY = height - frameInset - 20;
+
+  let svg = `<g class="font-mono">`;
+  const numCols = Math.floor(width / columnWidth);
+
+  for (let col = 0; col < numCols; col++) {
+    const x = Math.round(col * columnWidth + columnWidth / 2);
+
+    // Hard boundary clip against outer technical frames
+    if (x < safeMinX || x > safeMaxX) continue;
+
+    const colSeed = (col * 1973 + 41) % 100;
+    // High sustained density (~84% activation across all areas)
+    if (colSeed < 16) continue;
+
+    const streamCount = colSeed % 3 === 0 ? 2 : 1;
+
+    for (let s = 0; s < streamCount; s++) {
+      const streamLength = 8 + ((col * 11 + s * 37) % 9);
+      const startY =
+        safeMinY +
+        ((col * 47 + s * 311) %
+          Math.max(20, safeMaxY - safeMinY - streamLength * verticalStep));
+
+      const depthTier = (colSeed + s * 17) % 3;
+
+      for (let j = 0; j < streamLength; j++) {
+        const y = Math.round(startY + j * verticalStep);
+        if (y < safeMinY || y > safeMaxY) continue;
+
+        // Detect if this specific glyph is positioned in the text area
+        const insideTextZone = isPointInZones(x, y, textZones, 16);
+
+        // Distance from lead head (0 is head, increasing upward)
+        const distFromLead = streamLength - 1 - j;
+
+        let opacity;
+        let fill;
+        let filterAttr = "";
+
+        if (insideTextZone) {
+          // BOKEH BLUR: ONLY the glyph itself is blurred; zero backdrop tinting
+          filterAttr = 'filter="url(#glyphBlur)"';
+
+          if (distFromLead === 0) {
+            opacity = "0.22";
+            fill = TONE_HEAD;
+          } else if (distFromLead <= 2) {
+            opacity = "0.14";
+            fill = TONE_BODY;
+          } else if (distFromLead <= 5) {
+            opacity = "0.07";
+            fill = TONE_TAIL;
+          } else {
+            continue;
+          }
+        } else {
+          // FOREGROUND: Razor-sharp glyphs
+          if (distFromLead === 0) {
+            opacity =
+              depthTier === 2 ? "0.50" : depthTier === 1 ? "0.36" : "0.24";
+            fill = TONE_HEAD;
+          } else if (distFromLead === 1) {
+            opacity =
+              depthTier === 2 ? "0.34" : depthTier === 1 ? "0.24" : "0.16";
+            fill = TONE_BODY;
+          } else if (distFromLead <= 3) {
+            opacity =
+              depthTier === 2 ? "0.20" : depthTier === 1 ? "0.14" : "0.09";
+            fill = TONE_BODY;
+          } else if (distFromLead <= 5) {
+            opacity = depthTier === 2 ? "0.11" : "0.06";
+            fill = TONE_TAIL;
+          } else if (distFromLead <= 7 && depthTier === 2) {
+            opacity = "0.05";
+            fill = TONE_TAIL;
+          } else {
+            continue;
+          }
+        }
+
+        const char =
+          distFromLead === 0
+            ? headChars[hashGlyph(col, s, 0) % headChars.length]
+            : bodyChars[hashGlyph(col, s, j) % bodyChars.length];
+
+        svg += `<text x="${x}" y="${y}" opacity="${opacity}" fill="${fill}" font-size="${glyphSize}" font-weight="500" text-anchor="middle" ${filterAttr}>${char}</text>`;
+      }
+    }
+  }
+
   svg += `</g>`;
   return svg;
 }
 
-function getDefsAndStyles(width, height) {
+// ============================================================================
+// SVG STYLE DEFINITIONS AND FILTERS
+// ============================================================================
+function getDefsAndStyles(width, height, textZones = [], frameInset = 28) {
+  const { colors, fonts } = CONFIG.theme;
+
   return `
   <style>
-    .font-sans {
-      font-family: "Geist Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    .font-mono {
-      font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
+    .font-sans { font-family: ${fonts.sans}; text-rendering: geometricPrecision; }
+    .font-mono { font-family: ${fonts.mono}; text-rendering: geometricPrecision; }
   </style>
   <defs>
+    <!-- Seamless background gradient -->
     <linearGradient id="bgLinear" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#260205" />
-      <stop offset="55%" stop-color="#160103" />
-      <stop offset="100%" stop-color="#0E0102" />
+      <stop offset="0%" stop-color="${colors.bgLight}" />
+      <stop offset="45%" stop-color="${colors.bgMid}" />
+      <stop offset="100%" stop-color="${colors.bgDark}" />
     </linearGradient>
 
-    <radialGradient id="vignette" cx="24%" cy="38%" r="78%">
-      <stop offset="0%" stop-color="#42060C" stop-opacity="0.45" />
-      <stop offset="60%" stop-color="#160103" stop-opacity="0.10" />
-      <stop offset="100%" stop-color="#0E0102" stop-opacity="0.88" />
+    <!-- Radial vignette focused on top-left quadrant -->
+    <radialGradient id="vignette" cx="28%" cy="38%" r="80%">
+      <stop offset="0%" stop-color="#44070D" stop-opacity="0.30" />
+      <stop offset="55%" stop-color="${colors.bgMid}" stop-opacity="0.10" />
+      <stop offset="100%" stop-color="${colors.bgDark}" stop-opacity="0.90" />
     </radialGradient>
 
-    <filter id="glowGreen" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="3.5" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <!-- Status indicator green glow -->
+    <filter id="glowGreen" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Optical bokeh blur applied exclusively to text glyphs behind typography -->
+    <filter id="glyphBlur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" />
     </filter>
   </defs>
 
   <rect width="${width}" height="${height}" fill="url(#bgLinear)" />
   <rect width="${width}" height="${height}" fill="url(#vignette)" />
-  ${generateMatrixGlyphs(width, height, width > 1300 ? 38 : 28)}
+  ${generateMatrixGlyphs(width, height, textZones, frameInset)}
   `;
 }
 
-/**
- * 1. OG-DEFAULT (1200 x 630 px)
- */
+// ============================================================================
+// TEMPLATE 1: OPEN GRAPH CARD DEFAULT (1200 x 630 px)
+// ============================================================================
 function createOgDefaultSvg() {
   const width = 1200;
   const height = 630;
+  const frameInset = 28;
+  const { profile, theme } = CONFIG;
+  const { colors } = theme;
+
+  // Text bounding boxes for glyph-only bokeh blur
+  const textZones = [
+    { x: 74, y: 72, w: 332, h: 48 },
+    { x: 74, y: 126, w: 870, h: 266 },
+    { x: 74, y: 486, w: 1052, h: 54 },
+  ];
 
   return `
-  <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-    ${getDefsAndStyles(width, height)}
+  <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" xmlns="http://www.w3.org/2000/svg">
+    ${getDefsAndStyles(width, height, textZones, frameInset)}
 
-    <rect x="42" y="42" width="1116" height="546" stroke="#E5A93C" stroke-width="1" stroke-opacity="0.22" fill="none" />
-    <path d="M 38 66 L 38 38 L 66 38" stroke="#E5A93C" stroke-width="3.5" fill="none" />
-    <path d="M 1162 66 L 1162 38 L 1134 38" stroke="#E5A93C" stroke-width="3.5" fill="none" />
-    <path d="M 38 564 L 38 592 L 66 592" stroke="#E5A93C" stroke-width="3.5" fill="none" />
-    <path d="M 1162 564 L 1162 592 L 1134 592" stroke="#E5A93C" stroke-width="3.5" fill="none" />
+    <!-- Single outer technical frame with corner brackets -->
+    <rect x="28" y="28" width="1144" height="574" stroke="${colors.amberPrimary}" stroke-width="1" stroke-opacity="0.22" fill="none" />
+    <path d="M 24 54 L 24 24 L 54 24" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
+    <path d="M 1176 54 L 1176 24 L 1146 24" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
+    <path d="M 24 576 L 24 606 L 54 606" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
+    <path d="M 1176 576 L 1176 606 L 1146 606" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
 
-    <g transform="translate(84, 88)">
-      <rect width="365" height="42" rx="21" fill="#38060B" stroke="#6F151E" stroke-width="1.5" />
-      <circle cx="23" cy="21" r="6" fill="#22C55E" filter="url(#glowGreen)" />
-      <text x="42" y="26.5" class="font-mono" font-size="12.5" font-weight="700" fill="#F3F4F6" letter-spacing="1.4">
-        AVAILABLE FOR SENIOR / STAFF ROLES
+    <!-- Availability badge -->
+    <g transform="translate(80, 78)">
+      <rect width="320" height="36" rx="18" fill="${colors.badgeBg}" stroke="${colors.badgeBorder}" stroke-width="1.2" />
+      <circle cx="18" cy="18" r="5" fill="${colors.statusGreen}" filter="url(#glowGreen)" />
+      <text x="34" y="22.5" class="font-mono" font-size="11.5" font-weight="700" fill="${colors.textWhite}" letter-spacing="1.1">
+        ${escapeXml(profile.badgeText)}
       </text>
     </g>
 
-    <text x="84" y="218" class="font-sans" font-size="82" font-weight="800" fill="#FFFFFF" letter-spacing="-2">
-      Arturo Nava
+    <!-- Main Headline -->
+    <text x="80" y="200" class="font-sans" font-size="82" font-weight="800" fill="${colors.textWhite}" letter-spacing="-2">
+      ${escapeXml(profile.name)}
     </text>
 
-    <text x="84" y="278" class="font-sans" font-size="34" font-weight="600" fill="#E5A93C" letter-spacing="-0.4">
-      Senior Software / AI Engineer
+    <!-- Role and Core Specialty -->
+    <text x="80" y="258" class="font-sans" font-size="34" font-weight="600" fill="${colors.amberPrimary}" letter-spacing="-0.4">
+      ${escapeXml(profile.role)}
     </text>
 
-    <text x="84" y="342" class="font-mono" font-size="20.5" font-weight="500" fill="#E5E7EB" letter-spacing="-0.2">
-      High-Concurrency Distributed Systems • Low-Latency Backends • Go &amp; Rust
+    <!-- Structured Technical Highlights -->
+    <text x="80" y="326" class="font-mono" font-size="20.5" font-weight="500" fill="${colors.textMuted}" letter-spacing="-0.2">
+      ${escapeXml(profile.coreStack)}
     </text>
-    <text x="84" y="380" class="font-mono" font-size="20.5" font-weight="400" fill="#9CA3AF" letter-spacing="-0.2">
-      Enterprise AI Agents • Autonomous RAG • Zero-Trust • Edge Architecture
-    </text>
-
-    <line x1="84" y1="450" x2="1116" y2="450" stroke="#E5A93C" stroke-width="1" stroke-opacity="0.22" />
-
-    <text x="84" y="522" class="font-mono" font-size="25" font-weight="700" fill="#E5A93C" letter-spacing="0.5">
-      arturonavax.dev
+    <text x="80" y="366" class="font-mono" font-size="20.5" font-weight="400" fill="${colors.textDim}" letter-spacing="-0.2">
+      ${escapeXml(profile.secondaryStack)}
     </text>
 
-    <text x="1116" y="522" text-anchor="end" class="font-mono" font-size="21" font-weight="500">
-      <tspan fill="#F3F4F6">@arturonavax</tspan>
-      <tspan fill="#E5A93C" dx="14">•</tspan>
-      <tspan fill="#F3F4F6" dx="14">arturonavax@gmail.com</tspan>
+    <!-- Structural Divider -->
+    <line x1="80" y1="440" x2="1120" y2="440" stroke="${colors.amberPrimary}" stroke-width="1" stroke-opacity="0.22" />
+
+    <!-- Footer: Domain & Contact -->
+    <text x="80" y="520" class="font-mono" font-size="25" font-weight="700" fill="${colors.amberPrimary}" letter-spacing="0.5">
+      ${escapeXml(profile.domain)}
+    </text>
+
+    <text x="1120" y="520" text-anchor="end" class="font-mono" font-size="21" font-weight="500">
+      <tspan fill="${colors.textWhite}">${escapeXml(profile.handle)}</tspan>
+      <tspan fill="${colors.amberPrimary}" dx="14">•</tspan>
+      <tspan fill="${colors.textMuted}" dx="14">${escapeXml(profile.email)}</tspan>
     </text>
   </svg>
   `;
 }
 
-/**
- * 2. BANNERS MULTIPROPÓSITO (4:1, 3:1, 16:9)
- */
+// ============================================================================
+// TEMPLATE 2: MULTI-PURPOSE BANNERS (PRISTINE BACKGROUND GRADIENT)
+// ============================================================================
 function createBannerSvg(width, height, align = "left") {
-  const isTall = height >= 500;
-  const fontSizeName = isTall ? 66 : 58;
-  const fontSizeSub = isTall ? 31 : 28;
-  const fontSizeDesc = isTall ? 18.5 : 17;
-  const fontSizeContact = isTall ? 21.5 : 20;
+  const { profile, theme } = CONFIG;
+  const { colors } = theme;
+  const frameInset = 20;
 
-  const yName = Math.round(height * 0.33);
-  const ySub = yName + (isTall ? 54 : 48);
-  const yDesc = ySub + (isTall ? 54 : 50);
-  const yContact = Math.round(height * 0.81);
+  const isTall = height >= 500;
+  const isSuperTall = height >= 700;
+
+  const fontSizeName = isSuperTall ? 80 : isTall ? 72 : 62;
+  const fontSizeSub = isSuperTall ? 40 : isTall ? 36 : 31;
+  const fontSizeDesc = isSuperTall ? 23 : isTall ? 21 : 18.5;
+  const fontSizeContact = isSuperTall ? 23.5 : isTall ? 21.5 : 19;
+
+  const yName = Math.round(height * (isSuperTall ? 0.3 : isTall ? 0.31 : 0.3));
+  const ySub = yName + (isSuperTall ? 66 : isTall ? 58 : 50);
+  const yDesc = ySub + (isSuperTall ? 68 : isTall ? 60 : 52);
+  const yContact = Math.round(
+    height * (isSuperTall ? 0.84 : isTall ? 0.83 : 0.83),
+  );
 
   let anchorAttr = "";
-  let transX = 84;
+  let transX = 72;
+
+  const contentWidthEst = Math.min(width * 0.7, 1100);
+  let textZoneX = 72;
 
   if (align === "right") {
-    transX = width - 84;
+    transX = width - 72;
+    textZoneX = width - 72 - contentWidthEst;
     anchorAttr = 'text-anchor="end"';
   } else if (align === "center") {
     transX = Math.round(width / 2);
+    textZoneX = Math.round((width - contentWidthEst) / 2);
     anchorAttr = 'text-anchor="middle"';
   }
 
+  const textZones = [
+    {
+      x: textZoneX - 16,
+      y: Math.round(height * 0.18),
+      w: contentWidthEst + 32,
+      h: Math.round(height * 0.7),
+    },
+  ];
+
   const contentBlock = `
     <g transform="translate(${transX}, 0)">
-      <text x="0" y="${yName}" ${anchorAttr} class="font-sans" font-size="${fontSizeName}" font-weight="800" fill="#FFFFFF" letter-spacing="-1.5">Arturo Nava</text>
-      <text x="0" y="${ySub}" ${anchorAttr} class="font-sans" font-size="${fontSizeSub}" font-weight="600" fill="#E5A93C" letter-spacing="-0.3">Senior Software / AI Engineer</text>
-      <text x="0" y="${yDesc}" ${anchorAttr} class="font-mono" font-size="${fontSizeDesc}" font-weight="500" fill="#D1D5DB">High-Concurrency Distributed Systems • AI Agents • Zero-Trust • Go, Rust &amp; Python</text>
+      <text x="0" y="${yName}" ${anchorAttr} class="font-sans" font-size="${fontSizeName}" font-weight="800" fill="${colors.textWhite}" letter-spacing="-1.5">
+        ${escapeXml(profile.name)}
+      </text>
+      <text x="0" y="${ySub}" ${anchorAttr} class="font-sans" font-size="${fontSizeSub}" font-weight="600" fill="${colors.amberPrimary}" letter-spacing="-0.3">
+        ${escapeXml(profile.role)}
+      </text>
+      <text x="0" y="${yDesc}" ${anchorAttr} class="font-mono" font-size="${fontSizeDesc}" font-weight="400" fill="${colors.textMuted}">
+        ${escapeXml(profile.bannerSummary)}
+      </text>
 
       <text x="0" y="${yContact}" ${anchorAttr} class="font-mono" font-size="${fontSizeContact}" font-weight="600">
-        <tspan fill="#E5A93C" font-weight="700">arturonavax.dev</tspan>
-        <tspan fill="#E5A93C" dx="14">•</tspan>
-        <tspan fill="#FFFFFF" dx="14">@arturonavax</tspan>
-        <tspan fill="#E5A93C" dx="14">•</tspan>
-        <tspan fill="#F3F4F6" dx="14">arturonavax@gmail.com</tspan>
+        <tspan fill="${colors.amberPrimary}" font-weight="700">${escapeXml(profile.domain)}</tspan>
+        <tspan fill="${colors.amberPrimary}" dx="14">•</tspan>
+        <tspan fill="${colors.textWhite}" dx="14">${escapeXml(profile.handle)}</tspan>
+        <tspan fill="${colors.amberPrimary}" dx="14">•</tspan>
+        <tspan fill="${colors.textMuted}" dx="14">${escapeXml(profile.email)}</tspan>
       </text>
     </g>
   `;
 
   return `
-  <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-    ${getDefsAndStyles(width, height)}
+  <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" xmlns="http://www.w3.org/2000/svg">
+    ${getDefsAndStyles(width, height, textZones, frameInset)}
 
-    <rect x="24" y="24" width="${width - 48}" height="${height - 48}" stroke="#E5A93C" stroke-width="1" stroke-opacity="0.22" fill="none" />
-    <path d="M 20 46 L 20 20 L 46 20" stroke="#E5A93C" stroke-width="3" fill="none" />
-    <path d="M ${width - 20} 46 L ${width - 20} 20 L ${width - 46} 20" stroke="#E5A93C" stroke-width="3" fill="none" />
-    <path d="M 20 ${height - 46} L 20 ${height - 20} L 46 ${height - 20}" stroke="#E5A93C" stroke-width="3" fill="none" />
-    <path d="M ${width - 20} ${height - 46} L ${width - 20} ${height - 20} L ${width - 46} ${height - 20}" stroke="#E5A93C" stroke-width="3" fill="none" />
+    <!-- Outer technical frame with corner brackets -->
+    <rect x="20" y="20" width="${width - 40}" height="${height - 40}" stroke="${colors.amberPrimary}" stroke-width="1" stroke-opacity="0.22" fill="none" />
+    <path d="M 16 42 L 16 16 L 42 16" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
+    <path d="M ${width - 16} 42 L ${width - 16} 16 L ${width - 42} 16" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
+    <path d="M 16 ${height - 42} L 16 ${height - 16} L 42 ${height - 16}" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
+    <path d="M ${width - 16} ${height - 42} L ${width - 16} ${height - 16} L ${width - 42} ${height - 16}" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
 
     ${contentBlock}
   </svg>
   `;
 }
 
+// ============================================================================
+// SUPERSAMPLED RENDERING ENGINE + OPTIMIZED RGB LOSSLESS PIPELINE
+// ============================================================================
 async function renderOptimizedPng(
   svgString,
   outputPath,
-  width,
-  height,
-  isUltraLight = false,
+  targetWidth,
+  targetHeight,
+  keepAlpha = false,
 ) {
+  const { supersampleFactor, sharpPngOptions } = CONFIG.rendering;
   const buffer = Buffer.from(svgString);
 
-  const pngOptions = isUltraLight
-    ? {
-        palette: true,
-        colors: 128,
-        effort: 10,
-        compressionLevel: 9,
-        adaptiveFiltering: true,
-        dither: 0.6,
-      }
-    : {
-        compressionLevel: 9,
-        effort: 8,
-        adaptiveFiltering: true,
-      };
+  let pipeline = sharp(buffer, { density: 72 * supersampleFactor }).resize(
+    targetWidth,
+    targetHeight,
+    {
+      kernel: sharp.kernel.lanczos3,
+      fit: "contain",
+    },
+  );
 
-  await sharp(buffer).resize(width, height).png(pngOptions).toFile(outputPath);
+  // Strip redundant alpha channel on opaque assets to remove ~30% raw byte volume
+  if (!keepAlpha) {
+    pipeline = pipeline.removeAlpha();
+  }
+
+  await pipeline.png(sharpPngOptions).toFile(outputPath);
+
+  try {
+    await execFileAsync("oxipng", ["-o", "4", "--strip", "safe", outputPath]);
+  } catch {
+    // Sharp effort 10 already provides exceptional lossless density
+  }
 
   const stats = await fs.stat(outputPath);
   const kbSize = (stats.size / 1024).toFixed(1);
   console.log(
-    `✓ Generado: ${path.basename(outputPath)} (${width}x${height}) -> ${kbSize} KB`,
+    `✓ Crisp render: ${path.basename(outputPath)} (${targetWidth}x${targetHeight}) -> ${kbSize} KB`,
   );
 }
 
+// ============================================================================
+// FAVICON AND MULTI-RESOLUTION ICON GENERATION
+// ============================================================================
 async function generateFavicons() {
-  const svgFaviconPath = path.join(OUTPUT_DIR, "favicon.svg");
-  const favicon48Path = path.join(OUTPUT_DIR, "favicon-48x48.png");
-  const favicon180Path = path.join(OUTPUT_DIR, "apple-touch-icon.png");
-  const faviconIcoPath = path.join(OUTPUT_DIR, "favicon.ico");
-
-  const svgBuffer = await fs.readFile(svgFaviconPath);
-
-  // 1. Generar PNGs con Sharp
-  await sharp(svgBuffer)
-    .resize(48, 48)
-    .png({ compressionLevel: 9 })
-    .toFile(favicon48Path);
-
-  await sharp(svgBuffer)
-    .resize(180, 180)
-    .png({ compressionLevel: 9 })
-    .toFile(favicon180Path);
-
-  console.log("✓ Generados: favicon-48x48.png y apple-touch-icon.png");
-
-  // 2. Ejecutar 'convert' de ImageMagick para empaquetar favicon.ico multi-tamaño
-  const args = [
-    favicon48Path,
-    "-define",
-    "icon:auto-resize=48,32,16",
-    faviconIcoPath,
-  ];
+  const { outputDir, faviconSvg } = CONFIG.paths;
+  const favicon48Path = path.join(outputDir, "favicon-48x48.png");
+  const favicon180Path = path.join(outputDir, "apple-touch-icon.png");
+  const faviconIcoPath = path.join(outputDir, "favicon.ico");
 
   try {
-    await execFileAsync("convert", args);
+    const svgBuffer = await fs.readFile(faviconSvg);
+
+    await sharp(svgBuffer, { density: 300 })
+      .resize(48, 48, { kernel: sharp.kernel.lanczos3 })
+      .png(CONFIG.rendering.sharpPngOptions)
+      .toFile(favicon48Path);
+
+    await sharp(svgBuffer, { density: 300 })
+      .resize(180, 180, { kernel: sharp.kernel.lanczos3 })
+      .png(CONFIG.rendering.sharpPngOptions)
+      .toFile(favicon180Path);
+
     console.log(
-      "✓ Generado: favicon.ico (multi-resolución 48, 32, 16px vía convert)",
+      "✓ Generated: favicon-48x48.png and apple-touch-icon.png (supersampled)",
     );
-  } catch (err) {
-    // Fallback para entornos con ImageMagick 7 (magick ...)
+
+    const args = [
+      favicon48Path,
+      "-define",
+      "icon:auto-resize=48,32,16",
+      faviconIcoPath,
+    ];
+
     try {
       await execFileAsync("magick", args);
-      console.log("✓ Generado: favicon.ico (vía magick)");
-    } catch (fallbackErr) {
-      console.warn(
-        "⚠️ No se pudo ejecutar convert/magick:",
-        fallbackErr.message,
-      );
+      console.log("✓ Generated: favicon.ico (via ImageMagick magick)");
+    } catch {
+      try {
+        await execFileAsync("convert", args);
+        console.log("✓ Generated: favicon.ico (via ImageMagick convert)");
+      } catch (err) {
+        console.warn(
+          "ℹ️ Note: ImageMagick not available. Multi-resolution favicon.ico compilation skipped.",
+        );
+      }
     }
+  } catch (err) {
+    console.warn(
+      `ℹ️ File not found: ${faviconSvg}. Favicon generation skipped.`,
+    );
   }
 }
 
+// ============================================================================
+// SYSTEM COMMANDS AND DEPENDENCY VERIFICATION
+// ============================================================================
+async function checkCommand(cmd, args = ["--version"]) {
+  try {
+    await execFileAsync(cmd, args);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function verifyRequirements() {
+  const missing = [];
+
+  // 1. Check NPM packages
+  try {
+    await import("sharp");
+  } catch {
+    missing.push({
+      item: "sharp (npm package)",
+      fix: "npm install sharp",
+    });
+  }
+
+  // 2. Check ImageMagick (magick or convert)
+  const hasMagick = await checkCommand("magick", ["-version"]);
+  const hasConvert =
+    !hasMagick && (await checkCommand("convert", ["-version"]));
+
+  if (!hasMagick && !hasConvert) {
+    missing.push({
+      item: "ImageMagick (magick / convert)",
+      fix: "brew install imagemagick  # macOS\nsudo apt install imagemagick  # Debian/Ubuntu",
+    });
+  }
+
+  // 3. Check lossless optimizer (oxipng)
+  const hasOxipng = await checkCommand("oxipng", ["--version"]);
+  if (!hasOxipng) {
+    missing.push({
+      item: "oxipng (CLI lossless optimizer)",
+      fix: "brew install oxipng  # macOS\ncargo install oxipng  # Rust/Linux",
+    });
+  }
+
+  // 4. Check base favicon template
+  try {
+    await fs.access(CONFIG.paths.faviconSvg);
+  } catch {
+    missing.push({
+      item: `Required asset: ${CONFIG.paths.faviconSvg}`,
+      fix: `Ensure 'favicon.svg' is placed in '${CONFIG.paths.outputDir}'`,
+    });
+  }
+
+  if (missing.length > 0) {
+    console.error(
+      "\n❌ ERROR: Missing required dependencies or system tools:\n",
+    );
+    for (const [index, err] of missing.entries()) {
+      console.error(`${index + 1}. [MISSING] ${err.item}`);
+      console.error(
+        `   👉 Solution:\n   ${err.fix.split("\n").join("\n   ")}\n`,
+      );
+    }
+    process.exit(1);
+  }
+
+  console.log(
+    "✓ Environment verified: all dependencies and tools are ready.\n",
+  );
+}
+
+// ============================================================================
+// ENTRYPOINT
+// ============================================================================
 async function main() {
-  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  await verifyRequirements();
 
-  console.log("Generando assets gráficos optimizados...");
+  const { outputDir } = CONFIG.paths;
+  await fs.mkdir(outputDir, { recursive: true });
 
-  // 1. OG Default (1200 x 630)
-  await renderOptimizedPng(
-    createOgDefaultSvg(),
-    path.join(OUTPUT_DIR, "og-default.png"),
-    1200,
-    630,
-    true,
+  console.log(
+    "Starting high-fidelity asset generation with lossless compression...\n",
   );
 
-  // 2. Banners (4:1, 3:1, 16:9)
+  // 1. OG Default (1200 x 630) - RGB mode (no alpha)
+  await renderOptimizedPng(
+    createOgDefaultSvg(),
+    path.join(outputDir, "og-default.png"),
+    1200,
+    630,
+    false,
+  );
+
+  // 2. Adaptive Banners (4:1, 3:1, 16:9) - RGB mode (no alpha)
   const BANNER_RATIOS = [
     { ratio: "4x1", width: 1584, height: 396 },
     { ratio: "3x1", width: 1500, height: 500 },
     { ratio: "16x9", width: 1280, height: 720 },
   ];
-
   const ALIGNMENTS = ["left", "center", "right"];
 
   for (const { ratio, width, height } of BANNER_RATIOS) {
     for (const align of ALIGNMENTS) {
       await renderOptimizedPng(
         createBannerSvg(width, height, align),
-        path.join(OUTPUT_DIR, `banner-${ratio}-${align}.png`),
+        path.join(outputDir, `banner-${ratio}-${align}.png`),
         width,
         height,
+        false,
       );
     }
   }
 
-  // 3. Generación de Favicons y ejecución de ImageMagick convert
+  // 3. Favicon generation
   await generateFavicons();
 
-  console.log("\nGeneración completada con éxito.");
+  console.log(
+    "\nProcess completed successfully. Assets exported to:",
+    outputDir,
+  );
 }
 
 main().catch((err) => {
-  console.error("Error al generar imágenes:", err);
+  console.error("Critical error during asset generation:", err);
   process.exit(1);
 });
