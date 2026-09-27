@@ -344,7 +344,15 @@ const { html, items } = getCVData("en");
     var origDocTitle = "";
     var origTagTitle = "";
 
-    window.printCleanCV = function () {
+    function getCvFileName() {
+      var isEs =
+        document.documentElement.lang === "es" ||
+        window.location.pathname === "/es" ||
+        window.location.pathname.indexOf("/es/") === 0;
+      return isEs ? "ArturoNava-CV-es" : "ArturoNava-CV-en";
+    }
+
+    function applyPrintTitle() {
       if (!origDocTitle) {
         origDocTitle = document.title;
         var titleEl = document.querySelector("title");
@@ -352,60 +360,42 @@ const { html, items } = getCVData("en");
           origTagTitle = titleEl.textContent;
         }
       }
-      document.title = "\u200E";
+
+      var targetTitle = getCvFileName();
+      document.title = targetTitle;
       var titleEl = document.querySelector("title");
       if (titleEl) {
-        titleEl.textContent = "\u200E";
+        titleEl.textContent = targetTitle;
       }
+    }
 
-      var restored = false;
-      function restoreTitle() {
-        if (restored) return;
-        restored = true;
-        if (origDocTitle) {
-          document.title = origDocTitle;
-        }
-        if (titleEl && origTagTitle) {
-          titleEl.textContent = origTagTitle;
-        }
-        origDocTitle = "";
-        origTagTitle = "";
+    function restoreOriginalTitle() {
+      if (origDocTitle) {
+        document.title = origDocTitle;
       }
+      var titleEl = document.querySelector("title");
+      if (titleEl && origTagTitle) {
+        titleEl.textContent = origTagTitle;
+      }
+      origDocTitle = "";
+      origTagTitle = "";
+    }
 
-      window.addEventListener("afterprint", restoreTitle, { once: true });
-      setTimeout(restoreTitle, 3500);
+    window.printCleanCV = function () {
+      applyPrintTitle();
 
-      // Microtask delay so Firefox and Chromium title cache registers blank title before modal dialog opens
+      window.addEventListener("afterprint", restoreOriginalTitle, {
+        once: true,
+      });
+      setTimeout(restoreOriginalTitle, 3500);
+
+      // Delay para asentar el título en la caché del compositor antes de congelar el hilo con print()
       setTimeout(function () {
         window.print();
       }, 70);
     };
 
-    window.addEventListener("beforeprint", function () {
-      if (!origDocTitle) {
-        origDocTitle = document.title;
-        var titleEl = document.querySelector("title");
-        if (titleEl && !origTagTitle) {
-          origTagTitle = titleEl.textContent;
-        }
-      }
-      document.title = "\u200E";
-      var titleEl = document.querySelector("title");
-      if (titleEl) {
-        titleEl.textContent = "\u200E";
-      }
-    });
-
-    window.addEventListener("afterprint", function () {
-      if (origDocTitle) {
-        document.title = origDocTitle;
-        var titleEl = document.querySelector("title");
-        if (titleEl && origTagTitle) {
-          titleEl.textContent = origTagTitle;
-        }
-        origDocTitle = "";
-        origTagTitle = "";
-      }
-    });
+    window.addEventListener("beforeprint", applyPrintTitle);
+    window.addEventListener("afterprint", restoreOriginalTitle);
   })();
 </script>

@@ -70,15 +70,16 @@ const alternateEsUrl =
     : undefined;
 
 const hasSponsorships = hasSponsorshipMethods;
-const hasJudges = judgeProfiles && judgeProfiles.length > 0;
-const hasShortcuts = shortcuts && shortcuts.length > 0;
+const hasJudges = Boolean(judgeProfiles?.length);
+const hasShortcuts = Boolean(shortcuts?.length);
 ---
 
 <!doctype html>
 <html
   lang={locale}
+  translate="no"
   data-theme="dark"
-  class="dark"
+  class="notranslate dark"
   style="background-color: #260205; color-scheme: dark;"
 >
   <head>
@@ -95,12 +96,12 @@ const hasShortcuts = shortcuts && shortcuts.length > 0;
       alternateEsUrl={alternateEsUrl}
     />
 
+    <!-- Anti-FOUC de tema y sincronización de Scroll previa al render -->
     <script is:inline>
       (function () {
         function applyStoredTheme() {
           try {
-            var stored = localStorage.getItem("theme");
-            var theme = stored || "dark";
+            var theme = localStorage.getItem("theme") || "dark";
             var root = document.documentElement;
             root.setAttribute("data-theme", theme);
             if (theme === "light") {
@@ -140,12 +141,6 @@ const hasShortcuts = shortcuts && shortcuts.length > 0;
               history.scrollRestoration = "manual";
             }
             window.scrollTo(0, 0);
-            document.addEventListener("DOMContentLoaded", function () {
-              window.scrollTo(0, 0);
-            });
-            window.addEventListener("load", function () {
-              window.scrollTo(0, 0);
-            });
           } else {
             var savedScroll = sessionStorage.getItem("lang_switch_scroll");
             if (savedScroll !== null) {
@@ -154,25 +149,22 @@ const hasShortcuts = shortcuts && shortcuts.length > 0;
                 history.scrollRestoration = "manual";
               }
               window.scrollTo(0, targetY);
-              document.addEventListener("DOMContentLoaded", function () {
-                window.scrollTo(0, targetY);
-                sessionStorage.removeItem("lang_switch_scroll");
-              });
             }
           }
         } catch (_) {}
       })();
     </script>
   </head>
+
   <body class="relative flex min-h-screen flex-col bg-[var(--color-surface-bg)] text-[var(--color-text-primary)] antialiased selection:bg-[var(--color-accent-gold)] selection:text-[var(--color-btn-gold-text)]">
     <MatrixBackground />
+
     <Header
       locale={locale}
       translationKey={translationKey}
       collectionName={collectionName}
     />
 
-    <!-- Unified Floating Actions Stack in Bottom-Right Corner -->
     <aside
       id="floating-actions-stack"
       class="fixed bottom-5 right-5 z-40 flex flex-col-reverse items-end gap-2.5 pointer-events-none select-none"
@@ -211,11 +203,12 @@ const hasShortcuts = shortcuts && shortcuts.length > 0;
         <CoffeeSponsorshipModal locale={locale} variant="subtle" />
       )}
     </main>
+
     <Footer locale={locale} />
     <UniversalSearchModal locale={locale} />
     {hasJudges && <OnlineJudgesModal locale={locale} />}
 
-    <!-- Discreet Edge Fetch Navigation Loading Beacon (Graceful Animation & Responsive Placement Below Header) -->
+    <!-- Edge Fetch Navigation Loading Beacon -->
     <div
       id="page-navigation-beacon"
       transition:persist="page-navigation-beacon"
@@ -247,309 +240,262 @@ const hasShortcuts = shortcuts && shortcuts.length > 0;
       </span>
     </div>
 
-    <script is:inline>
-      (function () {
-        if (window.__beaconBound) return;
-        window.__beaconBound = true;
-
-        var isShown = false;
-        var shownTime = 0;
-        var hideTimeout = null;
-        var MIN_VISIBLE_MS = 550;
-
-        function showBeacon(customText) {
-          clearTimeout(hideTimeout);
-          var b = document.getElementById("page-navigation-beacon");
-          if (!b) return;
-
-          var txt = b.querySelector("span");
-          if (txt) {
-            if (
-              typeof customText === "string" &&
-              customText.trim().length > 0
-            ) {
-              txt.textContent = customText;
-            } else {
-              txt.textContent =
-                document.documentElement.lang === "es"
-                  ? "Cargando..."
-                  : "Fetching...";
-            }
-          }
-
-          isShown = true;
-          shownTime = performance.now();
-          b.classList.remove("opacity-0", "scale-95");
-          b.classList.add("opacity-100", "scale-100");
+    <!-- Script de runtime: expone APIs a window, mantiene polyfills y gestiona eventos -->
+    <script>
+      // 1. Resiliencia contra extensiones externas mal implementadas
+      if (typeof Document !== "undefined") {
+        if (!(Document.prototype as any).closest) {
+          (Document.prototype as any).closest = () => null;
         }
-
-        function hideBeacon() {
-          if (!isShown) return;
-          var elapsed = performance.now() - shownTime;
-          var remaining = Math.max(0, MIN_VISIBLE_MS - elapsed);
-
-          clearTimeout(hideTimeout);
-          hideTimeout = setTimeout(function () {
-            var b = document.getElementById("page-navigation-beacon");
-            if (b) {
-              b.classList.remove("opacity-100", "scale-100");
-              b.classList.add("opacity-0", "scale-95");
-            }
-            isShown = false;
-          }, remaining);
-        }
-
-        window.__showBeacon = showBeacon;
-        window.__hideBeacon = hideBeacon;
-
-        document.addEventListener("astro:before-preparation", showBeacon);
-        document.addEventListener("astro:page-load", hideBeacon);
-        window.addEventListener("pageshow", hideBeacon);
-
-        document.addEventListener(
-          "click",
-          function (e) {
-            var target = e.target;
-            var link =
-              target && target.closest ? target.closest("a[href]") : null;
-            if (!link) return;
-            if (
-              e.defaultPrevented ||
-              e.ctrlKey ||
-              e.metaKey ||
-              e.shiftKey ||
-              e.altKey ||
-              e.button !== 0
-            )
-              return;
-            var href = link.getAttribute("href");
-            if (
-              !href ||
-              href.startsWith("#") ||
-              href.startsWith("mailto:") ||
-              href.startsWith("tel:") ||
-              link.target === "_blank"
-            )
-              return;
-
-            if (link.origin === window.location.origin) {
-              var currentPath =
-                window.location.pathname.replace(/\/+$/, "") || "/";
-              var destPath = link.pathname.replace(/\/+$/, "") || "/";
-              if (destPath !== currentPath) {
-                showBeacon();
-              }
-            }
-          },
-          { passive: true },
-        );
-      })();
-    </script>
-    <!-- Browser & Extension Resilience Polyfill (deferred at bottom of body) -->
-    <script is:inline>
-      (function () {
-        if (typeof Document !== "undefined") {
-          if (!Document.prototype.closest) {
-            Document.prototype.closest = function () {
-              return null;
-            };
-          }
-          if (!("tagName" in Document.prototype)) {
-            try {
-              Object.defineProperty(Document.prototype, "tagName", {
-                get: function () {
-                  return "";
-                },
-                configurable: true,
-              });
-            } catch (_) {}
-          }
-        }
-        if (typeof Window !== "undefined" && !Window.prototype.closest) {
-          Window.prototype.closest = function () {
-            return null;
-          };
-        }
-      })();
-    </script>
-    <!-- Global Vim Navigation (Page Index traveler when present, kinetic fluid scroll when absent) -->
-    <script is:inline>
-      (function () {
-        function updateVimHint() {
-          var hint = document.getElementById("global-vim-hint");
-          if (!hint) return;
-          var hasPageIndex = !!(
-            document.getElementById("desktop-page-index") ||
-            document.getElementById("mobile-page-index-root")
-          );
-          if (hasPageIndex) {
-            hint.style.display = "none";
-          } else {
-            hint.style.display = "";
-          }
-        }
-
-        function setupVimNavigation() {
-          updateVimHint();
-
-          var footer = document.querySelector("footer");
-          if (
-            footer &&
-            "IntersectionObserver" in window &&
-            !window.__vimFooterObs
-          ) {
-            window.__vimFooterObs = true;
-            var observer = new IntersectionObserver(
-              function (entries) {
-                entries.forEach(function (entry) {
-                  var hint = document.getElementById("global-vim-hint");
-                  if (!hint) return;
-                  if (entry.isIntersecting) {
-                    hint.style.opacity = "0";
-                    hint.style.transform = "translateY(8px)";
-                  } else {
-                    hint.style.opacity = "1";
-                    hint.style.transform = "translateY(0)";
-                  }
-                });
-              },
-              { threshold: 0.08 },
-            );
-            observer.observe(footer);
-          }
-
-          if (window.__vimScrollBound) return;
-          window.__vimScrollBound = true;
-
-          var isContinuousScrolling = false;
-          var scrollVelocity = 0;
-          var scrollDirection = 0;
-          var rafId = null;
-          var lastKeyRepeatTime = 0;
-
-          function setVimKeyActive(key, active) {
-            var selector =
-              key === "j" ? '[data-vim-key="j"]' : '[data-vim-key="k"]';
-            document.querySelectorAll(selector).forEach(function (el) {
-              if (active) {
-                el.classList.add(
-                  "border-[var(--color-accent-gold)]",
-                  "text-[var(--color-accent-gold)]",
-                );
-              } else {
-                el.classList.remove(
-                  "border-[var(--color-accent-gold)]",
-                  "text-[var(--color-accent-gold)]",
-                );
-              }
+        if (!("tagName" in Document.prototype)) {
+          try {
+            Object.defineProperty(Document.prototype, "tagName", {
+              get: () => "",
+              configurable: true,
             });
+          } catch (_) {}
+        }
+      }
+      if (typeof Window !== "undefined" && !(Window.prototype as any).closest) {
+        (Window.prototype as any).closest = () => null;
+      }
+
+      // 2. Control del Beacon (se ancla a window para consumo de LanguageSwitcher.astro)
+      let isBeaconShown = false;
+      let beaconShownTime = 0;
+      let beaconHideTimeout: ReturnType<typeof setTimeout> | null = null;
+      const MIN_VISIBLE_MS = 550;
+
+      function showBeacon(customText?: string) {
+        if (beaconHideTimeout) clearTimeout(beaconHideTimeout);
+        const beacon = document.getElementById("page-navigation-beacon");
+        if (!beacon) return;
+
+        const txt = beacon.querySelector("span");
+        if (txt) {
+          txt.textContent =
+            typeof customText === "string" && customText.trim().length > 0
+              ? customText
+              : document.documentElement.lang === "es"
+                ? "Cargando..."
+                : "Fetching...";
+        }
+
+        isBeaconShown = true;
+        beaconShownTime = performance.now();
+        beacon.classList.remove("opacity-0", "scale-95");
+        beacon.classList.add("opacity-100", "scale-100");
+      }
+
+      function hideBeacon() {
+        if (!isBeaconShown) return;
+        const elapsed = performance.now() - beaconShownTime;
+        const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed);
+
+        if (beaconHideTimeout) clearTimeout(beaconHideTimeout);
+        beaconHideTimeout = setTimeout(() => {
+          const beacon = document.getElementById("page-navigation-beacon");
+          if (beacon) {
+            beacon.classList.remove("opacity-100", "scale-100");
+            beacon.classList.add("opacity-0", "scale-95");
           }
+          isBeaconShown = false;
+        }, remaining);
+      }
 
-          function kineticScrollLoop() {
-            if (!isContinuousScrolling) return;
-            var now = performance.now();
-            if (now - lastKeyRepeatTime > 180) {
-              scrollVelocity *= 0.88;
-              if (Math.abs(scrollVelocity) < 0.8) {
-                isContinuousScrolling = false;
-                cancelAnimationFrame(rafId);
-                return;
-              }
-            } else {
-              if (Math.abs(scrollVelocity) < 48) {
-                scrollVelocity += scrollDirection * 3.5;
-              }
+      // Exposición global requerida por LanguageSwitcher.astro
+      (window as any).__showBeacon = showBeacon;
+      (window as any).__hideBeacon = hideBeacon;
+
+      document.addEventListener("astro:before-preparation", () => showBeacon());
+      document.addEventListener("astro:page-load", () => {
+        hideBeacon();
+        try {
+          sessionStorage.removeItem("lang_switch_scroll");
+        } catch (_) {}
+      });
+      window.addEventListener("pageshow", hideBeacon);
+
+      document.addEventListener(
+        "click",
+        (e: MouseEvent) => {
+          const link = (e.target as Element)?.closest?.("a[href]");
+          if (
+            !link ||
+            e.defaultPrevented ||
+            e.ctrlKey ||
+            e.metaKey ||
+            e.shiftKey ||
+            e.altKey ||
+            e.button !== 0
+          )
+            return;
+
+          const anchor = link as HTMLAnchorElement;
+          const href = anchor.getAttribute("href");
+          if (
+            !href ||
+            href.startsWith("#") ||
+            href.startsWith("mailto:") ||
+            href.startsWith("tel:") ||
+            anchor.target === "_blank"
+          )
+            return;
+
+          if (anchor.origin === window.location.origin) {
+            const currentPath =
+              window.location.pathname.replace(/\/+$/, "") || "/";
+            const destPath = anchor.pathname.replace(/\/+$/, "") || "/";
+            if (destPath !== currentPath) {
+              showBeacon();
             }
-            window.scrollBy(0, scrollVelocity);
-            rafId = requestAnimationFrame(kineticScrollLoop);
           }
+        },
+        { passive: true },
+      );
 
-          function startKineticScroll(dir) {
-            lastKeyRepeatTime = performance.now();
-            scrollDirection = dir;
-            if (!isContinuousScrolling) {
-              isContinuousScrolling = true;
-              scrollVelocity = dir * 18;
-              rafId = requestAnimationFrame(kineticScrollLoop);
-            }
-          }
+      // 3. Vim Navigation System
+      let vimObserver: IntersectionObserver | null = null;
+      let isContinuousScrolling = false;
+      let scrollVelocity = 0;
+      let scrollDirection = 0;
+      let rafId: number | null = null;
+      let lastKeyRepeatTime = 0;
 
-          document.addEventListener("keydown", function (e) {
-            if (e.ctrlKey || e.metaKey || e.altKey) return;
-            var active = document.activeElement;
-            var tag =
-              active && active.tagName ? active.tagName.toUpperCase() : "";
-            var isInput =
-              tag === "INPUT" ||
-              tag === "TEXTAREA" ||
-              tag === "SELECT" ||
-              (active && active.isContentEditable);
-            if (isInput) return;
+      function updateVimHint() {
+        const hint = document.getElementById("global-vim-hint");
+        if (!hint) return;
+        const hasPageIndex = Boolean(
+          document.getElementById("desktop-page-index") ||
+          document.getElementById("mobile-page-index-root"),
+        );
+        hint.style.display = hasPageIndex ? "none" : "";
+      }
 
-            var modalOpen = document.querySelector(
-              'dialog[open], [role="dialog"]:not(.hidden)',
-            );
-            if (modalOpen) return;
+      function setupVimObserver() {
+        const footer = document.querySelector("footer");
+        const hint = document.getElementById("global-vim-hint");
+        if (vimObserver) vimObserver.disconnect();
 
-            var isJ = e.key === "j" || e.key === "J";
-            var isK = e.key === "k" || e.key === "K";
-            if (!isJ && !isK) return;
+        if (footer && hint && "IntersectionObserver" in window) {
+          vimObserver = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                  hint.style.opacity = "0";
+                  hint.style.transform = "translateY(8px)";
+                } else {
+                  hint.style.opacity = "1";
+                  hint.style.transform = "translateY(0)";
+                }
+              });
+            },
+            { threshold: 0.08 },
+          );
+          vimObserver.observe(footer);
+        }
+      }
 
-            e.preventDefault();
-            var dir = isJ ? 1 : -1;
-            setVimKeyActive(isJ ? "j" : "k", true);
+      function setVimKeyActive(key: "j" | "k", active: boolean) {
+        document.querySelectorAll(`[data-vim-key="${key}"]`).forEach((el) => {
+          el.classList.toggle("border-[var(--color-accent-gold)]", active);
+          el.classList.toggle("text-[var(--color-accent-gold)]", active);
+        });
+      }
 
-            var hasPageIndex =
-              window.__hasPageIndex ||
-              !!(
-                document.getElementById("desktop-page-index") ||
-                document.getElementById("mobile-page-index-root")
-              );
-
-            // Single press with PageIndex -> jump to next/previous section
-            if (
-              !e.repeat &&
-              hasPageIndex &&
-              typeof window.__pageIndexStep === "function"
-            ) {
-              window.__pageIndexStep(dir);
-              return;
-            }
-
-            // Single press without PageIndex -> smooth section scroll
-            if (!e.repeat) {
-              window.scrollBy({ top: dir * 260, behavior: "smooth" });
-            } else {
-              // Holding down J or K (both with and without PageIndex) -> Fast continuous fluid kinetic scroll
-              startKineticScroll(dir);
-            }
-          });
-
-          document.addEventListener("keyup", function (e) {
-            var isJ = e.key === "j" || e.key === "J";
-            var isK = e.key === "k" || e.key === "K";
-            if (isJ || isK) {
-              setVimKeyActive(isJ ? "j" : "k", false);
-              if (isContinuousScrolling) {
-                lastKeyRepeatTime = 0;
-              }
-            }
-          });
-
-          window.addEventListener("blur", function () {
-            setVimKeyActive("j", false);
-            setVimKeyActive("k", false);
+      function kineticScrollLoop() {
+        if (!isContinuousScrolling) return;
+        const now = performance.now();
+        if (now - lastKeyRepeatTime > 180) {
+          scrollVelocity *= 0.88;
+          if (Math.abs(scrollVelocity) < 0.8) {
             isContinuousScrolling = false;
-          });
+            if (rafId) cancelAnimationFrame(rafId);
+            return;
+          }
+        } else {
+          if (Math.abs(scrollVelocity) < 48) {
+            scrollVelocity += scrollDirection * 3.5;
+          }
+        }
+        window.scrollBy(0, scrollVelocity);
+        rafId = requestAnimationFrame(kineticScrollLoop);
+      }
+
+      function startKineticScroll(dir: number) {
+        lastKeyRepeatTime = performance.now();
+        scrollDirection = dir;
+        if (!isContinuousScrolling) {
+          isContinuousScrolling = true;
+          scrollVelocity = dir * 18;
+          rafId = requestAnimationFrame(kineticScrollLoop);
+        }
+      }
+
+      document.addEventListener("astro:page-load", () => {
+        updateVimHint();
+        setupVimObserver();
+      });
+
+      window.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const active = document.activeElement;
+        const tag = active?.tagName?.toUpperCase() || "";
+        const isInput =
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          (active as HTMLElement)?.isContentEditable;
+        if (isInput) return;
+
+        if (
+          document.querySelector('dialog[open], [role="dialog"]:not(.hidden)')
+        ) {
+          return;
         }
 
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", setupVimNavigation);
-        } else {
-          setupVimNavigation();
+        const isJ = e.key === "j" || e.key === "J";
+        const isK = e.key === "k" || e.key === "K";
+        if (!isJ && !isK) return;
+
+        e.preventDefault();
+        const dir = isJ ? 1 : -1;
+        setVimKeyActive(isJ ? "j" : "k", true);
+
+        const hasPageIndex = Boolean(
+          (window as any).__hasPageIndex ||
+          document.getElementById("desktop-page-index") ||
+          document.getElementById("mobile-page-index-root"),
+        );
+
+        const pageIndexStep = (window as any).__pageIndexStep;
+        if (!e.repeat && hasPageIndex && typeof pageIndexStep === "function") {
+          pageIndexStep(dir);
+          return;
         }
-        document.addEventListener("astro:page-load", setupVimNavigation);
-      })();
+
+        if (!e.repeat) {
+          window.scrollBy({ top: dir * 260, behavior: "smooth" });
+        } else {
+          startKineticScroll(dir);
+        }
+      });
+
+      window.addEventListener("keyup", (e: KeyboardEvent) => {
+        const isJ = e.key === "j" || e.key === "J";
+        const isK = e.key === "k" || e.key === "K";
+        if (isJ || isK) {
+          setVimKeyActive(isJ ? "j" : "k", false);
+          if (isContinuousScrolling) lastKeyRepeatTime = 0;
+        }
+      });
+
+      window.addEventListener("blur", () => {
+        setVimKeyActive("j", false);
+        setVimKeyActive("k", false);
+        isContinuousScrolling = false;
+        if (rafId) cancelAnimationFrame(rafId);
+      });
     </script>
   </body>
 </html>
