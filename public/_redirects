@@ -1,5 +1,13 @@
-# Internal path aliases (Canonical Resume)
-/cv        /resume        301
-/cv/       /resume        301
-/es/cv     /es/resume     301
-/es/cv/    /es/resume     301
+# Canonical Resume Redirections (apuntando directo al canonical con trailing slash)
+/cv         /resume/        301
+/cv/        /resume/        301
+/es/cv      /es/resume/     301
+/es/cv/     /es/resume/     301
+
+# Recruiter & Social Fast-links
+/linkedin   https://www.linkedin.com/in/arturonavax   302
+/github     https://github.com/arturonavax            302
+/instagram  https://instagram.com/arturonavax         302
+/x          https://x.com/arturonavax                 302
+/telegram   https://t.me/arturonavax                  302
+/whatsapp   https://wa.me/573242009803                302

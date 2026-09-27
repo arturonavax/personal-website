@@ -70,12 +70,37 @@ export default defineConfig({
   },
   integrations: [
     sitemap({
+      filter: (page) => !page.includes("/search/"),
+
       i18n: {
         defaultLocale: "en",
         locales: {
           en: "en",
           es: "es",
         },
+      },
+
+      // 3. Serializador avanzado (x-default + lastmod dinámico)
+      serialize(item) {
+        // Asignar fecha de última modificación
+        item.lastmod = new Date();
+
+        // Asegurar que exista la directiva x-default apuntando a la versión en inglés
+        if (item.links && item.links.length > 0) {
+          const hasXDefault = item.links.some((l) => l.lang === "x-default");
+          if (!hasXDefault) {
+            const defaultLink =
+              item.links.find((l) => l.lang === "en") || item.links[0];
+            if (defaultLink) {
+              item.links.push({
+                lang: "x-default",
+                url: defaultLink.url,
+              });
+            }
+          }
+        }
+
+        return item;
       },
     }),
     minifyInlineScripts(),
