@@ -1,0 +1,19 @@
+# Arturo Nava — Senior Software & AI Engineer
+
+> Senior Backend and Distributed Systems Engineer specializing in Go, Rust, High-Concurrency Backends, and Application Security.
+
+## Core Specializations
+- High-Concurrency Distributed Systems (Low-Latency Backends, Go & Rust)
+- Application Security, Zero-Trust Architecture & DevSecOps
+- Enterprise AI Agents, Autonomous RAG & Edge Architecture
+
+## Primary Links
+- Website: https://arturonavax.dev/
+- Resume: https://arturonavax.dev/resume/
+- GitHub: https://github.com/arturonavax
+- LinkedIn: https://www.linkedin.com/in/arturonavax
+- Email: arturonavax@gmail.com
+
+## Key Projects & Case Studies
+- Enterprise Distributed Backends: https://arturonavax.dev/projects/
+- Services & Architectural Consulting: https://arturonavax.dev/services/
