@@ -77,19 +77,11 @@ const hasShortcuts = Boolean(shortcuts?.length);
 <!doctype html>
 <html
   lang={locale}
-  translate="no"
   data-theme="dark"
-  class="notranslate dark"
+  class="dark"
   style="background-color: #260205; color-scheme: dark;"
 >
   <head>
-    <!-- RSS Auto-Discovery -->
-    <link
-      rel="alternate"
-      type="application/rss+xml"
-      title="Arturo Nava — Technical Essays &amp; Systems Notes"
-      href="https://arturonavax.dev/rss.xml"
-    />
     <ClientRouter />
     <SEOHead
       title={title}
@@ -103,30 +95,21 @@ const hasShortcuts = Boolean(shortcuts?.length);
       alternateEsUrl={alternateEsUrl}
     />
 
-    <!-- Anti-FOUC de tema y sincronización de Scroll previa al render -->
+    <!-- Anti-FOUC de tema, bloqueo condicional de traducción y restauración de Scroll -->
     <script is:inline>
       (function () {
         var path = window.location.pathname;
         var isEsPath = path === "/es/" || path.indexOf("/es/") === 0;
         var savedLocale = sessionStorage.getItem("preferred_locale");
 
-        var targetLocale = savedLocale;
-        if (!targetLocale) {
-          var browserLang =
-            (navigator.languages && navigator.languages[0]) ||
-            navigator.language ||
-            "";
-          targetLocale =
-            browserLang.toLowerCase().indexOf("es") === 0 ? "es" : "en";
-        }
-
-        if (targetLocale === "es" && !isEsPath) {
+        // 1. Redirección limpia: ÚNICAMENTE si el usuario seleccionó una preferencia explícita
+        if (savedLocale === "es" && !isEsPath) {
           var targetEs =
             "/es" + (path === "/" ? "/" : path.replace(/\/+$/, "") + "/");
           window.location.replace(
             targetEs + window.location.search + window.location.hash,
           );
-        } else if (targetLocale === "en" && isEsPath) {
+        } else if (savedLocale === "en" && isEsPath) {
           var targetEn = path.replace(/^\/es(?:\/|$)/, "/") || "/";
           if (!targetEn.endsWith("/")) targetEn += "/";
           window.location.replace(
@@ -134,6 +117,46 @@ const hasShortcuts = Boolean(shortcuts?.length);
           );
         }
 
+        // 2. Supresión condicional del popup de traducción solo para usuarios que dominen EN o ES
+        function applyConditionalNoTranslate() {
+          try {
+            var supported = ["en", "es"];
+            var userLangs = (
+              navigator.languages || [navigator.language || ""]
+            ).map(function (l) {
+              return (l || "").toLowerCase().split("-")[0];
+            });
+
+            var speaksSupported = userLangs.some(function (l) {
+              return supported.indexOf(l) !== -1;
+            });
+
+            if (speaksSupported) {
+              var root = document.documentElement;
+              root.setAttribute("translate", "no");
+              root.classList.add("notranslate");
+
+              if (
+                !document.querySelector(
+                  'meta[name="google"][content="notranslate"]',
+                )
+              ) {
+                var meta = document.createElement("meta");
+                meta.name = "google";
+                meta.content = "notranslate";
+                document.head.appendChild(meta);
+              }
+            }
+          } catch (_) {}
+        }
+
+        applyConditionalNoTranslate();
+        document.addEventListener(
+          "astro:after-swap",
+          applyConditionalNoTranslate,
+        );
+
+        // 3. Anti-FOUC de tema
         function applyStoredTheme() {
           try {
             var theme = localStorage.getItem("theme") || "dark";
@@ -156,6 +179,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
         applyStoredTheme();
         document.addEventListener("astro:after-swap", applyStoredTheme);
 
+        // 4. Sincronización y restauración de scroll
         try {
           var navReset = sessionStorage.getItem("nav_reset_scroll");
           var isSubpage =

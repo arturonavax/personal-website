@@ -5,8 +5,8 @@
 # ==============================================================================
 
 User-agent: *
-Disallow: /search/
-Disallow: /es/search/
+Disallow: /search
+Disallow: /es/search
 Allow: /
 
 # Canonical Sitemap Index
