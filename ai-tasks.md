@@ -9,3 +9,10 @@
 [x] Al hacer Enter en el modal de Search deberia ir a la pagina dedicada.
 
 [] Parece que hay demasiadas peticiones "503 (Service Unavailable)" en la consola, quizas por los prefetch, investigar.
+
+[] Considerar mas skills para SEO y JSON-LD:
+
+    - https://www.skills.sh/coreyhaines31/marketingskills/seo-audit
+    - https://www.skills.sh/coreyhaines31/marketingskills/schema
+    - https://www.skills.sh/coreyhaines31/marketingskills/schema-markup
+    - https://www.skills.sh/hainrixz/claude-seo-ai/seo-schema-jsonld
