@@ -729,6 +729,7 @@ const searchIndexPath = isEs
         // Enter key navigation
         searchInput.addEventListener("keydown", function (e) {
           if (e.key === "Enter") {
+            // 1. Si el usuario seleccionó un ítem con las flechas, navega a ese ítem
             if (selectedResultIndex >= 0) {
               var currentContainer = document.getElementById(
                 "search-results-list",
@@ -739,15 +740,28 @@ const searchIndexPath = isEs
                 );
                 if (items[selectedResultIndex]) {
                   e.preventDefault();
+                  e.stopPropagation();
                   items[selectedResultIndex].click();
                   return;
                 }
               }
             }
-            e.preventDefault();
+
+            // 2. Si no hay ítem seleccionado, redirige a la página dedicada de búsqueda
             var q = searchInput.value.trim();
-            window.location.href =
-              basePath + (q ? "?q=" + encodeURIComponent(q) : "");
+            if (q) {
+              e.preventDefault();
+              e.stopPropagation();
+              var targetUrl = getBasePath() + "?q=" + encodeURIComponent(q);
+
+              // Cerrar modal antes de transicionar para evitar parpadeos visuales
+              var currentDialog = document.getElementById("search-dialog");
+              if (currentDialog && currentDialog.open) {
+                currentDialog.close();
+              }
+
+              window.location.href = targetUrl;
+            }
           }
         });
       }
