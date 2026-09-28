@@ -4,4 +4,12 @@
   "assets": {
     "directory": "./dist",
   },
+  "d1_databases": [
+    {
+      "binding": "personal_website_analytics",
+      "database_name": "personal-website-analytics",
+      "database_id": "e870a405-7e36-4dee-85ca-a7ae1b7fc8d5",
+      "remote": true,
+    },
+  ],
 }
