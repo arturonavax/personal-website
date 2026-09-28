@@ -1,19 +1,51 @@
 # Arturo Nava — Senior Software & AI Engineer
 
-> Senior Backend and Distributed Systems Engineer specializing in Go, Rust, High-Concurrency Backends, and Application Security.
+> Senior Backend and Distributed Systems Engineer with 8+ years of production experience designing high-throughput concurrent microservices, sub-50ms real-time fraud engines, autonomous AI agent pipelines, and enterprise security platforms in Go and Rust[cite: 11].
 
-## Core Specializations
-- High-Concurrency Distributed Systems (Low-Latency Backends, Go & Rust)
-- Application Security, Zero-Trust Architecture & DevSecOps
-- Enterprise AI Agents, Autonomous RAG & Edge Architecture
+## Full Context & Deep Documentation
+- Full Profile & Extended Markdown Resume: https://arturonavax.dev/llms-full.txt
+- Canonical Website: https://arturonavax.dev/[cite: 2, 3]
+- English Resume (Web): https://arturonavax.dev/resume/[cite: 3, 9]
+- Spanish Resume (Web): https://arturonavax.dev/es/resume/[cite: 9]
+- GitHub: https://github.com/arturonavax[cite: 2, 3]
+- LinkedIn: https://www.linkedin.com/in/arturonavax[cite: 2, 3]
+- Email: arturonavax@gmail.com[cite: 2, 3]
+- Direct Phone / WhatsApp: +57 324 200 9803[cite: 2, 3]
 
-## Primary Links
-- Website: https://arturonavax.dev/
-- Resume: https://arturonavax.dev/resume/
-- GitHub: https://github.com/arturonavax
-- LinkedIn: https://www.linkedin.com/in/arturonavax
-- Email: arturonavax@gmail.com
+## Executive & Recruitment Telemetry
+- Target Roles: Senior / Staff Backend Engineer, Distributed Systems Architect, AI Systems Engineer, DevSecOps Lead[cite: 3, 11].
+- Location & Timezone: Bogotá, Colombia (UTC-5 · US-East Aligned)[cite: 2, 3, 11].
+- Work Modality: Remote / Global / US Distributed[cite: 2, 3, 11].
+- Experience: 8+ years architecting and scaling mission-critical platforms across fintech, retail loyalty, identity trust, and cryptographic data witnessing[cite: 11].
+- Spoken Languages: English (Fluent/Professional), Spanish (Native)[cite: 2, 3, 11].
+- Response SLA: < 24 hours[cite: 2].
 
-## Key Projects & Case Studies
-- Enterprise Distributed Backends: https://arturonavax.dev/projects/
-- Services & Architectural Consulting: https://arturonavax.dev/services/
+## Core Technical Competencies
+- Programming Languages: Go (Goroutines, Channels, sync.Pool, Low-Level Concurrency), Rust, Node.js / TypeScript, Python, Bash, SQL, C / Assembly (SIMD AVX2)[cite: 11].
+- Distributed Architecture: Clean / Hexagonal Architecture, Event-Driven Systems, Concurrency Patterns (Worker Pools, Mutexes, WaitGroups), High-Throughput gRPC & REST APIs, Transactional Outbox, Sliding-Window Dynamic Rule Engines, Idempotency[cite: 7, 11].
+- AI Engineering & Modern Toolchains: Autonomous Agents, Multi-Agent Orchestration, Enterprise RAG (BM25 + Dense Vector Search), Deterministic Evaluation Harnesses, Ghostty Terminal, Tool Calling[cite: 2, 7].
+- Data & Storage Engines: PostgreSQL, AWS DynamoDB, Snowflake (OLAP Analytics via gosnowflake), Redis, SQLite, LevelDB, Aerospike, Relational Schema & Index Optimization[cite: 7, 11].
+- Cybersecurity & Governance: Shift-Left Security, Zero-Trust Architecture, Continuous Secret Detection, PII Data Minimization, CVE Remediation, Vanta / SOC 2 Compliance, TOTP / Dynamic MFA, Cryptographic Signatures (HMAC), OAuth2, Container Hardening (dumb-init)[cite: 2, 11].
+- Cloud & DevOps: AWS (DynamoDB, SQS, Secrets Manager, S3, IAM), Google Cloud Platform (BigQuery, Cloud Storage), Docker, Kubernetes, Jenkins DinD, Unleash Feature Flags, Linux Kernel Inodes (inotify)[cite: 7, 11].
+
+## Quantified Production Highlights
+- Sub-50ms Synchronous POS Fraud Engine: Built from scratch in Golang utilizing the Strategy Pattern to detect cashier collusion and rolling-window velocity anomalies with cross-timezone normalization[cite: 2, 11].
+- 100% OLTP/OLAP Decoupling: Integrated native `gosnowflake` drivers into Go microservices, streaming and aggregating millions of transactional events into merchant dashboards without database read locks[cite: 2, 11].
+- 4.8x Cryptographic Hashing Throughput: Accelerated SHA-256 computation over high-volume data streams implementing low-level SIMD AVX2 vector instructions in Assembly/Go[cite: 2, 11].
+- Zero-Polling Kernel File Observability: Intercepted Linux kernel inodes (`inotify`) to trigger real-time cryptographic state notarizations with zero user-space CPU polling overhead[cite: 2, 11].
+- Enterprise Security & Compliance Automation: Automated access governance and secret detection across 10+ core repositories correlating BigQuery telemetry, internal APIs, and pre-commit hooks under SOC 2 / Vanta standards[cite: 2, 11].
+
+## Verified Career History
+- Senior Software Engineer – Core Platform & Security @ Leal (Sep 2025 – Jun 2026): Engineered real-time Go anti-fraud engines, Clean Architecture microservices on DynamoDB/Redis, centralized TOTP platform, Snowflake analytics pipelines, and SOC 2 container hardening[cite: 2, 11].
+- Senior Backend Security Engineer @ Mercado Libre (Aug 2024 – Sep 2025): Deployed internal risk evaluation engines in Go/Python, automated secret scanning across Git histories/GCP buckets, enforced shift-left pre-commit controls, and orchestrated incident triage via n8n[cite: 2, 11].
+- Software Engineer – Identity & Trust Platforms @ Imagemaker (Dec 2023 – Aug 2024): Architected digital identity verification microservices in Go and PostgreSQL for SOVOS Trust-Services, biometric facial validation, OAuth2 protocols, and dynamic OTP engines[cite: 2, 11].
+- Co-Founder & Principal Engineer @ FYLD, Inc. (May 2019 – Sep 2023): Designed enterprise data witnessing platform in Go/gRPC, Bitcoin/UTXO state-anchoring, Merkle tree proofs, SIMD SHA-256 acceleration, and kernel inode monitoring[cite: 2, 11].
+- Backend Software Engineer @ Cobuild Lab (Nov 2018 – Jun 2019): Built concurrent work queue coordinators, streaming GZIP/XML parsing CLI tools, and Gin REST microservices with Auth0[cite: 7, 11].
+- Earlier Engineering Milestones: PlazaETC (AWS/MySQL Multi-Vendor Backend), 4Geeks Academy (Echo/Aerospike Referral APIs), E.T.C.R Rómulo Gallegos (Go/GraphQL Institutional Admissions)[cite: 7, 11].
+
+## Key Endpoints & Architecture Case Studies
+- Experience Engineering Timeline: https://arturonavax.dev/experience/[cite: 2, 9]
+- Distributed Systems & Architecture Projects: https://arturonavax.dev/projects/[cite: 2, 9]
+- Cryptographic Witnessing Deep-Dive (FYLD): https://arturonavax.dev/projects/fyld/[cite: 7, 9]
+- Institutional Admissions Platform (iRG App): https://arturonavax.dev/projects/irg-app/[cite: 7, 9]
+- Services & Architectural Consulting: https://arturonavax.dev/services/[cite: 2, 9]

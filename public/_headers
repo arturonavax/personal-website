@@ -1,26 +1,30 @@
-# Activos inmutables generados por Vite / Astro (1 año)
+# Activos inmutables generados por Vite / Astro (1 año de caché determinista)
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Fuentes autoalojadas
+# Fuentes autoalojadas (con CORS universal para permitir preload anónimo)
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
   Access-Control-Allow-Origin: *
 
-# Assets gráficos estáticos (OG cards, banners, favicons, logos)
+# Assets gráficos estáticos (OG cards, favicons, logos, avatares)
 /*.png
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 /*.svg
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 /*.ico
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/*.webp
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/*.avif
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 
-# Índices de búsqueda
+# Índices de búsqueda desacoplados
 /search-index-*.json
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
 
-# Feeds y Sitemaps (frescos pero con revalidación suave)
+# Feeds, Sitemaps y robots
 /sitemap*.xml
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400
 /rss.xml
@@ -28,12 +32,44 @@
 /robots.txt
   Cache-Control: public, max-age=86400
 
-# Documentos HTML y rutas generales
-/*
+# Contexto para agentes LLM y crawlers de IA
+/llms.txt
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=86400, stale-while-revalidate=86400
+  Access-Control-Allow-Origin: *
+
+/llms-full.txt
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=86400, stale-while-revalidate=86400
+  Access-Control-Allow-Origin: *
+
+# Revalidación determinista para todas las rutas HTML (soporta trailing slashes y subrutas)
+/
   Cache-Control: public, max-age=0, must-revalidate
+/resume*
+  Cache-Control: public, max-age=0, must-revalidate
+/experience*
+  Cache-Control: public, max-age=0, must-revalidate
+/projects*
+  Cache-Control: public, max-age=0, must-revalidate
+/services*
+  Cache-Control: public, max-age=0, must-revalidate
+/blog*
+  Cache-Control: public, max-age=0, must-revalidate
+/case-studies*
+  Cache-Control: public, max-age=0, must-revalidate
+/search*
+  Cache-Control: public, max-age=0, must-revalidate
+/es*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Seguridad y descubrimiento universal
+/*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:;
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'self'; object-src 'self';
+  Link: </llms.txt>; rel="describedby"
+  X-Llms-Txt: /llms.txt

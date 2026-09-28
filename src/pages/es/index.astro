@@ -43,39 +43,446 @@ const recentPosts = allPosts
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
   .slice(0, 3);
 
-const jsonLd = [
-  {
-    "@context": "https://schema.org",
-    "@type": "ProfilePage",
-    mainEntity: {
-      "@type": "Person",
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://arturonavax.dev/#website",
+      url: "https://arturonavax.dev/",
       name: "Arturo Nava",
-      alternateName: "arturonavax",
-      jobTitle: "Ingeniero de Software Senior / IA",
+      alternateName: "arturonavax.dev",
+      publisher: { "@id": "https://arturonavax.dev/#person" },
+      inLanguage: "es",
+    },
+    {
+      "@type": "ProfilePage",
+      "@id": "https://arturonavax.dev/#profilepage",
+      url: "https://arturonavax.dev/",
+      name: "Arturo Nava — Ingeniero Senior de Backend y Sistemas Distribuidos",
+      isPartOf: { "@id": "https://arturonavax.dev/#website" },
+      inLanguage: "es",
+      dateCreated: "2025-09-01T00:00:00Z",
+      dateModified: "2026-09-27T23:46:15Z",
+      mainEntity: { "@id": "https://arturonavax.dev/#person" },
+      about: { "@id": "https://arturonavax.dev/#person" },
+    },
+    {
+      "@type": "Person",
+      "@id": "https://arturonavax.dev/#person",
+      name: "Arturo Nava",
+      alternateName: ["arturonavax", "Arturo Enrique Nava Matheus"],
+      jobTitle: "Ingeniero Senior de Backend y Sistemas Distribuidos",
       description:
-        "Ingeniero de Software Senior / IA especializado en Go, Rust y Sistemas Distribuidos.",
-      url: "https://arturonavax.dev/es",
+        "Ingeniero de Backend y Sistemas Senior con más de 8 años de experiencia en la arquitectura de backends distribuidos de alto rendimiento, motores de detección de fraude en tiempo real y plataformas criptográficas en Go, Rust y Python. Disponible para roles remotos a tiempo completo Senior/Staff a nivel global vía Contractor B2B (W-8BEN) o EOR (alineado con la zona horaria UTC-5 / EE. UU., sin necesidad de patrocinio de visa).",
+      url: "https://arturonavax.dev/",
+      mainEntityOfPage: { "@id": "https://arturonavax.dev/#profilepage" },
+      image: [
+        "https://arturonavax.dev/arturonava.webp",
+        "https://arturonavax.dev/og-default.png",
+      ],
+      email: "mailto:arturonavax@gmail.com",
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "Reclutamiento y Consultas Profesionales",
+        email: "arturonavax@gmail.com",
+        availableLanguage: ["Spanish", "English"],
+      },
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Bogotá",
+        addressRegion: "D.C.",
+        addressCountry: "CO",
+      },
       sameAs: [
         "https://github.com/arturonavax",
         "https://www.linkedin.com/in/arturonavax",
         "https://x.com/arturonavax",
-        "https://instagram.com/arturonavax",
       ],
+      knowsLanguage: [
+        {
+          "@type": "Language",
+          name: "Inglés",
+          alternateName: "en",
+        },
+        {
+          "@type": "Language",
+          name: "Español",
+          alternateName: "es",
+        },
+      ],
+      alumniOf: [
+        {
+          "@type": "EducationalOrganization",
+          "@id": "https://arturonavax.dev/#etcr-romulo-gallegos",
+          name: "E.T.C.R Rómulo Gallegos",
+          address: {
+            "@type": "PostalAddress",
+            addressCountry: "VE",
+          },
+        },
+      ],
+      hasCredential: [
+        {
+          "@type": "EducationalOccupationalCredential",
+          name: "Técnico Superior Universitario en Informática y Sistemas",
+          credentialCategory: "degree",
+          educationalLevel: "Técnico Superior Universitario",
+          recognizedBy: {
+            "@id": "https://arturonavax.dev/#etcr-romulo-gallegos",
+          },
+        },
+      ],
+      hasOccupation: {
+        "@type": "Occupation",
+        name: "Ingeniero Senior de Backend y Sistemas Distribuidos",
+        alternateName: [
+          "Ingeniero de Software Staff",
+          "Ingeniero Backend Staff",
+          "Arquitecto de Sistemas Distribuidos",
+          "Ingeniero de Sistemas Senior",
+        ],
+        occupationalCategory: "15-1252.00",
+        experienceRequirements: "8+ años",
+        skills: [
+          "Go",
+          "Golang",
+          "Rust",
+          "Python",
+          "Sistemas Distribuidos",
+          "Alta Concurrencia",
+          "Microservicios",
+          "Arquitectura Hexagonal",
+          "Arquitectura Dirigida por Eventos",
+          "Arquitectura Zero-Trust",
+          "Apache Kafka",
+          "gRPC",
+          "APIs REST",
+          "Snowflake",
+          "AWS DynamoDB",
+          "PostgreSQL",
+          "Redis",
+          "Docker",
+          "Kubernetes",
+          "Kernel de Linux",
+          "Inotify",
+          "SIMD",
+          "Criptografía",
+          "DevSecOps",
+        ],
+      },
+      worksFor: [
+        {
+          "@type": "EmployeeRole",
+          roleName:
+            "Ingeniero de Software Senior – Plataforma Central y Seguridad",
+          startDate: "2025-09",
+          endDate: "2026-06",
+          worksFor: {
+            "@type": "Organization",
+            "@id": "https://leal.co/#organization",
+            name: "Leal",
+            url: "https://leal.co",
+            sameAs: "https://www.linkedin.com/company/puntosleal/",
+          },
+          description:
+            "Diseñé e implementé motores antifraude en tiempo real en Go (latencia inferior a 50 ms), desacoplé canalizaciones OLTP/OLAP de alto volumen con Snowflake y garanticé el cumplimiento normativo de SOC 2.",
+        },
+        {
+          "@type": "EmployeeRole",
+          roleName: "Ingeniero Senior de Seguridad Backend",
+          startDate: "2024-08",
+          endDate: "2025-09",
+          worksFor: {
+            "@type": "Organization",
+            "@id": "https://www.mercadolibre.com/#organization",
+            name: "Mercado Libre",
+            url: "https://www.mercadolibre.com",
+            sameAs: [
+              "https://www.wikidata.org/wiki/Q1695781",
+              "https://www.linkedin.com/company/mercadolibre/",
+            ],
+          },
+          description:
+            "Diseñé motores internos de evaluación de riesgos y gobernanza de accesos en Go y Python; desplegué escaneo automatizado de secretos y barreras de control de acceso IAM Zero-Trust en entornos a gran escala sobre GCP.",
+        },
+        {
+          "@type": "EmployeeRole",
+          roleName:
+            "Ingeniero de Software – Plataformas de Identidad y Confianza",
+          startDate: "2023-12",
+          endDate: "2024-08",
+          worksFor: {
+            "@type": "Organization",
+            "@id": "https://imagemaker.com/#organization",
+            name: "Imagemaker",
+            url: "https://imagemaker.com",
+            sameAs: "https://www.linkedin.com/company/imagemaker-it/",
+          },
+          description:
+            "Desarrollé microservicios de verificación de identidad, canalizaciones de autenticación biométrica y servicios de seguridad OAuth2/OTP en Go y PostgreSQL.",
+        },
+        {
+          "@type": "EmployeeRole",
+          roleName: "Cofundador e Ingeniero Principal",
+          startDate: "2019-05",
+          endDate: "2023-09",
+          worksFor: {
+            "@type": "Organization",
+            "@id": "https://fyld.com/#organization",
+            name: "FYLD, Inc.",
+            url: "https://fyld.com",
+            sameAs: "https://www.linkedin.com/company/fyld-ai/",
+          },
+          description:
+            "Diseñé la arquitectura de un motor de atestación de datos de alto rendimiento basado en modelos UTXO de Bitcoin, árboles de Merkle, funciones hash vectorizadas con AVX2 SIMD y observabilidad del kernel de Linux con inotify.",
+        },
+        {
+          "@type": "EmployeeRole",
+          roleName: "Ingeniero de Software Backend",
+          startDate: "2018-11",
+          endDate: "2019-06",
+          worksFor: {
+            "@type": "Organization",
+            "@id": "https://cobuildlab.com/#organization",
+            name: "Cobuild Lab",
+            url: "https://cobuildlab.com",
+            sameAs: "https://www.linkedin.com/company/cobuild-lab/",
+          },
+          description:
+            "Desarrollé coordinadores concurrentes de colas de trabajo, herramientas CLI de descompresión en streaming y microservicios REST escalables en Go.",
+        },
+        {
+          "@type": "EmployeeRole",
+          roleName: "Ingeniero de Software Backend",
+          startDate: "2018-04",
+          endDate: "2018-07",
+          worksFor: {
+            "@type": "Organization",
+            "@id": "https://arturonavax.dev/#4geeks-organization",
+            name: "4Geeks Developers Community",
+            url: "https://4geeks.io",
+            sameAs: "https://www.linkedin.com/school/4geeksacademy/",
+          },
+          description:
+            "Construí APIs REST de alto rendimiento para recomendación y afiliación de productos en Golang con almacenamiento en caché de baja latencia en Aerospike NoSQL.",
+        },
+      ],
+      seeks: {
+        "@type": "Demand",
+        name: "Roles Senior o Staff en Backend / Sistemas Distribuidos",
+        description:
+          "Disponible activamente para roles a tiempo completo Senior o Staff en Backend, Alta Concurrencia e Ingeniería de Infraestructura (Remoto, Contractor B2B W-8BEN o EOR, sin requerimiento de patrocinio de visa).",
+        availabilityStarts: "2026-09-27",
+        areaServed: "Mundial",
+        eligibleRegion: [
+          {
+            "@type": "Country",
+            name: "Estados Unidos",
+            identifier: "US",
+          },
+          {
+            "@type": "Country",
+            name: "Canadá",
+            identifier: "CA",
+          },
+          {
+            "@type": "Country",
+            name: "Colombia",
+            identifier: "CO",
+          },
+          {
+            "@type": "AdministrativeArea",
+            name: "Unión Europea",
+          },
+        ],
+      },
       knowsAbout: [
-        "Golang",
-        "Rust",
-        "Sistemas de Inteligencia Artificial",
-        "Sistemas Distribuidos",
-        "Alta Concurrencia",
-        "Seguridad de Aplicaciones",
-        "Arquitectura Zero-Trust",
-        "Vectorización SIMD",
-        "Snowflake OLAP",
-        "DynamoDB",
+        {
+          "@type": "DefinedTerm",
+          name: "Go",
+          alternateName: "Golang",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Go_(lenguaje_de_programaci%C3%B3n)",
+            "https://www.wikidata.org/wiki/Q37227",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Rust",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Rust_(lenguaje_de_programaci%C3%B3n)",
+            "https://www.wikidata.org/wiki/Q575650",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Python",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Python",
+            "https://www.wikidata.org/wiki/Q28865",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Computación distribuida",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Computaci%C3%B3n_distribuida",
+            "https://www.wikidata.org/wiki/Q180157",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Apache Kafka",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Apache_Kafka",
+            "https://www.wikidata.org/wiki/Q4778926",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Microservicios",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Microservicios",
+            "https://www.wikidata.org/wiki/Q16664288",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Arquitectura dirigida por eventos",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Arquitectura_dirigida_por_eventos",
+            "https://www.wikidata.org/wiki/Q1381735",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Modelo de seguridad Zero Trust",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Arquitectura_de_cero_confianza",
+            "https://www.wikidata.org/wiki/Q8069608",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "PostgreSQL",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/PostgreSQL",
+            "https://www.wikidata.org/wiki/Q178224",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Redis",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Redis",
+            "https://www.wikidata.org/wiki/Q1895475",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Snowflake",
+          sameAs: [
+            "https://en.wikipedia.org/wiki/Snowflake_Inc.",
+            "https://www.wikidata.org/wiki/Q97621458",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Amazon Web Services",
+          alternateName: "AWS",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Amazon_Web_Services",
+            "https://www.wikidata.org/wiki/Q456157",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Amazon DynamoDB",
+          alternateName: "DynamoDB",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Amazon_DynamoDB",
+            "https://www.wikidata.org/wiki/Q4739097",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Kubernetes",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Kubernetes",
+            "https://www.wikidata.org/wiki/Q22661304",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Docker",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Docker_(software)",
+            "https://www.wikidata.org/wiki/Q15407982",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "gRPC",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/GRPC",
+            "https://www.wikidata.org/wiki/Q23808027",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Linux",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Linux",
+            "https://www.wikidata.org/wiki/Q388",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Extensiones Vectoriales Avanzadas",
+          alternateName: "AVX2 SIMD",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Advanced_Vector_Extensions",
+            "https://www.wikidata.org/wiki/Q598284",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Inotify",
+          alternateName: "Inodos del Kernel de Linux",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Inotify",
+            "https://www.wikidata.org/wiki/Q285514",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Concurrencia",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Concurrencia_(inform%C3%A1tica)",
+            "https://www.wikidata.org/wiki/Q114389",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Arquitectura Hexagonal",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/Arquitectura_hexagonal_(software)",
+            "https://www.wikidata.org/wiki/Q28405021",
+          ],
+        },
+        {
+          "@type": "DefinedTerm",
+          name: "Árbol de Merkle",
+          sameAs: [
+            "https://es.wikipedia.org/wiki/%C3%81rbol_de_Merkle",
+            "https://www.wikidata.org/wiki/Q1414488",
+          ],
+        },
       ],
     },
-  },
-];
+  ],
+};
 ---
 
 <BaseLayout
