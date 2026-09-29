@@ -81,8 +81,8 @@ const futureSlug = futureExperience
   ? futureExperience.id.replace(/^es\//, "").replace(/\.md$/, "")
   : null;
 
-const pastUrl = pastSlug ? `/es/experience/${pastSlug}` : null;
-const futureUrl = futureSlug ? `/es/experience/${futureSlug}` : null;
+const pastUrl = pastSlug ? `/es/experience/${pastSlug}/` : null;
+const futureUrl = futureSlug ? `/es/experience/${futureSlug}/` : null;
 
 // Multi-role company detection (Task 47)
 const sameCompanyExperiences = allExperiences.filter(

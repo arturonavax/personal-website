@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageIndexNav from "@/components/ui/PageIndexNav.astro";
+import CvAttributionBar from "@/components/ui/CvAttributionBar.astro";
 import { getCVData, hasResume } from "@/data/cv";
 
 const locale = "es";
@@ -8,8 +9,8 @@ const { html, items } = getCVData("es");
 ---
 
 <BaseLayout
-  title="Arturo Nava — Senior Software Engineer | Currículum"
-  description="CV profesional de Arturo Nava, Senior Software Engineer especializado en Go, Rust y Python. Sistemas Distribuidos, Alta Concurrencia & Seguridad."
+  title="Arturo Nava — Senior Software Engineer | CV"
+  description="Currículum profesional de Arturo Nava, Senior Software Engineer especializado en Go, Rust y Python. Sistemas distribuidos, alta concurrencia y seguridad."
   locale={locale}
   canonicalUrl="https://arturonavax.dev/es/resume/"
   type="profile"
@@ -25,14 +26,18 @@ const { html, items } = getCVData("es");
     />
   )}
 
-  <main class="w-full pt-1.5 sm:pt-4 lg:pt-6 pb-12 sm:pb-16 px-2 min-[360px]:px-3 sm:px-6 flex justify-center">
+  <main class="w-full pt-1.5 sm:pt-4 lg:pt-6 pb-12 sm:pb-16 px-2 min-[360px]:px-3 sm:px-6 flex flex-col items-center">
     {hasResume ? (
-      <article
-        id="cv-document-sheet"
-        class="cv-document bg-white text-[#1e293b] rounded-none border border-[var(--color-surface-border)] shadow-2xl p-3.5 min-[360px]:p-5 sm:p-9 md:p-12 w-full max-w-[210mm] relative"
-      >
-        <Fragment set:html={html} />
-      </article>
+      <>
+        <article
+          id="cv-document-sheet"
+          class="cv-document bg-white text-[#1e293b] rounded-none border border-[var(--color-surface-border)] shadow-2xl p-3.5 min-[360px]:p-5 sm:p-9 md:p-12 w-full max-w-[210mm] relative"
+        >
+          <Fragment set:html={html} />
+        </article>
+
+        <CvAttributionBar locale={locale} />
+      </>
     ) : (
       <div class="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-8 text-center font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">
         Archivo de currículum no disponible.
@@ -46,13 +51,11 @@ const { html, items } = getCVData("es");
      PRINT STYLES: Cross-Browser Clean CV Engine (Chromium, Firefox, WebKit)
      ========================================================================== */
   @media print {
-    /* Base page geometry - Safe for all browsers */
     @page {
       size: A4;
       margin: 12mm 14mm 14mm 14mm;
     }
 
-    /* Chromium Margin Boxes - Isolated block to protect Firefox parser */
     @page {
       @top-left {
         content: "";
@@ -82,13 +85,11 @@ const { html, items } = getCVData("es");
       }
     }
 
-    /* Suppress default link URL expansion across all browsers */
     a[href]::after,
     a::after {
       content: none !important;
     }
 
-    /* Prevent Firefox and WebKit from stripping background colors, code boxes, and borders */
     *,
     *::before,
     *::after {
@@ -110,8 +111,6 @@ const { html, items } = getCVData("es");
       border: none !important;
       box-shadow: none !important;
       outline: none !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
       --color-surface-bg: #ffffff !important;
       --color-surface-card: #ffffff !important;
       --color-surface-border: #e2e8f0 !important;
@@ -163,7 +162,7 @@ const { html, items } = getCVData("es");
   }
 
   /* ==========================================================================
-     SCOPED CV TYPOGRAPHY & COMPONENT STYLING (Screen & Print Preserved)
+     SCOPED CV TYPOGRAPHY & COMPONENT STYLING
      ========================================================================== */
   .cv-document {
     font-family:
@@ -195,39 +194,6 @@ const { html, items } = getCVData("es");
     color: #0f172a !important;
   }
 
-  .cv-document h1 + p > strong:first-child {
-    font-family: "Geist Sans", var(--font-sans), sans-serif;
-    font-size: 11.5pt;
-    font-weight: 600;
-    color: #7a1c16 !important;
-    letter-spacing: -0.01em;
-    display: inline-block;
-    margin-bottom: 2px;
-  }
-
-  .cv-document h1 + p a {
-    color: #0369a1 !important;
-    text-decoration: none;
-    font-weight: 450;
-  }
-
-  .cv-document h1 + p a:hover {
-    text-decoration: underline;
-  }
-
-  .cv-document a,
-  .cv-document a[href^="tel:"],
-  .cv-document p a,
-  .cv-document li a {
-    color: #0369a1 !important;
-    text-decoration: none;
-  }
-
-  .cv-document p a:hover,
-  .cv-document li a:hover {
-    text-decoration: underline;
-  }
-
   .cv-document h2 {
     font-family: "Geist Sans", var(--font-sans), sans-serif;
     font-size: 12pt;
@@ -253,6 +219,28 @@ const { html, items } = getCVData("es");
     page-break-after: avoid;
     break-after: avoid;
     scroll-margin-top: 5rem;
+  }
+
+  .cv-document h4 {
+    font-family: "Geist Sans", var(--font-sans), sans-serif;
+    font-size: 10.5pt;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 8px 0 2px 0;
+    color: #7a1c16 !important;
+    page-break-after: avoid;
+    break-after: avoid;
+    scroll-margin-top: 5rem;
+  }
+
+  .cv-document h1 + p > strong:first-child {
+    font-family: "Geist Sans", var(--font-sans), sans-serif;
+    font-size: 11.5pt;
+    font-weight: 600;
+    color: #7a1c16 !important;
+    letter-spacing: -0.01em;
+    display: inline-block;
+    margin-bottom: 2px;
   }
 
   .cv-document h3 + p {
@@ -337,6 +325,59 @@ const { html, items } = getCVData("es");
   .cv-document hr {
     display: none;
   }
+
+  /* ==========================================================================
+     ENLACES Y COLORES PROTEGIDOS (Sin azul en Vinotinto y Encabezados)
+     ========================================================================== */
+
+  .cv-document a,
+  .cv-document a[href^="tel:"],
+  .cv-document p a,
+  .cv-document li a {
+    color: #0369a1 !important;
+    text-decoration: none;
+  }
+
+  .cv-document p a:hover,
+  .cv-document li a:hover {
+    text-decoration: underline;
+  }
+
+  .cv-document h1 a,
+  .cv-document h2 a,
+  .cv-document h3 a {
+    color: #0f172a !important;
+    text-decoration: none;
+  }
+  .cv-document h1 a:hover,
+  .cv-document h2 a:hover,
+  .cv-document h3 a:hover {
+    text-decoration: underline;
+  }
+
+  .cv-document h4,
+  .cv-document h4 a,
+  .cv-document a:has(> h4) {
+    color: #7a1c16 !important;
+    text-decoration: none;
+  }
+  .cv-document h4 a:hover {
+    text-decoration: underline;
+  }
+
+  .cv-document em a,
+  .cv-document a em,
+  .cv-document code a,
+  .cv-document a code,
+  .cv-document h1 + p > strong:first-child a,
+  .cv-document h3 + p > strong a {
+    color: #7a1c16 !important;
+    text-decoration: none;
+  }
+  .cv-document em a:hover,
+  .cv-document h3 + p > strong a:hover {
+    text-decoration: underline;
+  }
 </style>
 
 <script is:inline>
@@ -344,7 +385,15 @@ const { html, items } = getCVData("es");
     var origDocTitle = "";
     var origTagTitle = "";
 
-    window.printCleanCV = function () {
+    function getCvFileName() {
+      var isEs =
+        document.documentElement.lang === "es" ||
+        window.location.pathname === "/es/" ||
+        window.location.pathname.indexOf("/es/") === 0;
+      return isEs ? "ArturoNava-CV-es" : "ArturoNava-CV-en";
+    }
+
+    function applyPrintTitle() {
       if (!origDocTitle) {
         origDocTitle = document.title;
         var titleEl = document.querySelector("title");
@@ -352,60 +401,41 @@ const { html, items } = getCVData("es");
           origTagTitle = titleEl.textContent;
         }
       }
-      document.title = "\u200E";
+
+      var targetTitle = getCvFileName();
+      document.title = targetTitle;
       var titleEl = document.querySelector("title");
       if (titleEl) {
-        titleEl.textContent = "\u200E";
+        titleEl.textContent = targetTitle;
       }
+    }
 
-      var restored = false;
-      function restoreTitle() {
-        if (restored) return;
-        restored = true;
-        if (origDocTitle) {
-          document.title = origDocTitle;
-        }
-        if (titleEl && origTagTitle) {
-          titleEl.textContent = origTagTitle;
-        }
-        origDocTitle = "";
-        origTagTitle = "";
+    function restoreOriginalTitle() {
+      if (origDocTitle) {
+        document.title = origDocTitle;
       }
+      var titleEl = document.querySelector("title");
+      if (titleEl && origTagTitle) {
+        titleEl.textContent = origTagTitle;
+      }
+      origDocTitle = "";
+      origTagTitle = "";
+    }
 
-      window.addEventListener("afterprint", restoreTitle, { once: true });
-      setTimeout(restoreTitle, 3500);
+    window.printCleanCV = function () {
+      applyPrintTitle();
 
-      // Microtask delay so Firefox and Chromium title cache registers blank title before modal dialog opens
+      window.addEventListener("afterprint", restoreOriginalTitle, {
+        once: true,
+      });
+      setTimeout(restoreOriginalTitle, 3500);
+
       setTimeout(function () {
         window.print();
       }, 70);
     };
 
-    window.addEventListener("beforeprint", function () {
-      if (!origDocTitle) {
-        origDocTitle = document.title;
-        var titleEl = document.querySelector("title");
-        if (titleEl && !origTagTitle) {
-          origTagTitle = titleEl.textContent;
-        }
-      }
-      document.title = "\u200E";
-      var titleEl = document.querySelector("title");
-      if (titleEl) {
-        titleEl.textContent = "\u200E";
-      }
-    });
-
-    window.addEventListener("afterprint", function () {
-      if (origDocTitle) {
-        document.title = origDocTitle;
-        var titleEl = document.querySelector("title");
-        if (titleEl && origTagTitle) {
-          titleEl.textContent = origTagTitle;
-        }
-        origDocTitle = "";
-        origTagTitle = "";
-      }
-    });
+    window.addEventListener("beforeprint", applyPrintTitle);
+    window.addEventListener("afterprint", restoreOriginalTitle);
   })();
 </script>

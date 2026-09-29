@@ -46,22 +46,32 @@ const hasPosts = allPosts.length > 0;
 const hasServices = allServices.length > 0;
 const hasCaseStudies = simulationsData && simulationsData.length > 0;
 const hasJudges = judgeProfiles && judgeProfiles.length > 0;
-const hasMoreItems = hasPosts || hasServices || hasJudges;
+
+// Si Blog o Judges existen, 'Más' tiene elementos permanentes.
+// Si no, 'Más' solo se muestra cuando algún botón colapsa por espacio (< 1380px).
+const hasStaticMoreItems = hasPosts || hasJudges;
+const hasAnyMoreCandidate =
+  hasStaticMoreItems || hasServices || hasCaseStudies || hasProjects;
 
 const navBase = locale === "es" ? "/es" : "";
 const homeUrl = locale === "es" ? "/es" : "/";
-const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
-const isHomePage = currentPath === "/" || currentPath === "/es";
 
-// Section active checks
+// Normalización con slash estricto para comprobaciones fiables de rutas
+const pathWithSlash = Astro.url.pathname.endsWith("/")
+  ? Astro.url.pathname
+  : `${Astro.url.pathname}/`;
+const isHomePage = pathWithSlash === "/" || pathWithSlash === "/es/";
+
+// Secciones activas
 const isAboutActive = isHomePage;
-const isProjectsActive = currentPath.includes("/projects/");
-const isExperienceActive = currentPath.includes("/experience/");
-const isCaseStudiesActive = currentPath.includes("/case-studies/");
-const isBlogActive = currentPath.includes("/blog/");
-const isServicesActive = currentPath.includes("/services/");
-const isResumeActive = currentPath.includes("/resume/");
-const isMoreActive = isBlogActive || isServicesActive;
+const isProjectsActive = pathWithSlash.includes("/projects/");
+const isExperienceActive = pathWithSlash.includes("/experience/");
+const isCaseStudiesActive = pathWithSlash.includes("/case-studies/");
+const isBlogActive = pathWithSlash.includes("/blog/");
+const isServicesActive = pathWithSlash.includes("/services/");
+const isResumeActive = pathWithSlash.includes("/resume/");
+
+const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
 ---
 
 <header
@@ -71,7 +81,7 @@ const isMoreActive = isBlogActive || isServicesActive;
 >
   <div class="mx-auto flex h-14 max-w-[1700px] items-center px-4 sm:px-6 lg:px-8">
     <!-- Left: Brand & Status -->
-    <div class="flex items-center justify-start gap-2.5 2xl:gap-3 min-w-0 min-[1400px]:flex-1">
+    <div class="flex items-center justify-start gap-2.5 2xl:gap-3 min-w-0 shrink-0">
       <a
         href={homeUrl}
         class="group flex items-center gap-2.5 font-mono text-sm tracking-tight text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] shrink-0"
@@ -84,7 +94,7 @@ const isMoreActive = isBlogActive || isServicesActive;
         </span>
       </a>
 
-      <!-- Availability Indicator (Green Status Dot) - Appears on >= 1700px screen expansion -->
+      <!-- Availability Indicator -->
       <div class="hidden min-[1700px]:flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-0.5 text-[11px] font-mono text-[var(--color-text-secondary)] whitespace-nowrap shrink-0">
         <span class="relative flex h-2 w-2 shrink-0">
           <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent-status)] opacity-75"></span>
@@ -94,11 +104,11 @@ const isMoreActive = isBlogActive || isServicesActive;
       </div>
     </div>
 
-    <!-- Center: Main Navigation (Strict Priority Order: 1 About -> 2 Experience -> 3 Projects -> 4 Case Studies -> 5 Contact) -->
+    <!-- Center: Main Navigation (Activo desde 820px en adelante; espaciado completo) -->
     <nav
       id="header-desktop-nav"
       aria-label="Main Navigation"
-      class="hidden lg:flex h-full items-stretch mx-auto min-[1400px]:mx-0 min-[1400px]:justify-center gap-1 text-sm font-medium whitespace-nowrap shrink-0"
+      class="hidden min-[820px]:flex h-full items-stretch mx-auto gap-1 text-sm font-medium whitespace-nowrap shrink-0"
     >
       <!-- 1. Sobre mí / About -->
       <a
@@ -107,7 +117,7 @@ const isMoreActive = isBlogActive || isServicesActive;
         data-astro-prefetch="hover"
         aria-current={isAboutActive ? "page" : undefined}
         class:list={[
-          "h-full flex items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+          "h-full flex items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
           isAboutActive
             ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
             : "text-[var(--color-text-secondary)]",
@@ -131,7 +141,7 @@ const isMoreActive = isBlogActive || isServicesActive;
           data-astro-prefetch="hover"
           aria-current={isExperienceActive ? "page" : undefined}
           class:list={[
-            "h-full flex items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            "h-full flex items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
             isExperienceActive
               ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
               : "text-[var(--color-text-secondary)]",
@@ -148,7 +158,7 @@ const isMoreActive = isBlogActive || isServicesActive;
         </a>
       )}
 
-      <!-- 3. Proyectos / Projects -->
+      <!-- 3. Proyectos / Projects (Visible en >= 1000px; entra a Más en < 1000px) -->
       {hasProjects && (
         <a
           href={`${navBase}/projects/`}
@@ -156,7 +166,7 @@ const isMoreActive = isBlogActive || isServicesActive;
           data-astro-prefetch="hover"
           aria-current={isProjectsActive ? "page" : undefined}
           class:list={[
-            "h-full flex items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            "hidden min-[1000px]:flex h-full items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
             isProjectsActive
               ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
               : "text-[var(--color-text-secondary)]",
@@ -173,7 +183,7 @@ const isMoreActive = isBlogActive || isServicesActive;
         </a>
       )}
 
-      <!-- 4. Casos de Estudio / Case Studies (Visible on lg with main nav) -->
+      <!-- 4. Casos de Estudio (Visible en >= 1160px; entra a Más en < 1160px) -->
       {hasCaseStudies && (
         <a
           href={`${navBase}/case-studies/`}
@@ -181,7 +191,7 @@ const isMoreActive = isBlogActive || isServicesActive;
           data-astro-prefetch="hover"
           aria-current={isCaseStudiesActive ? "page" : undefined}
           class:list={[
-            "flex h-full items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            "hidden min-[1160px]:flex h-full items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
             isCaseStudiesActive
               ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
               : "text-[var(--color-text-secondary)]",
@@ -198,11 +208,36 @@ const isMoreActive = isBlogActive || isServicesActive;
         </a>
       )}
 
-      <!-- 5. Contacto / Contact (Visible on 2xl+; enters More on screens < 2xl) -->
+      <!-- 5. Servicios (Visible en >= 1280px; entra a Más en < 1280px) -->
+      {hasServices && (
+        <a
+          href={`${navBase}/services/`}
+          data-nav-section="services"
+          data-astro-prefetch="hover"
+          aria-current={isServicesActive ? "page" : undefined}
+          class:list={[
+            "hidden min-[1280px]:flex h-full items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            isServicesActive
+              ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
+              : "text-[var(--color-text-secondary)]",
+          ]}
+        >
+          <span>{t("nav.services")}</span>
+          <span
+            class:list={[
+              "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
+              isServicesActive ? "inline-block" : "hidden",
+            ]}
+            aria-hidden="true"
+          ></span>
+        </a>
+      )}
+
+      <!-- 6. Contacto (Visible en >= 1380px; entra a Más en < 1380px) -->
       <a
         href={isHomePage ? "#contact" : `${homeUrl}#contact`}
         data-nav-section="contact"
-        class="hidden 2xl:flex h-full items-center px-2.5 xl:px-3.5 relative transition-colors border-b-2 border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+        class="hidden min-[1380px]:flex h-full items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
       >
         <span>{t("nav.contact")}</span>
         <span
@@ -211,15 +246,20 @@ const isMoreActive = isBlogActive || isServicesActive;
         ></span>
       </a>
 
-      <!-- "Más" / "More" Dropdown Menu (Houses: 1. Blog, 2. Online Judges, then Case Studies on <xl, Contact on <2xl, and lastly Resume) -->
-      {hasMoreItems && (
-        <details class="group/more relative h-full flex items-stretch">
+      <!-- Menú Desplegable "Más" (Visible en >= 820px y se oculta en >= 1380px si no hay Blog/Judges) -->
+      {hasAnyMoreCandidate && (
+        <details
+          class:list={[
+            "group/more relative h-full items-stretch",
+            hasStaticMoreItems ? "flex" : "flex min-[1380px]:hidden",
+          ]}
+        >
           <summary
             id="header-more-summary"
             aria-haspopup="true"
             aria-label={t("nav.more")}
             class:list={[
-              "h-full flex items-center gap-1 px-2.5 xl:px-3 cursor-pointer list-none select-none transition-colors border-b-2 hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+              "h-full flex items-center gap-1 px-3 cursor-pointer list-none select-none transition-colors border-b-2 hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
               isMoreActive
                 ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
                 : "text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] border-transparent",
@@ -245,7 +285,85 @@ const isMoreActive = isBlogActive || isServicesActive;
           </summary>
 
           <div class="absolute right-0 top-full mt-1 w-56 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-1.5 shadow-2xl z-50 font-mono text-xs backdrop-blur-md">
-            <!-- 1. Blog -->
+            <!-- Proyectos (Entra a Más en < 1000px) -->
+            {hasProjects && (
+              <a
+                href={`${navBase}/projects/`}
+                data-nav-section="projects"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "min-[1000px]:hidden flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors",
+                  isProjectsActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
+                    : "",
+                ]}
+              >
+                <span>{t("nav.projects")}</span>
+                <span
+                  class:list={[
+                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                    isProjectsActive ? "inline-block" : "hidden",
+                  ]}
+                  aria-hidden="true"
+                ></span>
+              </a>
+            )}
+
+            <!-- Casos de Estudio (Entra a Más en < 1160px) -->
+            {hasCaseStudies && (
+              <a
+                href={`${navBase}/case-studies/`}
+                data-nav-section="case-studies"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "min-[1160px]:hidden flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors",
+                  isCaseStudiesActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
+                    : "",
+                ]}
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-sm">🔬</span>
+                  <span>{t("nav.caseStudies")}</span>
+                </div>
+                <span
+                  class:list={[
+                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                    isCaseStudiesActive ? "inline-block" : "hidden",
+                  ]}
+                  aria-hidden="true"
+                ></span>
+              </a>
+            )}
+
+            <!-- Servicios (Entra a Más en < 1280px) -->
+            {hasServices && (
+              <a
+                href={`${navBase}/services/`}
+                data-nav-section="services"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "min-[1280px]:hidden flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors text-left",
+                  isServicesActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
+                    : "",
+                ]}
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-sm">⚡</span>
+                  <span>{t("nav.services")}</span>
+                </div>
+                <span
+                  class:list={[
+                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                    isServicesActive ? "inline-block" : "hidden",
+                  ]}
+                  aria-hidden="true"
+                ></span>
+              </a>
+            )}
+
+            <!-- Blog (siempre en Más si existe) -->
             {hasPosts && (
               <a
                 href={`${navBase}/blog/`}
@@ -272,7 +390,7 @@ const isMoreActive = isBlogActive || isServicesActive;
               </a>
             )}
 
-            <!-- 2. Online Judges -->
+            <!-- Online Judges (siempre en Más si existen) -->
             {hasJudges && (
               <button
                 type="button"
@@ -289,11 +407,11 @@ const isMoreActive = isBlogActive || isServicesActive;
               </button>
             )}
 
-            <!-- Contact (Visible in dropdown on screens < 2xl) -->
+            <!-- Contacto (Entra a Más en < 1380px) -->
             <a
               href={isHomePage ? "#contact" : `${homeUrl}#contact`}
               data-nav-section="contact"
-              class="2xl:hidden flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors"
+              class="min-[1380px]:hidden flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors"
             >
               <div class="flex items-center gap-2">
                 <span class="text-sm">💬</span>
@@ -304,64 +422,17 @@ const isMoreActive = isBlogActive || isServicesActive;
                 aria-hidden="true"
               ></span>
             </a>
-
-            <!-- Tienda/Servicios (if any) -->
-            {hasServices && (
-              <a
-                href={`${navBase}/services/`}
-                data-nav-section="services"
-                data-astro-prefetch="hover"
-                class:list={[
-                  "w-full flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors text-left",
-                  isServicesActive
-                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
-                    : "",
-                ]}
-              >
-                <div class="flex items-center gap-2">
-                  <span class="text-sm">⚡</span>
-                  <span>{t("nav.services")}</span>
-                </div>
-                <span class="text-[10px] text-[var(--color-text-muted)]">
-                  &rarr;
-                </span>
-              </a>
-            )}
-
-            <!-- Resume (Always last in More; hidden on sm+ where top button is revealed) -->
-            {hasResume && (
-              <a
-                href={locale === "es" ? "/es/resume/" : "/resume/"}
-                id="more-cv-item"
-                data-nav-section="resume"
-                data-astro-prefetch="hover"
-                class:list={[
-                  "sm:hidden flex items-center justify-between rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] transition-colors border-t border-[var(--color-surface-border-subtle)] mt-1 pt-1.5",
-                  isResumeActive
-                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
-                    : "",
-                ]}
-              >
-                <div class="flex items-center gap-2">
-                  <span class="text-sm">📄</span>
-                  <span>{t("nav.cv")}</span>
-                </div>
-                <span class="text-[10px] text-[var(--color-text-muted)]">
-                  &rarr;
-                </span>
-              </a>
-            )}
           </div>
         </details>
       )}
     </nav>
 
-    <!-- Right: Utility Controls & Actions (Pinned right on all viewports, flex-1 on >= 1400px) -->
+    <!-- Right: Utility Controls & Actions -->
     <div
       id="header-actions"
-      class="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 ml-auto min-[1400px]:ml-0 min-[1400px]:flex-1 shrink-0"
+      class="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 ml-auto shrink-0"
     >
-      <!-- CV / Resume Top Menu Button (Progressive reveal: hidden on mobile, revealed on sm+) -->
+      <!-- Botón de CV superior -->
       {hasResume && (
         <a
           href={locale === "es" ? "/es/resume/" : "/resume/"}
@@ -392,7 +463,7 @@ const isMoreActive = isBlogActive || isServicesActive;
         </a>
       )}
 
-      <!-- Quick Search Trigger Button (Hidden on viewport width <= 460px) -->
+      <!-- Buscador rápido -->
       <button
         type="button"
         id="header-search-btn"
@@ -406,7 +477,7 @@ const isMoreActive = isBlogActive || isServicesActive;
             ? "Buscador universal (/ o Cmd+K)"
             : "Universal search (/ or Cmd+K)"
         }
-        class="hidden min-[461px]:inline-flex h-8 items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 text-xs font-mono text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shrink-0"
+        class="hidden min-[461px]:inline-flex h-8 items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 sm:px-3 text-xs font-mono text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shrink-0"
       >
         <svg
           class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
@@ -434,9 +505,9 @@ const isMoreActive = isBlogActive || isServicesActive;
 
       <ThemeToggle />
 
-      <!-- Mobile Navigation Details (Zero-JS CSS Popover/Details Pattern, matching strict 1-7 priority ordering) -->
+      <!-- Navegación móvil (toma el control total en pantallas < 820px) -->
       <details
-        class="relative lg:hidden group shrink-0"
+        class="relative min-[820px]:hidden group shrink-0"
         id="mobile-nav-details"
       >
         <summary
@@ -460,7 +531,6 @@ const isMoreActive = isBlogActive || isServicesActive;
 
         <nav class="absolute right-0 top-full mt-2 w-56 max-h-[min(75vh,calc(100dvh-4.5rem))] overflow-y-auto overscroll-contain rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-2 shadow-2xl z-50 font-mono text-sm scrollbar-thin">
           <div class="flex flex-col gap-1">
-            <!-- Search Trigger -->
             <button
               type="button"
               id="mobile-search-btn"
@@ -472,7 +542,6 @@ const isMoreActive = isBlogActive || isServicesActive;
 
             <div class="my-0.5 border-t border-[var(--color-surface-border-subtle)]"></div>
 
-            <!-- 1. Sobre mí -->
             <a
               href={isHomePage ? "#about" : homeUrl}
               data-nav-section="about"
@@ -493,7 +562,6 @@ const isMoreActive = isBlogActive || isServicesActive;
               ></span>
             </a>
 
-            <!-- 2. Trayectoria -->
             {hasExperience && (
               <a
                 href={`${navBase}/experience/`}
@@ -517,7 +585,6 @@ const isMoreActive = isBlogActive || isServicesActive;
               </a>
             )}
 
-            <!-- 3. Proyectos -->
             {hasProjects && (
               <a
                 href={`${navBase}/projects/`}
@@ -541,7 +608,6 @@ const isMoreActive = isBlogActive || isServicesActive;
               </a>
             )}
 
-            <!-- 4. Casos de Estudio -->
             {hasCaseStudies && (
               <a
                 href={`${navBase}/case-studies/`}
@@ -568,7 +634,32 @@ const isMoreActive = isBlogActive || isServicesActive;
               </a>
             )}
 
-            <!-- 5. Contacto -->
+            {hasServices && (
+              <a
+                href={`${navBase}/services/`}
+                data-nav-section="services"
+                data-astro-prefetch="hover"
+                class:list={[
+                  "rounded px-3 py-2 text-left text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] flex items-center justify-between cursor-pointer",
+                  isServicesActive
+                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
+                    : "",
+                ]}
+              >
+                <div class="flex items-center gap-2">
+                  <span>⚡</span>
+                  <span>{t("nav.services")}</span>
+                </div>
+                <span
+                  class:list={[
+                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
+                    isServicesActive ? "inline-block" : "hidden",
+                  ]}
+                  aria-hidden="true"
+                ></span>
+              </a>
+            )}
+
             <a
               href={isHomePage ? "#contact" : `${homeUrl}#contact`}
               data-nav-section="contact"
@@ -581,7 +672,6 @@ const isMoreActive = isBlogActive || isServicesActive;
               ></span>
             </a>
 
-            <!-- 6. Blog -->
             {hasPosts && (
               <a
                 href={`${navBase}/blog/`}
@@ -605,30 +695,6 @@ const isMoreActive = isBlogActive || isServicesActive;
               </a>
             )}
 
-            <!-- 6. Tienda/Servicios -->
-            {hasServices && (
-              <a
-                href={`${navBase}/services/`}
-                data-nav-section="services"
-                data-astro-prefetch="hover"
-                class:list={[
-                  "rounded px-3 py-2 text-left text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] flex items-center justify-between cursor-pointer",
-                  isServicesActive
-                    ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
-                    : "",
-                ]}
-              >
-                <div class="flex items-center gap-2">
-                  <span>⚡</span>
-                  <span>{t("nav.services")}</span>
-                </div>
-                <span class="text-xs text-[var(--color-text-muted)]">
-                  &rarr;
-                </span>
-              </a>
-            )}
-
-            <!-- 7. Online Judges -->
             {hasJudges && (
               <button
                 type="button"
@@ -648,8 +714,6 @@ const isMoreActive = isBlogActive || isServicesActive;
             {hasResume && (
               <>
                 <div class="my-1 border-t border-[var(--color-surface-border)]"></div>
-
-                <!-- Resume Link -->
                 <a
                   href={locale === "es" ? "/es/resume/" : "/resume/"}
                   data-nav-section="resume"
@@ -667,7 +731,6 @@ const isMoreActive = isBlogActive || isServicesActive;
               </>
             )}
 
-            <!-- Mobile Language Switcher (Guaranteed accessible on screens <340px) -->
             <div class="my-1 border-t border-[var(--color-surface-border-subtle)]"></div>
             <div class="flex items-center justify-between px-3 py-1.5 text-xs text-[var(--color-text-secondary)]">
               <span class="flex items-center gap-1.5 font-medium">
@@ -744,7 +807,6 @@ const isMoreActive = isBlogActive || isServicesActive;
         });
       }
 
-      // Close open dropdowns on outside click
       if (!window.__headerDropdownOutsideBound) {
         window.__headerDropdownOutsideBound = true;
         document.addEventListener("click", function (e) {
@@ -759,7 +821,6 @@ const isMoreActive = isBlogActive || isServicesActive;
         });
       }
 
-      // Auto-close details when clicking any anchor inside them
       document
         .querySelectorAll("details.group\\/more a, #mobile-nav-details a")
         .forEach(function (a) {
@@ -772,7 +833,6 @@ const isMoreActive = isBlogActive || isServicesActive;
           }
         });
 
-      // Reset scroll for navigation originating from menu/header (Task 8)
       document
         .querySelectorAll(
           "header a, #mobile-nav-details a, [data-nav-reset-scroll]",
@@ -807,7 +867,6 @@ const isMoreActive = isBlogActive || isServicesActive;
         });
 
       function setActiveSection(currentSection) {
-        if (window.__currentActiveNavSection === currentSection) return;
         window.__currentActiveNavSection = currentSection;
 
         document.querySelectorAll("a[data-nav-section]").forEach(function (a) {
@@ -845,8 +904,20 @@ const isMoreActive = isBlogActive || isServicesActive;
           }
         });
 
+        // Cascada estricta: 'Más' se enciende si la sección activa está replegada dentro del desplegable
+        var width = window.innerWidth;
+        var isProjectsInMore = width < 1000;
+        var isCaseStudiesInMore = width < 1160;
+        var isServicesInMore = width < 1280;
+        var isContactInMore = width < 1380;
+
         var isMoreActive =
-          currentSection === "blog" || currentSection === "services";
+          currentSection === "blog" ||
+          (currentSection === "projects" && isProjectsInMore) ||
+          (currentSection === "case-studies" && isCaseStudiesInMore) ||
+          (currentSection === "services" && isServicesInMore) ||
+          (currentSection === "contact" && isContactInMore);
+
         var moreSummary = document.getElementById("header-more-summary");
         if (moreSummary) {
           var moreDot = moreSummary.querySelector(".active-dot");
@@ -876,9 +947,9 @@ const isMoreActive = isBlogActive || isServicesActive;
         }
       }
 
-      // Dynamic Active State & Dot Placement across SPA Transitions (Task 1 & Task 5)
       function updateActiveNavState() {
-        var path = window.location.pathname.replace(/\/+$/, "") || "/";
+        var rawPath = window.location.pathname;
+        var path = rawPath.endsWith("/") ? rawPath : rawPath + "/";
         var currentSection = "";
 
         if (path.indexOf("/experience/") !== -1) {
@@ -893,7 +964,7 @@ const isMoreActive = isBlogActive || isServicesActive;
           currentSection = "resume";
         } else if (path.indexOf("/services/") !== -1) {
           currentSection = "services";
-        } else if (path === "" || path === "/" || path === "/es") {
+        } else if (path === "/" || path === "/es/") {
           if (window.__isContactInView) {
             currentSection = "contact";
           } else {
@@ -910,7 +981,10 @@ const isMoreActive = isBlogActive || isServicesActive;
         passive: true,
       });
 
-      // Contact Viewport Observer: Defer until first scroll to keep initial main thread 100% idle
+      window.addEventListener("resize", updateActiveNavState, {
+        passive: true,
+      });
+
       var contactObsAttached = false;
       function attachContactObserver() {
         if (contactObsAttached) return;
@@ -928,8 +1002,9 @@ const isMoreActive = isBlogActive || isServicesActive;
               if (window.__isContactInView === isContactInView) return;
               window.__isContactInView = isContactInView;
 
-              var path = window.location.pathname.replace(/\/+$/, "") || "/";
-              var isHome = path === "" || path === "/" || path === "/es";
+              var rawPath = window.location.pathname;
+              var path = rawPath.endsWith("/") ? rawPath : rawPath + "/";
+              var isHome = path === "/" || path === "/es/";
 
               window.requestAnimationFrame(function () {
                 if (isContactInView) {

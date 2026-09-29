@@ -34,6 +34,22 @@ const {
 } = Astro.props;
 const isEs = locale === "es";
 
+/**
+ * Limpia cualquier residuo de formato Markdown ([texto](url), `code`, asteriscos, etc.)
+ */
+function sanitizeNavLabel(label: string): string {
+  if (!label) return "";
+  return label
+    .replace(/!?\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/(?:^|[^\w])_([^_]+)_(?=[^\w]|$)/g, "$1")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+}
+
 const hasSponsorships =
   (sponsorshipData.crypto && sponsorshipData.crypto.length > 0) ||
   (sponsorshipData.platforms && sponsorshipData.platforms.length > 0);
@@ -141,8 +157,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
 
 <!-- ======================================================== -->
 <!-- MODE A: DESKTOP LEFT SIDEBAR (>1600px Viewport Width)     -->
-<!-- High-End Pure CSS Geometry: 100% In-Sync with Container   -->
-<!-- Zero JS Overrides, Zero Scrollbar Drift, Zero F5 Jumps    -->
 <!-- ======================================================== -->
 <div
   id="desktop-page-index-root"
@@ -176,7 +190,9 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
                 class="group flex min-h-[32px] items-center gap-2 py-1.5 pl-3.5 pr-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors"
               >
                 <span class="h-1 w-1 rounded-full bg-[var(--color-surface-border)] group-hover:bg-[var(--color-accent-gold)] transition-colors shrink-0"></span>
-                <span class="truncate">{isEs ? item.labelEs : item.label}</span>
+                <span class="truncate">
+                  {sanitizeNavLabel(isEs ? item.labelEs : item.label)}
+                </span>
               </a>
 
               {item.subitems && (
@@ -191,7 +207,7 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
                         &ndash;
                       </span>
                       <span class="truncate">
-                        {isEs ? sub.labelEs : sub.label}
+                        {sanitizeNavLabel(isEs ? sub.labelEs : sub.label)}
                       </span>
                     </a>
                   ))}
@@ -201,7 +217,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           ))}
         </nav>
 
-        <!-- Subtle Navigation Hint (Task 6) -->
         <div class="mt-3 pt-2.5 border-t border-[var(--color-surface-border-subtle)] flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none">
           <span>{isEs ? "Desplazamiento" : "Scroll"}</span>
           <span class="flex items-center gap-1 font-semibold">
@@ -270,17 +285,17 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
     id="mobile-page-index-container"
     class="block min-[1600px]:hidden relative pointer-events-auto flex flex-col items-end order-2"
   >
-    <!-- Upward Expanding Index Panel -->
+    <!-- Upward Expanding Index Panel (Fixed Header, Scrollable Body with Gold Scrollbar & Bottom Inner Shadow) -->
     <div
       id="index-expanded-panel"
       role="region"
       aria-label={isEs ? "Panel del índice" : "Index Panel"}
-      class="hidden absolute bottom-full mb-3 right-0 w-64 sm:w-72 max-h-[70vh] overflow-y-auto rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 backdrop-blur-md p-3.5 shadow-2xl font-mono text-xs z-50 animate-fade-in"
-      data-scrollable
+      class="hidden absolute bottom-full mb-2.5 right-0 w-[min(21rem,calc(100vw-2.5rem))] max-h-[min(65vh,calc(100dvh-7.5rem))] rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 backdrop-blur-md shadow-2xl font-mono text-xs z-50 animate-fade-in flex flex-col overflow-hidden"
       style="box-shadow: var(--shadow-modal);"
     >
-      <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2 mb-2.5">
-        <span class="font-bold text-[var(--color-text-primary)] flex items-center gap-1.5">
+      <!-- HEADER FIJO -->
+      <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] px-3.5 py-2.5 shrink-0 bg-[var(--color-surface-card)] z-20">
+        <span class="font-bold text-[var(--color-text-primary)] flex items-center gap-1.5 select-none">
           <svg
             class="h-3.5 w-3.5 text-[var(--color-accent-gold)]"
             viewBox="0 0 24 24"
@@ -303,10 +318,10 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           type="button"
           id="close-index-panel-btn"
           aria-label={isEs ? "Cerrar índice" : "Close index"}
-          class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
+          class="rounded p-1.5 min-h-[38px] min-w-[38px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
         >
           <svg
-            class="h-3.5 w-3.5"
+            class="h-4 w-4"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -318,42 +333,62 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         </button>
       </div>
 
-      <nav class="space-y-1">
-        {indexItems.map((item) => (
-          <div>
-            <a
-              href={`#${item.id}`}
-              data-mobile-index-link={item.id}
-              class="flex items-center justify-between py-1.5 px-2.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/50 transition-colors"
-            >
-              <span class="truncate">{isEs ? item.labelEs : item.label}</span>
-              <span class="text-[10px] text-[var(--color-text-muted)]">
-                &rarr;
-              </span>
-            </a>
+      <!-- CONTENEDOR CON SCROLL DORADO Y SOMBRA INTERNA INFERIOR -->
+      <div class="relative flex-1 min-h-0 flex flex-col">
+        <div
+          id="index-scroll-body"
+          class="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2 custom-index-scrollbar"
+          data-scrollable
+        >
+          <nav class="space-y-1">
+            {indexItems.map((item) => (
+              <div>
+                <a
+                  href={`#${item.id}`}
+                  data-mobile-index-link={item.id}
+                  class="flex min-h-[44px] items-center justify-between py-2 px-2.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/50 transition-colors active:scale-[0.99]"
+                >
+                  <span class="truncate">
+                    {sanitizeNavLabel(isEs ? item.labelEs : item.label)}
+                  </span>
+                  <span class="text-xs text-[var(--color-text-muted)] ml-2">
+                    &rarr;
+                  </span>
+                </a>
 
-            {item.subitems && (
-              <div class="pl-3 space-y-0.5 mt-0.5">
-                {item.subitems.map((sub) => (
-                  <a
-                    href={`#${sub.id}`}
-                    data-mobile-index-link={sub.id}
-                    class="flex items-center gap-1.5 py-1 px-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors rounded"
-                  >
-                    <span>&bull;</span>
-                    <span class="truncate">
-                      {isEs ? sub.labelEs : sub.label}
-                    </span>
-                  </a>
-                ))}
+                {item.subitems && (
+                  <div class="pl-3.5 space-y-0.5 mt-0.5 border-l border-[var(--color-surface-border-subtle)] ml-2">
+                    {item.subitems.map((sub) => (
+                      <a
+                        href={`#${sub.id}`}
+                        data-mobile-index-link={sub.id}
+                        class="flex min-h-[38px] items-center gap-2 py-1.5 px-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors rounded active:scale-[0.99]"
+                      >
+                        <span class="text-[var(--color-accent-gold)] text-sm">
+                          &bull;
+                        </span>
+                        <span class="truncate">
+                          {sanitizeNavLabel(isEs ? sub.labelEs : sub.label)}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ))}
-      </nav>
+            ))}
+          </nav>
+        </div>
 
-      <!-- Subtle Navigation Hint (Task 6: Hidden on mobile < 640px where touch is used) -->
-      <div class="hidden sm:flex mt-3 pt-2 border-t border-[var(--color-surface-border-subtle)] items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none">
+        <!-- Sombra interna / Gradiente inferior que indica contenido adicional abajo -->
+        <div
+          id="index-scroll-bottom-fade"
+          class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/80 to-transparent opacity-0 transition-opacity duration-200 z-10 index-bottom-inner-shadow"
+          aria-hidden="true"
+        ></div>
+      </div>
+
+      <!-- FOOTER FIJO -->
+      <div class="hidden sm:flex border-t border-[var(--color-surface-border-subtle)] px-3.5 py-2 items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none shrink-0 bg-[var(--color-surface-card)] z-20">
         <span>{isEs ? "Desplazamiento" : "Scroll"}</span>
         <span class="flex items-center gap-1 font-semibold">
           <kbd
@@ -372,7 +407,7 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
       </div>
     </div>
 
-    <!-- Floating Trigger Button (Task 7: with "i" indicator, Task 8: smart alignment) -->
+    <!-- Floating Trigger Button -->
     <button
       type="button"
       id="open-index-floating-btn"
@@ -431,8 +466,8 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
           <path d="M6 14h12v8H6z"></path>
         </svg>
-        <span class="shrink-0">PDF / Download</span>
-        <kbd class="hidden sm:inline-block ml-1 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-accent-gold)] font-semibold shrink-0">
+        <span class="truncate">PDF / Download</span>
+        <kbd class="ml-1 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-accent-gold)] font-semibold shrink-0">
           p
         </kbd>
       </button>
@@ -473,6 +508,34 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
   #mobile-cv-print-btn.footer-tucked:focus-visible {
     transform: translateX(0);
   }
+
+  /* Scrollbar Dorada Visible de Alto Contraste */
+  .custom-index-scrollbar {
+    overflow-y: scroll;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent-gold) rgba(0, 0, 0, 0.15);
+    scrollbar-gutter: stable;
+  }
+  .custom-index-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-index-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 9999px;
+  }
+  .custom-index-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--color-accent-gold);
+    border-radius: 9999px;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+  }
+  .custom-index-scrollbar::-webkit-scrollbar-thumb:hover {
+    filter: brightness(1.2);
+  }
+
+  /* Sombra interna para indicar contenido adicional abajo */
+  .index-bottom-inner-shadow {
+    box-shadow: inset 0 -12px 10px -6px rgba(0, 0, 0, 0.55);
+  }
 </style>
 
 <script is:inline>
@@ -501,6 +564,34 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
       var desktopAside = document.getElementById("desktop-page-index");
       var desktopLinks = document.querySelectorAll("[data-index-link]");
       var mobileLinks = document.querySelectorAll("[data-mobile-index-link]");
+      var scrollBody = document.getElementById("index-scroll-body");
+      var scrollFade = document.getElementById("index-scroll-bottom-fade");
+
+      // Actualizar la visibilidad de la sombra interna inferior según el estado del scroll
+      function updateScrollBottomIndicator() {
+        if (!scrollBody || !scrollFade) return;
+        var hasOverflow = scrollBody.scrollHeight > scrollBody.clientHeight + 2;
+        var isAtBottom =
+          scrollBody.scrollHeight -
+            scrollBody.scrollTop -
+            scrollBody.clientHeight <=
+          6;
+
+        if (hasOverflow && !isAtBottom) {
+          scrollFade.classList.remove("opacity-0");
+          scrollFade.classList.add("opacity-100");
+        } else {
+          scrollFade.classList.remove("opacity-100");
+          scrollFade.classList.add("opacity-0");
+        }
+      }
+
+      if (scrollBody && !scrollBody.dataset.scrollIndicatorBound) {
+        scrollBody.dataset.scrollIndicatorBound = "true";
+        scrollBody.addEventListener("scroll", updateScrollBottomIndicator, {
+          passive: true,
+        });
+      }
 
       function togglePanel(open) {
         var currentPanel = document.getElementById("index-expanded-panel");
@@ -513,6 +604,7 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         if (shouldOpen) {
           currentPanel.classList.remove("hidden");
           if (currentBtn) currentBtn.setAttribute("aria-expanded", "true");
+          requestAnimationFrame(updateScrollBottomIndicator);
         } else {
           currentPanel.classList.add("hidden");
           if (currentBtn) currentBtn.setAttribute("aria-expanded", "false");
@@ -524,7 +616,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         window.__pageIndexBoundElements ||
         (window.__pageIndexBoundElements = new WeakSet());
 
-      // Global keyboard shortcut: 'i' or 'I' (Task 7)
       if (!window.__indexKeydownBound) {
         window.__indexKeydownBound = true;
         document.addEventListener("keydown", function (e) {
@@ -561,7 +652,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         });
       }
 
-      // 1. Mobile / Floating Index Interactions
       if (floatingBtn && !boundElements.has(floatingBtn)) {
         boundElements.add(floatingBtn);
 
@@ -578,7 +668,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           });
         }
 
-        // Footer Tucking via IntersectionObserver (deferred to first scroll)
         var footerObsAttached = false;
         function attachFooterObserver() {
           if (footerObsAttached) return;
@@ -610,7 +699,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         });
       }
 
-      // Document-level delegation for index toggle, close, and click outside
       if (!window.__globalIndexDocDelegationBound) {
         window.__globalIndexDocDelegationBound = true;
         document.addEventListener("click", function (e) {
@@ -646,7 +734,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         });
       }
 
-      // 2. Active State Management & Section Derivation
       var sectionIds = [];
       desktopLinks.forEach(function (dl) {
         var id = dl.getAttribute("data-index-link");
@@ -705,7 +792,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         var targetEl = document.getElementById(targetId);
         if (!targetEl) return;
 
-        // Immediately highlight the clicked item and lock scrollspy during travel (Task 4)
         highlightActive(targetId);
         isProgrammaticScroll = true;
         clearTimeout(scrollLockTimeout);
@@ -742,7 +828,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         var threshold = headerOffset + 18;
         var documentHeight = document.documentElement.scrollHeight || 3000;
 
-        // Determine currently active section
         var currentIdx = -1;
         for (var i = 0; i < sectionIds.length; i++) {
           var el = document.getElementById(sectionIds[i]);
@@ -757,7 +842,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
 
         var targetIdx;
         if (direction > 0) {
-          // 'j' -> Next section
           if (currentIdx === -1) {
             targetIdx = 0;
           } else {
@@ -773,7 +857,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
             return true;
           }
         } else {
-          // 'k' -> Previous section
           if (currentIdx <= 0) {
             window.scrollTo({
               top: 0,
@@ -819,7 +902,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         });
       });
 
-      // 3. High-Precision Reading Line Scrollspy (Task 4)
       if (sectionEls.length > 0) {
         var ticking = false;
 
@@ -829,7 +911,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           var scrollY =
             window.pageYOffset || document.documentElement.scrollTop;
 
-          // Top of page: item 1 is active (ZERO DOM reflow or geometric queries needed)
           if (scrollY < 60) {
             highlightActive(sectionEls[0].id);
             return;
@@ -838,13 +919,11 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           var viewportHeight = window.innerHeight || 800;
           var documentHeight = document.documentElement.scrollHeight || 3000;
 
-          // Bottom of page: last item is active
           if (scrollY + viewportHeight >= documentHeight - 40) {
             highlightActive(sectionEls[sectionEls.length - 1].id);
             return;
           }
 
-          // Reading line just below sticky header
           var readingLine = 100;
           var currentActiveId = sectionEls[0].id;
 
@@ -875,7 +954,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           { passive: true },
         );
 
-        // Immediately identify and highlight active section upon opening page without waiting for user to scroll (Task 7)
         function assessInitialSection() {
           if (window.location.hash) {
             var hashTarget = window.location.hash.substring(1);
