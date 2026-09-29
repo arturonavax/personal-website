@@ -53,25 +53,33 @@ function slugify(text: string): string {
     .replace(/(^-|-$)+/g, "");
 }
 
-function cleanText(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&bull;/g, "•")
-    .trim();
+function cleanText(text: string): string {
+  return (
+    text
+      // Enlaces e imágenes Markdown: [Texto](url) o ![Alt](url) -> Texto
+      .replace(/!?\[([^\]]+)\]\([^)]+\)/g, "$1")
+      // Código en línea: `código` -> código
+      .replace(/`([^`]+)`/g, "$1")
+      // Negrita y cursiva
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/__([^_]+)__/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/(?:^|[^\w])_([^_]+)_(?=[^\w]|$)/g, "$1")
+      // Etiquetas HTML y entidades
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&bull;/g, "•")
+      .trim()
+  );
 }
 
 function inlineFormat(text: string): string {
   let s = text;
-  // inline code: `code`
   s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
-  // links: [text](url)
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-  // bold: **text**
   s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  // italic: _text_ or *text* (word-boundary safe)
   s = s.replace(/(?:^|[^\w])_([^_]+)_(?=[^\w]|$)/g, (m, p1) =>
     m.replace("_" + p1 + "_", "<em>" + p1 + "</em>"),
   );
@@ -133,9 +141,7 @@ function parseMarkdownCV(md: string): CVData {
     // H2
     if (trimmed.startsWith("## ")) {
       const heading = trimmed.slice(3).trim();
-      const rawText = cleanText(
-        heading.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/_([^_]+)_/g, "$1"),
-      );
+      const rawText = cleanText(heading);
       const id = slugify(rawText);
       currentParent = {
         id,
@@ -151,9 +157,7 @@ function parseMarkdownCV(md: string): CVData {
     // H3
     if (trimmed.startsWith("### ")) {
       const heading = trimmed.slice(4).trim();
-      const rawText = cleanText(
-        heading.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/_([^_]+)_/g, "$1"),
-      );
+      const rawText = cleanText(heading);
 
       const parts = rawText.split("—");
       const firstPart = parts[0] ?? rawText;
@@ -179,7 +183,16 @@ function parseMarkdownCV(md: string): CVData {
       continue;
     }
 
-    // Paragraph (collect consecutive non-empty lines until blank line or next block element)
+    // H4
+    if (trimmed.startsWith("#### ")) {
+      const heading = trimmed.slice(5).trim();
+      const rawText = cleanText(heading);
+      const id = slugify(rawText);
+      htmlParts.push('<h4 id="' + id + '">' + inlineFormat(heading) + "</h4>");
+      continue;
+    }
+
+    // Párrafos
     const pLines: string[] = [];
     let j = i;
     while (
@@ -192,6 +205,12 @@ function parseMarkdownCV(md: string): CVData {
       pLines.push(lines[j] ?? "");
       j++;
     }
+
+    if (j === i) {
+      pLines.push(lines[i] ?? "");
+      j++;
+    }
+
     i = j - 1;
 
     let pContent = "";
@@ -216,25 +235,21 @@ function parseMarkdownCV(md: string): CVData {
 }
 
 function parseHtmlCV(rawHtml: string): CVData {
-  // Extract body contents
   const bodyMatch = rawHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
   let body = bodyMatch ? (bodyMatch[1] ?? rawHtml) : rawHtml;
 
   const items: IndexItem[] = [];
   let currentParent: IndexItem | null = null;
 
-  // Process h2 and h3 headings to ensure IDs and compile navigation items
   body = (body || "").replace(
-    /<(h[23])([^>]*)>([\s\S]*?)<\/\1>/gi,
+    /<(h[234])([^>]*)>([\s\S]*?)<\/\1>/gi,
     (match, tag, attrs, inner) => {
       const rawText = cleanText(inner);
       const tagName = tag.toLowerCase();
 
-      // Check if ID already exists
       const idMatch = attrs.match(/id=["']([^"']+)["']/i);
       const id = idMatch ? (idMatch[1] ?? slugify(rawText)) : slugify(rawText);
 
-      // Short label for company heading (e.g. "Leal — Bogota, Colombia" -> "Leal")
       const parts = rawText.split("—");
       const firstPart = parts[0] ?? rawText;
       const subParts = firstPart.split("-");

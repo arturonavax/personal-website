@@ -1,15 +1,21 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "personal-website",
   "compatibility_date": "2026-09-26",
+  "main": "./cloudflare/worker.ts",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true,
   },
   "d1_databases": [
     {
-      "binding": "personal_website_analytics",
+      "binding": "DB",
       "database_name": "personal-website-analytics",
-      "database_id": "e870a405-7e36-4dee-85ca-a7ae1b7fc8d5",
-      "remote": true,
+      "database_id": "8b881d48-f08b-4e77-9731-541eab349f16",
     },
   ],
+  "observability": {
+    "enabled": true,
+  },
 }

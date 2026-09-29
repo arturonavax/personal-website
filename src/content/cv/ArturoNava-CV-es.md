@@ -1,7 +1,7 @@
 # Arturo Nava
 
 **Senior Software Engineer | Sistemas Distribuidos, Alta Concurrencia & Seguridad**  
-Bogotá, D.C., Colombia • [arturonavax@gmail.com](mailto:arturonavax@gmail.com) • [+57 324 200 9803](tel:+573242009803) • [linkedin.com/in/arturonavax](https://www.linkedin.com/in/arturonavax) • [github.com/arturonavax](https://github.com/arturonavax) • [arturonavax.dev](https://arturonavax.dev)
+Bogotá, D.C., Colombia • [arturonavax@gmail.com](mailto:arturonavax@gmail.com) • [+57 324 200 9803](tel:+573242009803) • [linkedin.com/in/arturonavax](https://www.linkedin.com/in/arturonavax) • [github.com/arturonavax](https://github.com/arturonavax) • [arturonavax.dev](https://arturonavax.dev/es/)
 
 ---
 
@@ -22,11 +22,12 @@ Ingeniero de Software Senior con más de 8 años de experiencia en el diseño y 
 
 ---
 
-## Experiencia Profesional
+## [Experiencia Profesional](https://arturonavax.dev/es/experience/)
 
-### **Leal** — Bogotá, Colombia
+### [**Leal** — Bogotá, Colombia](https://arturonavax.dev/es/experience/?filters=leal)
 
-**Senior Software Engineer – Plataforma Core & Seguridad**  
+#### **[Senior Software Engineer – Plataforma Core & Seguridad](https://arturonavax.dev/es/experience/leal/)**
+
 _Septiembre 2025 – Junio 2026_
 
 - Diseñé y desplegué microservicios de misión crítica en Golang bajo Arquitectura Limpia/Hexagonal, implementando primitivas de concurrencia (`goroutines`, canales, worker pools) sobre DynamoDB y Redis para procesamiento no bloqueante de eventos transaccionales.
@@ -39,9 +40,10 @@ _Tecnologías:_ `Golang`, `Rust`, `AWS (DynamoDB, SQS, Secrets Manager)`, `Snowf
 
 ---
 
-### **Mercado Libre** — Bogotá, Colombia
+### [**Mercado Libre** — Bogotá, Colombia](https://arturonavax.dev/es/experience/?filters=mercado+libre)
 
-**Senior Backend Security Engineer**  
+#### **[Senior Backend Security Engineer](https://arturonavax.dev/es/experience/mercado-libre/)**
+
 _Agosto 2024 – Septiembre 2025_
 
 - Diseñé e implementé un motor interno de evaluación de riesgo y gobernanza de accesos en Golang y Python, correlacionando telemetría de BigQuery, APIs internas y almacenamiento cloud para auditar permisos y ejecutar protocolos preventivos de mitigación en toda la organización.
@@ -53,9 +55,10 @@ _Tecnologías:_ `Golang`, `Python`, `Bash`, `Google Cloud (GCP)`, `BigQuery`, `n
 
 ---
 
-### **Imagemaker** — Remoto / Chile
+### [**Imagemaker** — Remoto / Chile](https://arturonavax.dev/es/experience/?filters=imagemaker)
 
-**Software Engineer – Plataformas de Identidad & Confianza**  
+#### **[Software Engineer – Plataformas de Identidad & Confianza](https://arturonavax.dev/es/experience/imagemaker/)**
+
 _Diciembre 2023 – Agosto 2024_
 
 - Diseñé microservicios de identificación y autorización digital en Golang y PostgreSQL para plataformas de confianza empresarial (SOVOS Trust-Services), mitigando riesgos de suplantación y fraude de identidad y garantizando cumplimiento normativo.
@@ -66,9 +69,10 @@ _Tecnologías:_ `Golang`, `PostgreSQL`, `OAuth2`, `OTP`, `Biometría`, `Microser
 
 ---
 
-### **FYLD, Inc.** — Estados Unidos (Remoto)
+### [**FYLD, Inc.** — Estados Unidos (Remoto)](https://arturonavax.dev/es/experience/?filters=fyld%2C+inc.)
 
-**Co-Founder & Principal Engineer**  
+#### **[Co-Founder & Principal Engineer](https://arturonavax.dev/es/experience/fyld/)**
+
 _Mayo 2019 – Septiembre 2023_
 
 - Diseñé y escalé una plataforma empresarial de atestiguamiento de datos (Data Witnessing) en Golang, gRPC, PostgreSQL y almacenamiento embebido (LevelDB, SQLite), generando pistas de auditoría inmutables para clientes corporativos.
@@ -81,9 +85,10 @@ _Tecnologías:_ `Golang`, `gRPC`, `Bitcoin Script / UTXO`, `SIMD / Assembly`, `L
 
 ---
 
-### **Cobuild Lab** — Miami, FL, Estados Unidos (Remoto)
+### [**Cobuild Lab** — Miami, FL, Estados Unidos (Remoto)](https://arturonavax.dev/es/experience/?filters=cobuild+lab)
 
-**Backend Software Engineer**  
+#### **[Backend Software Engineer](https://arturonavax.dev/es/experience/cobuild-lab/)**
+
 _Noviembre 2018 – Junio 2019_
 
 - Diseñé un coordinador de colas de trabajo concurrentes en Golang con algoritmos de reloj de ventana rodante para regular la tasa de lectura/escritura en base de datos y eliminar contención de bloqueos bajo alto tráfico.
@@ -96,9 +101,9 @@ _Tecnologías:_ `Golang (Cobra, Gin)`, `IBM Cloudant`, `Docker`, `Auth0`, `Testi
 
 ### **Experiencia Previa**
 
-- **Backend Engineer | PlazaETC** _(Oct 2018 – Dic 2018)_: Implementó plataformas de comercio electrónico multitienda en AWS, optimizando esquemas relacionales e índices en MySQL para rendimiento de consultas en catálogo.
-- **Backend Software Engineer | 4Geeks Developers Community** _(Abr 2018 – Jul 2018)_: Construyó APIs REST de alto rendimiento para sistemas de referidos de productos utilizando Golang (Echo) y almacenamiento en caché de baja latencia con Aerospike NoSQL.
-- **Desarrollador de Software | E.T.C.R Rómulo Gallegos** _(Dic 2017 – Mar 2018)_: Desarrolló "iRG App", plataforma web institucional de preinscripciones con backend en Golang, PostgreSQL, GraphQL y autenticación JWT desplegada en Heroku, además del portal web oficial responsivo de la institución.
+- **[Backend Engineer | PlazaETC](https://arturonavax.dev/es/experience/plaza-etc/)** _(Oct 2018 – Dic 2018)_: Implementó plataformas de comercio electrónico multitienda en AWS, optimizando esquemas relacionales e índices en MySQL para rendimiento de consultas en catálogo.
+- **[Backend Software Engineer | 4Geeks Developers Community](https://arturonavax.dev/es/experience/4geeks/)** _(Abr 2018 – Jul 2018)_: Construyó APIs REST de alto rendimiento para sistemas de referidos de productos utilizando Golang (Echo) y almacenamiento en caché de baja latencia con Aerospike NoSQL.
+- **[Desarrollador de Software | E.T.C.R Rómulo Gallegos](https://arturonavax.dev/es/experience/romulo-gallegos/)** _(Dic 2017 – Mar 2018)_: Desarrolló "iRG App", plataforma web institucional de preinscripciones con backend en Golang, PostgreSQL, GraphQL y autenticación JWT desplegada en Heroku, además del portal web oficial responsivo de la institución.
 
 ---
 

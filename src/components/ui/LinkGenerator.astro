@@ -1,0 +1,2150 @@
+---
+import type { Locale } from "@/i18n/ui";
+import { BASE_ORIGIN } from "@/utils/attribution";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+const i18n = {
+  en: {
+    badge: "Universal Attribution Engine",
+    title: "Link Attribution Generator",
+    description:
+      "Generate structured destination URLs with standardized attribution parameters (UTM) to measure clicks, engagement, and referral quality across all channels.",
+    step1: "1. Destination & Base Path",
+    step2: "2. Platform",
+    step3: "3. Placement / Channel Context",
+    step4: "4. Parameters & Custom Context",
+    step5: "5. Generated Attribution URL",
+    shortcutsLabel: "Shortcuts:",
+    destinationPlaceholder: "/projects/irg-app/, /blog/post/, https://...",
+    sourceLabel: "Source (`utm_source`)",
+    mediumLabel: "Medium (`utm_medium`)",
+    campaignLabel: "Campaign (`utm_campaign`)",
+    contentLabel: "Context / Recipient / Specific ID (`utm_content`)",
+    contentPlaceholder: "e.g. recruiter-name, post-id-123, group-slug",
+    contentHelp:
+      "Unique identifier to distinguish identical links (e.g. contact name, post slug, chat thread, or A/B variant).",
+    customPrefixCheck: "Custom prefix",
+    prefixPlaceholder: "Prefix (default: ref)",
+    randomBtn: "Random ID",
+    copyBtn: "Copy URL",
+    copiedBtn: "Copied!",
+    defaultPath: "/resume/",
+    clearTitle: "Clear input",
+    resetTitle: "Restore default value",
+    shortcuts: [
+      "/",
+      "/resume/",
+      "/experience/",
+      "/projects/",
+      "/services/",
+      "/blog/",
+    ],
+    customPlaceholders: {
+      source: "e.g. podcast, newsletter, physical-flyer, meetup",
+      medium: "e.g. qr, banner, cpc, sponsor, offline-print",
+      campaign: "e.g. spring-conference, q3-hiring, keynote-deck",
+    },
+    defaultPlaceholders: {
+      source: "e.g. linkedin, github, whatsapp",
+      medium: "e.g. profile, post, chat, pdf",
+      campaign: "e.g. profile-link, tech-post",
+    },
+    platforms: [
+      {
+        id: "linkedin",
+        name: "LinkedIn",
+        source: "linkedin",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "profile-link",
+          },
+          {
+            id: "post",
+            label: "Post / Article",
+            medium: "post",
+            campaign: "tech-post",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "dm",
+            campaign: "recruiter-outreach",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "thread-reply",
+          },
+          {
+            id: "job",
+            label: "Job Application",
+            medium: "application",
+            campaign: "job-application",
+          },
+        ],
+      },
+      {
+        id: "github",
+        name: "GitHub",
+        source: "github",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "readme",
+            label: "Repository / README",
+            medium: "repo",
+            campaign: "readme-reference",
+          },
+          {
+            id: "issue",
+            label: "Issue / PR Discussion",
+            medium: "issue",
+            campaign: "code-discussion",
+          },
+        ],
+      },
+      {
+        id: "gitlab",
+        name: "GitLab",
+        source: "gitlab",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "readme",
+            label: "Repository / README",
+            medium: "repo",
+            campaign: "readme-reference",
+          },
+          {
+            id: "mr",
+            label: "Issue / MR Discussion",
+            medium: "merge-request",
+            campaign: "code-discussion",
+          },
+        ],
+      },
+      {
+        id: "x",
+        name: "X / Twitter",
+        source: "x",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "tweet",
+            label: "Post / Tweet",
+            medium: "tweet",
+            campaign: "post-share",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "dm",
+            campaign: "direct-message",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "thread-reply",
+          },
+        ],
+      },
+      {
+        id: "facebook",
+        name: "Facebook",
+        source: "facebook",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "post",
+            label: "Post / Update",
+            medium: "post",
+            campaign: "facebook-post",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "dm",
+            campaign: "messenger-chat",
+          },
+          {
+            id: "group",
+            label: "Group / Community",
+            medium: "group",
+            campaign: "group-share",
+          },
+          {
+            id: "story",
+            label: "Status / Story",
+            medium: "story",
+            campaign: "story-update",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "post-comment",
+          },
+        ],
+      },
+      {
+        id: "youtube",
+        name: "YouTube",
+        source: "youtube",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "channel-bio",
+          },
+          {
+            id: "video-desc",
+            label: "Video Description",
+            medium: "video-desc",
+            campaign: "video-link",
+          },
+          {
+            id: "community-post",
+            label: "Community Post",
+            medium: "community-post",
+            campaign: "community-update",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "pinned-comment",
+          },
+        ],
+      },
+      {
+        id: "reddit",
+        name: "Reddit",
+        source: "reddit",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "post",
+            label: "Post / Submission",
+            medium: "post",
+            campaign: "reddit-submission",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "reddit-comment",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "dm",
+            campaign: "reddit-dm",
+          },
+        ],
+      },
+      {
+        id: "hackernews",
+        name: "Hacker News",
+        source: "hackernews",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "about-link",
+          },
+          {
+            id: "post",
+            label: "Post / Submission",
+            medium: "post",
+            campaign: "hn-submission",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "hn-comment",
+          },
+        ],
+      },
+      {
+        id: "leetcode",
+        name: "LeetCode",
+        source: "leetcode",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "profile-link",
+          },
+          {
+            id: "solution",
+            label: "Solution / Article",
+            medium: "post",
+            campaign: "solution-article",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "forum-thread",
+          },
+        ],
+      },
+      {
+        id: "kaggle",
+        name: "Kaggle",
+        source: "kaggle",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "profile-link",
+          },
+          {
+            id: "notebook",
+            label: "Notebook / Code",
+            medium: "notebook",
+            campaign: "notebook-link",
+          },
+          {
+            id: "dataset",
+            label: "Dataset",
+            medium: "dataset",
+            campaign: "dataset-link",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "forum-post",
+          },
+        ],
+      },
+      {
+        id: "medium",
+        name: "Medium",
+        source: "medium",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "profile-link",
+          },
+          {
+            id: "post",
+            label: "Post / Article",
+            medium: "article",
+            campaign: "medium-article",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "story-comment",
+          },
+        ],
+      },
+      {
+        id: "notion",
+        name: "Notion",
+        source: "notion",
+        placements: [
+          {
+            id: "page",
+            label: "Public Page / Doc",
+            medium: "public-doc",
+            campaign: "shared-page",
+          },
+          {
+            id: "template",
+            label: "Template / Workspace",
+            medium: "template",
+            campaign: "template-doc",
+          },
+          {
+            id: "embed",
+            label: "Embedded Link",
+            medium: "embed",
+            campaign: "embedded-link",
+          },
+        ],
+      },
+      {
+        id: "discord",
+        name: "Discord",
+        source: "discord",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "dm",
+            campaign: "discord-chat",
+          },
+          {
+            id: "channel",
+            label: "Server / Channel",
+            medium: "channel",
+            campaign: "server-share",
+          },
+        ],
+      },
+      {
+        id: "slack",
+        name: "Slack",
+        source: "slack",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "slack-profile",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "dm",
+            campaign: "slack-direct",
+          },
+          {
+            id: "channel",
+            label: "Channel / Community",
+            medium: "channel",
+            campaign: "slack-channel",
+          },
+        ],
+      },
+      {
+        id: "whatsapp",
+        name: "WhatsApp",
+        source: "whatsapp",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "chat",
+            campaign: "direct-share",
+          },
+          {
+            id: "group",
+            label: "Group",
+            medium: "group-chat",
+            campaign: "group-share",
+          },
+          {
+            id: "community",
+            label: "Community",
+            medium: "community",
+            campaign: "community-share",
+          },
+          {
+            id: "story",
+            label: "Status / Story",
+            medium: "story",
+            campaign: "status-update",
+          },
+        ],
+      },
+      {
+        id: "telegram",
+        name: "Telegram",
+        source: "telegram",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "chat",
+            campaign: "direct-share",
+          },
+          {
+            id: "group",
+            label: "Group",
+            medium: "group-chat",
+            campaign: "group-share",
+          },
+          {
+            id: "channel",
+            label: "Channel / Community",
+            medium: "channel",
+            campaign: "channel-broadcast",
+          },
+          {
+            id: "story",
+            label: "Status / Story",
+            medium: "story",
+            campaign: "status-update",
+          },
+        ],
+      },
+      {
+        id: "google-chat",
+        name: "Google Chat",
+        source: "google-chat",
+        placements: [
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "dm",
+            campaign: "gchat-direct",
+          },
+          {
+            id: "space",
+            label: "Space / Channel",
+            medium: "space",
+            campaign: "gchat-space",
+          },
+        ],
+      },
+      {
+        id: "teams",
+        name: "Microsoft Teams",
+        source: "teams",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "teams-profile",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "chat",
+            campaign: "teams-chat",
+          },
+          {
+            id: "channel",
+            label: "Channel / Team",
+            medium: "channel",
+            campaign: "teams-channel",
+          },
+          {
+            id: "meeting",
+            label: "Meeting / Call",
+            medium: "meeting",
+            campaign: "teams-meeting",
+          },
+        ],
+      },
+      {
+        id: "tiktok",
+        name: "TikTok",
+        source: "tiktok",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "video-desc",
+            label: "Video Description",
+            medium: "video-desc",
+            campaign: "video-link",
+          },
+          {
+            id: "dm",
+            label: "Direct Message (DM)",
+            medium: "dm",
+            campaign: "tiktok-chat",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "social-comment",
+            campaign: "video-comment",
+          },
+        ],
+      },
+      {
+        id: "twitch",
+        name: "Twitch",
+        source: "twitch",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "panel",
+            label: "Channel Panels",
+            medium: "panel",
+            campaign: "channel-panels",
+          },
+          {
+            id: "chat",
+            label: "Stream Chat",
+            medium: "chat",
+            campaign: "stream-chat",
+          },
+        ],
+      },
+      {
+        id: "huggingface",
+        name: "Hugging Face",
+        source: "huggingface",
+        placements: [
+          {
+            id: "profile",
+            label: "Profile / Bio",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "model",
+            label: "Model Card",
+            medium: "model-card",
+            campaign: "hf-model",
+          },
+          {
+            id: "space",
+            label: "Space Application",
+            medium: "space",
+            campaign: "hf-space",
+          },
+          {
+            id: "comment",
+            label: "Comment / Discussion",
+            medium: "discussion",
+            campaign: "hf-discussion",
+          },
+        ],
+      },
+      {
+        id: "cv",
+        name: "Resume / CV",
+        source: "cv-en",
+        placements: [
+          {
+            id: "header",
+            label: "Header Link",
+            medium: "pdf",
+            campaign: "resume-header",
+          },
+          {
+            id: "project-link",
+            label: "Project Link in CV",
+            medium: "pdf",
+            campaign: "resume-project",
+          },
+          {
+            id: "job-link",
+            label: "Job / Role Link in CV",
+            medium: "pdf",
+            campaign: "resume-experience",
+          },
+          {
+            id: "contact-sec",
+            label: "Contact Section",
+            medium: "pdf",
+            campaign: "resume-contact",
+          },
+        ],
+      },
+      {
+        id: "ats",
+        name: "Job / ATS",
+        source: "ats",
+        placements: [
+          {
+            id: "application",
+            label: "Application Form",
+            medium: "application",
+            campaign: "job-application",
+          },
+          {
+            id: "cover-letter",
+            label: "Cover Letter",
+            medium: "cover-letter",
+            campaign: "job-application",
+          },
+          {
+            id: "referral",
+            label: "Employee Referral",
+            medium: "referral",
+            campaign: "internal-referral",
+          },
+        ],
+      },
+      {
+        id: "email",
+        name: "Email",
+        source: "email",
+        placements: [
+          {
+            id: "signature",
+            label: "Signature",
+            medium: "signature",
+            campaign: "email-signature",
+          },
+          {
+            id: "cold-outreach",
+            label: "Direct Outreach",
+            medium: "email",
+            campaign: "direct-outreach",
+          },
+          {
+            id: "newsletter",
+            label: "Newsletter",
+            medium: "newsletter",
+            campaign: "newsletter-link",
+          },
+        ],
+      },
+      {
+        id: "custom",
+        name: "Custom / Other",
+        source: "",
+        placements: [
+          {
+            id: "custom-action",
+            label: "Manual Configuration",
+            medium: "",
+            campaign: "",
+          },
+        ],
+      },
+    ],
+  },
+  es: {
+    badge: "Motor de Atribución Universal",
+    title: "Generador de Enlaces",
+    description:
+      "Genera URLs de destino estructuradas con parámetros estándar (UTM) para medir clics, alcance y calidad de procedencia en cualquier canal.",
+    step1: "1. Destino y Ruta Base",
+    step2: "2. Plataforma",
+    step3: "3. Ubicación / Contexto del Canal",
+    step4: "4. Parámetros y Contexto Específico",
+    step5: "5. URL de Atribución Generada",
+    shortcutsLabel: "Atajos:",
+    destinationPlaceholder:
+      "/es/projects/irg-app/, /es/blog/post/, https://...",
+    sourceLabel: "Fuente (`utm_source`)",
+    mediumLabel: "Medio (`utm_medium`)",
+    campaignLabel: "Campaña (`utm_campaign`)",
+    contentLabel: "Contexto / Destinatario / ID Específico (`utm_content`)",
+    contentPlaceholder: "ej. nombre-reclutador, id-post-123, slug-grupo",
+    contentHelp:
+      "Identificador para diferenciar enlaces idénticos (ej. nombre de contacto, ID de post, hilo de chat o variante A/B).",
+    customPrefixCheck: "Personalizar prefijo",
+    prefixPlaceholder: "Prefijo (defecto: ref)",
+    randomBtn: "ID Aleatorio",
+    copyBtn: "Copiar URL",
+    copiedBtn: "¡Copiado!",
+    defaultPath: "/es/resume/",
+    clearTitle: "Limpiar campo",
+    resetTitle: "Restablecer valor por defecto",
+    shortcuts: [
+      "/es/",
+      "/es/resume/",
+      "/es/experience/",
+      "/es/projects/",
+      "/es/services/",
+      "/es/blog/",
+    ],
+    customPlaceholders: {
+      source: "ej. podcast, boletin, folleto-fisico, meetup",
+      medium: "ej. qr, banner, cpc, patrocinio, impreso",
+      campaign: "ej. conferencia-bogota, contratacion-q3, keynote",
+    },
+    defaultPlaceholders: {
+      source: "ej. linkedin, github, whatsapp",
+      medium: "ej. profile, post, chat, pdf",
+      campaign: "ej. profile-link, tech-post",
+    },
+    platforms: [
+      {
+        id: "linkedin",
+        name: "LinkedIn",
+        source: "linkedin",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "profile-link",
+          },
+          {
+            id: "post",
+            label: "Publicación / Artículo",
+            medium: "post",
+            campaign: "tech-post",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "dm",
+            campaign: "recruiter-outreach",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "thread-reply",
+          },
+          {
+            id: "job",
+            label: "Postulación a Empleo",
+            medium: "application",
+            campaign: "job-application",
+          },
+        ],
+      },
+      {
+        id: "github",
+        name: "GitHub",
+        source: "github",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "readme",
+            label: "README de Repositorio",
+            medium: "repo",
+            campaign: "readme-reference",
+          },
+          {
+            id: "issue",
+            label: "Issue / Discusión PR",
+            medium: "issue",
+            campaign: "code-discussion",
+          },
+        ],
+      },
+      {
+        id: "gitlab",
+        name: "GitLab",
+        source: "gitlab",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "readme",
+            label: "README de Repositorio",
+            medium: "repo",
+            campaign: "readme-reference",
+          },
+          {
+            id: "mr",
+            label: "Issue / Discusión MR",
+            medium: "merge-request",
+            campaign: "code-discussion",
+          },
+        ],
+      },
+      {
+        id: "x",
+        name: "X / Twitter",
+        source: "x",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "tweet",
+            label: "Publicación / Tweet",
+            medium: "tweet",
+            campaign: "post-share",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "dm",
+            campaign: "direct-message",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "thread-reply",
+          },
+        ],
+      },
+      {
+        id: "facebook",
+        name: "Facebook",
+        source: "facebook",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "post",
+            label: "Publicación / Actualización",
+            medium: "post",
+            campaign: "facebook-post",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "dm",
+            campaign: "messenger-chat",
+          },
+          {
+            id: "group",
+            label: "Grupo / Comunidad",
+            medium: "group",
+            campaign: "group-share",
+          },
+          {
+            id: "story",
+            label: "Estado / Historia",
+            medium: "story",
+            campaign: "story-update",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "post-comment",
+          },
+        ],
+      },
+      {
+        id: "youtube",
+        name: "YouTube",
+        source: "youtube",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "channel-bio",
+          },
+          {
+            id: "video-desc",
+            label: "Descripción de Video",
+            medium: "video-desc",
+            campaign: "video-link",
+          },
+          {
+            id: "community-post",
+            label: "Publicación Comunitaria",
+            medium: "community-post",
+            campaign: "community-update",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "pinned-comment",
+          },
+        ],
+      },
+      {
+        id: "reddit",
+        name: "Reddit",
+        source: "reddit",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "post",
+            label: "Publicación / Envío",
+            medium: "post",
+            campaign: "reddit-submission",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "reddit-comment",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "dm",
+            campaign: "reddit-dm",
+          },
+        ],
+      },
+      {
+        id: "hackernews",
+        name: "Hacker News",
+        source: "hackernews",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "about-link",
+          },
+          {
+            id: "post",
+            label: "Publicación / Envío",
+            medium: "post",
+            campaign: "hn-submission",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "hn-comment",
+          },
+        ],
+      },
+      {
+        id: "leetcode",
+        name: "LeetCode",
+        source: "leetcode",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "profile-link",
+          },
+          {
+            id: "solution",
+            label: "Solución / Artículo",
+            medium: "post",
+            campaign: "solution-article",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "forum-thread",
+          },
+        ],
+      },
+      {
+        id: "kaggle",
+        name: "Kaggle",
+        source: "kaggle",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "profile-link",
+          },
+          {
+            id: "notebook",
+            label: "Notebook / Código",
+            medium: "notebook",
+            campaign: "notebook-link",
+          },
+          {
+            id: "dataset",
+            label: "Dataset / Datos",
+            medium: "dataset",
+            campaign: "dataset-link",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "forum-post",
+          },
+        ],
+      },
+      {
+        id: "medium",
+        name: "Medium",
+        source: "medium",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "profile-link",
+          },
+          {
+            id: "post",
+            label: "Publicación / Artículo",
+            medium: "article",
+            campaign: "medium-article",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "story-comment",
+          },
+        ],
+      },
+      {
+        id: "notion",
+        name: "Notion",
+        source: "notion",
+        placements: [
+          {
+            id: "page",
+            label: "Página Pública / Doc",
+            medium: "public-doc",
+            campaign: "shared-page",
+          },
+          {
+            id: "template",
+            label: "Plantilla / Espacio",
+            medium: "template",
+            campaign: "template-doc",
+          },
+          {
+            id: "embed",
+            label: "Enlace Incrustado",
+            medium: "embed",
+            campaign: "embedded-link",
+          },
+        ],
+      },
+      {
+        id: "discord",
+        name: "Discord",
+        source: "discord",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "dm",
+            campaign: "discord-chat",
+          },
+          {
+            id: "channel",
+            label: "Servidor / Canal",
+            medium: "channel",
+            campaign: "server-share",
+          },
+        ],
+      },
+      {
+        id: "slack",
+        name: "Slack",
+        source: "slack",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "slack-profile",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "dm",
+            campaign: "slack-direct",
+          },
+          {
+            id: "channel",
+            label: "Canal / Comunidad",
+            medium: "channel",
+            campaign: "slack-channel",
+          },
+        ],
+      },
+      {
+        id: "whatsapp",
+        name: "WhatsApp",
+        source: "whatsapp",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "chat",
+            campaign: "direct-share",
+          },
+          {
+            id: "group",
+            label: "Grupo",
+            medium: "group-chat",
+            campaign: "group-share",
+          },
+          {
+            id: "community",
+            label: "Comunidad",
+            medium: "community",
+            campaign: "community-share",
+          },
+          {
+            id: "story",
+            label: "Estado / Historia",
+            medium: "story",
+            campaign: "status-update",
+          },
+        ],
+      },
+      {
+        id: "telegram",
+        name: "Telegram",
+        source: "telegram",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "chat",
+            campaign: "direct-share",
+          },
+          {
+            id: "group",
+            label: "Grupo",
+            medium: "group-chat",
+            campaign: "group-share",
+          },
+          {
+            id: "channel",
+            label: "Canal / Comunidad",
+            medium: "channel",
+            campaign: "channel-broadcast",
+          },
+          {
+            id: "story",
+            label: "Estado / Historia",
+            medium: "story",
+            campaign: "status-update",
+          },
+        ],
+      },
+      {
+        id: "google-chat",
+        name: "Google Chat",
+        source: "google-chat",
+        placements: [
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "dm",
+            campaign: "gchat-direct",
+          },
+          {
+            id: "space",
+            label: "Espacio / Canal",
+            medium: "space",
+            campaign: "gchat-space",
+          },
+        ],
+      },
+      {
+        id: "teams",
+        name: "Microsoft Teams",
+        source: "teams",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "teams-profile",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "chat",
+            campaign: "teams-chat",
+          },
+          {
+            id: "channel",
+            label: "Canal / Equipo",
+            medium: "channel",
+            campaign: "teams-channel",
+          },
+          {
+            id: "meeting",
+            label: "Reunión / Llamada",
+            medium: "meeting",
+            campaign: "teams-meeting",
+          },
+        ],
+      },
+      {
+        id: "tiktok",
+        name: "TikTok",
+        source: "tiktok",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "video-desc",
+            label: "Descripción de Video",
+            medium: "video-desc",
+            campaign: "video-link",
+          },
+          {
+            id: "dm",
+            label: "Mensaje Directo (DM)",
+            medium: "dm",
+            campaign: "tiktok-chat",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "social-comment",
+            campaign: "video-comment",
+          },
+        ],
+      },
+      {
+        id: "twitch",
+        name: "Twitch",
+        source: "twitch",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "panel",
+            label: "Paneles del Canal",
+            medium: "panel",
+            campaign: "channel-panels",
+          },
+          {
+            id: "chat",
+            label: "Stream Chat",
+            medium: "chat",
+            campaign: "stream-chat",
+          },
+        ],
+      },
+      {
+        id: "huggingface",
+        name: "Hugging Face",
+        source: "huggingface",
+        placements: [
+          {
+            id: "profile",
+            label: "Perfil / Biografía",
+            medium: "profile",
+            campaign: "bio-link",
+          },
+          {
+            id: "model",
+            label: "Ficha de Modelo (Model Card)",
+            medium: "model-card",
+            campaign: "hf-model",
+          },
+          {
+            id: "space",
+            label: "Aplicación / Space",
+            medium: "space",
+            campaign: "hf-space",
+          },
+          {
+            id: "comment",
+            label: "Comentario / Debate",
+            medium: "discussion",
+            campaign: "hf-discussion",
+          },
+        ],
+      },
+      {
+        id: "cv",
+        name: "Curriculum / CV",
+        source: "cv-es",
+        placements: [
+          {
+            id: "header",
+            label: "Enlace en Cabecera",
+            medium: "pdf",
+            campaign: "resume-header",
+          },
+          {
+            id: "project-link",
+            label: "Enlace de Proyecto en CV",
+            medium: "pdf",
+            campaign: "resume-project",
+          },
+          {
+            id: "job-link",
+            label: "Enlace de Empleo/Rol en CV",
+            medium: "pdf",
+            campaign: "resume-experience",
+          },
+          {
+            id: "contact-sec",
+            label: "Sección de Contacto",
+            medium: "pdf",
+            campaign: "resume-contact",
+          },
+        ],
+      },
+      {
+        id: "ats",
+        name: "Empleo / ATS",
+        source: "ats",
+        placements: [
+          {
+            id: "application",
+            label: "Formulario de Postulación",
+            medium: "application",
+            campaign: "job-application",
+          },
+          {
+            id: "cover-letter",
+            label: "Carta de Presentación",
+            medium: "cover-letter",
+            campaign: "job-application",
+          },
+          {
+            id: "referral",
+            label: "Referencia Interna",
+            medium: "referral",
+            campaign: "internal-referral",
+          },
+        ],
+      },
+      {
+        id: "email",
+        name: "Correo Electrónico",
+        source: "email",
+        placements: [
+          {
+            id: "signature",
+            label: "Firma de Correo",
+            medium: "signature",
+            campaign: "email-signature",
+          },
+          {
+            id: "cold-outreach",
+            label: "Contacto Directo / Propuesta",
+            medium: "email",
+            campaign: "direct-outreach",
+          },
+          {
+            id: "newsletter",
+            label: "Boletín / Actualización",
+            medium: "newsletter",
+            campaign: "newsletter-link",
+          },
+        ],
+      },
+      {
+        id: "custom",
+        name: "Otra / Personalizada",
+        source: "",
+        placements: [
+          {
+            id: "custom-action",
+            label: "Configuración Manual",
+            medium: "",
+            campaign: "",
+          },
+        ],
+      },
+    ],
+  },
+}[locale];
+---
+
+<div
+  class="space-y-6 sm:space-y-8"
+  data-link-generator-root
+  data-locale={locale}
+  data-base-origin={BASE_ORIGIN}
+  data-custom-source-ph={i18n.customPlaceholders.source}
+  data-custom-medium-ph={i18n.customPlaceholders.medium}
+  data-custom-campaign-ph={i18n.customPlaceholders.campaign}
+  data-default-source-ph={i18n.defaultPlaceholders.source}
+  data-default-medium-ph={i18n.defaultPlaceholders.medium}
+  data-default-campaign-ph={i18n.defaultPlaceholders.campaign}
+  data-clear-title={i18n.clearTitle}
+  data-reset-title={i18n.resetTitle}
+>
+  <!-- Header -->
+  <header class="border-b border-[var(--color-surface-border)] pb-8">
+    <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] text-xs font-mono text-[var(--color-accent-gold)] mb-3">
+      <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
+      <span>{i18n.badge}</span>
+    </div>
+    <h1 class="text-3xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-4xl">
+      {i18n.title}
+    </h1>
+    <p class="mt-3 max-w-2xl text-base text-[var(--color-text-secondary)]">
+      {i18n.description}
+    </p>
+  </header>
+
+  <!-- Interactive Panel -->
+  <div class="geometric-box rounded p-5 sm:p-6 space-y-6 font-mono text-xs">
+    <!-- STEP 1: Destination Path -->
+    <div class="space-y-2">
+      <label
+        for="link-path"
+        class="block font-semibold text-[var(--color-text-primary)] uppercase tracking-wider"
+      >
+        {i18n.step1}
+      </label>
+      <div class="relative flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 focus-within:border-[var(--color-accent-gold)] focus-within:ring-1 focus-within:ring-[var(--color-accent-gold)]">
+        <input
+          type="text"
+          id="link-path"
+          value={i18n.defaultPath}
+          data-default={i18n.defaultPath}
+          placeholder={i18n.destinationPlaceholder}
+          class="w-full bg-transparent pr-7 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
+        />
+        <button
+          type="button"
+          data-action-btn="link-path"
+          title={i18n.clearTitle}
+          class="input-clear-reset-btn text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shrink-0"
+        ></button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-muted)] pt-1">
+        <span>{i18n.shortcutsLabel}</span>
+        {i18n.shortcuts.map((p) => (
+          <button
+            type="button"
+            data-path-chip={p}
+            class="hover:text-[var(--color-accent-gold)] underline cursor-pointer"
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <!-- STEP 2: Platform Selection -->
+    <div class="space-y-2.5 pt-2 border-t border-[var(--color-surface-border-subtle)]">
+      <span class="block font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
+        {i18n.step2}
+      </span>
+      <div class="flex flex-wrap items-center gap-2">
+        {i18n.platforms.map((p, index) => (
+          <button
+            type="button"
+            data-platform-btn={p.id}
+            data-source={p.source}
+            class={`platform-btn rounded border px-3 py-1.5 transition-all cursor-pointer font-semibold ${
+              index === 0
+                ? "border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)]"
+                : "border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)]"
+            }`}
+          >
+            {p.name}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <!-- STEP 3: Placement Selection -->
+    <div class="space-y-2.5 pt-2 border-t border-[var(--color-surface-border-subtle)]">
+      <span class="block font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
+        {i18n.step3}
+      </span>
+      <div
+        id="placement-buttons-container"
+        class="flex flex-wrap items-center gap-2"
+      >
+        {i18n.platforms.flatMap((platform) =>
+          platform.placements.map((placement, pIndex) => (
+            <button
+              type="button"
+              data-placement-btn={placement.id}
+              data-platform-ref={platform.id}
+              data-medium={placement.medium}
+              data-campaign={placement.campaign}
+              class={`placement-btn rounded border px-2.5 py-1 text-xs transition-all cursor-pointer ${
+                platform.id === "linkedin" ? "" : "hidden"
+              } ${
+                platform.id === "linkedin" && pIndex === 0
+                  ? "border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] font-semibold"
+                  : "border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)]"
+              }`}
+            >
+              {placement.label}
+            </button>
+          )),
+        )}
+      </div>
+    </div>
+
+    <!-- STEP 4: Parameters & Custom Context -->
+    <div class="space-y-4 pt-2 border-t border-[var(--color-surface-border-subtle)]">
+      <span class="block font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
+        {i18n.step4}
+      </span>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label
+            for="utm-source"
+            class="block font-medium text-[var(--color-text-secondary)] mb-1"
+          >
+            {i18n.sourceLabel}
+          </label>
+          <div class="relative flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 focus-within:border-[var(--color-accent-gold)] focus-within:ring-1 focus-within:ring-[var(--color-accent-gold)]">
+            <input
+              type="text"
+              id="utm-source"
+              value="linkedin"
+              data-default="linkedin"
+              placeholder={i18n.defaultPlaceholders.source}
+              class="w-full bg-transparent pr-7 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
+            />
+            <button
+              type="button"
+              data-action-btn="utm-source"
+              title={i18n.clearTitle}
+              class="input-clear-reset-btn text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shrink-0"
+            ></button>
+          </div>
+        </div>
+
+        <div>
+          <label
+            for="utm-medium"
+            class="block font-medium text-[var(--color-text-secondary)] mb-1"
+          >
+            {i18n.mediumLabel}
+          </label>
+          <div class="relative flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 focus-within:border-[var(--color-accent-gold)] focus-within:ring-1 focus-within:ring-[var(--color-accent-gold)]">
+            <input
+              type="text"
+              id="utm-medium"
+              value="profile"
+              data-default="profile"
+              placeholder={i18n.defaultPlaceholders.medium}
+              class="w-full bg-transparent pr-7 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
+            />
+            <button
+              type="button"
+              data-action-btn="utm-medium"
+              title={i18n.clearTitle}
+              class="input-clear-reset-btn text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shrink-0"
+            ></button>
+          </div>
+        </div>
+
+        <div>
+          <label
+            for="utm-campaign"
+            class="block font-medium text-[var(--color-text-secondary)] mb-1"
+          >
+            {i18n.campaignLabel}
+          </label>
+          <div class="relative flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 focus-within:border-[var(--color-accent-gold)] focus-within:ring-1 focus-within:ring-[var(--color-accent-gold)]">
+            <input
+              type="text"
+              id="utm-campaign"
+              value="profile-link"
+              data-default="profile-link"
+              placeholder={i18n.defaultPlaceholders.campaign}
+              class="w-full bg-transparent pr-7 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
+            />
+            <button
+              type="button"
+              data-action-btn="utm-campaign"
+              title={i18n.clearTitle}
+              class="input-clear-reset-btn text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shrink-0"
+            ></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label
+          for="utm-content"
+          class="block font-medium text-[var(--color-text-secondary)]"
+        >
+          {i18n.contentLabel}
+        </label>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div class="relative flex-1 flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 focus-within:border-[var(--color-accent-gold)] focus-within:ring-1 focus-within:ring-[var(--color-accent-gold)]">
+            <input
+              type="text"
+              id="utm-content"
+              value=""
+              data-default=""
+              placeholder={i18n.contentPlaceholder}
+              class="w-full bg-transparent pr-7 text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
+            />
+            <button
+              type="button"
+              data-action-btn="utm-content"
+              title={i18n.resetTitle}
+              class="input-clear-reset-btn text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shrink-0"
+            ></button>
+          </div>
+          <button
+            type="button"
+            id="random-content-btn"
+            title="Generate random identifier"
+            class="inline-flex items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 text-xs font-semibold text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shrink-0"
+          >
+            <svg
+              class="h-3.5 w-3.5 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            <span>{i18n.randomBtn}</span>
+          </button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-[var(--color-text-muted)]">
+          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none hover:text-[var(--color-text-primary)] transition-colors">
+            <input
+              type="checkbox"
+              id="custom-prefix-check"
+              class="rounded border-[var(--color-surface-border)] text-[var(--color-accent-gold)] focus:ring-0 cursor-pointer"
+            />
+            <span>{i18n.customPrefixCheck}</span>
+          </label>
+          <div id="prefix-input-wrapper" class="hidden items-center gap-1.5">
+            <div class="relative flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 focus-within:border-[var(--color-accent-gold)]">
+              <input
+                type="text"
+                id="custom-prefix-input"
+                value="ref"
+                data-default="ref"
+                placeholder={i18n.prefixPlaceholder}
+                class="w-28 bg-transparent pr-6 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none"
+              />
+              <button
+                type="button"
+                data-action-btn="custom-prefix-input"
+                title={i18n.clearTitle}
+                class="input-clear-reset-btn text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shrink-0"
+              ></button>
+            </div>
+          </div>
+        </div>
+        <p class="text-[11px] text-[var(--color-text-muted)] leading-normal">
+          {i18n.contentHelp}
+        </p>
+      </div>
+    </div>
+
+    <!-- STEP 5: Generated Output -->
+    <div class="pt-4 border-t border-[var(--color-surface-border-subtle)] space-y-2">
+      <label
+        for="link-output"
+        class="block font-semibold text-[var(--color-text-primary)] uppercase tracking-wider"
+      >
+        {i18n.step5}
+      </label>
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-start gap-2">
+        <textarea
+          id="link-output"
+          readonly
+          rows="1"
+          style="field-sizing: content;"
+          class="w-full select-all rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2.5 text-[var(--color-accent-gold)] focus:border-[var(--color-accent-gold)] focus:outline-none font-semibold text-xs sm:text-sm font-mono break-all resize-none overflow-hidden leading-relaxed min-h-[42px]"
+        ></textarea>
+        <button
+          type="button"
+          id="copy-link-btn"
+          data-copied-label={i18n.copiedBtn}
+          class="inline-flex items-center justify-center gap-2 rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] font-semibold px-4 py-2.5 hover:brightness-105 active:scale-95 transition-all cursor-pointer shrink-0 sm:self-start sm:min-h-[42px]"
+        >
+          <svg
+            class="h-4 w-4 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+            />
+          </svg>
+          <span id="copy-btn-text">{i18n.copyBtn}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    function setupLinkGenerator() {
+      var root = document.querySelector("[data-link-generator-root]");
+      if (!root || root.dataset.bound) return;
+      root.dataset.bound = "true";
+
+      var pathInput = root.querySelector("#link-path");
+      var sourceInput = root.querySelector("#utm-source");
+      var mediumInput = root.querySelector("#utm-medium");
+      var campaignInput = root.querySelector("#utm-campaign");
+      var contentInput = root.querySelector("#utm-content");
+      var prefixInput = root.querySelector("#custom-prefix-input");
+      var prefixCheck = root.querySelector("#custom-prefix-check");
+      var prefixWrapper = root.querySelector("#prefix-input-wrapper");
+      var outputInput = root.querySelector("#link-output");
+      var copyBtn = root.querySelector("#copy-link-btn");
+      var copyText = root.querySelector("#copy-btn-text");
+      var randomBtn = root.querySelector("#random-content-btn");
+
+      var platformBtns = root.querySelectorAll("[data-platform-btn]");
+      var placementBtns = root.querySelectorAll("[data-placement-btn]");
+      var pathChips = root.querySelectorAll("[data-path-chip]");
+      var actionBtns = root.querySelectorAll("[data-action-btn]");
+
+      if (!pathInput || !outputInput || !copyBtn) return;
+
+      var BASE_ORIGIN =
+        root.getAttribute("data-base-origin") || "https://arturonavax.dev";
+      var clearTitle = root.getAttribute("data-clear-title") || "Clear";
+      var resetTitle = root.getAttribute("data-reset-title") || "Reset";
+
+      var customSourcePh = root.getAttribute("data-custom-source-ph") || "";
+      var customMediumPh = root.getAttribute("data-custom-medium-ph") || "";
+      var customCampaignPh = root.getAttribute("data-custom-campaign-ph") || "";
+      var defaultSourcePh = root.getAttribute("data-default-source-ph") || "";
+      var defaultMediumPh = root.getAttribute("data-default-medium-ph") || "";
+      var defaultCampaignPh =
+        root.getAttribute("data-default-campaign-ph") || "";
+
+      var SVG_CLEAR =
+        '<svg class="h-3.5 w-3.5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+      var SVG_RESET =
+        '<svg class="h-3.5 w-3.5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>';
+
+      function renderActionButton(btn) {
+        var inputId = btn.getAttribute("data-action-btn");
+        var inp = root.querySelector("#" + inputId);
+        if (!inp) return;
+
+        if (inp.value && inp.value.trim().length > 0) {
+          btn.innerHTML = SVG_CLEAR;
+          btn.setAttribute("title", clearTitle);
+          btn.dataset.mode = "clear";
+        } else {
+          btn.innerHTML = SVG_RESET;
+          btn.setAttribute("title", resetTitle);
+          btn.dataset.mode = "reset";
+        }
+      }
+
+      function updateAllActionButtons() {
+        actionBtns.forEach(renderActionButton);
+      }
+
+      function updateURL() {
+        var rawPath = (pathInput.value || "").trim();
+        if (!rawPath) rawPath = "/";
+
+        var url;
+        try {
+          if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
+            url = new URL(rawPath);
+          } else {
+            if (!rawPath.startsWith("/")) rawPath = "/" + rawPath;
+            url = new URL(rawPath, BASE_ORIGIN);
+          }
+        } catch (_) {
+          url = new URL("/", BASE_ORIGIN);
+        }
+
+        // Slashes estricta: asegurar '/' al final del pathname antes de los parámetros
+        if (!url.pathname.endsWith("/")) {
+          if (!/\.[a-zA-Z0-9]+$/i.test(url.pathname)) {
+            url.pathname = url.pathname.replace(/\/+$/, "") + "/";
+          }
+        }
+
+        var src = (sourceInput.value || "").trim();
+        var med = (mediumInput.value || "").trim();
+        var cmp = (campaignInput.value || "").trim();
+        var cnt = (contentInput.value || "").trim();
+
+        if (src) url.searchParams.set("utm_source", src);
+        else url.searchParams.delete("utm_source");
+
+        if (med) url.searchParams.set("utm_medium", med);
+        else url.searchParams.delete("utm_medium");
+
+        if (cmp) url.searchParams.set("utm_campaign", cmp);
+        else url.searchParams.delete("utm_campaign");
+
+        if (cnt) url.searchParams.set("utm_content", cnt);
+        else url.searchParams.delete("utm_content");
+
+        outputInput.value = url.toString();
+        outputInput.style.height = "auto";
+        outputInput.style.height = outputInput.scrollHeight + "px";
+
+        updateAllActionButtons();
+      }
+
+      [
+        pathInput,
+        sourceInput,
+        mediumInput,
+        campaignInput,
+        contentInput,
+        prefixInput,
+      ].forEach(function (inp) {
+        if (!inp) return;
+        inp.addEventListener("input", updateURL);
+      });
+
+      actionBtns.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var inputId = btn.getAttribute("data-action-btn");
+          var inp = root.querySelector("#" + inputId);
+          if (!inp) return;
+
+          if (btn.dataset.mode === "clear") {
+            inp.value = "";
+          } else {
+            inp.value = inp.getAttribute("data-default") || "";
+          }
+          inp.dispatchEvent(new Event("input"));
+        });
+      });
+
+      pathChips.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          var p = chip.getAttribute("data-path-chip") || "/";
+          if (!p.endsWith("/") && !/\.[a-zA-Z0-9]+$/i.test(p)) {
+            p = p.replace(/\/+$/, "") + "/";
+          }
+          pathInput.value = p;
+          pathInput.setAttribute("data-default", p);
+          updateURL();
+        });
+      });
+
+      platformBtns.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var targetPlatform = btn.getAttribute("data-platform-btn");
+          var defaultSource = btn.getAttribute("data-source") || "";
+
+          platformBtns.forEach(function (b) {
+            b.className =
+              "platform-btn rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] px-3 py-1.5 transition-all cursor-pointer font-semibold";
+          });
+          btn.className =
+            "platform-btn rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] px-3 py-1.5 transition-all cursor-pointer font-semibold";
+
+          if (targetPlatform === "custom") {
+            sourceInput.placeholder = customSourcePh;
+            mediumInput.placeholder = customMediumPh;
+            campaignInput.placeholder = customCampaignPh;
+          } else {
+            sourceInput.placeholder = defaultSourcePh;
+            mediumInput.placeholder = defaultMediumPh;
+            campaignInput.placeholder = defaultCampaignPh;
+          }
+
+          var firstPlacement = null;
+          placementBtns.forEach(function (pBtn) {
+            var forPlatform = pBtn.getAttribute("data-platform-ref");
+            if (forPlatform === targetPlatform) {
+              pBtn.classList.remove("hidden");
+              if (!firstPlacement) firstPlacement = pBtn;
+            } else {
+              pBtn.classList.add("hidden");
+            }
+            pBtn.className =
+              "placement-btn rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] px-2.5 py-1 text-xs transition-all cursor-pointer" +
+              (forPlatform === targetPlatform ? "" : " hidden");
+          });
+
+          sourceInput.value = defaultSource;
+          sourceInput.setAttribute("data-default", defaultSource);
+
+          if (firstPlacement) {
+            firstPlacement.className =
+              "placement-btn rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] font-semibold px-2.5 py-1 text-xs transition-all cursor-pointer";
+            var med = firstPlacement.getAttribute("data-medium") || "";
+            var cmp = firstPlacement.getAttribute("data-campaign") || "";
+            mediumInput.value = med;
+            mediumInput.setAttribute("data-default", med);
+            campaignInput.value = cmp;
+            campaignInput.setAttribute("data-default", cmp);
+          } else {
+            mediumInput.value = "";
+            mediumInput.setAttribute("data-default", "");
+            campaignInput.value = "";
+            campaignInput.setAttribute("data-default", "");
+          }
+
+          if (targetPlatform === "custom") sourceInput.focus();
+          updateURL();
+        });
+      });
+
+      placementBtns.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var parentPlatform = btn.getAttribute("data-platform-ref");
+          placementBtns.forEach(function (b) {
+            if (b.getAttribute("data-platform-ref") === parentPlatform) {
+              b.className =
+                "placement-btn rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] px-2.5 py-1 text-xs transition-all cursor-pointer";
+            }
+          });
+
+          btn.className =
+            "placement-btn rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] font-semibold px-2.5 py-1 text-xs transition-all cursor-pointer";
+
+          var med = btn.getAttribute("data-medium") || "";
+          var cmp = btn.getAttribute("data-campaign") || "";
+          mediumInput.value = med;
+          mediumInput.setAttribute("data-default", med);
+          campaignInput.value = cmp;
+          campaignInput.setAttribute("data-default", cmp);
+
+          updateURL();
+        });
+      });
+
+      if (prefixCheck && prefixWrapper) {
+        prefixCheck.addEventListener("change", function () {
+          if (prefixCheck.checked) {
+            prefixWrapper.classList.remove("hidden");
+            prefixWrapper.classList.add("flex");
+            if (prefixInput) prefixInput.focus();
+          } else {
+            prefixWrapper.classList.add("hidden");
+            prefixWrapper.classList.remove("flex");
+          }
+        });
+      }
+
+      if (randomBtn) {
+        randomBtn.addEventListener("click", function () {
+          var prefix = "ref";
+          if (prefixCheck && prefixCheck.checked && prefixInput) {
+            prefix = prefixInput.value.trim() || "ref";
+          }
+          var randomId = Math.random().toString(36).substring(2, 8);
+          contentInput.value = prefix + "-" + randomId;
+          contentInput.setAttribute("data-default", contentInput.value);
+          updateURL();
+        });
+      }
+
+      copyBtn.addEventListener("click", function () {
+        if (!outputInput.value) return;
+        navigator.clipboard.writeText(outputInput.value).then(function () {
+          var original = copyText.textContent;
+          var copiedLabel =
+            copyBtn.getAttribute("data-copied-label") || "Copied!";
+          copyText.textContent = copiedLabel;
+          setTimeout(function () {
+            copyText.textContent = original;
+          }, 2000);
+        });
+      });
+
+      window.addEventListener(
+        "resize",
+        function () {
+          if (outputInput) {
+            outputInput.style.height = "auto";
+            outputInput.style.height = outputInput.scrollHeight + "px";
+          }
+        },
+        { passive: true },
+      );
+
+      updateURL();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupLinkGenerator);
+    } else {
+      setupLinkGenerator();
+    }
+    document.addEventListener("astro:page-load", setupLinkGenerator);
+  })();
+</script>

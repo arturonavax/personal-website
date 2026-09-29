@@ -1,0 +1,18 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
+import LinkGenerator from "@/components/ui/LinkGenerator.astro";
+
+const locale = "es";
+---
+
+<BaseLayout
+  title="Arturo Nava — Generador de Enlaces de Atribución"
+  description="Generador estandarizado de enlaces y parámetros UTM para la medición consistente de campañas y procedencia de tráfico."
+  locale={locale}
+>
+  <div class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-6 sm:space-y-8">
+    <BackToHomeButton locale={locale} />
+    <LinkGenerator locale={locale} />
+  </div>
+</BaseLayout>
