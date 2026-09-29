@@ -1,5 +1,17 @@
 # Tasks for AI
 
+[] Quitar los enlaces del CV, menos el del header, justo antes de la impresion.
+
+[] Asegurarte que absolutamente todos los "canonical" finales que llegan a exponerse en produccion esten correctos en cada pagina, para comprobar que los links con atributos UTM no afecten al SEO.
+
+    - Parece que al navegar en el timeline con las flechas/atajos, no se actualiza el canonical.
+
+[] Sale el atajo "p" en el boton de "PDF / Download" en tamaño movil, no deberia.
+
+[] Confirmar que worker.ts este en la version mas profesional posible, en terminos de rendimiento deberia ser insuperable para que su computo no bloquee nada la experiencia de la pagina.
+
+[] Al presionar Enter en el modal Search, la pagina parece que se recarga, no funcionando como una SPA.
+
 [] Los filtros de busqueda en /experience no deberia ser seleccion multiple por empresa.
 
 [x] Atributos UTM:
