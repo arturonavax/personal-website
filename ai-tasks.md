@@ -37,3 +37,5 @@
 [] Investigar si publicar mi CV en una ruta de archivos publico en formato PDF y Markdown mejorara el SEO y la exposicion.
 
     [] Considerar integrar boton de Download PDF (archivo .pdf directo) si se detecta que el navegador no es composible con print local de PDF, como en Smartwatches.
+
+[] Confirmar que worker.ts este en la version mas profesional y refinada posible, que se ignore ninguna acceso real y tenga un mecanismo para tratar de ignorar peticiones de prefetch que no garanticen visita real.
