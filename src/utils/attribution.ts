@@ -24,9 +24,6 @@ export interface PlatformConfig {
   placements: PlatformPlacement[];
 }
 
-/**
- * Detecta el idioma del enlace basándose en el prefijo `/es/` o el subdominio.
- */
 export function detectLocale(pathOrUrl: string): Locale {
   try {
     const pathname = pathOrUrl.startsWith("http")
@@ -38,18 +35,12 @@ export function detectLocale(pathOrUrl: string): Locale {
   }
 }
 
-/**
- * Genera un ID aleatorio alfanumérico corto con prefijo configurable.
- */
 export function generateRandomId(prefix: string = "ref"): string {
   const cleanPrefix = prefix.trim() || "ref";
   const hash = Math.random().toString(36).substring(2, 8);
   return `${cleanPrefix}-${hash}`;
 }
 
-/**
- * Construye una URL de destino con parámetros UTM y garantiza trailing slash estricto.
- */
 export function buildAttributionUrl(
   targetPathOrUrl: string,
   params: AttributionParams = {},
@@ -92,12 +83,14 @@ export function buildAttributionUrl(
 }
 
 /**
- * Deriva los parámetros UTM para enlaces del CV según su ruta.
+ * Deriva los parámetros UTM para enlaces del CV.
+ * Por defecto asigna 'pdf', pero permite especificar 'html' u otro medio.
  */
 export function getCvAttributionParams(
   targetPathOrUrl: string,
   explicitLocale?: Locale,
   contentId?: string,
+  medium: string = "pdf",
 ): AttributionParams {
   const locale = explicitLocale || detectLocale(targetPathOrUrl);
   const raw = targetPathOrUrl.toLowerCase();
@@ -115,20 +108,26 @@ export function getCvAttributionParams(
 
   return {
     source: locale === "es" ? "cv-es" : "cv-en",
-    medium: "pdf",
+    medium,
     campaign,
     content: contentId || "",
   };
 }
 
 /**
- * Etiqueta enlaces de CV asegurando slashes estrictos y el idioma correcto.
+ * Etiqueta enlaces de CV asegurando slashes estrictos y el medio indicado (por defecto 'pdf').
  */
 export function tagCvLink(
   pathOrUrl: string,
   explicitLocale?: Locale,
   contentId?: string,
+  medium: string = "pdf",
 ): string {
-  const params = getCvAttributionParams(pathOrUrl, explicitLocale, contentId);
+  const params = getCvAttributionParams(
+    pathOrUrl,
+    explicitLocale,
+    contentId,
+    medium,
+  );
   return buildAttributionUrl(pathOrUrl, params);
 }

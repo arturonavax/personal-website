@@ -2,7 +2,7 @@
 
 [] (Human) Reintentar la confirmacion de numero de telefono de la nueva cuenta <arturo@arturonavax.com> para ponerle foto de perfil, despues de haber quitado el numero de <arthurnavah@gmail.com>
 
-[] Quitar los enlaces del CV, menos el del header, justo antes de la impresion.
+[x] Quitar los enlaces del CV, menos el del header, justo antes de la impresion.
 
 [] Todos los "mailto:" deben dejar de funcionar normal, no abriran nada, solo tendran un boton de copia pequeño junto.
 
@@ -10,7 +10,7 @@
 
     - Parece que al navegar en el timeline con las flechas/atajos, no se actualiza el canonical.
 
-[] Sale el atajo "p" en el boton de "PDF / Download" en tamaño movil, no deberia.
+[x] Sale el atajo "p" en el boton de "PDF / Download" en tamaño movil, no deberia.
 
 [] Confirmar que worker.ts este en la version mas profesional posible, en terminos de rendimiento deberia ser insuperable para que su computo no bloquee nada la experiencia de la pagina.
 
@@ -23,7 +23,7 @@
     - Hacer que el componente LinkGenerator exponga una utilidad (o declarar la utilidad y hacer que el componente lo use, lo que sea mejor practica en Astro), para entregarle un link base, y si el link es /es/ o no, le agregara los atributos UTM que se requieran en el idioma correcto. Esta funcionalidad debe ser totalmente replicable por la interfaz grafica del componente (entregar los mismos resultados).
     - En la pagina /resume/ al final deberia haber un input (para modificar el prefijo) como el de /links/ para agregar en tiempo real a los links arturonavax.dev del CV el utm_content con un boton de aleatoriedad y copia. (Apenas se entra a la pagina /resume/ todos los atributos UTM para CV en su respectivo idioma son aplicados).
 
-[] Botones de copia en la parte inferior del CV/Resume, para copiarlo en el markdown original, JSON, TOML y XML (estos ultimos haciendo un parseo correcto del markdown original o del HTML, lo que sea mas rentable)
+[] Botones de copia en la parte inferior del CV/Resume, para copiarlo en el markdown original, JSON, TOML y XML (estos ultimos haciendo un parseo correcto del markdown original o del HTML, lo que sea mas rentable) (Ya el codigo esta, falta refinar formatos y mejorar UTM)
 
 [] (Human) Parece que hay demasiadas peticiones "503 (Service Unavailable)" en la consola, quizas por los prefetch, investigar.
 

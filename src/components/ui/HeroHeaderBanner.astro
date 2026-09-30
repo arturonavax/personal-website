@@ -70,32 +70,32 @@ const techStack = [
 
 const aiWorkflowPillars = [
   {
-    tool: "Ghostty Terminal",
-    badge: "GPU-Native",
+    tool: "Spec-Driven Dev (SDD)",
+    badge: "Schema-First",
     detail: isEs
-      ? "Emulador terminal de latencia mínima acelerado por GPU para desarrollo de alto throughput."
-      : "GPU-accelerated native terminal environment for high-throughput orchestration.",
+      ? "Especificaciones formales, diseño de invariantes y contratos de tipos estrictos antes de cualquier ciclo de ejecución generativo."
+      : "Formal architectural specs, system invariants, and strict type contracts defined prior to generative execution loops.",
+  },
+  {
+    tool: "Custom Pi (pi.dev) Harness",
+    badge: "Adaptive Eval",
+    detail: isEs
+      ? "Harness a medida sobre el runtime de pi.dev para benchmarking heurístico, stress testing de modelos y verificación de razonamiento."
+      : "Custom evaluation and execution harness over pi.dev for heuristic benchmarking, model stress-testing, and reasoning verification.",
   },
   {
     tool: "Multi-Agent Orchestration",
-    badge: "Parallel Loops",
+    badge: "DAG Topologies",
     detail: isEs
-      ? "Coordinación autónoma de agentes especializados con contratos estrictos de tool-calling."
-      : "Autonomous supervisor coordination across parallel specialized agents and tools.",
+      ? "Descomposición jerárquica de tareas complejas en grafos acíclicos dirigidos (DAG) con validación estricta de tool-calling."
+      : "Hierarchical task decomposition into directed acyclic graphs (DAG) with strictly typed tool-calling schemas.",
   },
   {
-    tool: "Hardness & Verification",
-    badge: "Deterministic",
+    tool: "Herdr (herdr.dev) Supervision",
+    badge: "Stateful Daemons",
     detail: isEs
-      ? "Harnesses de pruebas deterministas, verificación adversarial y compuertas de regresión."
-      : "Deterministic test harnesses, adversarial verification gates, and evaluation suites.",
-  },
-  {
-    tool: "Process Herder",
-    badge: "Stateful",
-    detail: isEs
-      ? "Supervisión continua de procesos, ejecución de daemons resilientes y estado persistente."
-      : "Resilient process supervision, long-running daemons, and persistent session state.",
+      ? "Supervisión del ciclo de vida de procesos de larga duración, checkpoints de sesión resilientes y recuperación de daemons."
+      : "Long-running daemon supervision, resilient session checkpointing, and robust process crash-recovery.",
   },
 ];
 ---
@@ -215,7 +215,7 @@ const aiWorkflowPillars = [
         <!-- CV / Resume -->
         {hasResume && (
           <a
-            href={isEs ? "/es/resume" : "/resume"}
+            href={isEs ? "/es/resume/" : "/resume/"}
             data-astro-prefetch="hover"
             class="btn-secondary px-3.5 py-2 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
           >
