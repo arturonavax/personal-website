@@ -1,5 +1,7 @@
 # Tasks for AI
 
+[] (Human) Reintentar la confirmacion de numero de telefono de la nueva cuenta <arturo@arturonavax.com> para ponerle foto de perfil, despues de haber quitado el numero de <arthurnavah@gmail.com>
+
 [] Quitar los enlaces del CV, menos el del header, justo antes de la impresion.
 
 [] Todos los "mailto:" deben dejar de funcionar normal, no abriran nada, solo tendran un boton de copia pequeño junto.
