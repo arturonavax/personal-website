@@ -60,7 +60,7 @@ const CONFIG = {
       "High-Concurrency Distributed Systems • AI Agents • Zero-Trust • Go, Rust & Python",
     domain: "arturonavax.dev",
     handle: "@arturonavax",
-    email: "arturonavax@gmail.com",
+    email: "arturo@arturonavax.dev",
   },
   theme: {
     colors: {

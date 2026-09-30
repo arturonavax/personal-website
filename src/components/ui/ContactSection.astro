@@ -10,9 +10,7 @@ const { locale } = Astro.props;
 const t = useTranslations(locale);
 const isEs = locale === "es";
 
-const email = "arturonavax@gmail.com";
-const phone = "+57 324 200 9803";
-const phoneClean = "573242009803";
+const email = "arturo@arturonavax.dev";
 ---
 
 <section
@@ -111,25 +109,6 @@ const phoneClean = "573242009803";
             <span>{t("contact.startConversation")}</span>
           </a>
           <!--/email_off-->
-
-          <!-- WhatsApp Direct Link -->
-          <a
-            href={`https://wa.me/${phoneClean}?text=Hello%20Arturo,%20saw%20your%20portfolio%20and%20would%20like%20to%20connect.`}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn-secondary px-4 py-2.5 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
-          >
-            <svg
-              class="h-4 w-4 stroke-current fill-none"
-              viewBox="0 0 24 24"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-            </svg>
-            <span>WhatsApp Direct</span>
-          </a>
 
           <!-- Telegram Direct Link (Task 6) -->
           <a
@@ -301,18 +280,6 @@ const phoneClean = "573242009803";
             <span class="text-right text-[var(--color-accent-status)] font-medium">
               {t("contact.responseTime")}
             </span>
-          </div>
-
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-[var(--color-text-muted)]">
-              {isEs ? "Teléfono Directo" : "Direct Phone"}
-            </span>
-            <a
-              href={`tel:${phoneClean}`}
-              class="text-right text-[var(--color-text-primary)] hover:text-[var(--color-accent-gold)] transition-colors"
-            >
-              {phone}
-            </a>
           </div>
 
           <!-- TODO: reactivate -->
