@@ -9,8 +9,7 @@
 - Spanish Resume (Web): https://arturonavax.dev/es/resume/[cite: 9]
 - GitHub: https://github.com/arturonavax[cite: 2, 3]
 - LinkedIn: https://www.linkedin.com/in/arturonavax[cite: 2, 3]
-- Email: arturonavax@gmail.com[cite: 2, 3]
-- Direct Phone / WhatsApp: +57 324 200 9803[cite: 2, 3]
+- Email: arturo@arturonavax.dev[cite: 2, 3]
 
 ## Executive & Recruitment Telemetry
 - Target Roles: Senior / Staff Backend Engineer, Distributed Systems Architect, AI Systems Engineer, DevSecOps Lead[cite: 3, 11].

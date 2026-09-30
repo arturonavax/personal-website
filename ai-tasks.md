@@ -2,6 +2,8 @@
 
 [] Quitar los enlaces del CV, menos el del header, justo antes de la impresion.
 
+[] Todos los "mailto:" deben dejar de funcionar normal, no abriran nada, solo tendran un boton de copia pequeño junto.
+
 [] Asegurarte que absolutamente todos los "canonical" finales que llegan a exponerse en produccion esten correctos en cada pagina, para comprobar que los links con atributos UTM no afecten al SEO.
 
     - Parece que al navegar en el timeline con las flechas/atajos, no se actualiza el canonical.

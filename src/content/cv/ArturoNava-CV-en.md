@@ -1,7 +1,7 @@
 # Arturo Nava
 
 **Senior Software Engineer | Distributed Systems, High-Concurrency & Security**  
-Bogota, D.C., Colombia • [arturonavax@gmail.com](mailto:arturonavax@gmail.com) • [+57 324 200 9803](tel:+573242009803) • [linkedin.com/in/arturonavax](https://www.linkedin.com/in/arturonavax) • [github.com/arturonavax](https://github.com/arturonavax) • [arturonavax.dev](https://arturonavax.dev/)
+Bogota, D.C., Colombia • [arturo@arturonavax.dev](mailto:arturo@arturonavax.dev) • [linkedin.com/in/arturonavax](https://www.linkedin.com/in/arturonavax) • [github.com/arturonavax](https://github.com/arturonavax) • [arturonavax.dev](https://arturonavax.dev/?utm_source=cv-en&utm_medium=pdf&utm_campaign=resume-header)
 
 ---
 
