@@ -2,9 +2,11 @@
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageIndexNav from "@/components/ui/PageIndexNav.astro";
 import CvAttributionBar from "@/components/ui/CvAttributionBar.astro";
+// import CvExportBar from "@/components/ui/CvExportBar.astro";
 import { getCVData, hasResume } from "@/data/cv";
 
 const locale = "en";
+// const { html, items, rawMarkdown, json, toml, xml } = getCVData("en");
 const { html, items } = getCVData("en");
 ---
 
@@ -36,7 +38,17 @@ const { html, items } = getCVData("en");
           <Fragment set:html={html} />
         </article>
 
-        <CvAttributionBar locale={locale} />
+        <!-- TODO: reactive by ai-task
+        <CvExportBar
+          locale={locale}
+          rawMarkdown={rawMarkdown}
+          jsonCV={json}
+          tomlCV={toml}
+          xmlCV={xml}
+        />
+        -->
+
+        <CvAttributionBar locale={locale} defaultMedium="html" />
       </>
     ) : (
       <div class="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-8 text-center font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">
@@ -68,9 +80,7 @@ const { html, items } = getCVData("en");
       }
       @bottom-left {
         content: "ARTURO NAVA • CV";
-        font-family:
-          "Geist Mono", var(--font-mono), ui-monospace, SFMono-Regular, Menlo,
-          Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-family: "Geist Mono", var(--font-mono), ui-monospace, monospace;
         font-size: 7.5pt;
         font-weight: 500;
         color: #64748b;
@@ -88,6 +98,12 @@ const { html, items } = getCVData("en");
     a[href]::after,
     a::after {
       content: none !important;
+    }
+
+    #cv-document-sheet a:not([href]) {
+      color: inherit !important;
+      text-decoration: none !important;
+      cursor: default !important;
     }
 
     *,
@@ -170,11 +186,6 @@ const { html, items } = getCVData("en");
       var(--font-sans),
       system-ui,
       -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      Roboto,
-      "Helvetica Neue",
-      Arial,
       sans-serif;
     font-size: 11.5pt;
     line-height: 1.38;
@@ -257,8 +268,7 @@ const { html, items } = getCVData("en");
   }
 
   .cv-document h3 + p > em {
-    font-family:
-      "Geist Mono", var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+    font-family: "Geist Mono", var(--font-mono), monospace;
     font-style: normal;
     font-variant-numeric: tabular-nums;
     font-size: 9.5pt;
@@ -296,8 +306,7 @@ const { html, items } = getCVData("en");
   }
 
   .cv-document code {
-    font-family:
-      "Geist Mono", var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+    font-family: "Geist Mono", var(--font-mono), monospace;
     font-size: 0.88em !important;
     font-weight: 500;
     background-color: #faf5f5 !important;
@@ -325,10 +334,6 @@ const { html, items } = getCVData("en");
   .cv-document hr {
     display: none;
   }
-
-  /* ==========================================================================
-     ENLACES Y COLORES PROTEGIDOS (Sin azul en Vinotinto y Encabezados)
-     ========================================================================== */
 
   .cv-document a,
   .cv-document a[href^="tel:"],
@@ -384,6 +389,8 @@ const { html, items } = getCVData("en");
   (function () {
     var origDocTitle = "";
     var origTagTitle = "";
+    var isPrintTitleApplied = false;
+    var isPrintPrepared = false;
 
     function getCvFileName() {
       var isEs =
@@ -394,6 +401,9 @@ const { html, items } = getCVData("en");
     }
 
     function applyPrintTitle() {
+      if (isPrintTitleApplied) return;
+      isPrintTitleApplied = true;
+
       if (!origDocTitle) {
         origDocTitle = document.title;
         var titleEl = document.querySelector("title");
@@ -411,6 +421,9 @@ const { html, items } = getCVData("en");
     }
 
     function restoreOriginalTitle() {
+      if (!isPrintTitleApplied) return;
+      isPrintTitleApplied = false;
+
       if (origDocTitle) {
         document.title = origDocTitle;
       }
@@ -422,20 +435,111 @@ const { html, items } = getCVData("en");
       origTagTitle = "";
     }
 
+    function preparePrintLinks() {
+      if (isPrintPrepared) return;
+      var cvSheet = document.getElementById("cv-document-sheet");
+      if (!cvSheet) return;
+      isPrintPrepared = true;
+
+      var headerP = cvSheet.querySelector("h1 + p");
+      var links = cvSheet.querySelectorAll("a[href]");
+
+      links.forEach(function (link) {
+        if (headerP && headerP.contains(link)) {
+          var currentHref = link.getAttribute("href");
+          if (currentHref) {
+            if (!link.getAttribute("data-screen-href")) {
+              link.setAttribute("data-screen-href", currentHref);
+            }
+            try {
+              var url = new URL(currentHref, window.location.origin);
+              url.searchParams.set("utm_medium", "pdf");
+              link.setAttribute("href", url.toString());
+            } catch (_) {
+              link.setAttribute(
+                "href",
+                currentHref.replace(/([?&]utm_medium=)html/g, "$1pdf"),
+              );
+            }
+          }
+          return;
+        }
+        link.setAttribute("data-print-href", link.getAttribute("href"));
+        link.removeAttribute("href");
+      });
+    }
+
+    function restorePrintLinks() {
+      if (!isPrintPrepared) return;
+      isPrintPrepared = false;
+
+      var cvSheet = document.getElementById("cv-document-sheet");
+      if (!cvSheet) return;
+
+      var strippedLinks = cvSheet.querySelectorAll("a[data-print-href]");
+      strippedLinks.forEach(function (link) {
+        var originalHref = link.getAttribute("data-print-href");
+        if (originalHref) {
+          link.setAttribute("href", originalHref);
+        }
+        link.removeAttribute("data-print-href");
+      });
+
+      var headerLinks = cvSheet.querySelectorAll("a[data-screen-href]");
+      headerLinks.forEach(function (link) {
+        var screenHref = link.getAttribute("data-screen-href");
+        if (screenHref) {
+          try {
+            var url = new URL(screenHref, window.location.origin);
+            url.searchParams.set("utm_medium", "html");
+            link.setAttribute("href", url.toString());
+          } catch (_) {
+            link.setAttribute(
+              "href",
+              screenHref.replace(/([?&]utm_medium=)pdf/g, "$1html"),
+            );
+          }
+        }
+        link.removeAttribute("data-screen-href");
+      });
+
+      var contentInput = document.getElementById("cv-utm-content");
+      if (contentInput) {
+        contentInput.dispatchEvent(new Event("input"));
+      }
+    }
+
     window.printCleanCV = function () {
       applyPrintTitle();
+      preparePrintLinks();
 
-      window.addEventListener("afterprint", restoreOriginalTitle, {
-        once: true,
-      });
-      setTimeout(restoreOriginalTitle, 3500);
+      window.addEventListener(
+        "afterprint",
+        function () {
+          restoreOriginalTitle();
+          restorePrintLinks();
+        },
+        { once: true },
+      );
+
+      setTimeout(function () {
+        restoreOriginalTitle();
+        restorePrintLinks();
+      }, 3500);
 
       setTimeout(function () {
         window.print();
       }, 70);
     };
 
-    window.addEventListener("beforeprint", applyPrintTitle);
-    window.addEventListener("afterprint", restoreOriginalTitle);
+    window.addEventListener("beforeprint", function () {
+      applyPrintTitle();
+      preparePrintLinks();
+    });
+
+    window.addEventListener("afterprint", function () {
+      restoreOriginalTitle();
+      restorePrintLinks();
+    });
   })();
 </script>

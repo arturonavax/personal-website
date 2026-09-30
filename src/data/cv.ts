@@ -25,6 +25,30 @@ export interface CVData {
   html: string;
   items: IndexItem[];
   pages: [string, string, string];
+  rawMarkdown: string;
+  json: string;
+  toml: string;
+  xml: string;
+}
+
+interface CVStructuredItem {
+  title: string;
+  meta?: string;
+  points?: string[];
+  description?: string;
+}
+
+interface CVStructuredSection {
+  title: string;
+  items: CVStructuredItem[];
+  text?: string[];
+}
+
+interface CVStructured {
+  name: string;
+  headline: string;
+  contact: string[];
+  sections: CVStructuredSection[];
 }
 
 function splitCVPages(html: string): [string, string, string] {
@@ -54,25 +78,19 @@ function slugify(text: string): string {
 }
 
 function cleanText(text: string): string {
-  return (
-    text
-      // Enlaces e imágenes Markdown: [Texto](url) o ![Alt](url) -> Texto
-      .replace(/!?\[([^\]]+)\]\([^)]+\)/g, "$1")
-      // Código en línea: `código` -> código
-      .replace(/`([^`]+)`/g, "$1")
-      // Negrita y cursiva
-      .replace(/\*\*([^*]+)\*\*/g, "$1")
-      .replace(/__([^_]+)__/g, "$1")
-      .replace(/\*([^*]+)\*/g, "$1")
-      .replace(/(?:^|[^\w])_([^_]+)_(?=[^\w]|$)/g, "$1")
-      // Etiquetas HTML y entidades
-      .replace(/<[^>]+>/g, "")
-      .replace(/&amp;/g, "&")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&bull;/g, "•")
-      .trim()
-  );
+  return text
+    .replace(/!?\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/(?:^|[^\w])_([^_]+)_(?=[^\w]|$)/g, "$1")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&bull;/g, "•")
+    .trim();
 }
 
 function inlineFormat(text: string): string {
@@ -87,6 +105,202 @@ function inlineFormat(text: string): string {
     m.replace("*" + p1 + "*", "<em>" + p1 + "</em>"),
   );
   return s;
+}
+
+function parseCVStructured(md: string): CVStructured {
+  const lines = md.split(/\r?\n/);
+  let name = "";
+  let headline = "";
+  const contact: string[] = [];
+  const sections: CVStructuredSection[] = [];
+  let currentSection: CVStructuredSection | null = null;
+  let currentItem: CVStructuredItem | null = null;
+  let pastHeader = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i] ?? "";
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed === "---") continue;
+
+    if (trimmed.startsWith("# ")) {
+      name = cleanText(trimmed.slice(2));
+      continue;
+    }
+
+    if (!pastHeader && !trimmed.startsWith("## ")) {
+      const parts = trimmed
+        .split("|")
+        .map((p) => cleanText(p))
+        .filter(Boolean);
+      if (parts.length > 0) {
+        if (!headline) {
+          headline = parts[0] ?? "";
+          contact.push(...parts.slice(1));
+        } else {
+          contact.push(...parts);
+        }
+      }
+      continue;
+    }
+
+    if (trimmed.startsWith("## ")) {
+      pastHeader = true;
+      currentSection = {
+        title: cleanText(trimmed.slice(3)),
+        items: [],
+        text: [],
+      };
+      sections.push(currentSection);
+      currentItem = null;
+      continue;
+    }
+
+    if (trimmed.startsWith("### ") || trimmed.startsWith("#### ")) {
+      const level = trimmed.startsWith("### ") ? 4 : 5;
+      const title = cleanText(trimmed.slice(level));
+      currentItem = {
+        title,
+        points: [],
+      };
+      if (currentSection) {
+        currentSection.items.push(currentItem);
+      }
+      continue;
+    }
+
+    if (trimmed.startsWith("- ")) {
+      const point = cleanText(trimmed.slice(2));
+      if (currentItem) {
+        if (!currentItem.points) currentItem.points = [];
+        currentItem.points.push(point);
+      } else if (currentSection) {
+        if (!currentSection.text) currentSection.text = [];
+        currentSection.text.push(point);
+      }
+      continue;
+    }
+
+    // Párrafos regulares o metadatos de rol (fechas, empresa, ubicación)
+    const cleaned = cleanText(trimmed);
+    if (currentItem) {
+      if (
+        !currentItem.meta &&
+        (trimmed.includes("**") ||
+          trimmed.includes("*") ||
+          trimmed.includes("·") ||
+          trimmed.includes("—"))
+      ) {
+        currentItem.meta = cleaned;
+      } else {
+        currentItem.description = currentItem.description
+          ? `${currentItem.description} ${cleaned}`
+          : cleaned;
+      }
+    } else if (currentSection) {
+      if (!currentSection.text) currentSection.text = [];
+      currentSection.text.push(cleaned);
+    }
+  }
+
+  return { name, headline, contact, sections };
+}
+
+function escapeToml(str: string): string {
+  return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, " ");
+}
+
+function cvToToml(s: CVStructured): string {
+  const out: string[] = [];
+  out.push(`name = "${escapeToml(s.name)}"`);
+  out.push(`headline = "${escapeToml(s.headline)}"`);
+  if (s.contact.length > 0) {
+    out.push("contact = [");
+    for (const c of s.contact) {
+      out.push(`  "${escapeToml(c)}",`);
+    }
+    out.push("]");
+  }
+  out.push("");
+
+  for (const sec of s.sections) {
+    out.push("[[sections]]");
+    out.push(`title = "${escapeToml(sec.title)}"`);
+    if (sec.text && sec.text.length > 0) {
+      out.push("text = [");
+      for (const t of sec.text) out.push(`  "${escapeToml(t)}",`);
+      out.push("]");
+    }
+    out.push("");
+
+    for (const item of sec.items) {
+      out.push("  [[sections.items]]");
+      out.push(`  title = "${escapeToml(item.title)}"`);
+      if (item.meta) out.push(`  meta = "${escapeToml(item.meta)}"`);
+      if (item.description)
+        out.push(`  description = "${escapeToml(item.description)}"`);
+      if (item.points && item.points.length > 0) {
+        out.push("  points = [");
+        for (const p of item.points) out.push(`    "${escapeToml(p)}",`);
+        out.push("  ]");
+      }
+      out.push("");
+    }
+  }
+  return out.join("\n").trim() + "\n";
+}
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function cvToXml(s: CVStructured): string {
+  const out: string[] = [];
+  out.push('<?xml version="1.0" encoding="UTF-8"?>');
+  out.push("<resume>");
+  out.push(`  <name>${escapeXml(s.name)}</name>`);
+  out.push(`  <headline>${escapeXml(s.headline)}</headline>`);
+  if (s.contact.length > 0) {
+    out.push("  <contact>");
+    for (const c of s.contact) out.push(`    <entry>${escapeXml(c)}</entry>`);
+    out.push("  </contact>");
+  }
+  out.push("  <sections>");
+  for (const sec of s.sections) {
+    out.push(`    <section title="${escapeXml(sec.title)}">`);
+    if (sec.text && sec.text.length > 0) {
+      for (const t of sec.text) out.push(`      <text>${escapeXml(t)}</text>`);
+    }
+    if (sec.items.length > 0) {
+      out.push("      <items>");
+      for (const item of sec.items) {
+        out.push("        <item>");
+        out.push(`          <title>${escapeXml(item.title)}</title>`);
+        if (item.meta)
+          out.push(`          <meta>${escapeXml(item.meta)}</meta>`);
+        if (item.description)
+          out.push(
+            `          <description>${escapeXml(item.description)}</description>`,
+          );
+        if (item.points && item.points.length > 0) {
+          out.push("          <points>");
+          for (const p of item.points)
+            out.push(`            <point>${escapeXml(p)}</point>`);
+          out.push("          </points>");
+        }
+        out.push("        </item>");
+      }
+      out.push("      </items>");
+    }
+    out.push("    </section>");
+  }
+  out.push("  </sections>");
+  out.push("</resume>");
+  return out.join("\n");
 }
 
 function parseMarkdownCV(md: string): CVData {
@@ -117,7 +331,6 @@ function parseMarkdownCV(md: string): CVData {
       continue;
     }
 
-    // List item
     if (trimmed.startsWith("- ")) {
       if (!inList) {
         htmlParts.push("<ul>");
@@ -131,14 +344,12 @@ function parseMarkdownCV(md: string): CVData {
       inList = false;
     }
 
-    // H1
     if (trimmed.startsWith("# ")) {
       const title = inlineFormat(trimmed.slice(2));
       htmlParts.push("<h1>" + title + "</h1>");
       continue;
     }
 
-    // H2
     if (trimmed.startsWith("## ")) {
       const heading = trimmed.slice(3).trim();
       const rawText = cleanText(heading);
@@ -154,7 +365,6 @@ function parseMarkdownCV(md: string): CVData {
       continue;
     }
 
-    // H3
     if (trimmed.startsWith("### ")) {
       const heading = trimmed.slice(4).trim();
       const rawText = cleanText(heading);
@@ -183,7 +393,6 @@ function parseMarkdownCV(md: string): CVData {
       continue;
     }
 
-    // H4
     if (trimmed.startsWith("#### ")) {
       const heading = trimmed.slice(5).trim();
       const rawText = cleanText(heading);
@@ -192,7 +401,6 @@ function parseMarkdownCV(md: string): CVData {
       continue;
     }
 
-    // Párrafos
     const pLines: string[] = [];
     let j = i;
     while (
@@ -231,7 +439,17 @@ function parseMarkdownCV(md: string): CVData {
   }
 
   const fullHtml = htmlParts.join("\n");
-  return { html: fullHtml, items, pages: splitCVPages(fullHtml) };
+  const structured = parseCVStructured(md);
+
+  return {
+    html: fullHtml,
+    items,
+    pages: splitCVPages(fullHtml),
+    rawMarkdown: md,
+    json: JSON.stringify(structured, null, 2),
+    toml: cvToToml(structured),
+    xml: cvToXml(structured),
+  };
 }
 
 function parseHtmlCV(rawHtml: string): CVData {
@@ -274,22 +492,24 @@ function parseHtmlCV(rawHtml: string): CVData {
           if (!currentParent.subitems) currentParent.subitems = [];
           currentParent.subitems.push(subItem);
         } else {
-          items.push({
-            id,
-            label: shortLabel,
-            labelEs: shortLabel,
-          });
+          items.push({ id, label: shortLabel, labelEs: shortLabel });
         }
       }
 
-      if (idMatch) {
-        return match;
-      }
+      if (idMatch) return match;
       return `<${tag} id="${id}"${attrs}>${inner}</${tag}>`;
     },
   );
 
-  return { html: body, items, pages: splitCVPages(body) };
+  return {
+    html: body,
+    items,
+    pages: splitCVPages(body),
+    rawMarkdown: cleanText(body),
+    json: JSON.stringify({ raw: cleanText(body) }, null, 2),
+    toml: `raw = "${escapeToml(cleanText(body))}"\n`,
+    xml: `<?xml version="1.0" encoding="UTF-8"?>\n<resume><raw>${escapeXml(cleanText(body))}</raw></resume>`,
+  };
 }
 
 export function getCVData(locale: "en" | "es"): CVData {
@@ -300,6 +520,10 @@ export function getCVData(locale: "en" | "es"): CVData {
       html: "<p>CV not found.</p>",
       items: [],
       pages: ["<p>CV not found.</p>", "", ""],
+      rawMarkdown: "",
+      json: "{}",
+      toml: "",
+      xml: "",
     };
   }
 

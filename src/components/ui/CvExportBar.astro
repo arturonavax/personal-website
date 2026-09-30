@@ -1,0 +1,163 @@
+---
+import type { Locale } from "@/i18n/ui";
+
+interface Props {
+  locale: Locale;
+  rawMarkdown: string;
+  jsonCV: string;
+  tomlCV: string;
+  xmlCV: string;
+}
+
+const { locale, rawMarkdown, jsonCV, tomlCV, xmlCV } = Astro.props;
+
+const t = {
+  en: {
+    title: "Raw Data & Export Formats",
+    description:
+      "Copy the complete resume in structured formats optimized for LLM context windows, automated ATS ingestion, or terminal pipelines.",
+    copied: "Copied!",
+    formats: [
+      { id: "markdown", label: "Markdown", ext: ".md", symbol: "M↓" },
+      { id: "json", label: "JSON", ext: ".json", symbol: "{ }" },
+      { id: "toml", label: "TOML", ext: ".toml", symbol: "[ ]" },
+      { id: "xml", label: "XML", ext: ".xml", symbol: "< >" },
+    ],
+  },
+  es: {
+    title: "Datos en Bruto y Formatos de Exportación",
+    description:
+      "Copia el currículum completo en formatos estructurados optimizados para contexto de LLMs, parseo de ATS o pipelines de consola.",
+    copied: "¡Copiado!",
+    formats: [
+      { id: "markdown", label: "Markdown", ext: ".md", symbol: "M↓" },
+      { id: "json", label: "JSON", ext: ".json", symbol: "{ }" },
+      { id: "toml", label: "TOML", ext: ".toml", symbol: "[ ]" },
+      { id: "xml", label: "XML", ext: ".xml", symbol: "< >" },
+    ],
+  },
+}[locale];
+---
+
+<div
+  class="no-print mt-6 w-full max-w-[210mm] mx-auto rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-5 shadow-lg space-y-3 font-mono text-xs"
+  data-cv-export-root
+>
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-[var(--color-surface-border-subtle)] pb-3">
+    <div>
+      <h3 class="font-bold text-sm text-[var(--color-text-primary)] flex items-center gap-2">
+        <svg
+          class="h-4 w-4 text-[var(--color-accent-gold)] shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        <span>{t.title}</span>
+      </h3>
+      <p class="text-[11px] text-[var(--color-text-secondary)] font-sans mt-0.5">
+        {t.description}
+      </p>
+    </div>
+    <span class="text-[10px] font-bold text-[var(--color-accent-gold)] uppercase tracking-wider px-2 py-0.5 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)] self-start sm:self-auto shrink-0">
+      4 Formats
+    </span>
+  </div>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+    {t.formats.map((fmt) => (
+      <button
+        type="button"
+        data-copy-format={fmt.id}
+        data-copied-label={t.copied}
+        data-default-label={fmt.label}
+        class="group flex items-center justify-between gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] active:scale-95 transition-all cursor-pointer shadow-xs"
+      >
+        <span class="flex items-center gap-1.5">
+          <span class="text-[10px] text-[var(--color-accent-gold)] font-mono font-bold">
+            {fmt.symbol}
+          </span>
+          <span class="copy-btn-label">{fmt.label}</span>
+        </span>
+        <span class="text-[10px] text-[var(--color-text-muted)] group-hover:text-[var(--color-accent-gold)] font-mono">
+          {fmt.ext}
+        </span>
+      </button>
+    ))}
+  </div>
+
+  <!-- Payload serializado de forma segura en build-time para evitar escapes en atributos -->
+  <script
+    type="application/json"
+    id="cv-export-data-payload"
+    set:html={JSON.stringify({
+      markdown: rawMarkdown,
+      json: jsonCV,
+      toml: tomlCV,
+      xml: xmlCV,
+    })}
+  />
+</div>
+
+<script is:inline>
+  (function () {
+    function setupCvExport() {
+      var root = document.querySelector("[data-cv-export-root]");
+      if (!root || root.dataset.bound) return;
+      root.dataset.bound = "true";
+
+      var payloadEl = root.querySelector("#cv-export-data-payload");
+      if (!payloadEl) return;
+
+      var data = {};
+      try {
+        data = JSON.parse(payloadEl.textContent || "{}");
+      } catch (_) {
+        return;
+      }
+
+      var buttons = root.querySelectorAll("[data-copy-format]");
+      buttons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var format = btn.getAttribute("data-copy-format");
+          var textToCopy = data[format];
+          if (!textToCopy) return;
+
+          navigator.clipboard.writeText(textToCopy).then(function () {
+            var labelEl = btn.querySelector(".copy-btn-label");
+            var originalText =
+              btn.getAttribute("data-default-label") ||
+              (labelEl ? labelEl.textContent : "");
+            var copiedText = btn.getAttribute("data-copied-label") || "Copied!";
+
+            if (labelEl) labelEl.textContent = copiedText;
+            btn.classList.add(
+              "border-[var(--color-accent-gold)]",
+              "text-[var(--color-accent-gold)]",
+            );
+
+            setTimeout(function () {
+              if (labelEl) labelEl.textContent = originalText;
+              btn.classList.remove(
+                "border-[var(--color-accent-gold)]",
+                "text-[var(--color-accent-gold)]",
+              );
+            }, 2000);
+          });
+        });
+      });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupCvExport);
+    } else {
+      setupCvExport();
+    }
+    document.addEventListener("astro:page-load", setupCvExport);
+  })();
+</script>

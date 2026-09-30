@@ -4,9 +4,10 @@ import { BASE_ORIGIN } from "@/utils/attribution";
 
 interface Props {
   locale: Locale;
+  defaultMedium?: string;
 }
 
-const { locale } = Astro.props;
+const { locale, defaultMedium = "html" } = Astro.props;
 
 const t = {
   en: {
@@ -43,6 +44,7 @@ const t = {
   data-cv-attribution-root
   data-locale={locale}
   data-base-origin={BASE_ORIGIN}
+  data-default-medium={defaultMedium}
 >
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--color-surface-border-subtle)] pb-3">
     <div>
@@ -61,10 +63,8 @@ const t = {
     </div>
   </div>
 
-  <!-- Controles: Input con botón X, Randomizer y Copiar ID -->
   <div class="space-y-3">
     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-      <!-- Input de UTM Content con botón 'X' integrado -->
       <div class="relative flex-1 flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 focus-within:border-[var(--color-accent-gold)] focus-within:ring-1 focus-within:ring-[var(--color-accent-gold)]">
         <input
           type="text"
@@ -94,7 +94,6 @@ const t = {
       </div>
 
       <div class="flex items-center gap-2 shrink-0">
-        <!-- Botón Random ID -->
         <button
           type="button"
           id="cv-random-btn"
@@ -115,7 +114,6 @@ const t = {
           <span>{t.randomBtn}</span>
         </button>
 
-        <!-- Botón Copiar ID -->
         <button
           type="button"
           id="cv-copy-id-btn"
@@ -139,7 +137,6 @@ const t = {
       </div>
     </div>
 
-    <!-- Toggle de prefijo -->
     <div class="flex flex-wrap items-center gap-3 text-[11px] text-[var(--color-text-muted)]">
       <label class="inline-flex items-center gap-1.5 cursor-pointer select-none hover:text-[var(--color-text-primary)] transition-colors">
         <input
@@ -175,6 +172,7 @@ const t = {
       var locale = root.getAttribute("data-locale") || "en";
       var baseOrigin =
         root.getAttribute("data-base-origin") || "https://arturonavax.dev";
+      var targetMedium = root.getAttribute("data-default-medium") || "html";
 
       var contentInput = root.querySelector("#cv-utm-content");
       var clearBtn = root.querySelector("#cv-clear-content-btn");
@@ -186,7 +184,6 @@ const t = {
       var copyIdText = root.querySelector("#cv-copy-id-text");
       var counterEl = root.querySelector("#cv-tagged-counter");
 
-      // Coleccionar enlaces de navegación interna del documento CV
       var links = cvSheet.querySelectorAll("a[href]");
       var internalLinks = [];
 
@@ -248,6 +245,12 @@ const t = {
             return;
           }
 
+          if (!url.pathname.endsWith("/")) {
+            if (!/\.[a-zA-Z0-9]+$/i.test(url.pathname)) {
+              url.pathname = url.pathname.replace(/\/+$/, "") + "/";
+            }
+          }
+
           var p = url.pathname.toLowerCase();
           var campaign = "resume-header";
           if (p.includes("/projects")) campaign = "resume-project";
@@ -259,10 +262,9 @@ const t = {
             "utm_source",
             locale === "es" ? "cv-es" : "cv-en",
           );
-          url.searchParams.set("utm_medium", "pdf");
+          url.searchParams.set("utm_medium", targetMedium); // 'html' en la página
           url.searchParams.set("utm_campaign", campaign);
 
-          // Si el campo está vacío, elimina utm_content del link
           if (contentVal) {
             url.searchParams.set("utm_content", contentVal);
           } else {
@@ -331,7 +333,6 @@ const t = {
         });
       }
 
-      // Inicialización inmediata al entrar a la página
       applyAttribution();
     }
 
