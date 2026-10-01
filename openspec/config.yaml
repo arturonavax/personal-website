@@ -1,0 +1,65 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: Astro v7.3.4 (SSG), Cloudflare Pages/Worker/D1, Tailwind v4.3.3, TypeScript 5.9.3, pnpm 12.5.1
+  Architecture: Pure Edge SSG (0 KB client JS baseline), Cloudflare Worker + D1 analytics, strict Zod content schemas
+  Testing: No automated test framework configured (unit/integration/e2e unavailable; strict_tdd: false)
+  Quality: pnpm check (astro check & TS diagnostics), pnpm format:check (Prettier)
+
+strict_tdd: false
+
+testing:
+  strict_tdd: false
+  detected: "2026-09-30"
+  workspace_test_command: ""
+  projects:
+    - path: "."
+      stack: "Astro v7.3.4, Cloudflare Pages/Worker/D1, Tailwind v4.3.3, TypeScript 5.9.3, pnpm 12.5.1"
+      test_command: ""
+      framework: ""
+      layers:
+        unit: false
+        integration: false
+        e2e: false
+      coverage_command: ""
+      linter: "pnpm check"
+      type_checker: "pnpm check"
+      formatter: "pnpm format:check"
+
+projects:
+  - path: "."
+    stack: "Astro v7.3.4, Cloudflare Pages/Worker/D1, Tailwind v4.3.3, TypeScript 5.9.3, pnpm 12.5.1"
+    test_command: ""
+    framework: ""
+    coverage_command: ""
+    lint_command: "pnpm check"
+    typecheck_command: "pnpm check"
+    format_command: "pnpm format:check"
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Maintain 0 KB baseline client JS and strict typing guarantees
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing code patterns
+      - Pure Edge SSG compilation with 0 KB baseline client JS
+      - Strict TypeScript mode without any
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: "pnpm check && pnpm build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

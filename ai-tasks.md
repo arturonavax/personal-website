@@ -57,3 +57,5 @@
     [] Considerar integrar boton de Download PDF (archivo .pdf directo) si se detecta que el navegador no es composible con print local de PDF, como en Smartwatches.
 
 [] Confirmar que worker.ts este en la version mas profesional y refinada posible, que se ignore ninguna acceso real y tenga un mecanismo para tratar de ignorar peticiones de prefetch que no garanticen visita real.
+
+[] Crear el "CV Maker" en la ruta /resume/maker/ , el cual reutiliza muchos componentes y herramientas ya existentes para: Mostrar en un textarea estilo editor de codigo el markdown actual original de mi CV (en su respectivo idioma), un select para agregar numero de telefono a la contactabilidad del header (el select activa un input para ponerlo), y un boton de print para descargar el CV de ese markdown convertirdo a HTML con los mismos estilos que la ruta /resume/ original (y tambien al fondo los mismos componentes como cambiar el utm_content y copiar en distintos formatos, y (esto es nuevo) toolbar para desactivar todos los links, agregar o quizas secciones y parte de la contactabilidad del header, etc).

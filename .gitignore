@@ -3,6 +3,7 @@ dist/
 
 # generated types & cache
 .astro/
+.codegraph/
 
 # dependencies
 node_modules/
@@ -29,3 +30,7 @@ lighthouse-desktop.json
 lighthouse-mobile.json
 prompt-perf.json
 .wrangler/
+
+# Agent Tooling
+.atl/
+.engram/
