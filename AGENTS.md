@@ -190,8 +190,44 @@ When delivering code or architecture decisions:
 
 ---
 
+## 6. MCP & KNOWLEDGE SYSTEMS PROTOCOL (CODEGRAPH & ENGRAM)
+
+### CodeGraph (`codegraph_explore` / CLI `codegraph`)
+
+- **Configuración Local**:
+  - Exclusiones estrictas configuradas en [`codegraph.json`](codegraph.json) (`src/content/**` excluido para preservar la densidad del grafo y evitar polución de tokens con prosa Markdown).
+  - Directorio de base de datos e índices SQLite `.codegraph/` ignorado en `.gitignore`.
+- **CUÁNDO usarlo**:
+  1. **Antes de editar código**: Obligatorio antes de refactorizar o modificar cualquier componente Astro, layout o módulo en `src/data/`, `src/i18n/`, `src/utils/` o `cloudflare/`.
+  2. **Exploración de Arquitectura y Blast Radius**: Para determinar llamadores (`callers`), dependencias (`callees`) e impacto transversal sin loops manuales de `grep`/`find`.
+  3. **Resolución de bugs**: Para rastrear el flujo exacto de símbolos tipados y sus referencias cruzadas.
+- **CÓMO usarlo**:
+  - Vía MCP: Ejecutar `codegraph_explore` con `projectPath` apuntando a la raíz del repositorio y `query` con los símbolos o rutas objetivo (ej. `"cv.ts searchIndex.ts getCounterpartUrl"`).
+  - Vía CLI: `codegraph status`, `codegraph sync`, o `codegraph explore "<query>"`.
+  - **Restricción**: NUNCA indexar ni consultar archivos Markdown de contenido (`src/content/`) mediante CodeGraph.
+
+### Engram Persistent Memory (CLI `engram` / MCP `mem_*`)
+
+- **Configuración Local**:
+  - Proyecto inicializado explícitamente en `.engram/config.json` (`project_name: "personal-website"`).
+- **CUÁNDO usarlo**:
+  1. **Al iniciar sesión o nuevo flujo**: Consultar memoria activa o contexto previo (`engram context personal-website` o `mem_context`) para no repetir análisis ni ignorar decisiones tomadas.
+  2. **Proactivamente tras decisiones clave (OBLIGATORIO)**:
+     - Cambios de arquitectura, infraestructura o configuración (`output: 'static'`, routing, D1, Tailwind v4).
+     - Corrección de bugs no triviales (documentando causa raíz).
+     - Convenciones de equipo o patrones descubiertos.
+     - Preferencias y restricciones específicas del usuario.
+  3. **Al finalizar la sesión**: Registrar resumen estructurado (`mem_session_summary` o `engram save`).
+- **CÓMO usarlo**:
+  - Guardar memoria usando título declarativo (Verbo + objeto), tipo (`architecture`, `bugfix`, `decision`, `pattern`), topic_key estable (`--topic "architecture/..."`) y formato estándar (What, Why, Where, Learned).
+  - **Garantía de Entrega (Delivery Guarantee)**: Guardar en memoria es bookkeeping interno; **NUNCA** sustituye la entrega completa de la respuesta técnica al usuario.
+
+---
+
 # PROJECT MEMORY & DECISIONS
 
 - [2026-09] Tailwind v4 configured via `@theme` in `src/styles/global.css`. Creating `tailwind.config.js` is strictly forbidden.
 - [2026-09] The `posts` collection strictly enforces a Zod schema requiring `pubDate` and `tags`.
 - [2026-09] Pure static deployment on Cloudflare Pages (`output: 'static'`). 0 KB baseline client-side JS enforced as an architectural invariant.
+- [2026-09] CodeGraph configured with `.codegraph/` gitignored and `src/content/**` excluded in `codegraph.json`.
+- [2026-09] Engram initialized in `.engram/config.json` under project `personal-website` with architectural context persisted.
