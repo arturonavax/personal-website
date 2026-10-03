@@ -1,4 +1,4 @@
-Contact: mailto:arturonavax@gmail.com
+Contact: mailto:arturo@arturonavax.dev
 Expires: 2027-12-31T23:59:59.000Z
 Preferred-Languages: en, es
 Canonical: https://arturonavax.dev/.well-known/security.txt
