@@ -1,0 +1,100 @@
+[
+  {
+    "description": "Redirect thematic subdomain blog.arturonavax.dev to apex canonical /blog",
+    "expression": "http.host eq \"blog.arturonavax.dev\"",
+    "action": "redirect",
+    "action_parameters": {
+      "from_value": {
+        "status_code": 308,
+        "target_url": {
+          "expression": "concat(\"https://arturonavax.dev/blog\", http.request.uri.path, (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
+        },
+        "preserve_query_string": true
+      }
+    }
+  },
+  {
+    "description": "Redirect thematic subdomain projects.arturonavax.dev to apex canonical /projects",
+    "expression": "http.host eq \"projects.arturonavax.dev\"",
+    "action": "redirect",
+    "action_parameters": {
+      "from_value": {
+        "status_code": 308,
+        "target_url": {
+          "expression": "concat(\"https://arturonavax.dev/projects\", http.request.uri.path, (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
+        },
+        "preserve_query_string": true
+      }
+    }
+  },
+  {
+    "description": "Redirect thematic subdomain services.arturonavax.dev to apex canonical /services",
+    "expression": "http.host eq \"services.arturonavax.dev\"",
+    "action": "redirect",
+    "action_parameters": {
+      "from_value": {
+        "status_code": 308,
+        "target_url": {
+          "expression": "concat(\"https://arturonavax.dev/services\", http.request.uri.path, (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
+        },
+        "preserve_query_string": true
+      }
+    }
+  },
+  {
+    "description": "Redirect thematic subdomain experience.arturonavax.dev to apex canonical /experience",
+    "expression": "http.host eq \"experience.arturonavax.dev\"",
+    "action": "redirect",
+    "action_parameters": {
+      "from_value": {
+        "status_code": 308,
+        "target_url": {
+          "expression": "concat(\"https://arturonavax.dev/experience\", http.request.uri.path, (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
+        },
+        "preserve_query_string": true
+      }
+    }
+  },
+  {
+    "description": "Redirect thematic subdomain resume.arturonavax.dev to apex canonical /resume",
+    "expression": "http.host eq \"resume.arturonavax.dev\"",
+    "action": "redirect",
+    "action_parameters": {
+      "from_value": {
+        "status_code": 308,
+        "target_url": {
+          "expression": "concat(\"https://arturonavax.dev/resume\", http.request.uri.path, (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
+        },
+        "preserve_query_string": true
+      }
+    }
+  },
+  {
+    "description": "Redirect thematic subdomain maker.arturonavax.dev to apex canonical /resume/maker",
+    "expression": "http.host eq \"maker.arturonavax.dev\"",
+    "action": "redirect",
+    "action_parameters": {
+      "from_value": {
+        "status_code": 308,
+        "target_url": {
+          "expression": "concat(\"https://arturonavax.dev/resume/maker\", http.request.uri.path, (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
+        },
+        "preserve_query_string": true
+      }
+    }
+  },
+  {
+    "description": "Redirect apex admin path to dedicated admin.arturonavax.dev isolated surface",
+    "expression": "http.host eq \"arturonavax.dev\" and (http.request.uri.path eq \"/admin\" or starts_with(http.request.uri.path, \"/admin/\"))",
+    "action": "redirect",
+    "action_parameters": {
+      "from_value": {
+        "status_code": 308,
+        "target_url": {
+          "expression": "concat(\"https://admin.arturonavax.dev\", substring(http.request.uri.path, 6), (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
+        },
+        "preserve_query_string": true
+      }
+    }
+  }
+]

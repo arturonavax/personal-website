@@ -1,5 +1,7 @@
 {
   "name": "Arturo Nava Private Analytics Gateway",
+  "domain": "admin.arturonavax.dev",
+  "application_domain": "admin.arturonavax.dev",
   "decision": "allow",
   "include": [
     {

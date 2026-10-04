@@ -9,9 +9,13 @@ import {
   createSearchAdapter,
   createCaptchaAdapter,
   createStorageAdapter,
+  CloudflareEdgeRoutingPolicy,
+  FailOpenCircuitBreaker,
+  StaticMemorySearchAdapter,
 } from "../src/lib/adapters";
+import type { SearchResultItem } from "../src/lib/ports/search.port";
 
-interface Env {
+export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   STORAGE_BUCKET?: R2Bucket;
@@ -42,6 +46,9 @@ const TRACKING_PARAMS = [
   "gclid",
 ];
 
+const routingPolicy = new CloudflareEdgeRoutingPolicy();
+const circuitBreaker = new FailOpenCircuitBreaker();
+
 export default {
   async fetch(
     request: Request,
@@ -49,8 +56,38 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     const url = new URL(request.url);
+    const host = url.hostname.toLowerCase();
 
-    // 1. Identify Speculative Prefetch Requests
+    // -------------------------------------------------------------------------
+    // 1. FAST-PATH: Subdomain Canonicalization & Apex Admin Surface Redirect (REQ-PCD-02, REQ-PCD-03)
+    // -------------------------------------------------------------------------
+    const redirect = routingPolicy.resolveCanonicalRedirect(url);
+    if (redirect.shouldRedirect && redirect.targetUrl) {
+      return Response.redirect(redirect.targetUrl, redirect.statusCode);
+    }
+
+    // Isolated Admin Surface on Dedicated Subdomain (Cloudflare Access Zero Trust)
+    if (host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev") {
+      return handleAdminDashboardRequest(request, env, ctx);
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. FAST-PATH: Immutable Static Assets & Typography (REQ-PCD-01, REQ-PCD-06)
+    // -------------------------------------------------------------------------
+    const pathname = url.pathname;
+    const isImmutableAsset =
+      pathname.startsWith("/_astro/") || pathname.startsWith("/fonts/");
+
+    if (isImmutableAsset) {
+      const response = await env.ASSETS.fetch(request);
+      const headers = new Headers(response.headers);
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      return new Response(response.body, { status: response.status, headers });
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. Speculative Prefetch Detection (Bypass Telemetry)
+    // -------------------------------------------------------------------------
     const secPurpose = request.headers.get("sec-purpose") || "";
     const purpose = request.headers.get("purpose") || "";
     const isPrefetch =
@@ -60,233 +97,51 @@ export default {
       request.headers.get("x-astro-prefetch") !== null ||
       request.headers.get("X-Astro-Prefetch") !== null;
 
-    // 2. Semantic Search Endpoint with Query Parameter Normalization (SPEC-003 Section 2.2 & 3.2.2)
-    if (url.pathname === "/api/search") {
-      const cleanUrl = new URL(request.url);
-      for (const param of TRACKING_PARAMS) {
-        cleanUrl.searchParams.delete(param);
-      }
-
-      const q = cleanUrl.searchParams.get("q") || "";
-      const locale = cleanUrl.searchParams.get("locale") || "en";
-      const limit = Number(cleanUrl.searchParams.get("limit") || 8);
-      const threshold = cleanUrl.searchParams.get("threshold")
-        ? Number(cleanUrl.searchParams.get("threshold"))
-        : undefined;
-
-      if (!q.trim()) {
-        return new Response(JSON.stringify({ results: [] }), {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "public, max-age=60, s-maxage=300",
-          },
-        });
-      }
-
-      try {
-        const searchAdapter = createSearchAdapter({
-          env: {
-            APP_SEARCH_DRIVER: env.APP_SEARCH_DRIVER,
-            AI: env.AI,
-            VECTORIZE_INDEX: env.VECTORIZE_INDEX,
-          },
-          executionCtx: ctx,
-        });
-
-        const results = await searchAdapter.search({
-          query: q,
-          locale,
-          limit,
-          threshold,
-        });
-
-        return new Response(JSON.stringify({ results }), {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "public, max-age=60, s-maxage=300",
-          },
-        });
-      } catch (err) {
-        return new Response(
-          JSON.stringify({
-            results: [],
-            error: err instanceof Error ? err.message : "Search failed",
-          }),
-          {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
+    // -------------------------------------------------------------------------
+    // 4. Dedicated API Endpoints (Search, Captcha, Ingestion, Storage)
+    // -------------------------------------------------------------------------
+    if (pathname === "/api/search") {
+      return handleSemanticSearch(request, env, ctx, url);
     }
 
-    // 3. Captcha / Bot Verification Endpoint (SPEC-003 Section 1.1.4 & 3.4)
-    if (url.pathname === "/api/verify-captcha" && request.method === "POST") {
-      try {
-        const body = (await request.json()) as { token?: string };
-        const clientIp = request.headers.get("cf-connecting-ip") || undefined;
-        const captchaAdapter = createCaptchaAdapter({
-          env: {
-            APP_CAPTCHA_DRIVER: env.APP_CAPTCHA_DRIVER,
-            TURNSTILE_SECRET_KEY: env.TURNSTILE_SECRET_KEY,
-          },
-          executionCtx: ctx,
-        });
-
-        const result = await captchaAdapter.verify({
-          token: body.token || "",
-          remoteIp: clientIp,
-        });
-
-        return new Response(JSON.stringify(result), {
-          status: result.success ? 200 : 403,
-          headers: { "Content-Type": "application/json" },
-        });
-      } catch {
-        return new Response(
-          JSON.stringify({ success: false, error: "Invalid request" }),
-          {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
+    if (pathname === "/api/verify-captcha" && request.method === "POST") {
+      return handleCaptchaVerification(request, env, ctx);
     }
 
-    // 4. Telemetry Ingestion Endpoint
-    if (url.pathname === "/api/v1/telemetry" && request.method === "POST") {
-      if (isPrefetch) {
-        return new Response(null, { status: 204 });
-      }
-
-      ctx.waitUntil(
-        (async () => {
-          try {
-            const payload = (await request.json()) as Record<string, unknown>;
-            const userAgent =
-              request.headers.get("user-agent")?.slice(0, 512) || "unknown";
-            const country =
-              (request as unknown as { cf?: { country?: string } }).cf
-                ?.country ||
-              request.headers.get("cf-ipcountry") ||
-              "XX";
-
-            const now = Date.now();
-            const path = String(payload.path || "").slice(0, 255);
-            const locale = String(payload.locale || "en").slice(0, 10);
-            const visitorHash = String(payload.visitorHash || "").slice(0, 32);
-
-            // Record raw edge telemetry event
-            const telemetryPromise = env.DB.prepare(
-              `INSERT INTO edge_telemetry_events (
-                id, timestamp, path, locale, country, user_agent, visitor_hash
-              ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            )
-              .bind(
-                crypto.randomUUID(),
-                now,
-                path,
-                locale,
-                country,
-                userAgent,
-                visitorHash,
-              )
-              .run();
-
-            // Record into pageview_events for SPEC-003 Daily Rollups
-            const rollupEventPromise = env.DB.prepare(
-              `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
-               VALUES (?, ?, ?, ?, ?)`,
-            )
-              .bind(
-                path,
-                locale,
-                country,
-                String(payload.referrer || "Direct").slice(0, 255),
-                now,
-              )
-              .run();
-
-            await Promise.all([telemetryPromise, rollupEventPromise]);
-          } catch {
-            // Edge telemetry errors discarded defensively
-          }
-        })(),
-      );
-
-      return new Response(JSON.stringify({ status: "queued", queued: true }), {
-        status: 202,
-        headers: { "Content-Type": "application/json" },
-      });
+    if (pathname === "/api/v1/telemetry" && request.method === "POST") {
+      return handleTelemetryIngestion(request, env, ctx, isPrefetch);
     }
 
-    // 5. Pageview analytics for GET requests
-    const isGet = request.method === "GET";
-    if (isGet) {
-      const pathname = url.pathname.replace(/\/+$/, "") || "/";
-      const isStatic =
-        STATIC_EXT_REGEX.test(pathname) || pathname.startsWith("/_astro/");
+    if (pathname.startsWith("/cdn-assets/") && env.STORAGE_BUCKET) {
+      return handleCdnStorageAsset(request, env, ctx, url);
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. FAST-PATH: Public Document Delivery & Non-Blocking Telemetry (REQ-PCD-01, REQ-PCD-04)
+    // -------------------------------------------------------------------------
+    // Start asset fetching immediately with zero pre-fetch compute overhead
+    const assetResponsePromise = env.ASSETS.fetch(request);
+
+    // Asynchronous decoupled telemetry in background via ctx.waitUntil
+    if (request.method === "GET" && !isPrefetch && env.DB) {
+      const isStatic = STATIC_EXT_REGEX.test(pathname);
       const acceptHeader = request.headers.get("accept") || "";
       const isHtml = acceptHeader.includes("text/html");
-
       const secFetchDest = request.headers.get("sec-fetch-dest");
       const isDocumentNavigation = !secFetchDest || secFetchDest === "document";
 
       if (
         !isStatic &&
-        isHtml &&
-        isDocumentNavigation &&
-        !isPrefetch &&
-        env.DB
+        (isHtml || isDocumentNavigation || !pathname.includes("."))
       ) {
-        ctx.waitUntil(recordAnalytics(request, pathname, env.DB));
+        ctx.waitUntil(recordAnalyticsNonBlocking(request, pathname, env.DB));
       }
     }
 
-    // 6. R2 Class B Optimization via Workers Cache API (SPEC-004 REQ-EDG-03)
-    if (url.pathname.startsWith("/cdn-assets/") && env.STORAGE_BUCKET) {
-      const key = url.pathname.replace(/^\/cdn-assets\//, "");
-      const storageAdapter = createStorageAdapter({
-        env: {
-          APP_STORAGE_DRIVER: env.APP_STORAGE_DRIVER,
-          STORAGE_BUCKET: env.STORAGE_BUCKET,
-        },
-        executionCtx: ctx,
-      });
+    const response = await assetResponsePromise;
 
-      const item = await storageAdapter.get(key);
-      if (!item) {
-        return new Response("Not Found", { status: 404 });
-      }
-
-      return new Response(item.data, {
-        status: 200,
-        headers: {
-          "Content-Type": item.metadata.contentType,
-          "Content-Length": String(item.metadata.sizeBytes),
-          ...(item.metadata.etag ? { ETag: item.metadata.etag } : {}),
-          "Cache-Control":
-            "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
-        },
-      });
-    }
-
-    // 7. Delegate to Static Assets
-    const response = await env.ASSETS.fetch(request);
-
-    // 7. Immutable Cache-Control for Hashed Assets & Specific PDF Cache Rules
-    if (
-      url.pathname.startsWith("/_astro/") ||
-      url.pathname.startsWith("/fonts/")
-    ) {
-      const headers = new Headers(response.headers);
-      headers.set("Cache-Control", "public, max-age=31536000, immutable");
-      return new Response(response.body, { status: response.status, headers });
-    }
-
-    if (url.pathname.endsWith(".pdf")) {
+    // RFC 9111 Cache Directives for PDF Documents
+    if (pathname.endsWith(".pdf")) {
       const headers = new Headers(response.headers);
       headers.set(
         "Cache-Control",
@@ -298,7 +153,7 @@ export default {
     return response;
   },
 
-  // Cron Trigger Engine for Analytics Rollups (SPEC-003 Section 2.3.2)
+  // Cron Trigger Engine for Daily Analytics Rollups (SPEC-003 Section 2.3.2)
   async scheduled(
     controller: ScheduledController,
     env: Env,
@@ -317,7 +172,332 @@ export default {
   },
 };
 
-async function recordAnalytics(
+/**
+ * Semantic Search Handler with Fail-Open Circuit Breaker (REQ-PCD-05)
+ */
+async function handleSemanticSearch(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+): Promise<Response> {
+  const cleanUrl = new URL(request.url);
+  for (const param of TRACKING_PARAMS) {
+    cleanUrl.searchParams.delete(param);
+  }
+
+  const q = cleanUrl.searchParams.get("q") || "";
+  const locale = cleanUrl.searchParams.get("locale") || "en";
+  const limit = Number(cleanUrl.searchParams.get("limit") || 8);
+  const threshold = cleanUrl.searchParams.get("threshold")
+    ? Number(cleanUrl.searchParams.get("threshold"))
+    : undefined;
+
+  if (!q.trim()) {
+    return new Response(JSON.stringify({ results: [] }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=60, s-maxage=300",
+      },
+    });
+  }
+
+  let results: SearchResultItem[] = [];
+
+  try {
+    results = await circuitBreaker.executeWithFallback(
+      async () => {
+        const searchAdapter = createSearchAdapter({
+          env: {
+            APP_SEARCH_DRIVER: env.APP_SEARCH_DRIVER,
+            AI: env.AI,
+            VECTORIZE_INDEX: env.VECTORIZE_INDEX,
+          },
+          executionCtx: ctx,
+        });
+
+        return await searchAdapter.search({
+          query: q,
+          locale,
+          limit,
+          threshold,
+        });
+      },
+      await new StaticMemorySearchAdapter().search({
+        query: q,
+        locale,
+        limit,
+        threshold,
+      }),
+      350,
+      "semantic-search",
+    );
+  } catch {
+    results = await new StaticMemorySearchAdapter().search({
+      query: q,
+      locale,
+      limit,
+      threshold,
+    });
+  }
+
+  return new Response(JSON.stringify({ results }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=60, s-maxage=300",
+    },
+  });
+}
+
+/**
+ * Captcha Verification with Fail-Open Circuit Breaker (REQ-PCD-05)
+ */
+async function handleCaptchaVerification(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  try {
+    const body = (await request.json()) as { token?: string };
+    const clientIp = request.headers.get("cf-connecting-ip") || undefined;
+    const captchaAdapter = createCaptchaAdapter({
+      env: {
+        APP_CAPTCHA_DRIVER: env.APP_CAPTCHA_DRIVER,
+        TURNSTILE_SECRET_KEY: env.TURNSTILE_SECRET_KEY,
+      },
+      executionCtx: ctx,
+    });
+
+    const result = await circuitBreaker.executeWithFallback(
+      () =>
+        captchaAdapter.verify({
+          token: body.token || "",
+          remoteIp: clientIp,
+        }),
+      { success: false, error: "Verification timeout" },
+      500,
+      "captcha-verify",
+    );
+
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({ success: false, error: "Invalid request" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+}
+
+/**
+ * Telemetry Ingestion Handler with Immediate 202 Queued Response (REQ-PCD-04)
+ */
+async function handleTelemetryIngestion(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  isPrefetch: boolean,
+): Promise<Response> {
+  if (isPrefetch) {
+    return new Response(null, { status: 204 });
+  }
+
+  ctx.waitUntil(
+    (async () => {
+      try {
+        const payload = (await request.json()) as Record<string, unknown>;
+        const userAgent =
+          request.headers.get("user-agent")?.slice(0, 512) || "unknown";
+        const country =
+          (request as unknown as { cf?: { country?: string } }).cf?.country ||
+          request.headers.get("cf-ipcountry") ||
+          "XX";
+
+        const now = Date.now();
+        const path = String(payload.path || "").slice(0, 255);
+        const locale = String(payload.locale || "en").slice(0, 10);
+        const visitorHash = String(payload.visitorHash || "").slice(0, 32);
+
+        if (!env.DB) return;
+
+        const telemetryPromise = env.DB.prepare(
+          `INSERT INTO edge_telemetry_events (
+            id, timestamp, path, locale, country, user_agent, visitor_hash
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        )
+          .bind(
+            crypto.randomUUID(),
+            now,
+            path,
+            locale,
+            country,
+            userAgent,
+            visitorHash,
+          )
+          .run();
+
+        const rollupEventPromise = env.DB.prepare(
+          `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
+           VALUES (?, ?, ?, ?, ?)`,
+        )
+          .bind(
+            path,
+            locale,
+            country,
+            String(payload.referrer || "Direct").slice(0, 255),
+            now,
+          )
+          .run();
+
+        await Promise.all([telemetryPromise, rollupEventPromise]);
+      } catch {
+        // Fail-open: Telemetry errors discarded defensively
+      }
+    })(),
+  );
+
+  return new Response(JSON.stringify({ status: "queued", queued: true }), {
+    status: 202,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * R2 Storage Asset Handler via Workers Cache API (SPEC-003, SPEC-004 REQ-EDG-03)
+ */
+async function handleCdnStorageAsset(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+): Promise<Response> {
+  const key = url.pathname.replace(/^\/cdn-assets\//, "");
+  const storageAdapter = createStorageAdapter({
+    env: {
+      APP_STORAGE_DRIVER: env.APP_STORAGE_DRIVER,
+      STORAGE_BUCKET: env.STORAGE_BUCKET,
+    },
+    executionCtx: ctx,
+  });
+
+  const item = await storageAdapter.get(key);
+  if (!item) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  return new Response(item.data, {
+    status: 200,
+    headers: {
+      "Content-Type": item.metadata.contentType,
+      "Content-Length": String(item.metadata.sizeBytes),
+      ...(item.metadata.etag ? { ETag: item.metadata.etag } : {}),
+      "Cache-Control":
+        "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+    },
+  });
+}
+
+/**
+ * Isolated Cloudflare Access Admin Surface Handler (REQ-PCD-02)
+ */
+export async function handleAdminDashboardRequest(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const url = new URL(request.url);
+
+  if (url.pathname === "/status" || url.pathname === "/api/status") {
+    return new Response(
+      JSON.stringify({
+        status: "healthy",
+        surface: "admin-isolated",
+        environment: "production",
+        timestamp: new Date().toISOString(),
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store, private",
+          "X-Frame-Options": "DENY",
+          "X-Content-Type-Options": "nosniff",
+        },
+      },
+    );
+  }
+
+  if (url.pathname === "/api/metrics") {
+    let rollups: unknown[] = [];
+    if (env.DB) {
+      try {
+        const query = await env.DB.prepare(
+          "SELECT * FROM daily_analytics_rollups ORDER BY date DESC LIMIT 30",
+        ).all();
+        rollups = query.results || [];
+      } catch {
+        // Fail-open
+      }
+    }
+    return new Response(JSON.stringify({ metrics: rollups }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, private",
+      },
+    });
+  }
+
+  const adminHtml = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Dashboard — arturonavax.dev</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; background: #0c0a09; color: #f5f5f4; padding: 2rem; }
+    h1 { color: #f59e0b; margin-bottom: 0.5rem; }
+    .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: #292524; color: #10b981; font-size: 0.875rem; border: 1px solid #44403c; }
+    .card { background: #1c1917; border: 1px solid #292524; padding: 1.5rem; border-radius: 8px; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Admin Management Surface</h1>
+  <p><span class="badge">Isolated Zero Trust Surface</span> Authenticated via Cloudflare Access</p>
+  <div class="card">
+    <h2>Edge Health & Security Status</h2>
+    <p>Host: <code>admin.arturonavax.dev</code></p>
+    <p>Zero Trust Boundary: Active</p>
+    <p>Public Content Coupling: 0%</p>
+  </div>
+</body>
+</html>`;
+
+  return new Response(adminHtml, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store, private",
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+    },
+  });
+}
+
+/**
+ * Asynchronous Non-Blocking Analytics Logger (REQ-PCD-04, REQ-PCD-05)
+ * Runs strictly within ctx.waitUntil without adding any latency to the critical response path.
+ */
+export async function recordAnalyticsNonBlocking(
   request: Request,
   path: string,
   db: D1Database,
@@ -331,7 +511,7 @@ async function recordAnalytics(
     const cf = (request as unknown as { cf?: { country?: string } }).cf;
     const country = cf?.country || "XX";
 
-    // 1. Extraer Parámetros de Atribución (UTM, Ref y Content/ID)
+    // 1. Extraer Parámetros de Atribución
     let utmSource =
       url.searchParams.get("utm_source") || url.searchParams.get("ref");
     let utmMedium = url.searchParams.get("utm_medium");
@@ -339,7 +519,7 @@ async function recordAnalytics(
     const utmContent = url.searchParams.get("utm_content") || "";
     const utmTerm = url.searchParams.get("utm_term") || "";
 
-    // 2. Normalizar Referrer HTTP si no hay UTM explícito
+    // 2. Normalizar Referrer HTTP
     let referrer = "Direct";
     if (referrerHeader) {
       try {
@@ -356,11 +536,10 @@ async function recordAnalytics(
       }
     }
 
-    // 3. Fallback inteligente exhaustivo de Plataformas y Motores de Búsqueda
+    // 3. Fallback exhaustivo de Plataformas y Buscadores
     if (!utmSource) {
       const ref = referrer.toLowerCase();
 
-      // Buscadores (Organic Search)
       if (
         ref.includes("google.") ||
         ref.includes("bing.") ||
@@ -372,9 +551,7 @@ async function recordAnalytics(
       ) {
         utmSource = ref.split(".")[0];
         utmMedium = utmMedium || "organic";
-      }
-      // Redes Profesionales y Desarrollo
-      else if (ref.includes("linkedin.com") || ref.includes("lnkd.in")) {
+      } else if (ref.includes("linkedin.com") || ref.includes("lnkd.in")) {
         utmSource = "linkedin";
         utmMedium = utmMedium || "social";
       } else if (ref.includes("github.com")) {
@@ -392,9 +569,7 @@ async function recordAnalytics(
       } else if (ref.includes("kaggle.com")) {
         utmSource = "kaggle";
         utmMedium = utmMedium || "community";
-      }
-      // Redes Sociales y Contenido
-      else if (
+      } else if (
         ref.includes("t.co") ||
         ref.includes("x.com") ||
         ref.includes("twitter.com")
@@ -428,9 +603,7 @@ async function recordAnalytics(
       } else if (ref.includes("notion.so") || ref.includes("notion.site")) {
         utmSource = "notion";
         utmMedium = utmMedium || "referral";
-      }
-      // Mensajería y Trabajo en Equipo
-      else if (ref.includes("whatsapp.com") || ref.includes("wa.me")) {
+      } else if (ref.includes("whatsapp.com") || ref.includes("wa.me")) {
         utmSource = "whatsapp";
         utmMedium = utmMedium || "chat";
       } else if (ref.includes("telegram.org") || ref.includes("t.me")) {
@@ -448,9 +621,7 @@ async function recordAnalytics(
       } else if (ref.includes("chat.google.com")) {
         utmSource = "google-chat";
         utmMedium = utmMedium || "chat";
-      }
-      // Referrers genéricos o visitas directas
-      else if (referrer !== "Direct" && referrer !== "Invalid") {
+      } else if (referrer !== "Direct" && referrer !== "Invalid") {
         utmSource = referrer;
         utmMedium = utmMedium || "referral";
       } else {
@@ -500,7 +671,7 @@ async function recordAnalytics(
       )
       .run();
 
-    // 2. Inserción en pageview_events para SPEC-003 Daily Rollups si no es bot
+    // 2. Inserción en pageview_events para Daily Rollups si no es bot
     if (!isBot) {
       const rollupInsert = db
         .prepare(
@@ -521,6 +692,7 @@ async function recordAnalytics(
       await pageviewsInsert;
     }
   } catch (err) {
-    console.error("[Analytics Error]:", err);
+    // Fail-open resilience: Never bubble database errors to client
+    console.error("[Analytics Background Error - Fail-Open]:", err);
   }
 }
