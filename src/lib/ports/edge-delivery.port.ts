@@ -48,4 +48,3 @@ export interface FailOpenCircuitBreakerPort {
     operationName: string,
   ): Promise<T>;
 }
-
