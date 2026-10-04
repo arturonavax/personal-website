@@ -196,6 +196,24 @@ const searchIndexPath = "/search-index.json";
 <!-- Pure Vanilla Keystroke Search Engine (0 KB External JS, Decoupled Search Index) -->
 <script>
   import { isSearchOpen, toggleSearchModal } from "@/stores/uiState";
+  import { navigate } from "astro:transitions/client";
+
+  function executeSearchNavigation(targetUrl: string): void {
+    const dialog = document.querySelector<HTMLDialogElement>("#search-dialog");
+    if (dialog && dialog.open) {
+      dialog.close();
+    }
+    if (isSearchOpen.get()) {
+      toggleSearchModal(false);
+    }
+    navigate(targetUrl);
+  }
+
+  (
+    window as unknown as {
+      executeSearchNavigation: typeof executeSearchNavigation;
+    }
+  ).executeSearchNavigation = executeSearchNavigation;
 
   class UniversalSearchModalElement extends HTMLElement {
     private abortController: AbortController | null = null;
@@ -690,7 +708,17 @@ const searchIndexPath = "/search-index.json";
           } else if (e.key === "Enter") {
             if (selectedResultIndex >= 0 && items[selectedResultIndex]) {
               e.preventDefault();
-              items[selectedResultIndex].click();
+              var targetHref =
+                items[selectedResultIndex].getAttribute("href") ||
+                items[selectedResultIndex].href;
+              if (
+                targetHref &&
+                typeof window.executeSearchNavigation === "function"
+              ) {
+                window.executeSearchNavigation(targetHref);
+              } else {
+                items[selectedResultIndex].click();
+              }
             }
           }
         });
@@ -792,27 +820,56 @@ const searchIndexPath = "/search-index.json";
                 if (items[selectedResultIndex]) {
                   e.preventDefault();
                   e.stopPropagation();
-                  items[selectedResultIndex].click();
+                  var targetHref =
+                    items[selectedResultIndex].getAttribute("href") ||
+                    items[selectedResultIndex].href;
+                  if (
+                    targetHref &&
+                    typeof window.executeSearchNavigation === "function"
+                  ) {
+                    window.executeSearchNavigation(targetHref);
+                  } else {
+                    items[selectedResultIndex].click();
+                  }
                   return;
                 }
               }
             }
 
-            // 2. Si no hay ítem seleccionado, redirige a la página dedicada de búsqueda
+            // 2. Si no hay ítem seleccionado, redirige a la página dedicada de búsqueda sin recarga completa
             var q = searchInput.value.trim();
             if (q) {
               e.preventDefault();
               e.stopPropagation();
               var targetUrl = getBasePath() + "?q=" + encodeURIComponent(q);
 
-              // Cerrar modal antes de transicionar para evitar parpadeos visuales
-              var currentDialog = document.getElementById("search-dialog");
-              if (currentDialog && currentDialog.open) {
-                currentDialog.close();
+              if (typeof window.executeSearchNavigation === "function") {
+                window.executeSearchNavigation(targetUrl);
+              } else {
+                var currentDialog = document.getElementById("search-dialog");
+                if (currentDialog && currentDialog.open) {
+                  currentDialog.close();
+                }
+                window.location.href = targetUrl;
               }
-
-              window.location.href = targetUrl;
             }
+          }
+        });
+      }
+
+      // Interceptar clics en resultados para SPA navigation
+      var resultsContainer = document.getElementById("search-results-list");
+      if (resultsContainer && !boundElements.has(resultsContainer)) {
+        boundElements.add(resultsContainer);
+        resultsContainer.addEventListener("click", function (e) {
+          var link = e.target.closest("a[data-search-item]");
+          if (
+            link &&
+            link.href &&
+            typeof window.executeSearchNavigation === "function"
+          ) {
+            e.preventDefault();
+            window.executeSearchNavigation(link.href);
           }
         });
       }

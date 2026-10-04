@@ -1,4 +1,10 @@
 @import "tailwindcss";
+@import "./resume.css";
+
+/* Scroll margin alignment against sticky navbar (REQ-09) */
+[id] {
+  scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem);
+}
 
 @theme {
   --font-sans:
@@ -417,21 +423,69 @@ html[data-timeline-incoming="past"] #experience-article {
   }
 }
 
-/* Print Optimization: Guaranteed pure white paper sheets and light scheme across all browsers */
+/* Print Styles Normalization (Firefox, Safari, Chromium) - REQ-08 */
 @media print {
-  :root,
+  @page {
+    margin: 1.2cm 1cm 1.2cm 1cm;
+    size: A4 portrait;
+  }
+
   html,
   body {
     color-scheme: light !important;
     background: #ffffff !important;
     background-color: #ffffff !important;
-    color: #1e293b !important;
+    color: #111827 !important;
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
+
+  /* Structural UI suppression */
+  header,
+  footer,
+  nav,
+  aside,
+  dialog,
+  .print-hidden,
+  .no-print,
+  #desktop-page-index,
+  #mobile-page-index-root,
+  #mobile-page-index-container,
+  #matrix-background,
   #matrix-container,
   #matrix-canvas,
   canvas {
     display: none !important;
-    visibility: hidden !important;
+  }
+
+  /* Clean print boundaries */
+  article:not(.cv-document):not(.resume-document),
+  section,
+  .resume-entry-block {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Multi-page document sheets must allow natural pagination */
+  #cv-document-sheet,
+  #resume-live-preview,
+  article.cv-document,
+  article.resume-document,
+  .cv-document,
+  .resume-document {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    background: #ffffff !important;
   }
 }
 
@@ -459,13 +513,18 @@ header {
   display: inline-block !important;
 }
 
-/* Circular Wave Theme Transition - Compositor-Accelerated Wave */
+/* Circular Wave Theme Transition - Compositor-Accelerated Wave (REQ-10 Hardened) */
 html.theme-transitioning,
 html.theme-transitioning *,
 html.theme-transitioning *::before,
 html.theme-transitioning *::after {
   transition: none !important;
   animation-play-state: paused !important;
+}
+
+::view-transition-group(root) {
+  animation-duration: 0.38s;
+  contain: paint;
 }
 
 :root[data-theme-transitioning]::view-transition-old(root),

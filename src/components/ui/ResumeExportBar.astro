@@ -1,15 +1,32 @@
 ---
-import type { Locale } from "@/i18n/ui";
+import type { Locale } from "@/i18n/locales";
+import { getResumeData } from "@/data/resume";
 
 interface Props {
-  locale: Locale;
-  rawMarkdown: string;
-  jsonCV: string;
-  tomlCV: string;
-  xmlCV: string;
+  locale?: Locale | undefined;
+  currentLocale?: Locale | undefined;
+  rawMarkdown?: string | undefined;
+  jsonCV?: string | undefined;
+  tomlCV?: string | undefined;
+  xmlCV?: string | undefined;
 }
 
-const { locale, rawMarkdown, jsonCV, tomlCV, xmlCV } = Astro.props;
+const {
+  locale: propLocale,
+  currentLocale,
+  rawMarkdown: propMarkdown,
+  jsonCV: propJson,
+  tomlCV: propToml,
+  xmlCV: propXml,
+} = Astro.props;
+
+const locale: Locale = currentLocale || propLocale || "en";
+const defaultResumeData = getResumeData(locale);
+
+const rawMarkdown = propMarkdown ?? defaultResumeData.rawMarkdown;
+const jsonCV = propJson ?? defaultResumeData.json;
+const tomlCV = propToml ?? defaultResumeData.toml;
+const xmlCV = propXml ?? defaultResumeData.xml;
 
 const t = {
   en: {
@@ -41,6 +58,7 @@ const t = {
 
 <div
   class="no-print mt-6 w-full max-w-[210mm] mx-auto rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-5 shadow-lg space-y-3 font-mono text-xs"
+  data-resume-export-root
   data-cv-export-root
 >
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-[var(--color-surface-border-subtle)] pb-3">
@@ -91,10 +109,10 @@ const t = {
     ))}
   </div>
 
-  <!-- Payload serializado de forma segura en build-time para evitar escapes en atributos -->
+  <!-- Payload serializado en build-time -->
   <script
     type="application/json"
-    id="cv-export-data-payload"
+    id="resume-export-data-payload"
     set:html={JSON.stringify({
       markdown: rawMarkdown,
       json: jsonCV,
@@ -104,36 +122,80 @@ const t = {
   />
 </div>
 
-<script is:inline>
-  (function () {
-    function setupCvExport() {
-      var root = document.querySelector("[data-cv-export-root]");
-      if (!root || root.dataset.bound) return;
+<script>
+  import {
+    parseMarkdownToResumeDataset,
+    serializeResumeToJSON,
+    serializeResumeToTOML,
+    serializeResumeToXML,
+  } from "@/utils/resumeExporters";
+
+  function setupResumeExport() {
+    const roots = document.querySelectorAll<HTMLElement>(
+      "[data-resume-export-root], [data-cv-export-root]",
+    );
+
+    roots.forEach((root) => {
+      if (root.dataset.bound) return;
       root.dataset.bound = "true";
 
-      var payloadEl = root.querySelector("#cv-export-data-payload");
-      if (!payloadEl) return;
-
-      var data = {};
+      const payloadEl = root.querySelector(
+        "#resume-export-data-payload, #cv-export-data-payload",
+      );
+      let initialData: Record<string, string> = {};
       try {
-        data = JSON.parse(payloadEl.textContent || "{}");
-      } catch (_) {
-        return;
+        initialData = JSON.parse(payloadEl?.textContent || "{}");
+      } catch (_) {}
+
+      function getExportContent(format: string): string {
+        // If an editor textarea exists (e.g. Resume Maker Studio), serialize dynamically
+        const editor = document.getElementById(
+          "markdown-raw-input",
+        ) as HTMLTextAreaElement | null;
+        const utmInput = document.getElementById(
+          "cv-utm-content",
+        ) as HTMLInputElement | null;
+        const utmTag = utmInput?.value?.trim() || "";
+
+        if (editor && editor.value) {
+          const currentMarkdown = editor.value;
+          if (format === "markdown") return currentMarkdown;
+
+          const dataset = parseMarkdownToResumeDataset(currentMarkdown);
+          if (format === "json") return serializeResumeToJSON(dataset, utmTag);
+          if (format === "toml") return serializeResumeToTOML(dataset, utmTag);
+          if (format === "xml") return serializeResumeToXML(dataset, utmTag);
+        }
+
+        // If utmTag exists on regular page, serialize with utmTag
+        if (utmTag && initialData.markdown) {
+          const dataset = parseMarkdownToResumeDataset(initialData.markdown);
+          if (format === "json") return serializeResumeToJSON(dataset, utmTag);
+          if (format === "toml") return serializeResumeToTOML(dataset, utmTag);
+          if (format === "xml") return serializeResumeToXML(dataset, utmTag);
+        }
+
+        return initialData[format] || "";
       }
 
-      var buttons = root.querySelectorAll("[data-copy-format]");
-      buttons.forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          var format = btn.getAttribute("data-copy-format");
-          var textToCopy = data[format];
+      const buttons =
+        root.querySelectorAll<HTMLButtonElement>("[data-copy-format]");
+      buttons.forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const format = btn.getAttribute("data-copy-format");
+          if (!format) return;
+          const textToCopy = getExportContent(format);
           if (!textToCopy) return;
 
-          navigator.clipboard.writeText(textToCopy).then(function () {
-            var labelEl = btn.querySelector(".copy-btn-label");
-            var originalText =
+          try {
+            await navigator.clipboard.writeText(textToCopy);
+            const labelEl = btn.querySelector<HTMLElement>(".copy-btn-label");
+            const originalText =
               btn.getAttribute("data-default-label") ||
-              (labelEl ? labelEl.textContent : "");
-            var copiedText = btn.getAttribute("data-copied-label") || "Copied!";
+              labelEl?.textContent ||
+              "";
+            const copiedText =
+              btn.getAttribute("data-copied-label") || "Copied!";
 
             if (labelEl) labelEl.textContent = copiedText;
             btn.classList.add(
@@ -141,23 +203,25 @@ const t = {
               "text-[var(--color-accent-gold)]",
             );
 
-            setTimeout(function () {
+            setTimeout(() => {
               if (labelEl) labelEl.textContent = originalText;
               btn.classList.remove(
                 "border-[var(--color-accent-gold)]",
                 "text-[var(--color-accent-gold)]",
               );
             }, 2000);
-          });
+          } catch (err) {
+            console.error("Clipboard copy failed:", err);
+          }
         });
       });
-    }
+    });
+  }
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", setupCvExport);
-    } else {
-      setupCvExport();
-    }
-    document.addEventListener("astro:page-load", setupCvExport);
-  })();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupResumeExport);
+  } else {
+    setupResumeExport();
+  }
+  document.addEventListener("astro:page-load", setupResumeExport);
 </script>

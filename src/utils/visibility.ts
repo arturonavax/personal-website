@@ -19,17 +19,17 @@ export interface VisibilityConfig {
  * If either `draft: true` or `visible: false` is set on the item (or on `item.data`),
  * it is considered hidden and will be completely excluded from public exposure.
  */
-export function isItemVisible(
-  item: VisibilityConfig | { data: VisibilityConfig } | null | undefined,
-): boolean {
-  if (!item) return false;
-  const target: VisibilityConfig =
-    "data" in item && typeof item.data === "object" && item.data !== null
-      ? (item.data as VisibilityConfig)
-      : (item as VisibilityConfig);
+export function isItemVisible(item: unknown): boolean {
+  if (!item || typeof item !== "object") return false;
+  const target: Record<string, unknown> =
+    "data" in item &&
+    typeof (item as { data: unknown }).data === "object" &&
+    (item as { data: unknown }).data !== null
+      ? (item as { data: Record<string, unknown> }).data
+      : (item as Record<string, unknown>);
 
-  if (target.draft === true) return false;
-  if (target.visible === false) return false;
+  if (target["draft"] === true) return false;
+  if (target["visible"] === false) return false;
   return true;
 }
 

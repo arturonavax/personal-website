@@ -96,15 +96,15 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
               {companyHeading}
             </span>
             <span class="text-[10px]">
-              {isEs
-                ? "(Selección múltiple disponible)"
-                : "(Multi-select enabled)"}
+              {isEs ? "(Selección exclusiva)" : "(Single-select)"}
             </span>
           </div>
           <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
             <button
               type="button"
               data-exp-filter="all"
+              data-filter-group="all"
+              aria-pressed="true"
               class="exp-filter-pill active rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] px-3 py-1.5 font-semibold text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
             >
               <span>{isEs ? "Todas" : "All"}</span>
@@ -116,6 +116,8 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
               <button
                 type="button"
                 data-exp-filter={c.name.toLowerCase()}
+                data-filter-group="company"
+                aria-pressed="false"
                 class="exp-filter-pill rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
               >
                 <span>{c.name}</span>
@@ -318,6 +320,9 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
         const isSelected =
           btnFilter === "all" ? isAllActive : activeFilters.has(btnFilter);
 
+        btn.setAttribute("aria-pressed", isSelected ? "true" : "false");
+        btn.classList.toggle("active", isSelected);
+
         if (isSelected) {
           btn.classList.add(
             "border-[var(--color-accent-gold)]",
@@ -411,10 +416,28 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
       window.history.replaceState({}, "", url.toString());
     }
 
-    function toggleFilter(filterKey: string) {
+    const companyButtons = root.querySelectorAll<HTMLButtonElement>(
+      'button[data-filter-group="company"]',
+    );
+    const companyKeys = new Set(
+      Array.from(companyButtons).map((b) =>
+        (b.getAttribute("data-exp-filter") || "").toLowerCase().trim(),
+      ),
+    );
+
+    function toggleFilter(filterKey: string, isCompany: boolean = false) {
       const filterNorm = filterKey.toLowerCase().trim();
       if (filterNorm === "all") {
         activeFilters.clear();
+      } else if (isCompany || companyKeys.has(filterNorm)) {
+        if (activeFilters.has(filterNorm)) {
+          // Si ya está activo, retorna a "All"
+          activeFilters.delete(filterNorm);
+        } else {
+          // Selección mutuamente excluyente de empresas
+          companyKeys.forEach((c) => activeFilters.delete(c));
+          activeFilters.add(filterNorm);
+        }
       } else {
         if (activeFilters.has(filterNorm)) {
           activeFilters.delete(filterNorm);
@@ -430,7 +453,8 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
       btn.dataset.bound = "true";
       btn.addEventListener("click", () => {
         const filter = btn.getAttribute("data-exp-filter") || "all";
-        toggleFilter(filter);
+        const isCompany = btn.getAttribute("data-filter-group") === "company";
+        toggleFilter(filter, isCompany);
       });
     });
 

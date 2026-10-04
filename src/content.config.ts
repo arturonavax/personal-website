@@ -1,6 +1,7 @@
 import { defineCollection } from "astro:content";
 import { z } from "astro/zod";
 import { glob } from "astro/loaders";
+import { SUPPORTED_LOCALES } from "./i18n/locales";
 
 const posts = defineCollection({
   loader: glob({
@@ -107,4 +108,30 @@ const services = defineCollection({
     }),
 });
 
-export const collections = { posts, projects, experience, services };
+const resume = defineCollection({
+  loader: glob({
+    pattern: "ArturoNava-Resume-*.md",
+    base: "./src/content/resume",
+  }),
+  schema: z.object({
+    canonicalId: z.string().default("arturo-nava-resume"),
+    locale: z.enum(SUPPORTED_LOCALES),
+    title: z.string().min(1),
+    name: z.string().min(1),
+    role: z.string().min(1),
+    location: z.string().min(1),
+    summary: z.string().min(1),
+    updatedDate: z.coerce.date(),
+    draft: z.boolean().default(false),
+    visible: z.boolean().default(true),
+    skills: z.record(z.string(), z.array(z.string())),
+    contact: z.object({
+      email: z.string().email(),
+      github: z.string().url(),
+      linkedin: z.string().url(),
+      website: z.string().url(),
+    }),
+  }),
+});
+
+export const collections = { posts, projects, experience, services, resume };

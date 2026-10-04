@@ -1,5 +1,5 @@
 import { isItemVisible } from "@/utils/visibility";
-import { hasResume } from "./cv";
+import { hasResume } from "./resume";
 
 export interface ShortcutItem {
   id: string;

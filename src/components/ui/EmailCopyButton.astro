@@ -1,0 +1,95 @@
+---
+interface Props {
+  email: string;
+  label?: string;
+  class?: string;
+  buttonClass?: string;
+}
+
+const {
+  email,
+  label,
+  class: className = "",
+  buttonClass = "group inline-flex items-center gap-1.5 font-mono text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-accent-gold)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent-gold)] cursor-pointer",
+} = Astro.props;
+---
+
+<email-copy-trigger
+  data-email={email}
+  class={`inline-flex items-center gap-1.5 ${className}`}
+>
+  <button
+    type="button"
+    class={buttonClass}
+    aria-label={`Copy email address ${email} to clipboard`}
+  >
+    <span>{label || email}</span>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      class="h-3.5 w-3.5 opacity-60 transition-transform group-hover:scale-110 group-active:scale-95"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+    </svg>
+  </button>
+
+  <span
+    class="copy-feedback pointer-events-none fixed bottom-6 right-6 z-50 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-primary)] opacity-0 shadow-lg transition-opacity duration-200"
+    role="status"
+    aria-live="polite"
+  >
+    Copied to clipboard
+  </span>
+</email-copy-trigger>
+
+<script>
+  class EmailCopyTrigger extends HTMLElement {
+    private button: HTMLButtonElement | null = null;
+    private feedback: HTMLElement | null = null;
+    private timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    connectedCallback(): void {
+      this.button = this.querySelector("button");
+      this.feedback = this.querySelector(".copy-feedback");
+      this.button?.addEventListener("click", this.handleCopy);
+    }
+
+    disconnectedCallback(): void {
+      this.button?.removeEventListener("click", this.handleCopy);
+      if (this.timeoutId) clearTimeout(this.timeoutId);
+    }
+
+    private handleCopy = async (e: Event): Promise<void> => {
+      e.preventDefault();
+      e.stopPropagation();
+      const email = this.dataset.email;
+      if (!email) return;
+
+      try {
+        await navigator.clipboard.writeText(email);
+        if (this.feedback) {
+          this.feedback.classList.remove("opacity-0");
+          this.feedback.classList.add("opacity-100");
+          if (this.timeoutId) clearTimeout(this.timeoutId);
+          this.timeoutId = setTimeout(() => {
+            this.feedback?.classList.remove("opacity-100");
+            this.feedback?.classList.add("opacity-0");
+          }, 2000);
+        }
+      } catch (err) {
+        console.error("Clipboard write operation failed:", err);
+      }
+    };
+  }
+
+  if (!customElements.get("email-copy-trigger")) {
+    customElements.define("email-copy-trigger", EmailCopyTrigger);
+  }
+</script>

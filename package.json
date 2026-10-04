@@ -23,6 +23,7 @@
     "@astrojs/sitemap": "3.7.4",
     "@tailwindcss/vite": "4.3.3",
     "astro": "7.3.4",
+    "marked": "^18.0.14",
     "nanostores": "^1.5.4",
     "sharp": "0.35.4",
     "tailwindcss": "4.3.3"

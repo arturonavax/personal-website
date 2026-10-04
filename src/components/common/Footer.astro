@@ -1,6 +1,7 @@
 ---
 import type { Locale } from "@/i18n/ui";
 import { useTranslations } from "@/i18n/utils";
+import EmailCopyButton from "@/components/ui/EmailCopyButton.astro";
 
 interface Props {
   locale: Locale;
@@ -126,25 +127,13 @@ const currentYear = new Date().getFullYear();
         <span>Instagram</span>
       </a>
 
-      <!-- Email -->
+      <!-- Email (Anti-Mailto Accessible Clipboard Protocol) -->
       <!--email_off-->
-      <a
-        href="mailto:arturo@arturonavax.dev"
-        aria-label="Email Arturo Nava"
-        class="group flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] shrink-0"
-      >
-        <svg
-          class="h-4 w-4 stroke-current fill-none"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-          <polyline points="22,6 12,13 2,6"></polyline>
-        </svg>
-        <span>{t("cta.email")}</span>
-      </a>
+      <EmailCopyButton
+        email="arturo@arturonavax.dev"
+        label={t("cta.email")}
+        class="shrink-0"
+      />
       <!--/email_off-->
 
       <!-- RSS -->

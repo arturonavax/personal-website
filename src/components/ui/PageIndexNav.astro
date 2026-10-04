@@ -779,7 +779,15 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           isProgrammaticScroll = false;
         }, 800);
 
-        var headerOffset = window.innerWidth < 640 ? 20 : 84;
+        function getHeaderOffset() {
+          var headerEl =
+            document.getElementById("site-header") ||
+            document.querySelector("header");
+          var h = headerEl ? headerEl.offsetHeight : 56;
+          return h + 24;
+        }
+
+        var headerOffset = getHeaderOffset();
         var elementPosition =
           targetEl.getBoundingClientRect().top + window.pageYOffset;
         window.scrollTo({
@@ -804,7 +812,10 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         if (now - lastStepTime < 260) return true;
         lastStepTime = now;
 
-        var headerOffset = window.innerWidth < 640 ? 20 : 84;
+        var headerEl =
+          document.getElementById("site-header") ||
+          document.querySelector("header");
+        var headerOffset = (headerEl ? headerEl.offsetHeight : 56) + 24;
         var threshold = headerOffset + 18;
         var documentHeight = document.documentElement.scrollHeight || 3000;
 

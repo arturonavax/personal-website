@@ -1,3 +1,74 @@
+---
+canonicalId: "arturo-nava-resume"
+locale: "en"
+title: "Arturo Nava — Senior Software Engineer | Resume"
+name: "Arturo Nava"
+role: "Senior Software Engineer | Distributed Systems, High-Concurrency & Security"
+location: "Bogota, D.C., Colombia"
+summary: "Senior Software Engineer with 8+ years of experience designing and scaling mission-critical distributed architectures, high-throughput backend services, and enterprise security platforms across fintech, loyalty, and cryptographic verification domains. Specialized in engineering low-latency, concurrent microservices in Golang and Rust, architecting real-time dynamic fraud evaluation engines, implementing cryptographic authentication (TOTP/HMAC), and decoupling high-volume transactional OLTP databases from Snowflake OLAP analytics. Proven track record of driving system resilience, zero-downtime rollouts, automated access governance, and enterprise-grade DevSecOps standards."
+updatedDate: 2026-09-26
+skills:
+  Languages:
+    - "Golang (Goroutines, Channels, Low-Level Concurrency)"
+    - "Rust"
+    - "Node.js / TypeScript"
+    - "Python"
+    - "Bash"
+    - "SQL"
+    - "C / Assembly (SIMD)"
+  Distributed Systems & Architecture:
+    - "Clean / Hexagonal Architecture"
+    - "Event-Driven Systems"
+    - "Concurrency Patterns (Worker Pools, Mutexes, WaitGroups)"
+    - "High-Throughput REST & gRPC APIs"
+    - "Distributed Caching (Redis)"
+    - "Connection Pooling"
+    - "Dynamic Rule Engines"
+  Data & Storage:
+    - "PostgreSQL"
+    - "AWS DynamoDB"
+    - "Snowflake (OLAP Analytics)"
+    - "Redis"
+    - "MySQL / MariaDB"
+    - "SQLite"
+    - "LevelDB"
+    - "Aerospike"
+    - "Query Optimization"
+  Cybersecurity & Identity:
+    - "Application Security"
+    - "DevSecOps"
+    - "Shift-Left Security"
+    - "Vanta / SOC 2 Hardening"
+    - "CVE Remediation"
+    - "TOTP / MFA Authentication"
+    - "Cryptographic Signatures (HMAC, Webhooks)"
+    - "OAuth2"
+    - "Zero-Trust Architecture"
+    - "PII Data Minimization"
+    - "Container Hardening"
+  Cloud, Infrastructure & DevOps:
+    - "AWS (DynamoDB, SQS, Secrets Manager, Lambda, S3, IAM)"
+    - "Google Cloud (GCP, BigQuery)"
+    - "Docker"
+    - "Kubernetes"
+    - "CI/CD (Jenkins DinD, Pre-commit hooks)"
+    - "Feature Toggles (Unleash, Firebase Remote Config)"
+    - "Git"
+    - "Linux Kernel Internals (inotify)"
+  Engineering Practices:
+    - "Distributed System Design"
+    - "RFC & Technical Design Docs"
+    - "TDD"
+    - "Domain-Driven Design (DDD)"
+    - "CI/CD Automation"
+    - "Threat Modeling"
+contact:
+  email: "arturo@arturonavax.dev"
+  github: "https://github.com/arturonavax"
+  linkedin: "https://www.linkedin.com/in/arturonavax"
+  website: "https://arturonavax.dev"
+---
+
 # Arturo Nava
 
 **Senior Software Engineer | Distributed Systems, High-Concurrency & Security**  

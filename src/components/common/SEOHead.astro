@@ -29,7 +29,21 @@ const rawPath = Astro.url.pathname;
 // Asegurar siempre trailing slash en rutas normalizadas
 const normalizedPath = rawPath.endsWith("/") ? rawPath : `${rawPath}/`;
 
-const currentCanonical = canonicalUrl ?? `${siteUrl}${normalizedPath}`;
+const rawCanonical = canonicalUrl ?? `${siteUrl}${normalizedPath}`;
+let cleanCanonicalUrl = rawCanonical;
+try {
+  const parsed = new URL(rawCanonical, siteUrl);
+  parsed.search = "";
+  if (
+    !parsed.pathname.endsWith("/") &&
+    !/\.[a-zA-Z0-9]+$/i.test(parsed.pathname)
+  ) {
+    parsed.pathname = `${parsed.pathname}/`;
+  }
+  cleanCanonicalUrl = parsed.toString();
+} catch (_) {
+  cleanCanonicalUrl = rawCanonical.split("?")[0]!;
+}
 
 // Hreflang URLs con trailing slash estricto
 const enPath =
@@ -108,16 +122,49 @@ const resolvedOgImage = ogImage.startsWith("http")
 />
 
 <!-- Canonical URL -->
-<link rel="canonical" href={currentCanonical} />
+<link rel="canonical" href={cleanCanonicalUrl} />
 
 <!-- Alternate Multilingual Hreflang Tags -->
 <link rel="alternate" hreflang="en" href={enUrl} />
 <link rel="alternate" hreflang="es" href={esUrl} />
 <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
 
+<!-- Dynamic Canonical Synchronization across ClientRouter Transitions -->
+<script is:inline>
+  (function () {
+    function syncCanonical() {
+      const canonicalLink = document.querySelector('link[rel="canonical"]');
+      const ogUrlMeta = document.querySelector('meta[property="og:url"]');
+      const pathname = window.location.pathname.endsWith("/")
+        ? window.location.pathname
+        : window.location.pathname + "/";
+      const cleanUrl = window.location.origin + pathname;
+      if (canonicalLink) {
+        canonicalLink.setAttribute("href", cleanUrl);
+      }
+      if (ogUrlMeta) {
+        ogUrlMeta.setAttribute("content", cleanUrl);
+      }
+    }
+
+    document.addEventListener("astro:page-load", syncCanonical);
+    window.addEventListener("popstate", syncCanonical);
+    const originalReplaceState = history.replaceState;
+    history.replaceState = function () {
+      originalReplaceState.apply(this, arguments);
+      syncCanonical();
+    };
+    const originalPushState = history.pushState;
+    history.pushState = function () {
+      originalPushState.apply(this, arguments);
+      syncCanonical();
+    };
+  })();
+</script>
+
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content={type} />
-<meta property="og:url" content={currentCanonical} />
+<meta property="og:url" content={cleanCanonicalUrl} />
 <meta property="og:title" content={pageTitle} />
 <meta property="og:description" content={description} />
 <meta property="og:image" content={resolvedOgImage} />
@@ -143,7 +190,7 @@ const resolvedOgImage = ogImage.startsWith("http")
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@arturonavax" />
 <meta name="twitter:creator" content="@arturonavax" />
-<meta name="twitter:url" content={currentCanonical} />
+<meta name="twitter:url" content={cleanCanonicalUrl} />
 <meta name="twitter:title" content={pageTitle} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={resolvedOgImage} />
