@@ -16,9 +16,12 @@ export interface SearchDoc {
   url: string;
 }
 
-export async function getBilingualSearchDocuments(
-  preferredLocale: "en" | "es" = "en",
-): Promise<SearchDoc[]> {
+export interface SegmentedSearchIndex {
+  en: SearchDoc[];
+  es: SearchDoc[];
+}
+
+export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchIndex> {
   const [
     enProjects,
     esProjects,
@@ -205,8 +208,17 @@ export async function getBilingualSearchDocuments(
     }),
   ];
 
+  return {
+    en: enDocuments,
+    es: esDocuments,
+  };
+}
+
+export async function getBilingualSearchDocuments(
+  preferredLocale: "en" | "es" = "en",
+): Promise<SearchDoc[]> {
+  const { en, es } = await getSegmentedSearchDocuments();
+
   // Prioritize documents corresponding to preferred locale
-  return preferredLocale === "es"
-    ? [...esDocuments, ...enDocuments]
-    : [...enDocuments, ...esDocuments];
+  return preferredLocale === "es" ? [...es, ...en] : [...en, ...es];
 }

@@ -1,0 +1,49 @@
+---
+import { getCollection, render } from "astro:content";
+import ArticleLayout from "@/layouts/ArticleLayout.astro";
+import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
+
+export async function getStaticPaths() {
+  const projects = await getCollection("projects");
+
+  return projects.map((project) => {
+    const [localePart, ...slugParts] = project.id
+      .replace(/\.md$/, "")
+      .split("/");
+    const slugPart = slugParts.join("/");
+    const lang = localePart === DEFAULT_LOCALE ? undefined : localePart;
+
+    return {
+      params: {
+        lang,
+        slug: slugPart,
+      },
+      props: {
+        project,
+        currentLocale: localePart as SupportedLocale,
+      },
+    };
+  });
+}
+
+const { project, currentLocale } = Astro.props;
+const { Content } = await render(project);
+const isEs = currentLocale === "es";
+---
+
+<ArticleLayout
+  title={
+    isEs
+      ? `${project.data.title} — Análisis de Arquitectura`
+      : `${project.data.title} — Architecture Breakdown`
+  }
+  description={project.data.description}
+  locale={currentLocale}
+  translationKey={project.data.translationKey}
+  collectionName="projects"
+  backHref={isEs ? "/es/projects/" : "/projects/"}
+  backLabel={isEs ? "Volver a proyectos" : "Back to projects"}
+  tags={project.data.techStack}
+>
+  <Content />
+</ArticleLayout>

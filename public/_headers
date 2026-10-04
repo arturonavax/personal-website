@@ -1,11 +1,12 @@
-# Activos inmutables generados por Vite / Astro (1 año de caché determinista)
+# Immutable Cache Strategy for Fingerprinted Production Assets
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff
 
-# Fuentes autoalojadas (con CORS universal para permitir preload anónimo)
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
   Access-Control-Allow-Origin: *
+  X-Content-Type-Options: nosniff
 
 # Assets gráficos estáticos (OG cards, favicons, logos, avatares)
 /*.png
@@ -20,28 +21,32 @@
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 
 # Índices de búsqueda desacoplados
-/search-index-*.json
+/search-index*.json
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
 
-# Feeds, Sitemaps y robots
+# Raw Feeds and Discovery Artifacts
 /sitemap*.xml
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+  Cache-Control: public, max-age=3600, must-revalidate
+  Content-Type: application/xml; charset=UTF-8
+
 /rss.xml
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+  Cache-Control: public, max-age=3600, must-revalidate
+
 /robots.txt
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=3600, must-revalidate
 
-# Contexto para agentes LLM y crawlers de IA
-/llms.txt
-  Content-Type: text/plain; charset=utf-8
-  Cache-Control: public, max-age=86400, stale-while-revalidate=86400
-  Access-Control-Allow-Origin: *
+/llms*.txt
+  Cache-Control: public, max-age=3600, must-revalidate
+  Content-Type: text/plain; charset=UTF-8
 
-/llms-full.txt
-  Content-Type: text/plain; charset=utf-8
-  Cache-Control: public, max-age=86400, stale-while-revalidate=86400
-  Access-Control-Allow-Origin: *
+# Document Delivery with Instant Revalidation
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
 
 # Revalidación determinista para todas las rutas HTML (soporta trailing slashes y subrutas)
 /

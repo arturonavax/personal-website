@@ -1,0 +1,24 @@
+{
+  "name": "Arturo Nava Private Analytics Gateway",
+  "decision": "allow",
+  "include": [
+    {
+      "email": {
+        "email": "contact@arturonava.com"
+      }
+    }
+  ],
+  "require": [
+    {
+      "auth_method": {
+        "auth_method": "two_factor"
+      }
+    }
+  ],
+  "rules": [
+    {
+      "name": "Admins Only",
+      "action": "allow"
+    }
+  ]
+}

@@ -27,3 +27,19 @@ CREATE INDEX IF NOT EXISTS idx_pageviews_content ON pageviews(utm_content, creat
 
 -- Auditoría de referrers directos recibidos en cabeceras HTTP
 CREATE INDEX IF NOT EXISTS idx_pageviews_referrer ON pageviews(is_bot, referrer, created_at);
+
+-- Edge Telemetry Table for Zero-Tracking Analytics (SPEC-001)
+CREATE TABLE IF NOT EXISTS edge_telemetry_events (
+  id TEXT PRIMARY KEY,
+  timestamp INTEGER NOT NULL,
+  path TEXT NOT NULL,
+  locale TEXT NOT NULL,
+  country TEXT NOT NULL,
+  user_agent TEXT NOT NULL,
+  visitor_hash TEXT NOT NULL,
+  referrer TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON edge_telemetry_events(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_telemetry_path ON edge_telemetry_events(path);
+CREATE INDEX IF NOT EXISTS idx_telemetry_hash ON edge_telemetry_events(visitor_hash);

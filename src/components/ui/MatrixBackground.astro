@@ -1,191 +1,155 @@
 ---
-// Subtle Matrix / Hexadecimal Code Stream Background (Zero-Dependency Vanilla Canvas)
-// Manual Code Toggle: Set to false to completely deactivate and unmount from DOM
+// Subtle Matrix / Hexadecimal Code Stream Background (Zero-Dependency Custom Element)
 export const ENABLE_MATRIX_BACKGROUND = true;
 
 interface Props {
+  density?: number;
+  opacity?: number;
   enabled?: boolean;
 }
 
-const { enabled = ENABLE_MATRIX_BACKGROUND } = Astro.props;
+const {
+  density = 0.08,
+  opacity = 0.15,
+  enabled = ENABLE_MATRIX_BACKGROUND,
+} = Astro.props;
 ---
 
 {enabled && (
-  <div
-    id="matrix-container"
+  <matrix-canvas-layer
+    data-density={density}
+    data-opacity={opacity}
     transition:persist="matrix-canvas-background"
     class="pointer-events-none fixed inset-0 z-0 overflow-hidden opacity-20 dark:opacity-15 transition-opacity duration-500 hidden md:block"
     aria-hidden="true"
   >
-    <canvas id="matrix-canvas" class="h-full w-full"></canvas>
-  </div>
+    <canvas class="h-full w-full"></canvas>
+  </matrix-canvas-layer>
 )}
 
-<script is:inline>
-  (function () {
-    if (typeof window === "undefined") return;
+<script>
+  class MatrixCanvasLayer extends HTMLElement {
+    private canvas: HTMLCanvasElement | null = null;
+    private ctx: CanvasRenderingContext2D | null = null;
+    private animationFrameId: number | null = null;
+    private timeoutId: number | null = null;
+    private drops: number[] = [];
+    private resizeObserver: ResizeObserver | null = null;
 
-    var chars = "01010123456789ABCDEFλ§µsGoRustSIMDAVX2ptrchnsync".split("");
-    var fontSize = 14;
-    var fpsInterval = 75; // ~13 FPS for minimal desktop background CPU footprint
-    var timeoutId = null;
-
-    function getCanvasAndCtx() {
-      var canvas = document.getElementById("matrix-canvas");
-      if (!canvas) return null;
-      var ctx = canvas.getContext("2d");
-      return ctx ? { canvas: canvas, ctx: ctx } : null;
-    }
-
-    function ensureDrops(canvas) {
-      var columns = Math.floor(canvas.width / fontSize);
-      var maxRows = Math.floor(canvas.height / fontSize);
-      var drops = window.__matrixDrops;
-      if (!drops || drops.length === 0) {
-        drops = [];
-        for (var i = 0; i < columns; i++) {
-          drops[i] = Math.floor(Math.random() * maxRows);
-        }
-      } else if (drops.length !== columns) {
-        while (drops.length < columns) {
-          drops.push(Math.floor(Math.random() * maxRows));
-        }
-        if (drops.length > columns) {
-          drops.length = columns;
-        }
-      }
-      window.__matrixDrops = drops;
-      return drops;
-    }
-
-    function resize() {
+    connectedCallback() {
       if (window.innerWidth < 768) return;
-      var pair = getCanvasAndCtx();
-      if (!pair) return;
-      var canvas = pair.canvas;
-      if (
-        canvas.width !== window.innerWidth ||
-        canvas.height !== window.innerHeight
-      ) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
-      ensureDrops(canvas);
-    }
-
-    function draw() {
-      if (window.innerWidth < 768) return;
-      var pair = getCanvasAndCtx();
-      if (!pair) return;
-      var canvas = pair.canvas;
-      var ctx = pair.ctx;
-
-      var drops = ensureDrops(canvas);
-      var isLight =
-        document.documentElement.getAttribute("data-theme") === "light";
-      ctx.fillStyle = isLight
-        ? "rgba(244, 246, 248, 0.16)"
-        : "rgba(26, 2, 5, 0.12)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = isLight ? "#7A1C16" : "#D48B38";
-      ctx.font = fontSize + "px ui-monospace, monospace";
-
-      for (var i = 0; i < drops.length; i++) {
-        var char = chars[Math.floor(Math.random() * chars.length)] || "0";
-        var x = i * fontSize;
-        var y = drops[i] * fontSize;
-
-        if (drops[i] > 0) {
-          ctx.fillText(char, x, y);
-        }
-
-        if (y > canvas.height && Math.random() > 0.985) {
-          drops[i] = 0;
-        }
-        drops[i]++;
-      }
-    }
-
-    function loop() {
-      if (document.hidden || window.innerWidth < 768) {
-        window.__matrixRunning = false;
-        return;
-      }
-      window.__matrixRunning = true;
-      draw();
-      timeoutId = setTimeout(function () {
-        requestAnimationFrame(loop);
-      }, fpsInterval);
-    }
-
-    function start() {
-      if (
-        window.innerWidth < 768 ||
-        (window.matchMedia && window.matchMedia("(max-width: 767px)").matches)
-      )
-        return;
       if (
         window.matchMedia &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches
       )
         return;
 
-      resize();
+      this.canvas = this.querySelector("canvas");
+      if (!this.canvas) return;
+      this.ctx = this.canvas.getContext("2d");
+      if (!this.ctx) return;
 
-      if (!window.__matrixRunning) {
-        clearTimeout(timeoutId);
-        loop();
+      this.initCanvasDimensions();
+      this.initRain();
+      this.startRainLoop();
+
+      this.resizeObserver = new ResizeObserver(() => {
+        this.initCanvasDimensions();
+        this.initRain();
+      });
+      this.resizeObserver.observe(this);
+    }
+
+    disconnectedCallback() {
+      if (this.animationFrameId !== null) {
+        cancelAnimationFrame(this.animationFrameId);
+        this.animationFrameId = null;
+      }
+      if (this.timeoutId !== null) {
+        window.clearTimeout(this.timeoutId);
+        this.timeoutId = null;
+      }
+      if (this.resizeObserver) {
+        this.resizeObserver.disconnect();
+        this.resizeObserver = null;
       }
     }
 
-    function stop() {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-      window.__matrixRunning = false;
+    private initCanvasDimensions() {
+      if (!this.canvas) return;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = this.getBoundingClientRect();
+      const width = rect.width || window.innerWidth;
+      const height = rect.height || window.innerHeight;
+      this.canvas.width = width * dpr;
+      this.canvas.height = height * dpr;
+      if (this.ctx) {
+        this.ctx.resetTransform?.();
+        this.ctx.scale(dpr, dpr);
+      }
     }
 
-    if (!window.__matrixListenersAttached) {
-      window.__matrixListenersAttached = true;
+    private initRain() {
+      if (!this.canvas) return;
+      const fontSize = 14;
+      const columns = Math.floor(window.innerWidth / fontSize);
+      this.drops = new Array(columns)
+        .fill(1)
+        .map(() => Math.floor(Math.random() * 50));
+    }
 
-      window.addEventListener(
-        "resize",
-        function () {
-          if (window.innerWidth >= 768) {
-            resize();
-            if (!window.__matrixRunning) start();
-          } else {
-            stop();
+    private startRainLoop() {
+      const fontSize = 14;
+      const characters =
+        "01010123456789ABCDEFλ§µsGoRustSIMDAVX2ptrchnsync".split("");
+
+      const render = () => {
+        if (!this.ctx || !this.canvas || !this.isConnected) return;
+        if (document.hidden || window.innerWidth < 768) {
+          this.timeoutId = window.setTimeout(() => {
+            this.animationFrameId = requestAnimationFrame(render);
+          }, 200);
+          return;
+        }
+
+        const isLight =
+          document.documentElement.getAttribute("data-theme") === "light";
+        this.ctx.fillStyle = isLight
+          ? "rgba(244, 246, 248, 0.16)"
+          : "rgba(26, 2, 5, 0.12)";
+        this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+        this.ctx.fillStyle = isLight ? "#7A1C16" : "#D48B38";
+        this.ctx.font = `${fontSize}px ui-monospace, monospace`;
+
+        for (let i = 0; i < this.drops.length; i++) {
+          const dropY = this.drops[i] ?? 0;
+          const char =
+            characters[Math.floor(Math.random() * characters.length)] || "0";
+          const x = i * fontSize;
+          const y = dropY * fontSize;
+
+          if (dropY > 0) {
+            this.ctx.fillText(char, x, y);
           }
-        },
-        { passive: true },
-      );
 
-      document.addEventListener("visibilitychange", function () {
-        if (document.hidden) {
-          stop();
-        } else {
-          start();
+          if (y > window.innerHeight && Math.random() > 0.985) {
+            this.drops[i] = 0;
+          } else {
+            this.drops[i] = dropY + 1;
+          }
         }
-      });
 
-      document.addEventListener("astro:after-swap", function () {
-        if (window.innerWidth >= 768 && !window.__matrixRunning) {
-          start();
-        }
-      });
+        this.timeoutId = window.setTimeout(() => {
+          this.animationFrameId = requestAnimationFrame(render);
+        }, 75);
+      };
 
-      document.addEventListener("astro:page-load", function () {
-        if (window.innerWidth >= 768 && !window.__matrixRunning) {
-          start();
-        }
-      });
+      this.animationFrameId = requestAnimationFrame(render);
     }
+  }
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", start, { once: true });
-    } else {
-      start();
-    }
-  })();
+  if (!customElements.get("matrix-canvas-layer")) {
+    customElements.define("matrix-canvas-layer", MatrixCanvasLayer);
+  }
 </script>

@@ -65,8 +65,19 @@ export default defineConfig({
     prefetchAll: false,
     defaultStrategy: "hover",
   },
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "es"],
+    routing: {
+      prefixDefaultLocale: false,
+      redirectToDefaultLocale: false,
+    },
+  },
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      cssMinify: "lightningcss",
+    },
   },
   integrations: [
     sitemap({

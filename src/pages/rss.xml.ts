@@ -8,23 +8,28 @@ const BASE_EPOCH = new Date("2026-01-01T00:00:00Z").getTime();
 const DAY_MS = 86_400_000;
 
 export async function GET(context: APIContext) {
-  // 1. Intentar obtener artículos de blog reales si existen
+  // 1. Obtener todos los artículos de blog activos (bilingüe consolidado)
   let blogItems: any[] = [];
   try {
-    const posts = await getCollection(
-      "posts",
-      ({ data }) => data.locale === "en" && !data.draft,
-    );
+    const posts = await getCollection("posts", ({ data }) => !data.draft);
 
     if (posts.length > 0) {
       blogItems = posts
         .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
-        .map((post) => ({
-          title: post.data.title,
-          pubDate: post.data.pubDate,
-          description: post.data.description,
-          link: `/blog/${post.id.replace(/^en\//, "").replace(/\.(md|mdx)$/, "")}/`,
-        }));
+        .map((post) => {
+          const isEs = post.data.locale === "es";
+          const slug = post.id
+            .replace(/^(en|es)\//, "")
+            .replace(/\.(md|mdx)$/, "");
+          const link = isEs ? `/es/blog/${slug}/` : `/blog/${slug}/`;
+          const prefix = isEs ? "[ES] " : "";
+          return {
+            title: `${prefix}${post.data.title}`,
+            pubDate: post.data.pubDate,
+            description: post.data.description,
+            link,
+          };
+        });
     }
   } catch {
     blogItems = [];
@@ -34,15 +39,15 @@ export async function GET(context: APIContext) {
   let projectItems: any[] = [];
   if (blogItems.length === 0) {
     try {
-      const projects = await getCollection(
-        "projects",
-        ({ data }) => data.locale === "en",
-      );
+      const projects = await getCollection("projects");
 
       projectItems = projects
         .sort((a, b) => a.data.order - b.data.order)
         .map((project) => {
-          // Genera una fecha fija decreciente: order 1 = más reciente
+          const isEs = project.data.locale === "es";
+          const slug = project.id
+            .replace(/^(en|es)\//, "")
+            .replace(/\.(md|mdx)$/, "");
           const stableDate = new Date(BASE_EPOCH - project.data.order * DAY_MS);
 
           const stackSuffix =
@@ -51,10 +56,10 @@ export async function GET(context: APIContext) {
               : "";
 
           return {
-            title: `${project.data.title} — ${project.data.role}`,
+            title: `${isEs ? "[ES] " : ""}${project.data.title} — ${project.data.role}`,
             pubDate: stableDate,
             description: `${project.data.description}${stackSuffix}`,
-            link: `/projects/${project.id.replace(/^en\//, "").replace(/\.(md|mdx)$/, "")}/`,
+            link: isEs ? `/es/projects/${slug}/` : `/projects/${slug}/`,
           };
         });
     } catch {
