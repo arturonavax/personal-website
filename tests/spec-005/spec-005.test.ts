@@ -301,9 +301,12 @@ describe("SPEC-005 REQ-PCD-01 & REQ-PCD-06: Zero-Compute Static Fast-Path & Cach
       "public, max-age=31536000, immutable",
     );
 
-    const reqPdf = new Request("https://arturonavax.dev/ArturoNava-Resume-EN.pdf", {
-      headers: { "if-none-match": '"304-tag"' },
-    });
+    const reqPdf = new Request(
+      "https://arturonavax.dev/ArturoNava-Resume-EN.pdf",
+      {
+        headers: { "if-none-match": '"304-tag"' },
+      },
+    );
     const resPdf = await worker.fetch(reqPdf, env, ctx);
     expect(resPdf.status).toBe(304);
     expect(resPdf.headers.get("Cache-Control")).toContain(
