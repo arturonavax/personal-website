@@ -654,25 +654,7 @@ async function main() {
     false,
   );
 
-  // 2. Adaptive Banners (4:1, 3:1, 16:9) - RGB mode (no alpha)
-  const BANNER_RATIOS = [
-    { ratio: "4x1", width: 1584, height: 396 },
-    { ratio: "3x1", width: 1500, height: 500 },
-    { ratio: "16x9", width: 1280, height: 720 },
-  ];
-  const ALIGNMENTS = ["left", "center", "right"];
-
-  for (const { ratio, width, height } of BANNER_RATIOS) {
-    for (const align of ALIGNMENTS) {
-      await renderOptimizedPng(
-        createBannerSvg(width, height, align),
-        path.join(outputDir, `banner-${ratio}-${align}.png`),
-        width,
-        height,
-        false,
-      );
-    }
-  }
+  // 2. Adaptive Banners pruned per SPEC-002 REQ-01 (Asset Pruning & Hygiene)
 
   // 3. Favicon generation
   await generateFavicons();

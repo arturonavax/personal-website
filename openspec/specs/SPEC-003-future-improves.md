@@ -67,9 +67,7 @@ export interface StorageItemMetadata {
 }
 
 export interface StoragePort {
-  get(
-    key: string,
-  ): Promise<{
+  get(key: string): Promise<{
     data: ReadableStream | Uint8Array;
     metadata: StorageItemMetadata;
   } | null>;
@@ -262,9 +260,7 @@ export class CloudflareR2StorageAdapter implements StoragePort {
     private readonly executionCtx?: ExecutionContext,
   ) {}
 
-  async get(
-    key: string,
-  ): Promise<{
+  async get(key: string): Promise<{
     data: ReadableStream | Uint8Array;
     metadata: StorageItemMetadata;
   } | null> {
@@ -354,9 +350,7 @@ export class LocalFileSystemStorageAdapter implements StoragePort {
     private readonly baseUrl: string,
   ) {}
 
-  async get(
-    key: string,
-  ): Promise<{
+  async get(key: string): Promise<{
     data: ReadableStream | Uint8Array;
     metadata: StorageItemMetadata;
   } | null> {

@@ -1,0 +1,252 @@
+/* ==========================================================================
+   SCOPED RESUME TYPOGRAPHY & DOCUMENT STYLING
+   Used identically across /resume and /resume/maker
+   ========================================================================== */
+.cv-document,
+.resume-document {
+  font-family:
+    "Geist Sans",
+    var(--font-sans),
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.38;
+  color: #1e293b;
+  background-color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.cv-document h1,
+.resume-document h1 {
+  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-size: 21pt;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 2px 0;
+  color: #0f172a !important;
+}
+
+.cv-document h2,
+.resume-document h2 {
+  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-size: 12pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #0f172a !important;
+  border-bottom: 1.5px solid #1e293b !important;
+  padding-bottom: 2px;
+  margin: 14px 0 6px 0;
+  page-break-after: avoid;
+  break-after: avoid;
+  scroll-margin-top: 5rem;
+}
+
+.cv-document h3,
+.resume-document h3 {
+  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-size: 11.5pt;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 10px 0 1px 0;
+  color: #0f172a !important;
+  page-break-after: avoid;
+  break-after: avoid;
+  scroll-margin-top: 5rem;
+}
+
+.cv-document h4,
+.resume-document h4 {
+  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-size: 10.5pt;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 8px 0 2px 0;
+  color: #7a1c16 !important;
+  page-break-after: avoid;
+  break-after: avoid;
+  scroll-margin-top: 5rem;
+}
+
+.cv-document h1 + p > strong:first-child,
+.resume-document h1 + p > strong:first-child {
+  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-size: 11.5pt;
+  font-weight: 600;
+  color: #7a1c16 !important;
+  letter-spacing: -0.01em;
+  display: inline-block;
+  margin-bottom: 2px;
+}
+
+.cv-document h3 + p,
+.resume-document h3 + p {
+  margin: 0 0 4px 0;
+  font-size: 10pt;
+  page-break-after: avoid;
+  break-after: avoid;
+}
+
+.cv-document h3 + p > strong,
+.resume-document h3 + p > strong {
+  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  color: #7a1c16 !important;
+  font-weight: 600;
+}
+
+.cv-document h3 + p > em,
+.resume-document h3 + p > em {
+  font-family: "Geist Mono", var(--font-mono), monospace;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-size: 9.5pt;
+  color: #475569 !important;
+  margin-left: 2px;
+}
+
+.cv-document ul,
+.resume-document ul {
+  margin: 2px 0 6px 0;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.cv-document li,
+.resume-document li {
+  margin-bottom: 3px;
+  color: #1e293b;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.cv-document li::marker,
+.resume-document li::marker {
+  color: #7a1c16 !important;
+  font-size: 0.8em;
+}
+
+.cv-document strong,
+.resume-document strong {
+  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cv-document p,
+.resume-document p {
+  margin: 0 0 4px 0;
+  text-align: left;
+}
+
+.cv-document code,
+.resume-document code {
+  font-family: "Geist Mono", var(--font-mono), monospace;
+  font-size: 0.88em !important;
+  font-weight: 500;
+  background-color: #faf5f5 !important;
+  border: 1px solid #ebdada !important;
+  border-radius: 2px;
+  padding: 0.5px 3px;
+  margin: 0 1px;
+  color: #7a1c16 !important;
+  vertical-align: baseline;
+  white-space: nowrap;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.cv-document li em,
+.cv-document p em,
+.resume-document li em,
+.resume-document p em {
+  font-family: "Geist Mono", var(--font-mono), monospace;
+  color: #7a1c16 !important;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 9.5pt;
+  margin-right: 2px;
+}
+
+.cv-document hr,
+.resume-document hr {
+  display: none;
+}
+
+.cv-document a,
+.cv-document a[href^="tel:"],
+.cv-document p a,
+.cv-document li a,
+.resume-document a,
+.resume-document a[href^="tel:"],
+.resume-document p a,
+.resume-document li a {
+  color: #0369a1 !important;
+  text-decoration: none;
+}
+
+.cv-document p a:hover,
+.cv-document li a:hover,
+.resume-document p a:hover,
+.resume-document li a:hover {
+  text-decoration: underline;
+}
+
+.cv-document h1 a,
+.cv-document h2 a,
+.cv-document h3 a,
+.resume-document h1 a,
+.resume-document h2 a,
+.resume-document h3 a {
+  color: #0f172a !important;
+  text-decoration: none;
+}
+
+.cv-document h1 a:hover,
+.cv-document h2 a:hover,
+.cv-document h3 a:hover,
+.resume-document h1 a:hover,
+.resume-document h2 a:hover,
+.resume-document h3 a:hover {
+  text-decoration: underline;
+}
+
+.cv-document h4,
+.cv-document h4 a,
+.cv-document a:has(> h4),
+.resume-document h4,
+.resume-document h4 a,
+.resume-document a:has(> h4) {
+  color: #7a1c16 !important;
+  text-decoration: none;
+}
+
+.cv-document h4 a:hover,
+.resume-document h4 a:hover {
+  text-decoration: underline;
+}
+
+.cv-document em a,
+.cv-document a em,
+.cv-document code a,
+.cv-document a code,
+.cv-document h1 + p > strong:first-child a,
+.cv-document h3 + p > strong a,
+.resume-document em a,
+.resume-document a em,
+.resume-document code a,
+.resume-document a code,
+.resume-document h1 + p > strong:first-child a,
+.resume-document h3 + p > strong a {
+  color: #7a1c16 !important;
+  text-decoration: none;
+}
+
+.cv-document em a:hover,
+.cv-document h3 + p > strong a:hover,
+.resume-document em a:hover,
+.resume-document h3 + p > strong a:hover {
+  text-decoration: underline;
+}

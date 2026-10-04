@@ -1,0 +1,243 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PageIndexNav from "@/components/ui/PageIndexNav.astro";
+import ResumeAttributionBar from "@/components/ui/ResumeAttributionBar.astro";
+import ResumeExportBar from "@/components/ui/ResumeExportBar.astro";
+import { getResumeData, hasResume } from "@/data/resume";
+import type { SupportedLocale } from "@/i18n/config";
+
+export function getStaticPaths() {
+  if (!hasResume) return [];
+  return [
+    { params: { lang: undefined }, props: { locale: "en" as const } },
+    { params: { lang: "es" }, props: { locale: "es" as const } },
+  ];
+}
+
+interface Props {
+  locale: SupportedLocale;
+}
+
+const { locale } = Astro.props;
+const isEs = locale === "es";
+const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
+---
+
+<BaseLayout
+  title={
+    isEs
+      ? "Arturo Nava — Ingeniero de Software Senior | CV"
+      : "Arturo Nava — Senior Software Engineer | Resume"
+  }
+  description={
+    isEs
+      ? "Currículum profesional de Arturo Nava, Ingeniero de Software Senior especializado en Go, Rust y Python. Sistemas distribuidos, alta concurrencia y seguridad."
+      : "Professional CV of Arturo Nava, Senior Software Engineer specializing in Go, Rust, and Python. Distributed Systems, High-Concurrency & Security."
+  }
+  locale={locale}
+  canonicalUrl={
+    isEs
+      ? "https://arturonavax.dev/es/resume/"
+      : "https://arturonavax.dev/resume/"
+  }
+  type="profile"
+  hideSubtleCoffee={true}
+>
+  {hasResume && (
+    <PageIndexNav
+      locale={locale}
+      customItems={items}
+      containerMaxWidth="cv"
+      alignTargetId="cv-document-sheet"
+      showPdfPrint={true}
+    />
+  )}
+
+  <main class="w-full pt-1.5 sm:pt-4 lg:pt-6 pb-12 sm:pb-16 px-2 min-[360px]:px-3 sm:px-6 flex flex-col items-center">
+    {hasResume ? (
+      <>
+        <article
+          id="cv-document-sheet"
+          class="cv-document bg-white text-[#1e293b] rounded-none border border-[var(--color-surface-border)] shadow-2xl p-3.5 min-[360px]:p-5 sm:p-9 md:p-12 w-full max-w-[210mm] relative"
+        >
+          <Fragment set:html={html} />
+        </article>
+
+        <ResumeExportBar
+          locale={locale}
+          rawMarkdown={rawMarkdown}
+          jsonCV={json}
+          tomlCV={toml}
+          xmlCV={xml}
+        />
+
+        <ResumeAttributionBar locale={locale} defaultMedium="html" />
+      </>
+    ) : (
+      <div class="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-8 text-center font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">
+        {isEs
+          ? "Archivo de Currículum no disponible."
+          : "Curriculum / Resume file not available."}
+      </div>
+    )}
+  </main>
+</BaseLayout>
+
+<script is:inline>
+  (function () {
+    var origDocTitle = "";
+    var origTagTitle = "";
+    var isPrintTitleApplied = false;
+    var isPrintPrepared = false;
+
+    function getCvFileName() {
+      var isEs =
+        document.documentElement.lang === "es" ||
+        window.location.pathname === "/es/" ||
+        window.location.pathname.indexOf("/es/") === 0;
+      return isEs ? "ArturoNava-CV-es" : "ArturoNava-CV-en";
+    }
+
+    function applyPrintTitle() {
+      if (isPrintTitleApplied) return;
+      isPrintTitleApplied = true;
+
+      if (!origDocTitle) {
+        origDocTitle = document.title;
+        var titleEl = document.querySelector("title");
+        if (titleEl && !origTagTitle) {
+          origTagTitle = titleEl.textContent;
+        }
+      }
+
+      var targetTitle = getCvFileName();
+      document.title = targetTitle;
+      var titleEl = document.querySelector("title");
+      if (titleEl) {
+        titleEl.textContent = targetTitle;
+      }
+    }
+
+    function restoreOriginalTitle() {
+      if (!isPrintTitleApplied) return;
+      isPrintTitleApplied = false;
+
+      if (origDocTitle) {
+        document.title = origDocTitle;
+      }
+      var titleEl = document.querySelector("title");
+      if (titleEl && origTagTitle) {
+        titleEl.textContent = origTagTitle;
+      }
+      origDocTitle = "";
+      origTagTitle = "";
+    }
+
+    function preparePrintLinks() {
+      if (isPrintPrepared) return;
+      var cvSheet = document.getElementById("cv-document-sheet");
+      if (!cvSheet) return;
+      isPrintPrepared = true;
+
+      var headerP = cvSheet.querySelector("h1 + p");
+      var links = cvSheet.querySelectorAll("a[href]");
+
+      links.forEach(function (link) {
+        if (headerP && headerP.contains(link)) {
+          var currentHref = link.getAttribute("href");
+          if (currentHref) {
+            if (!link.getAttribute("data-screen-href")) {
+              link.setAttribute("data-screen-href", currentHref);
+            }
+            try {
+              var url = new URL(currentHref, window.location.origin);
+              url.searchParams.set("utm_medium", "pdf");
+              link.setAttribute("href", url.toString());
+            } catch (_) {
+              link.setAttribute(
+                "href",
+                currentHref.replace(/([?&]utm_medium=)html/g, "$1pdf"),
+              );
+            }
+          }
+          return;
+        }
+        link.setAttribute("data-print-href", link.getAttribute("href"));
+        link.removeAttribute("href");
+      });
+    }
+
+    function restorePrintLinks() {
+      if (!isPrintPrepared) return;
+      isPrintPrepared = false;
+
+      var cvSheet = document.getElementById("cv-document-sheet");
+      if (!cvSheet) return;
+
+      var strippedLinks = cvSheet.querySelectorAll("a[data-print-href]");
+      strippedLinks.forEach(function (link) {
+        var originalHref = link.getAttribute("data-print-href");
+        if (originalHref) {
+          link.setAttribute("href", originalHref);
+        }
+        link.removeAttribute("data-print-href");
+      });
+
+      var headerLinks = cvSheet.querySelectorAll("a[data-screen-href]");
+      headerLinks.forEach(function (link) {
+        var screenHref = link.getAttribute("data-screen-href");
+        if (screenHref) {
+          try {
+            var url = new URL(screenHref, window.location.origin);
+            url.searchParams.set("utm_medium", "html");
+            link.setAttribute("href", url.toString());
+          } catch (_) {
+            link.setAttribute(
+              "href",
+              screenHref.replace(/([?&]utm_medium=)pdf/g, "$1html"),
+            );
+          }
+        }
+        link.removeAttribute("data-screen-href");
+      });
+
+      var contentInput = document.getElementById("cv-utm-content");
+      if (contentInput) {
+        contentInput.dispatchEvent(new Event("input"));
+      }
+    }
+
+    window.printCleanCV = function () {
+      applyPrintTitle();
+      preparePrintLinks();
+
+      window.addEventListener(
+        "afterprint",
+        function () {
+          restoreOriginalTitle();
+          restorePrintLinks();
+        },
+        { once: true },
+      );
+
+      setTimeout(function () {
+        restoreOriginalTitle();
+        restorePrintLinks();
+      }, 3500);
+
+      setTimeout(function () {
+        window.print();
+      }, 70);
+    };
+
+    window.addEventListener("beforeprint", function () {
+      applyPrintTitle();
+      preparePrintLinks();
+    });
+
+    window.addEventListener("afterprint", function () {
+      restoreOriginalTitle();
+      restorePrintLinks();
+    });
+  })();
+</script>

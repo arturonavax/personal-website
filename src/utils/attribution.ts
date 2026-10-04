@@ -131,3 +131,6 @@ export function tagCvLink(
   );
   return buildAttributionUrl(pathOrUrl, params);
 }
+
+export const getResumeAttributionParams = getCvAttributionParams;
+export const tagResumeLink = tagCvLink;

@@ -1,5 +1,5 @@
 ---
-import type { Locale } from "@/i18n/ui";
+import type { Locale } from "@/i18n/locales";
 import { BASE_ORIGIN } from "@/utils/attribution";
 
 interface Props {
@@ -11,9 +11,9 @@ const { locale, defaultMedium = "html" } = Astro.props;
 
 const t = {
   en: {
-    title: "CV Link Attribution & Recruiter Tagging",
+    title: "Resume Link Attribution & Recruiter Tagging",
     description:
-      "All internal links in this CV are automatically tagged. Customize the recruiter or placement ID below to update document links in real-time before sharing or printing.",
+      "All internal links in this Resume are automatically tagged. Customize the recruiter or placement ID below to update document links in real-time before sharing or printing.",
     customPrefixCheck: "Custom prefix",
     prefixPlaceholder: "Prefix (ref)",
     contentPlaceholder: "e.g. google-recruiter, inmail-john, q3-lead",
@@ -21,12 +21,12 @@ const t = {
     randomBtn: "Random ID",
     copyIdBtn: "Copy ID",
     copiedIdBtn: "Copied!",
-    taggedCountLabel: "Links dynamically tagged in CV:",
+    taggedCountLabel: "Links dynamically tagged in Resume:",
   },
   es: {
-    title: "Atribución de Enlaces del CV y Etiquetado",
+    title: "Atribución de Enlaces del CV / Resume y Etiquetado",
     description:
-      "Todos los enlaces internos de este CV están etiquetados automáticamente. Personaliza el identificador de reclutador o vacante para actualizarlos en tiempo real antes de compartir o imprimir.",
+      "Todos los enlaces internos de este Currículum están etiquetados automáticamente. Personaliza el identificador de reclutador o vacante para actualizarlos en tiempo real antes de compartir o imprimir.",
     customPrefixCheck: "Personalizar prefijo",
     prefixPlaceholder: "Prefijo (ref)",
     contentPlaceholder: "ej. reclutador-google, inmail-juan, vacante-sr",
@@ -41,6 +41,7 @@ const t = {
 
 <div
   class="no-print mt-10 w-full max-w-[210mm] mx-auto rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-5 shadow-lg space-y-4 font-mono text-xs"
+  data-resume-attribution-root
   data-cv-attribution-root
   data-locale={locale}
   data-base-origin={BASE_ORIGIN}
@@ -165,8 +166,12 @@ const t = {
 <script is:inline>
   (function () {
     function setupCvLinkAttribution() {
-      var root = document.querySelector("[data-cv-attribution-root]");
-      var cvSheet = document.getElementById("cv-document-sheet");
+      var root = document.querySelector(
+        "[data-resume-attribution-root], [data-cv-attribution-root]",
+      );
+      var cvSheet =
+        document.getElementById("cv-document-sheet") ||
+        document.getElementById("resume-live-preview");
       if (!root || !cvSheet) return;
 
       var locale = root.getAttribute("data-locale") || "en";
@@ -181,159 +186,187 @@ const t = {
       var prefixInput = root.querySelector("#cv-prefix-input");
       var randomBtn = root.querySelector("#cv-random-btn");
       var copyIdBtn = root.querySelector("#cv-copy-id-btn");
-      var copyIdText = root.querySelector("#cv-copy-id-text");
       var counterEl = root.querySelector("#cv-tagged-counter");
 
-      var links = cvSheet.querySelectorAll("a[href]");
-      var internalLinks = [];
-
-      links.forEach(function (link) {
-        var rawHref = link.getAttribute("href");
-        if (!rawHref) return;
-
-        if (
-          rawHref.startsWith("#") ||
-          rawHref.startsWith("mailto:") ||
-          rawHref.startsWith("tel:")
-        ) {
-          return;
-        }
-
-        if (!link.dataset.baseHref) {
-          link.dataset.baseHref = rawHref;
-        }
-
-        var isInternal =
-          rawHref.startsWith("/") ||
-          rawHref.includes("arturonavax.dev") ||
-          link.hostname === window.location.hostname;
-
-        if (isInternal) {
-          internalLinks.push(link);
-        }
-      });
-
-      if (counterEl) {
-        counterEl.textContent = internalLinks.length.toString();
+      function generateId(prefix) {
+        var cleanPrefix = (prefix || "ref").trim() || "ref";
+        var hash = Math.random().toString(36).substring(2, 8);
+        return cleanPrefix + "-" + hash;
       }
 
-      function updateClearButton(hasValue) {
-        if (!clearBtn) return;
-        if (hasValue) {
+      function syncClearBtn() {
+        if (!clearBtn || !contentInput) return;
+        if (contentInput.value.length > 0) {
           clearBtn.classList.remove("hidden");
+          clearBtn.classList.add("block");
         } else {
+          clearBtn.classList.remove("block");
           clearBtn.classList.add("hidden");
         }
       }
 
-      function applyAttribution() {
-        var contentVal = (contentInput.value || "").trim();
-        updateClearButton(contentVal.length > 0);
+      function getCampaign(rawHref) {
+        var lower = rawHref.toLowerCase();
+        if (lower.indexOf("/projects") !== -1) return "resume-project";
+        if (lower.indexOf("/experience") !== -1) return "resume-experience";
+        if (lower.indexOf("/blog") !== -1) return "resume-article";
+        if (lower.indexOf("/services") !== -1) return "resume-service";
+        return "resume-header";
+      }
 
-        internalLinks.forEach(function (link) {
-          var base = link.dataset.baseHref || link.getAttribute("href") || "/";
-          var url;
+      function applyAttributionToLinks() {
+        var targetSheet =
+          document.getElementById("cv-document-sheet") ||
+          document.getElementById("resume-live-preview");
+        if (!targetSheet) return;
 
+        var contentVal = (contentInput ? contentInput.value : "").trim();
+        var links = targetSheet.querySelectorAll("a[href]");
+        var taggedCount = 0;
+
+        links.forEach(function (link) {
+          var rawHref = link.getAttribute("href") || "";
+          if (
+            !rawHref ||
+            rawHref.startsWith("#") ||
+            rawHref.startsWith("mailto:") ||
+            rawHref.startsWith("tel:")
+          ) {
+            return;
+          }
+
+          var isInternal = false;
+          var urlObj;
           try {
-            if (base.startsWith("http://") || base.startsWith("https://")) {
-              url = new URL(base);
+            if (
+              rawHref.startsWith("http://") ||
+              rawHref.startsWith("https://")
+            ) {
+              urlObj = new URL(rawHref);
+              var baseHost = new URL(baseOrigin).host;
+              if (urlObj.host === baseHost) isInternal = true;
             } else {
-              var norm = base.startsWith("/") ? base : "/" + base;
-              url = new URL(norm, baseOrigin);
+              urlObj = new URL(rawHref, baseOrigin);
+              isInternal = true;
             }
           } catch (_) {
             return;
           }
 
-          if (!url.pathname.endsWith("/")) {
-            if (!/\.[a-zA-Z0-9]+$/i.test(url.pathname)) {
-              url.pathname = url.pathname.replace(/\/+$/, "") + "/";
+          if (!isInternal) return;
+
+          if (!link.getAttribute("data-raw-original-href")) {
+            link.setAttribute("data-raw-original-href", rawHref);
+          }
+
+          var originalHref =
+            link.getAttribute("data-raw-original-href") || rawHref;
+          var workingUrl = new URL(originalHref, baseOrigin);
+
+          if (!workingUrl.pathname.endsWith("/")) {
+            if (!/\.[a-zA-Z0-9]+$/i.test(workingUrl.pathname)) {
+              workingUrl.pathname =
+                workingUrl.pathname.replace(/\/+$/, "") + "/";
             }
           }
 
-          var p = url.pathname.toLowerCase();
-          var campaign = "resume-header";
-          if (p.includes("/projects")) campaign = "resume-project";
-          else if (p.includes("/experience")) campaign = "resume-experience";
-          else if (p.includes("/blog")) campaign = "resume-article";
-          else if (p.includes("/services")) campaign = "resume-service";
+          var isSpanish =
+            workingUrl.pathname === "/es" ||
+            workingUrl.pathname.indexOf("/es/") === 0 ||
+            locale === "es";
+          var source = isSpanish ? "cv-es" : "cv-en";
+          var campaign = getCampaign(workingUrl.pathname);
 
-          url.searchParams.set(
-            "utm_source",
-            locale === "es" ? "cv-es" : "cv-en",
-          );
-          url.searchParams.set("utm_medium", targetMedium); // 'html' en la página
-          url.searchParams.set("utm_campaign", campaign);
+          workingUrl.searchParams.set("utm_source", source);
+          workingUrl.searchParams.set("utm_medium", targetMedium);
+          workingUrl.searchParams.set("utm_campaign", campaign);
 
           if (contentVal) {
-            url.searchParams.set("utm_content", contentVal);
+            workingUrl.searchParams.set("utm_content", contentVal);
           } else {
-            url.searchParams.delete("utm_content");
+            workingUrl.searchParams.delete("utm_content");
           }
 
-          link.href = url.toString();
+          link.setAttribute("href", workingUrl.toString());
+          taggedCount++;
+        });
+
+        if (counterEl) {
+          counterEl.textContent = taggedCount.toString();
+        }
+      }
+
+      if (contentInput && !contentInput.dataset.bound) {
+        contentInput.dataset.bound = "true";
+        contentInput.addEventListener("input", function () {
+          syncClearBtn();
+          applyAttributionToLinks();
         });
       }
 
-      if (contentInput) {
-        contentInput.addEventListener("input", applyAttribution);
-      }
-
-      if (clearBtn) {
+      if (clearBtn && !clearBtn.dataset.bound) {
+        clearBtn.dataset.bound = "true";
         clearBtn.addEventListener("click", function () {
           if (contentInput) {
             contentInput.value = "";
-            applyAttribution();
+            syncClearBtn();
+            applyAttributionToLinks();
             contentInput.focus();
           }
         });
       }
 
-      if (prefixCheck && prefixWrapper) {
+      if (prefixCheck && prefixWrapper && !prefixCheck.dataset.bound) {
+        prefixCheck.dataset.bound = "true";
         prefixCheck.addEventListener("change", function () {
           if (prefixCheck.checked) {
             prefixWrapper.classList.remove("hidden");
-            prefixWrapper.classList.add("flex");
+            prefixWrapper.classList.add("inline-flex");
             if (prefixInput) prefixInput.focus();
           } else {
+            prefixWrapper.classList.remove("inline-flex");
             prefixWrapper.classList.add("hidden");
-            prefixWrapper.classList.remove("flex");
           }
         });
       }
 
-      if (randomBtn) {
+      if (randomBtn && !randomBtn.dataset.bound) {
+        randomBtn.dataset.bound = "true";
         randomBtn.addEventListener("click", function () {
-          var prefix = "ref";
-          if (prefixCheck && prefixCheck.checked && prefixInput) {
-            prefix = prefixInput.value.trim() || "ref";
+          var pfx =
+            prefixCheck && prefixCheck.checked && prefixInput
+              ? prefixInput.value
+              : "ref";
+          if (contentInput) {
+            contentInput.value = generateId(pfx);
+            syncClearBtn();
+            applyAttributionToLinks();
           }
-          var hash = Math.random().toString(36).substring(2, 8);
-          contentInput.value = prefix + "-" + hash;
-          applyAttribution();
         });
       }
 
-      if (copyIdBtn && contentInput) {
+      if (copyIdBtn && !copyIdBtn.dataset.bound) {
+        copyIdBtn.dataset.bound = "true";
         copyIdBtn.addEventListener("click", function () {
-          var val = (contentInput.value || "").trim();
-          if (!val) {
-            contentInput.focus();
-            return;
-          }
-          navigator.clipboard.writeText(val).then(function () {
-            var orig = copyIdText.textContent;
+          var idText = contentInput ? contentInput.value.trim() : "";
+          if (!idText) return;
+
+          navigator.clipboard.writeText(idText).then(function () {
+            var textSpan = copyIdBtn.querySelector("#cv-copy-id-text");
+            var original = textSpan ? textSpan.textContent : "Copy ID";
             var copied =
               copyIdBtn.getAttribute("data-copied-label") || "Copied!";
-            copyIdText.textContent = copied;
+
+            if (textSpan) textSpan.textContent = copied;
             setTimeout(function () {
-              copyIdText.textContent = orig;
+              if (textSpan) textSpan.textContent = original;
             }, 2000);
           });
         });
       }
 
-      applyAttribution();
+      syncClearBtn();
+      applyAttributionToLinks();
     }
 
     if (document.readyState === "loading") {

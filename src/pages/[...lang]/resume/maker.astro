@@ -1,0 +1,205 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ResumeExportBar from "@/components/ui/ResumeExportBar.astro";
+import { getCollection } from "astro:content";
+import { SUPPORTED_LOCALES, type Locale } from "@/i18n/locales";
+import { getResumeData } from "@/data/resume";
+
+export function getStaticPaths() {
+  return SUPPORTED_LOCALES.map((locale) => ({
+    params: { lang: locale === "en" ? undefined : locale },
+    props: { locale },
+  }));
+}
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const resumeEntries = await getCollection("resume");
+const activeEntry =
+  resumeEntries.find((r) => r.data.locale === locale) || resumeEntries[0];
+const resumeData = getResumeData(locale);
+const initialBody = activeEntry?.body || resumeData.rawMarkdown || "";
+const isEs = locale === "es";
+---
+
+<BaseLayout
+  title={`Resume Maker Studio — ${activeEntry?.data.name || "Arturo Nava"}`}
+  description={
+    isEs
+      ? "Generador interactivo de currículum en markdown con previsualización en tiempo real y herramientas de exportación."
+      : "Interactive developer markdown resume generator with real-time preview and export tools."
+  }
+  locale={locale}
+  canonicalUrl={
+    isEs
+      ? "https://arturonavax.dev/es/resume/maker/"
+      : "https://arturonavax.dev/resume/maker/"
+  }
+  type="profile"
+  hideSubtleCoffee={true}
+>
+  <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <header class="no-print mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-[var(--color-surface-border)] pb-4">
+      <div>
+        <h1 class="font-mono text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
+          Resume Studio Maker
+        </h1>
+        <p class="font-mono text-xs text-[var(--color-text-muted)]">
+          {isEs
+            ? "Personalización en vivo y pruebas de diseño"
+            : "Live customization & layout testing"}
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <label for="phone-selector" class="sr-only">
+          {isEs ? "Agregar teléfono de contacto" : "Add Contact Phone"}
+        </label>
+        <select
+          id="phone-selector"
+          class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1.5 font-mono text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
+        >
+          <option value="">{isEs ? "Sin teléfono" : "No Phone"}</option>
+          <option value="+573000000000">Colombia (+57)</option>
+          <option value="+10000000000">USA (+1)</option>
+        </select>
+
+        <button
+          id="strip-links-action"
+          type="button"
+          class="rounded border border-[var(--color-surface-border)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] cursor-pointer transition-colors"
+        >
+          {isEs ? "Eliminar Enlaces" : "Strip Links"}
+        </button>
+
+        <button
+          id="trigger-print-action"
+          type="button"
+          class="rounded bg-[var(--color-accent-gold)] px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-btn-gold-text)] shadow-xs hover:bg-[var(--color-accent-gold-hover)] cursor-pointer transition-colors"
+        >
+          {isEs ? "Imprimir PDF" : "Print PDF"}
+        </button>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div class="flex flex-col no-print">
+        <label
+          for="markdown-raw-input"
+          class="mb-2 font-mono text-xs text-[var(--color-text-muted)]"
+        >
+          {isEs ? "Fuente del Documento Markdown" : "Markdown Document Source"}
+        </label>
+        <textarea
+          id="markdown-raw-input"
+          class="h-[760px] w-full resize-none rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 font-mono text-xs leading-relaxed text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
+          spellcheck="false"
+        >{initialBody}</textarea>
+      </div>
+
+      <div class="flex flex-col">
+        <span class="mb-2 font-mono text-xs text-[var(--color-text-muted)] no-print">
+          {isEs
+            ? "Previsualización Tipográfica en Vivo"
+            : "Live Typography Preview"}
+        </span>
+        <div
+          id="resume-live-preview"
+          class="cv-document resume-document h-[760px] overflow-y-auto rounded-lg border border-[var(--color-surface-border)] bg-white p-6 sm:p-8 md:p-10 shadow-sm text-[#1e293b]"
+        ></div>
+      </div>
+    </div>
+
+    <div class="mt-8 border-t border-[var(--color-surface-border)] pt-6 no-print">
+      <ResumeExportBar currentLocale={locale} />
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  @media print {
+    header,
+    .no-print {
+      display: none !important;
+    }
+    #resume-live-preview {
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      height: auto !important;
+      overflow: visible !important;
+      max-width: 100% !important;
+      width: 100% !important;
+    }
+  }
+</style>
+
+<script>
+  import { marked } from "marked";
+
+  const editor = document.getElementById(
+    "markdown-raw-input",
+  ) as HTMLTextAreaElement | null;
+  const preview = document.getElementById(
+    "resume-live-preview",
+  ) as HTMLDivElement | null;
+  const stripBtn = document.getElementById(
+    "strip-links-action",
+  ) as HTMLButtonElement | null;
+  const printBtn = document.getElementById(
+    "trigger-print-action",
+  ) as HTMLButtonElement | null;
+  const phoneSelector = document.getElementById(
+    "phone-selector",
+  ) as HTMLSelectElement | null;
+
+  function updateLivePreview(): void {
+    if (!editor || !preview) return;
+    preview.innerHTML = marked.parse(editor.value) as string;
+  }
+
+  editor?.addEventListener("input", () => {
+    updateLivePreview();
+  });
+  updateLivePreview();
+
+  stripBtn?.addEventListener("click", () => {
+    if (!editor) return;
+    editor.value = editor.value.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+    updateLivePreview();
+  });
+
+  phoneSelector?.addEventListener("change", () => {
+    if (!editor) return;
+    const phone = phoneSelector.value;
+    let val = editor.value.replace(/ • \[[^\]]+\]\(tel:[^)]+\)/g, "");
+    if (phone) {
+      val = val.replace(
+        /(\[[^\]]+@[^\]]+\]\([^)]+\))/,
+        `$1 • [${phone}](tel:${phone})`,
+      );
+    }
+    editor.value = val;
+    updateLivePreview();
+  });
+
+  printBtn?.addEventListener("click", () => {
+    window.print();
+  });
+
+  window.addEventListener("beforeprint", () => {
+    (window as any).__priorDocTitle = document.title;
+    const currentLang = document.documentElement.lang || "en";
+    document.title = `ArturoNava-CV-${currentLang}`;
+  });
+
+  window.addEventListener("afterprint", () => {
+    if ((window as any).__priorDocTitle) {
+      document.title = (window as any).__priorDocTitle;
+    }
+  });
+</script>

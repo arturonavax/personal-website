@@ -1,6 +1,7 @@
 ---
 import type { Locale } from "@/i18n/ui";
 import { useTranslations } from "@/i18n/utils";
+import EmailCopyButton from "@/components/ui/EmailCopyButton.astro";
 
 interface Props {
   locale: Locale;
@@ -92,22 +93,11 @@ const email = "arturo@arturonavax.dev";
 
         <!-- Action CTAs -->
         <div class="flex flex-wrap items-center gap-3 font-mono text-xs sm:text-sm">
-          <a
-            href={`mailto:${email}?subject=Senior%20Software%20Engineering%20Opportunity%20-%20Arturo%20Nava`}
-            class="btn-gold px-5 py-2.5 inline-flex items-center gap-2 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
-          >
-            <svg
-              class="h-4 w-4 stroke-current fill-none"
-              viewBox="0 0 24 24"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-              <polyline points="22,6 12,13 2,6"></polyline>
-            </svg>
-            <span>{t("contact.startConversation")}</span>
-          </a>
+          <EmailCopyButton
+            email={email}
+            label={t("contact.startConversation")}
+            buttonClass="btn-gold px-5 py-2.5 inline-flex items-center gap-2 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+          />
           <!--/email_off-->
 
           <!-- Telegram Direct Link (Task 6) -->
@@ -333,7 +323,7 @@ const email = "arturo@arturonavax.dev";
               );
             }, 2000);
           } catch (err) {
-            window.location.href = "mailto:" + targetEmail;
+            console.error("Clipboard write operation failed:", err);
           }
         });
       }

@@ -17,12 +17,68 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
+    const url = new URL(request.url);
+
+    // 1. Identify Speculative Prefetch Requests
+    const secPurpose = request.headers.get("sec-purpose") || "";
+    const purpose = request.headers.get("purpose") || "";
+    const isPrefetch =
+      purpose === "prefetch" ||
+      secPurpose.includes("prefetch") ||
+      secPurpose.includes("prerender") ||
+      request.headers.get("x-astro-prefetch") !== null ||
+      request.headers.get("X-Astro-Prefetch") !== null;
+
+    // 2. Telemetry Ingestion Endpoint
+    if (url.pathname === "/api/v1/telemetry" && request.method === "POST") {
+      if (isPrefetch) {
+        // Discard prefetch requests immediately without hitting D1
+        return new Response(null, { status: 204 });
+      }
+
+      ctx.waitUntil(
+        (async () => {
+          try {
+            const payload = (await request.json()) as Record<string, unknown>;
+            const userAgent =
+              request.headers.get("user-agent")?.slice(0, 512) || "unknown";
+            const country =
+              (request as unknown as { cf?: { country?: string } }).cf
+                ?.country ||
+              request.headers.get("cf-ipcountry") ||
+              "XX";
+
+            await env.DB.prepare(
+              `INSERT INTO edge_telemetry_events (
+                id, timestamp, path, locale, country, user_agent, visitor_hash
+              ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            )
+              .bind(
+                crypto.randomUUID(),
+                Date.now(),
+                String(payload.path || "").slice(0, 255),
+                String(payload.locale || "en").slice(0, 10),
+                country,
+                userAgent,
+                String(payload.visitorHash || "").slice(0, 32),
+              )
+              .run();
+          } catch {
+            // Edge telemetry errors are discarded to prevent client disruptions
+          }
+        })(),
+      );
+
+      return new Response(JSON.stringify({ queued: true }), {
+        status: 202,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // 3. Pageview analytics for GET requests
     const isGet = request.method === "GET";
-
     if (isGet) {
-      const url = new URL(request.url);
       const pathname = url.pathname.replace(/\/+$/, "") || "/";
-
       const isStatic =
         STATIC_EXT_REGEX.test(pathname) || pathname.startsWith("/_astro/");
       const acceptHeader = request.headers.get("accept") || "";
@@ -30,13 +86,6 @@ export default {
 
       const secFetchDest = request.headers.get("sec-fetch-dest");
       const isDocumentNavigation = !secFetchDest || secFetchDest === "document";
-
-      const secPurpose = request.headers.get("sec-purpose") || "";
-      const purpose = request.headers.get("purpose") || "";
-      const isPrefetch =
-        secPurpose.includes("prefetch") ||
-        secPurpose.includes("prerender") ||
-        purpose.includes("prefetch");
 
       if (
         !isStatic &&
@@ -49,7 +98,20 @@ export default {
       }
     }
 
-    return env.ASSETS.fetch(request);
+    // 4. Delegate to Static Assets
+    const response = await env.ASSETS.fetch(request);
+
+    // 5. Immutable Cache-Control for Hashed Assets
+    if (
+      url.pathname.startsWith("/_astro/") ||
+      url.pathname.startsWith("/fonts/")
+    ) {
+      const headers = new Headers(response.headers);
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      return new Response(response.body, { status: response.status, headers });
+    }
+
+    return response;
   },
 };
 
