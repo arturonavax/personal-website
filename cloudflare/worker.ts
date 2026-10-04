@@ -82,7 +82,11 @@ export default {
       const response = await env.ASSETS.fetch(request);
       const headers = new Headers(response.headers);
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
-      return new Response(response.body, { status: response.status, headers });
+      const body =
+        response.status === 304 || response.status === 204
+          ? null
+          : response.body;
+      return new Response(body, { status: response.status, headers });
     }
 
     // -------------------------------------------------------------------------
@@ -147,7 +151,11 @@ export default {
         "Cache-Control",
         "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
       );
-      return new Response(response.body, { status: response.status, headers });
+      const body =
+        response.status === 304 || response.status === 204
+          ? null
+          : response.body;
+      return new Response(body, { status: response.status, headers });
     }
 
     return response;
@@ -224,12 +232,13 @@ async function handleSemanticSearch(
           threshold,
         });
       },
-      await new StaticMemorySearchAdapter().search({
-        query: q,
-        locale,
-        limit,
-        threshold,
-      }),
+      () =>
+        new StaticMemorySearchAdapter().search({
+          query: q,
+          locale,
+          limit,
+          threshold,
+        }),
       350,
       "semantic-search",
     );

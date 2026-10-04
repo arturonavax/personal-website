@@ -3,7 +3,7 @@ import type { FailOpenCircuitBreakerPort } from "../../ports/edge-delivery.port"
 export class FailOpenCircuitBreaker implements FailOpenCircuitBreakerPort {
   async executeWithFallback<T>(
     operation: () => Promise<T>,
-    fallbackValue: T,
+    fallbackValue: T | (() => Promise<T> | T),
     timeoutMs = 350,
     operationName = "circuit-breaker-operation",
   ): Promise<T> {
@@ -29,6 +29,9 @@ export class FailOpenCircuitBreaker implements FailOpenCircuitBreakerPort {
         `[CircuitBreaker: Fail-Open] Fallback triggered for '${operationName}':`,
         err instanceof Error ? err.message : err,
       );
+      if (typeof fallbackValue === "function") {
+        return await (fallbackValue as () => Promise<T> | T)();
+      }
       return fallbackValue;
     } finally {
       if (timer !== undefined) {

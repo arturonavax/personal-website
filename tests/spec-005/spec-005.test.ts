@@ -280,6 +280,36 @@ describe("SPEC-005 REQ-PCD-01 & REQ-PCD-06: Zero-Compute Static Fast-Path & Cach
       "stale-while-revalidate=86400",
     );
   });
+
+  it("handles 304 Not Modified cleanly for immutable assets and PDFs without body conflict", async () => {
+    const ctx = createMockCtx();
+    const assetsWith304: Fetcher = {
+      fetch: async () =>
+        new Response(null, {
+          status: 304,
+          headers: { ETag: '"304-tag"' },
+        }),
+    } as unknown as Fetcher;
+    const env: Env = { ASSETS: assetsWith304, DB: createMockDb() };
+
+    const reqAsset = new Request("https://arturonavax.dev/_astro/entry.mjs", {
+      headers: { "if-none-match": '"304-tag"' },
+    });
+    const resAsset = await worker.fetch(reqAsset, env, ctx);
+    expect(resAsset.status).toBe(304);
+    expect(resAsset.headers.get("Cache-Control")).toBe(
+      "public, max-age=31536000, immutable",
+    );
+
+    const reqPdf = new Request("https://arturonavax.dev/ArturoNava-Resume-EN.pdf", {
+      headers: { "if-none-match": '"304-tag"' },
+    });
+    const resPdf = await worker.fetch(reqPdf, env, ctx);
+    expect(resPdf.status).toBe(304);
+    expect(resPdf.headers.get("Cache-Control")).toContain(
+      "stale-while-revalidate=86400",
+    );
+  });
 });
 
 describe("SPEC-005 REQ-PCD-04 & REQ-PCD-05: Non-Blocking Telemetry & Fail-Open Resilience", () => {
@@ -376,14 +406,46 @@ describe("SPEC-005 REQ-PCD-05: Semantic Search Circuit Breaker & Fail-Open Invar
       return ["success-result"];
     };
 
+    let fallbackCalled = false;
+    const lazyFallback = () => {
+      fallbackCalled = true;
+      return ["lazy-fallback"];
+    };
+
     const result = await breaker.executeWithFallback(
       fastOperation,
-      ["fallback"],
+      lazyFallback,
       100,
       "fast-test-op",
     );
 
     expect(result).toEqual(["success-result"]);
+    expect(fallbackCalled).toBe(false);
+  });
+
+  it("FailOpenCircuitBreaker evaluates lazy fallback function only when operation times out", async () => {
+    const breaker = new FailOpenCircuitBreaker();
+
+    const slowOperation = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      return ["slow-result"];
+    };
+
+    let fallbackCalled = false;
+    const lazyFallback = async () => {
+      fallbackCalled = true;
+      return ["lazy-fallback-recovered"];
+    };
+
+    const result = await breaker.executeWithFallback(
+      slowOperation,
+      lazyFallback,
+      20,
+      "slow-lazy-op",
+    );
+
+    expect(result).toEqual(["lazy-fallback-recovered"]);
+    expect(fallbackCalled).toBe(true);
   });
 
   it("/api/search degrades to static memory search and returns HTTP 200 when AI throws", async () => {

@@ -39,11 +39,13 @@ export interface FailOpenCircuitBreakerPort {
   /**
    * Execute an infrastructure operation (D1, Vectorize, Workers AI, Turnstile) with strict timeout.
    * If the operation exceeds the timeout or throws, returns fallbackValue without failing the request.
+   * Supports lazy fallback providers (functions) to avoid unnecessary fallback compute on hot paths.
    */
   executeWithFallback<T>(
     operation: () => Promise<T>,
-    fallbackValue: T,
+    fallbackValue: T | (() => Promise<T> | T),
     timeoutMs: number,
     operationName: string,
   ): Promise<T>;
 }
+
