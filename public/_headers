@@ -20,6 +20,10 @@
 /*.avif
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 
+# Edge Caching for Documents and PDFs (SPEC-003 Section 3.2.3)
+/*.pdf
+  Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400
+
 # Índices de búsqueda desacoplados
 /search-index*.json
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400
@@ -46,7 +50,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
-  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()
 
 # Revalidación determinista para todas las rutas HTML (soporta trailing slashes y subrutas)
 /
@@ -73,8 +77,8 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
-  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'self'; object-src 'self';
   Link: </llms.txt>; rel="describedby"
   X-Llms-Txt: /llms.txt

@@ -19,8 +19,11 @@ and excluded from the license grant:
 
   (b) Resumes & Biographical Records:
       - /public/cv/**
+      - /public/resume/**
       - /src/content/cv/**
+      - /src/content/resume/**
       - /src/data/cv.ts
+      - /src/data/resume.ts
 
   (c) Original Editorial Content, Articles & Case Studies:
       - /src/content/posts/**
