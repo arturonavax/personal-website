@@ -392,9 +392,18 @@ const email = "arturo@arturonavax.dev";
 
       if (hasPending || window.location.hash === "#contact") {
         highlightContact();
-        requestAnimationFrame(function () {
-          smoothScrollToContact();
-        });
+        var doScroll = function () {
+          requestAnimationFrame(function () {
+            smoothScrollToContact();
+          });
+        };
+        if (document.fonts && typeof document.fonts.ready === "object") {
+          document.fonts.ready.then(function () {
+            setTimeout(doScroll, 80);
+          });
+        } else {
+          setTimeout(doScroll, 120);
+        }
       }
     }
 

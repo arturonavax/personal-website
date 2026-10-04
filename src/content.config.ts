@@ -14,6 +14,21 @@ export const localizedBaseSchema = z.object({
   visible: z.boolean().default(true),
 });
 
+export const postCategoryEnum = z.enum([
+  "systems",
+  "architecture",
+  "performance",
+  "ai",
+  "research",
+  "leadership",
+  "opinion",
+  "notes",
+  "general",
+  "personal",
+]);
+
+export type PostCategory = z.infer<typeof postCategoryEnum>;
+
 const posts = defineCollection({
   loader: glob({
     pattern: ["**/*.{md,mdx}", "!**/_*"],
@@ -28,7 +43,7 @@ const posts = defineCollection({
       updatedDate: z.coerce.date().optional(),
       updatedAt: z.coerce.date().optional(),
       translationKey: z.string(),
-      category: z.string().default("systems"),
+      category: postCategoryEnum.default("systems"),
       tags: z.array(z.string()).min(1),
       coverImage: image().optional(),
       coverAlt: z.string().optional(),
@@ -36,6 +51,10 @@ const posts = defineCollection({
       searchKeywords: z.array(z.string()).optional(),
       author: z.string().default("Arturo Nava"),
       readingTimeMinutes: z.number().int().positive().optional(),
+      searchPriority: z.number().int().default(50),
+      postType: z
+        .enum(["essay", "note", "article", "opinion"])
+        .default("article"),
     }),
 });
 

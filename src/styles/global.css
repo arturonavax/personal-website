@@ -495,10 +495,10 @@ html[data-timeline-incoming="past"] #experience-article {
   }
 }
 
-/* Print Styles Normalization (Firefox, Safari, Chromium) - REQ-08 */
+/* Print Styles Normalization (Firefox, Safari, Chromium) - REQ-UXE-14 */
 @media print {
   @page {
-    margin: 1.2cm 1cm 1.2cm 1cm;
+    margin: 0mm !important;
     size: A4 portrait;
   }
 
@@ -526,6 +526,8 @@ html[data-timeline-incoming="past"] #experience-article {
   #desktop-page-index,
   #mobile-page-index-root,
   #mobile-page-index-container,
+  #floating-actions-stack,
+  #back-to-top-btn,
   #matrix-background,
   #matrix-container,
   #matrix-canvas,
@@ -541,7 +543,7 @@ html[data-timeline-incoming="past"] #experience-article {
     break-inside: avoid !important;
   }
 
-  /* Multi-page document sheets must allow natural pagination */
+  /* Multi-page document sheets must allow natural pagination with container padding simulating margins */
   #cv-document-sheet,
   #resume-live-preview,
   article.cv-document,
@@ -551,13 +553,34 @@ html[data-timeline-incoming="past"] #experience-article {
     page-break-inside: auto !important;
     break-inside: auto !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 12mm 14mm !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     max-width: none !important;
     width: 100% !important;
     background: #ffffff !important;
+  }
+
+  /* Strip underlines and external link arrows from body links while keeping header contact row */
+  .resume-document main a,
+  .cv-document main a,
+  #cv-document-sheet main a,
+  #resume-live-preview main a,
+  .resume-document section a,
+  .cv-document section a,
+  #cv-document-sheet section a,
+  #resume-live-preview section a {
+    text-decoration: none !important;
+    border-bottom: none !important;
+    color: inherit !important;
+  }
+  .resume-document main a::after,
+  .cv-document main a::after,
+  #cv-document-sheet main a::after,
+  #resume-live-preview main a::after {
+    display: none !important;
+    content: none !important;
   }
 }
 

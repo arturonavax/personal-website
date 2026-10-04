@@ -66,14 +66,17 @@ const categoryLabel = categoryLabels[category]?.[locale] ?? category;
         <button
           type="button"
           data-tech-search={tag}
+          translate="no"
           title={
             locale === "es"
               ? `Buscar notas y proyectos sobre ${tag}`
-              : `Search essays & projects mentioning ${tag}`
+              : `Search projects & posts mentioning ${tag}`
           }
-          class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+          class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer notranslate"
         >
-          {tag}
+          <span translate="no" class="notranslate">
+            {tag}
+          </span>
         </button>
       ))}
     </div>

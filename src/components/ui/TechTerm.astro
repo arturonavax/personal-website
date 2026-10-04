@@ -1,0 +1,22 @@
+---
+interface Props {
+  name?: string | undefined;
+  monospace?: boolean | undefined;
+  title?: string | undefined;
+  class?: string | undefined;
+}
+
+const { name, monospace = true, title, class: className = "" } = Astro.props;
+---
+
+<span
+  translate="no"
+  class:list={[
+    "notranslate inline-block select-text",
+    monospace && "font-mono font-medium text-[var(--color-accent-gold)]",
+    className,
+  ]}
+  title={title}
+>
+  <slot>{name}</slot>
+</span>

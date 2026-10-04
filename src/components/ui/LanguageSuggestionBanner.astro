@@ -17,7 +17,7 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
           ? "Language recommendation"
           : "Recomendación de idioma"
       }
-      class="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-20 sm:bottom-5 z-40 hidden max-w-sm w-[calc(100vw-1.5rem)] sm:w-auto items-center gap-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/95 px-3.5 py-2.5 shadow-xl shadow-black/50 backdrop-blur-md transition-all duration-300 ease-out translate-y-3 opacity-0 text-xs font-mono"
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 hidden max-w-sm w-[calc(100vw-2rem)] sm:w-auto items-center gap-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/95 px-3.5 py-2.5 shadow-xl shadow-black/50 backdrop-blur-md transition-all duration-300 ease-out translate-y-3 -translate-x-1/2 opacity-0 text-xs font-mono"
       data-current-locale={currentLocale}
       data-target-locale={targetLocale}
       data-target-url={counterpartUrl}
@@ -89,19 +89,22 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
           var currentLocale = banner.getAttribute("data-current-locale");
           var targetLocale = banner.getAttribute("data-target-locale");
 
-          // 1. Verificar si el usuario ya descartó la sugerencia en esta sesión
+          // 1. Verificar si el usuario ya descartó la sugerencia
           try {
             if (
+              localStorage.getItem("dismissed_lang_suggestion") === "true" ||
               sessionStorage.getItem("dismissed_lang_suggestion") === "true"
             ) {
               return;
             }
           } catch (_) {}
 
-          // 2. Verificar si el usuario tiene una preferencia guardada explícita que coincida con la página actual
+          // 2. Verificar si el usuario tiene una preferencia guardada explícita (suprimir permanentemente)
           try {
-            var preferred = localStorage.getItem("preferred_locale");
-            if (preferred && preferred === currentLocale) {
+            var preferred =
+              localStorage.getItem("preferred_locale") ||
+              localStorage.getItem("manual_lang_override");
+            if (preferred) {
               return;
             }
           } catch (_) {}
@@ -152,6 +155,7 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
                 banner.classList.add("hidden");
               }, 300);
               try {
+                localStorage.setItem("dismissed_lang_suggestion", "true");
                 sessionStorage.setItem("dismissed_lang_suggestion", "true");
               } catch (_) {}
             };

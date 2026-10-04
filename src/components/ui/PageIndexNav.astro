@@ -105,8 +105,8 @@ const defaultIndexItems: IndexItem[] = [
     ? [
         {
           id: "blog",
-          label: "Technical Essays & Notes",
-          labelEs: "Ensayos & Notas Técnicas",
+          label: "Blog & Systems Notes",
+          labelEs: "Blog & Notas de Sistemas",
         },
       ]
     : []),
@@ -584,10 +584,12 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         if (shouldOpen) {
           currentPanel.classList.remove("hidden");
           if (currentBtn) currentBtn.setAttribute("aria-expanded", "true");
+          window.__isPageIndexOpen = true;
           requestAnimationFrame(updateScrollBottomIndicator);
         } else {
           currentPanel.classList.add("hidden");
           if (currentBtn) currentBtn.setAttribute("aria-expanded", "false");
+          window.__isPageIndexOpen = false;
         }
       }
       window.__toggleIndexPanel = togglePanel;
@@ -606,7 +608,19 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
             tag === "INPUT" ||
             tag === "TEXTAREA" ||
             (active && active.isContentEditable);
-          if (isInputFocused) return;
+          if (e.key === "Escape") {
+            var currentPanel =
+              panel || document.getElementById("mobile-page-index-container");
+            if (currentPanel && !currentPanel.classList.contains("hidden")) {
+              e.preventDefault();
+              e.stopPropagation();
+              togglePanel(false);
+              var currentBtn =
+                floatingBtn || document.getElementById("mobile-page-index-btn");
+              if (currentBtn) currentBtn.focus();
+              return;
+            }
+          }
 
           if (e.key === "i" || e.key === "I") {
             e.preventDefault();

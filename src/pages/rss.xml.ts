@@ -70,7 +70,7 @@ export async function GET(context: APIContext) {
   const items = blogItems.length > 0 ? blogItems : projectItems;
 
   return rss({
-    title: "Arturo Nava — Technical Essays & Systems Notes",
+    title: "Arturo Nava — Engineering Blog & Systems Notes",
     description:
       "Senior Software / AI Engineer specializing in Go, Rust, Distributed Systems, and Application Security.",
     site: context.site?.origin ?? "https://arturonavax.dev",

@@ -83,13 +83,13 @@ const sortedTags = Object.entries(tagCounts)
 <BaseLayout
   title={
     isEs
-      ? "Ensayos Técnicos & Notas de Sistemas — Arturo Nava"
-      : "Technical Essays & Systems Notes — Arturo Nava"
+      ? "Blog & Notas de Sistemas — Arturo Nava"
+      : "Blog & Systems Notes — Arturo Nava"
   }
   description={
     isEs
-      ? "Análisis de ingeniería sobre concurrencia en Go, vectorización SIMD, pipelines de streaming OLAP y arquitectura de baja latencia."
-      : "Engineering deep dives into Go concurrency, SIMD vectorization, OLAP streaming pipelines, and low-latency systems architecture."
+      ? "Publicaciones técnicas, notas de arquitectura, diseño de sistemas distribuidos y reflexiones de ingeniería."
+      : "Technical posts, architecture notes, distributed systems design, and engineering reflections."
   }
   locale={locale}
 >
@@ -127,8 +127,8 @@ const sortedTags = Object.entries(tagCounts)
     ) : (
       <div class="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-8 text-center font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">
         {isEs
-          ? "No hay ensayos técnicos publicados aún. Vuelve pronto."
-          : "No technical essays published yet. Check back soon."}
+          ? "No hay publicaciones en el blog aún. Vuelve pronto."
+          : "No blog posts published yet. Check back soon."}
       </div>
     )}
 
@@ -136,7 +136,7 @@ const sortedTags = Object.entries(tagCounts)
     {sortedPosts.length > 0 && (
       <PaginationController
         locale={locale}
-        pageSize={4}
+        pageSize={6}
         targetSelector="[data-post-card]"
         totalItems={sortedPosts.length}
       />

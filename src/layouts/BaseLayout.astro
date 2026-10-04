@@ -5,6 +5,7 @@ import Header from "@/components/common/Header.astro";
 import Footer from "@/components/common/Footer.astro";
 import MatrixBackground from "@/components/ui/MatrixBackground.astro";
 import ShortcutsModal from "@/components/ui/ShortcutsModal.astro";
+import BackToTopButton from "@/components/ui/BackToTopButton.astro";
 import LanguageSuggestionBanner from "@/components/ui/LanguageSuggestionBanner.astro";
 import UniversalSearchModal from "@/components/ui/UniversalSearchModal.astro";
 import CoffeeSponsorshipModal from "@/components/ui/CoffeeSponsorshipModal.astro";
@@ -265,6 +266,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
       class="fixed bottom-5 right-5 z-40 flex flex-col-reverse items-end gap-2.5 pointer-events-none select-none"
       aria-label="Floating Actions"
     >
+      <BackToTopButton locale={locale} />
       {hasShortcuts && <ShortcutsModal locale={locale} />}
       <div
         id="global-vim-hint"
@@ -337,6 +339,8 @@ const hasShortcuts = Boolean(shortcuts?.length);
 
     <!-- Script de runtime: expone APIs a window, mantiene polyfills y gestiona eventos -->
     <script>
+      import { handleEscapeKey } from "@/lib/navigation/escape-router";
+
       // 1. Resiliencia contra extensiones externas mal implementadas
       if (typeof Document !== "undefined") {
         if (!(Document.prototype as any).closest) {
@@ -532,7 +536,18 @@ const hasShortcuts = Boolean(shortcuts?.length);
         setupVimObserver();
       });
 
+      // Infallible Hierarchical Esc State Machine (REQ-UXE-07) & Vim Navigation (REQ-UXE-09)
       window.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key === "Escape" || e.key === "Esc") {
+          const handled = handleEscapeKey(window.location.pathname, (url) => {
+            window.location.href = url;
+          });
+          if (handled) {
+            e.preventDefault();
+            return;
+          }
+        }
+
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         const active = document.activeElement;
         const tag = active?.tagName?.toUpperCase() || "";
@@ -564,7 +579,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
         );
 
         const pageIndexStep = (window as any).__pageIndexStep;
-        if (!e.repeat && hasPageIndex && typeof pageIndexStep === "function") {
+        if (hasPageIndex && typeof pageIndexStep === "function") {
           pageIndexStep(dir);
           return;
         }

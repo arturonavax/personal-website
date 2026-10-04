@@ -24,8 +24,8 @@ const isEs = locale === "es";
   }
   description={
     isEs
-      ? "Búsqueda instantánea en proyectos de sistemas distribuidos, ensayos técnicos, trayectoria profesional y notas de ingeniería."
-      : "Instant universal search across distributed systems projects, technical essays, career milestones, and engineering notes."
+      ? "Búsqueda instantánea en proyectos de sistemas distribuidos, publicaciones de blog, trayectoria profesional y notas de sistemas."
+      : "Instant universal search across distributed systems projects, blog posts, career milestones, and systems notes."
   }
   locale={locale}
 >
@@ -38,8 +38,8 @@ const isEs = locale === "es";
         </h1>
         <p class="mt-3 max-w-2xl text-base text-[var(--color-text-secondary)]">
           {isEs
-            ? "Búsqueda reactiva a cada pulsación de tecla sobre proyectos arquitecturales, ensayos técnicos, trayectoria profesional y tecnologías clave."
-            : "Fast keystroke lookup across all architectural projects, deep technical essays, career milestones, and system technologies."}
+            ? "Búsqueda reactiva a cada pulsación de tecla sobre proyectos arquitecturales, publicaciones de blog, trayectoria profesional y tecnologías clave."
+            : "Fast keystroke lookup across all architectural projects, blog posts, career milestones, and system technologies."}
         </p>
       </header>
     </div>
@@ -119,7 +119,8 @@ const isEs = locale === "es";
         data-filter-tab="post"
         class="tab-btn rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-secondary)] px-3 py-1.5 hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
       >
-        {isEs ? "Ensayos" : "Essays"} (<span id="count-posts">0</span>)
+        {isEs ? "Blog & Notas" : "Blog & Notes"} (
+        <span id="count-posts">0</span>)
       </button>
       <button
         type="button"
@@ -519,10 +520,15 @@ const isEs = locale === "es";
           }
         });
 
-        // 3. Score and rank
+        // 3. Score and rank: prioritize language, entity priority, and lexical matches
         function computeScore(item) {
           var score = 0;
           if (item.locale === pageLang) score += 5000;
+
+          // SPEC-006 REQ-UXE-12: Static entity priority score (1-100)
+          var entityPriority =
+            typeof item.priority === "number" ? item.priority : 50;
+          score += entityPriority * 5;
 
           var titleL = (item.title || "").toLowerCase();
           var metaL = (item.meta || "").toLowerCase();

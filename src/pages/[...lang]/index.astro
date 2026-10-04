@@ -226,7 +226,7 @@ const jsonLd = getHomepageJsonLd(locale);
       </section>
     )}
 
-    <!-- Technical Essays -->
+    <!-- Blog & Engineering Notes -->
     {recentPosts.length > 0 && (
       <section id="blog" aria-labelledby="posts-heading" class="space-y-6">
         <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
@@ -256,8 +256,8 @@ const jsonLd = getHomepageJsonLd(locale);
             <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
             <span>
               {isEs
-                ? `Mostrando ${recentPosts.length} de ${allPosts.length} ensayos • `
-                : `Showing ${recentPosts.length} of ${allPosts.length} essays • `}
+                ? `Mostrando ${recentPosts.length} de ${allPosts.length} publicaciones • `
+                : `Showing ${recentPosts.length} of ${allPosts.length} posts • `}
               <strong class="text-[var(--color-accent-gold)]">
                 +{allPosts.length - recentPosts.length} {isEs ? "más" : "more"}
               </strong>{" "}
@@ -270,8 +270,8 @@ const jsonLd = getHomepageJsonLd(locale);
           >
             <span>
               {isEs
-                ? "Leer todos los ensayos y notas técnicas"
-                : "Read all technical essays & notes"}
+                ? "Leer todas las publicaciones y notas"
+                : "Read all blog posts & notes"}
             </span>
             <span>&rarr;</span>
           </a>

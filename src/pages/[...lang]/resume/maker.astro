@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import ResumeExportBar from "@/components/ui/ResumeExportBar.astro";
+import ResumeAttributionBar from "@/components/ui/ResumeAttributionBar.astro";
 import { getCollection } from "astro:content";
 import { SUPPORTED_LOCALES, type Locale } from "@/i18n/locales";
 import { getResumeData } from "@/data/resume";
@@ -54,27 +55,62 @@ const isEs = locale === "es";
         </p>
       </div>
 
-      <div class="flex items-center gap-3">
-        <label for="phone-selector" class="sr-only">
-          {isEs ? "Agregar teléfono de contacto" : "Add Contact Phone"}
-        </label>
-        <select
-          id="phone-selector"
-          class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1.5 font-mono text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
-        >
-          <option value="">{isEs ? "Sin teléfono" : "No Phone"}</option>
-          <option value="+573000000000">Colombia (+57)</option>
-          <option value="+10000000000">USA (+1)</option>
-        </select>
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Phone Number Controls (REQ-UXE-15) -->
+        <div class="flex items-center gap-2">
+          <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-mono text-[var(--color-text-secondary)] select-none">
+            <input
+              type="checkbox"
+              id="phone-toggle"
+              class="rounded border-[var(--color-surface-border)] text-[var(--color-accent-gold)] focus:ring-[var(--color-accent-gold)] cursor-pointer"
+            />
+            <span>{isEs ? "Incluir Teléfono" : "Include Phone"}</span>
+          </label>
+          <div id="phone-inputs-container" class="hidden items-center gap-1.5">
+            <input
+              type="text"
+              id="phone-code-input"
+              placeholder="+57"
+              value="+57"
+              aria-label={isEs ? "Código de país" : "Country code"}
+              class="w-14 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-1 font-mono text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
+            />
+            <input
+              type="text"
+              id="phone-number-input"
+              placeholder="300 000 0000"
+              value="300 000 0000"
+              aria-label={isEs ? "Número de teléfono" : "Phone number"}
+              class="w-32 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-1 font-mono text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
+            />
+          </div>
+        </div>
 
+        <!-- Reversible Strip Links Toggle (REQ-UXE-15) -->
         <button
-          id="strip-links-action"
+          id="strip-links-toggle"
           type="button"
+          data-stripped="false"
           class="rounded border border-[var(--color-surface-border)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] cursor-pointer transition-colors"
         >
-          {isEs ? "Eliminar Enlaces" : "Strip Links"}
+          <span id="strip-links-label">
+            {isEs ? "Eliminar Enlaces" : "Strip Links"}
+          </span>
         </button>
 
+        <!-- Reset to Default Action (REQ-UXE-15) -->
+        <button
+          id="reset-default-action"
+          type="button"
+          class="rounded border border-[var(--color-surface-border)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] cursor-pointer transition-colors"
+          title={
+            isEs ? "Restaurar contenido original" : "Restore original content"
+          }
+        >
+          {isEs ? "Restaurar Original" : "Reset to Default"}
+        </button>
+
+        <!-- Print Action -->
         <button
           id="trigger-print-action"
           type="button"
@@ -95,6 +131,7 @@ const isEs = locale === "es";
         </label>
         <textarea
           id="markdown-raw-input"
+          data-initial-markdown={initialBody}
           class="h-[760px] w-full resize-none rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 font-mono text-xs leading-relaxed text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
           spellcheck="false"
         >{initialBody}</textarea>
@@ -113,7 +150,9 @@ const isEs = locale === "es";
       </div>
     </div>
 
-    <div class="mt-8 border-t border-[var(--color-surface-border)] pt-6 no-print">
+    <!-- Recruiter Attribution & Serializer Exports -->
+    <div class="mt-8 border-t border-[var(--color-surface-border)] pt-6 no-print space-y-6">
+      <ResumeAttributionBar locale={locale} defaultMedium="maker" />
       <ResumeExportBar currentLocale={locale} />
     </div>
   </main>
@@ -147,43 +186,165 @@ const isEs = locale === "es";
   const preview = document.getElementById(
     "resume-live-preview",
   ) as HTMLDivElement | null;
-  const stripBtn = document.getElementById(
-    "strip-links-action",
+  const stripToggle = document.getElementById(
+    "strip-links-toggle",
+  ) as HTMLButtonElement | null;
+  const stripLabel = document.getElementById(
+    "strip-links-label",
+  ) as HTMLSpanElement | null;
+  const resetBtn = document.getElementById(
+    "reset-default-action",
   ) as HTMLButtonElement | null;
   const printBtn = document.getElementById(
     "trigger-print-action",
   ) as HTMLButtonElement | null;
-  const phoneSelector = document.getElementById(
-    "phone-selector",
-  ) as HTMLSelectElement | null;
+
+  const phoneToggle = document.getElementById(
+    "phone-toggle",
+  ) as HTMLInputElement | null;
+  const phoneContainer = document.getElementById(
+    "phone-inputs-container",
+  ) as HTMLDivElement | null;
+  const phoneCodeInput = document.getElementById(
+    "phone-code-input",
+  ) as HTMLInputElement | null;
+  const phoneNumberInput = document.getElementById(
+    "phone-number-input",
+  ) as HTMLInputElement | null;
+
+  const isEs = document.documentElement.lang === "es";
+  const initialContent = editor ? editor.value : "";
+  let unstrippedContent = initialContent;
 
   function updateLivePreview(): void {
     if (!editor || !preview) return;
     preview.innerHTML = marked.parse(editor.value) as string;
   }
 
+  function syncPhoneInEditor(): void {
+    if (!editor) return;
+    const isEnabled = Boolean(phoneToggle?.checked);
+    const code = phoneCodeInput?.value.trim() || "+57";
+    const num = phoneNumberInput?.value.trim() || "";
+    const cleanNum = (code + " " + num).trim();
+    const telHref = "tel:" + (code + num).replace(/[\s-]/g, "");
+
+    // Current lines
+    const lines = editor.value.split("\n");
+    let updated = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      // Find the header contact line (has mailto, linkedin, github, or existing tel)
+      if (
+        line.includes("mailto:") ||
+        line.includes("linkedin.com") ||
+        line.includes("github.com") ||
+        line.includes("tel:")
+      ) {
+        // Strip any existing tel item from this line with delimiter
+        let cleanLine = line
+          .replace(/(?:\s*[•|]\s*)?\[[^\]]+\]\(tel:[^)]+\)/g, "")
+          .trim();
+
+        if (isEnabled && num.length > 0) {
+          // Append phone with delimiter
+          cleanLine = cleanLine + ` • [${cleanNum}](${telHref})`;
+        }
+        lines[i] = cleanLine;
+        updated = true;
+        break;
+      }
+    }
+
+    if (updated) {
+      editor.value = lines.join("\n");
+      unstrippedContent = editor.value;
+      updateLivePreview();
+    }
+  }
+
   editor?.addEventListener("input", () => {
+    if (stripToggle?.dataset.stripped !== "true") {
+      unstrippedContent = editor.value;
+    }
     updateLivePreview();
   });
   updateLivePreview();
 
-  stripBtn?.addEventListener("click", () => {
+  // Reversible Strip Links Toggle (REQ-UXE-15)
+  stripToggle?.addEventListener("click", () => {
     if (!editor) return;
-    editor.value = editor.value.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+    const isStripped = stripToggle.dataset.stripped === "true";
+
+    if (!isStripped) {
+      unstrippedContent = editor.value;
+      editor.value = editor.value.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+      stripToggle.dataset.stripped = "true";
+      stripToggle.classList.add(
+        "border-[var(--color-accent-gold)]",
+        "text-[var(--color-accent-gold)]",
+        "bg-[var(--color-accent-gold-subtle)]",
+      );
+      if (stripLabel) {
+        stripLabel.textContent = isEs ? "Restaurar Enlaces" : "Restore Links";
+      }
+    } else {
+      editor.value = unstrippedContent;
+      stripToggle.dataset.stripped = "false";
+      stripToggle.classList.remove(
+        "border-[var(--color-accent-gold)]",
+        "text-[var(--color-accent-gold)]",
+        "bg-[var(--color-accent-gold-subtle)]",
+      );
+      if (stripLabel) {
+        stripLabel.textContent = isEs ? "Eliminar Enlaces" : "Strip Links";
+      }
+    }
     updateLivePreview();
   });
 
-  phoneSelector?.addEventListener("change", () => {
-    if (!editor) return;
-    const phone = phoneSelector.value;
-    let val = editor.value.replace(/ • \[[^\]]+\]\(tel:[^)]+\)/g, "");
-    if (phone) {
-      val = val.replace(
-        /(\[[^\]]+@[^\]]+\]\([^)]+\))/,
-        `$1 • [${phone}](tel:${phone})`,
-      );
+  // Phone toggle & inputs
+  phoneToggle?.addEventListener("change", () => {
+    if (phoneContainer) {
+      phoneContainer.classList.toggle("hidden", !phoneToggle.checked);
+      phoneContainer.classList.toggle("flex", phoneToggle.checked);
     }
-    editor.value = val;
+    syncPhoneInEditor();
+  });
+
+  phoneCodeInput?.addEventListener("input", syncPhoneInEditor);
+  phoneNumberInput?.addEventListener("input", syncPhoneInEditor);
+
+  // Reset to Default Action (REQ-UXE-15)
+  resetBtn?.addEventListener("click", () => {
+    if (!editor) return;
+    editor.value = initialContent;
+    unstrippedContent = initialContent;
+
+    if (phoneToggle) {
+      phoneToggle.checked = false;
+    }
+    if (phoneContainer) {
+      phoneContainer.classList.add("hidden");
+      phoneContainer.classList.remove("flex");
+    }
+    if (phoneCodeInput) phoneCodeInput.value = "+57";
+    if (phoneNumberInput) phoneNumberInput.value = "300 000 0000";
+
+    if (stripToggle) {
+      stripToggle.dataset.stripped = "false";
+      stripToggle.classList.remove(
+        "border-[var(--color-accent-gold)]",
+        "text-[var(--color-accent-gold)]",
+        "bg-[var(--color-accent-gold-subtle)]",
+      );
+      if (stripLabel) {
+        stripLabel.textContent = isEs ? "Eliminar Enlaces" : "Strip Links";
+      }
+    }
+
     updateLivePreview();
   });
 

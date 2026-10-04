@@ -14,6 +14,7 @@ export interface SearchDoc {
   tags: string[];
   keywords: string[];
   url: string;
+  priority?: number;
 }
 
 export interface SegmentedSearchIndex {
@@ -60,6 +61,9 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         tags: p.data.techStack,
         keywords,
         url: `/projects/${slug}`,
+        priority: p.data.featured
+          ? 95
+          : Math.max(50, 90 - (p.data.order || 0) * 5),
       };
     }),
     ...enPosts.map((post) => {
@@ -71,13 +75,14 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         locale: "en" as const,
         langBadge: "EN" as const,
         type: "post" as const,
-        category: "Technical Essay",
+        category: "Blog & Notes",
         title: post.data.title,
         description: post.data.description,
         meta: post.data.category,
         tags: post.data.tags,
         keywords,
         url: `/blog/${slug}/`,
+        priority: (post.data as any).searchPriority ?? 80,
       };
     }),
     ...enExperience.map((exp, idx) => {
@@ -102,6 +107,7 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         tags: exp.data.skills,
         keywords,
         url: `/experience/${slug}/`,
+        priority: 75,
       };
     }),
     ...enServices.map((s) => {
@@ -120,6 +126,7 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         tags: s.data.tags,
         keywords,
         url: `/services/${slug}/`,
+        priority: 60,
       };
     }),
   ];
@@ -142,6 +149,9 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         tags: p.data.techStack,
         keywords,
         url: `/es/projects/${slug}/`,
+        priority: p.data.featured
+          ? 95
+          : Math.max(50, 90 - (p.data.order || 0) * 5),
       };
     }),
     ...esPosts.map((post) => {
@@ -153,13 +163,14 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         locale: "es" as const,
         langBadge: "ES" as const,
         type: "post" as const,
-        category: "Ensayo Técnico",
+        category: "Blog & Notas",
         title: post.data.title,
         description: post.data.description,
         meta: post.data.category,
         tags: post.data.tags,
         keywords,
         url: `/es/blog/${slug}/`,
+        priority: (post.data as any).searchPriority ?? 80,
       };
     }),
     ...esExperience.map((exp, idx) => {
@@ -186,6 +197,7 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         tags: exp.data.skills,
         keywords,
         url: `/es/experience/${slug}`,
+        priority: 75,
       };
     }),
     ...esServices.map((s) => {
@@ -204,6 +216,7 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         tags: s.data.tags,
         keywords,
         url: `/es/services/${slug}/`,
+        priority: 60,
       };
     }),
   ];

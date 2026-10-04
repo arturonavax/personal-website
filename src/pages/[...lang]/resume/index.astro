@@ -72,6 +72,20 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
         />
 
         <ResumeAttributionBar locale={locale} defaultMedium="html" />
+
+        <div class="mt-8 no-print flex justify-center">
+          <a
+            href={isEs ? "/es/resume/maker/" : "/resume/maker/"}
+            class="inline-flex items-center gap-2 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-5 py-2.5 font-mono text-xs font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold-subtle)] transition-all shadow-sm hover:shadow-md cursor-pointer"
+          >
+            <span>
+              {isEs
+                ? "Personalizar en Resume Studio"
+                : "Customize in Resume Studio"}
+            </span>
+            <span>&rarr;</span>
+          </a>
+        </div>
       </>
     ) : (
       <div class="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-8 text-center font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">

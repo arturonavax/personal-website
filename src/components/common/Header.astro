@@ -850,7 +850,7 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
         .forEach(function (link) {
           if (!boundElements.has(link)) {
             boundElements.add(link);
-            link.addEventListener("click", function () {
+            link.addEventListener("click", function (e) {
               var currentPath =
                 window.location.pathname.replace(/\/+$/, "") || "/";
               var linkPath = (link.pathname || "").replace(/\/+$/, "") || "/";
@@ -870,7 +870,33 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
                   } catch (_) {}
                 }
               } else if (!link.hash || link.hash === "#about") {
+                e.preventDefault();
                 window.scrollTo({ top: 0, behavior: "smooth" });
+                if (history.pushState) {
+                  history.pushState(
+                    null,
+                    "",
+                    currentPath + (currentPath === "/" ? "" : "/"),
+                  );
+                }
+              } else if (isContact) {
+                e.preventDefault();
+                var contactSec = document.getElementById("contact");
+                if (contactSec) {
+                  var siteHeader = document.getElementById("site-header");
+                  var headerOffset =
+                    (siteHeader ? siteHeader.offsetHeight : 56) + 16;
+                  var targetY = Math.max(
+                    0,
+                    contactSec.getBoundingClientRect().top +
+                      window.pageYOffset -
+                      headerOffset,
+                  );
+                  window.scrollTo({ top: targetY, behavior: "smooth" });
+                  if (history.pushState) {
+                    history.pushState(null, "", "#contact");
+                  }
+                }
               }
             });
           }
