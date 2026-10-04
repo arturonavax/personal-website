@@ -8,9 +8,10 @@ Your operational mandate is to engineer, maintain, and refactor an ultra-lean, h
 
 ## ARCHITECTURAL CONSTRAINTS & GUARANTEES
 
-- **Target Platform**: Cloudflare Pages (`output: 'static'`, pure Edge SSG).
+- **Target Platform**: Cloudflare Pages / Workers (`output: 'static'`, pure Edge SSG).
+- **Architecture Pattern**: Hexagonal Architecture (Ports & Adapters) providing 100% vendor decoupling. Domain and presentation layers interact exclusively through abstract interfaces (`src/lib/ports/`), allowing zero-code-change migrations across Cloudflare, AWS, Docker, Bun, or Node.js.
 - **Execution Budget**: 0 KB baseline client JavaScript. Any client-side JS must be treated as an architectural defect unless explicitly justified by irreversible user interaction.
-- **Strict Typing**: TypeScript in strict mode (`strict: true`, `noImplicitAny: true`) across all components, layout contracts, frontmatter schemas, and data pipelines.
+- **Strict Typing**: TypeScript in strictest mode (`strict: true`, `noImplicitAny: true`, `exactOptionalPropertyTypes: true`) across all components, layout contracts, frontmatter schemas, adapters, and data pipelines.
 - **Dependency Philosophy**: Zero extraneous dependencies. Native web platform APIs (`Intl`, Web Share API, modern CSS `:has()`, `:popover`, dialogs) must always supersede external NPM libraries.
 
 ---
@@ -21,9 +22,9 @@ Every operational command, architectural proposal, and code modification must ac
 
 | Operation / Decision Domain                                | Active Skill      | Path                                      | Mandatory Directives & Deliverables                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | :--------------------------------------------------------- | :---------------- | :---------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Astro SSG, Routing, Content Layer & Islands**            | `astro`           | `.agents/skills/astro/SKILL.md`           | - Pure Edge SSG compilation (`output: 'static'`) with Bun runtime.<br>- Content Layer API schema modeling with strict Zod validation.<br>- 0 KB baseline client JS; framework hydration islands banned by default.<br>- Build-time data fetching, filtering, and static parameter mappings in frontmatter (`---`).<br>- Hardware-accelerated image pipeline with `astro:assets`.                                                                                                                 |
+| **Astro SSG, Routing, Content Layer & Islands**            | `astro`           | `.agents/skills/astro/SKILL.md`           | - Pure Edge SSG compilation (`output: 'static'`) with Bun runtime.<br>- Content Layer API schema modeling with strict Zod validation and `localizedBaseSchema`.<br>- 0 KB baseline client JS; framework hydration islands banned by default.<br>- Build-time data fetching, filtering, and static parameter mappings in frontmatter (`---`).<br>- Hardware-accelerated image pipeline with `astro:assets`.                                                                                       |
 | **Visual Architecture, UI/UX, Typography & Layout**        | `frontend-design` | `.agents/skills/frontend-design/SKILL.md` | - Aesthetic vernacular tailored to Senior Backend & Distributed Systems Engineer (telemetry density, precision borders, restrained palette).<br>- Zero AI design clichés (no arbitrary rounded SaaS blobs, no cream/terracotta, no decorative meaningless arrows).<br>- Self-hosted WOFF2 fonts (`Geist Sans` / `Geist Mono`), zero external CDNs, preloaded critical body font.<br>- Semantic HTML5/CSS-only interactive primitives (`:has()`, `<details>`, `:popover`) preserving 100/100 CWV. |
-| **Technical SEO, i18n Hreflang, Schema.org & Performance** | `seo-audit`       | `.agents/skills/seo-audit/SKILL.md`       | - Dynamic canonical URLs without trailing slashes.<br>- Reciprocal bidirectional `hreflang` tags (`en`, `es`, `x-default`) in HTML head and XML sitemap.<br>- Complete JSON-LD structured data (`ProfilePage`, `Person`, `TechArticle`, `ItemList`).<br>- Core Web Vitals guarantees: LCP < 0.8s, INP = 0ms, CLS = 0.00, TTFB < 25ms.<br>- Machine readability for search indexing crawlers and AI search agents.                                                                                |
+| **Technical SEO, i18n Hreflang, Schema.org & Performance** | `seo-audit`       | `.agents/skills/seo-audit/SKILL.md`       | - Dynamic canonical URLs without trailing slashes.<br>- Reciprocal bidirectional `hreflang` tags (`en`, `es`, `x-default`) in HTML head and XML sitemap.<br>- Complete JSON-LD structured data (`ProfilePage`, `Person`, `TechArticle`, `ItemList`) with stable global `@id: "https://arturonavax.dev/#person"`.<br>- Core Web Vitals guarantees: LCP < 0.8s, INP = 0ms, CLS = 0.00, TTFB < 25ms.<br>- Machine readability for search indexing crawlers and AI search agents.                    |
 
 ---
 
@@ -48,6 +49,8 @@ Every operational command, architectural proposal, and code modification must ac
    - Use `font-display: swap` and inject `<link rel="preload" as="font" type="font/woff2" crossorigin>` in `<head>` only for the critical body font.
 3. **Edge Caching Rules (`public/_headers`)**:
    - Immutable assets (`/_astro/*`): `Cache-Control: public, max-age=31536000, immutable`.
+   - Fonts (`/fonts/*`): `Cache-Control: public, max-age=31536000, immutable`.
+   - PDF Documents (`/*.pdf`): `Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400`.
    - HTML documents: `Cache-Control: public, max-age=0, must-revalidate`.
 
 ---
@@ -67,8 +70,9 @@ Every page must consume a reusable `SEOHead.astro` component enforcing:
 1. **Canonical URLs**: Fully qualified, normalized URLs with no trailing slashes.
 2. **Open Graph & Twitter Cards**: Dynamic generation of `og:title`, `og:description`, `og:image`, `og:url`, `twitter:card: "summary_large_image"`.
 3. **Structured Data (JSON-LD)**:
-   - Homepage: `schema.org/ProfilePage` coupled with a detailed `schema.org/Person` entity (including `sameAs` array for GitHub, LinkedIn, and social references, `jobTitle`, `knowsAbout`).
-   - Blog Posts: `schema.org/TechArticle` or `schema.org/BlogPosting` featuring author attribution, date published/modified, reading time, and headline.
+   - Generated via `src/lib/seo/schema-builder.ts` with permanent invariant `@id: "https://arturonavax.dev/#person"`.
+   - Homepage: `schema.org/ProfilePage` coupled with a detailed `schema.org/Person` entity.
+   - Blog Posts: `schema.org/TechArticle` featuring author attribution, date published/modified, reading time, and headline.
    - Experience/Projects: Nested `schema.org/ItemList` with entity links.
 4. **Feeds & Crawlers**:
    - Complete `public/robots.txt` referencing sitemap locations.
@@ -79,9 +83,17 @@ Every page must consume a reusable `SEOHead.astro` component enforcing:
 
 ## 3. FILE SYSTEM & CONTENT ARCHITECTURE
 
-Maintain this standardized folder structure optimized for developer ergonomics, decoupled content modeling, and rapid compile passes:
+Maintain this standardized folder structure optimized for developer ergonomics, decoupled content modeling, hexagonal ports/adapters, and rapid compile passes:
 
 ```text
+├── cloudflare/
+│   ├── d1/
+│   │   ├── migrations/     # Versioned SQL migrations (0001, 0002_rollups, 0003_leads)
+│   │   └── schema.sql      # Consolidated SQLite/D1 schema definition
+│   ├── security/           # WAF bot defense, zero-trust tunnel, vendor exit guides
+│   ├── cron-scheduler.ts   # Daily analytics rollups and 7-day event pruning
+│   ├── email-worker.ts     # Inbound corporate email ingestion & Discord webhooks
+│   └── worker.ts           # Unified Edge Worker (Assets, API search, captcha, telemetry)
 ├── public/
 │   ├── fonts/              # Self-hosted critical WOFF2 fonts
 │   ├── _headers            # Cloudflare Pages edge cache directives
@@ -92,31 +104,48 @@ Maintain this standardized folder structure optimized for developer ergonomics, 
 │   ├── components/
 │   │   ├── common/         # Header.astro, Footer.astro, SEOHead.astro
 │   │   ├── content/        # Callout.astro, CodeBlock.astro, FormattedDate.astro
-│   │   └── ui/             # Card.astro, Badge.astro, ProjectCard.astro
+│   │   └── ui/             # Card.astro, Badge.astro, ProjectCard.astro, Modals
 │   ├── content/
-│   │   ├── experience/     # Career timeline records (.md)
-│   │   ├── posts/          # Deep technical essays & notes (.md, .mdx)
-│   │   └── projects/       # Architectural breakdowns & repos (.md)
+│   │   ├── experience/     # Career timeline records (.md) [en/, es/]
+│   │   ├── posts/          # Deep technical essays (.md, .mdx) [en/, es/]
+│   │   ├── projects/       # Architectural breakdowns (.md) [en/, es/]
+│   │   ├── resume/         # Structured curriculum vitae (.md) [en/, es/]
+│   │   └── services/       # Engineering consultation services (.md) [en/, es/]
 │   ├── content.config.ts   # Content Layer API schemas backed by Zod
+│   ├── data/               # Static datasets (resume.ts, searchIndex.ts, shortcuts.ts)
+│   ├── i18n/
+│   │   ├── locales.ts      # Central registry (SUPPORTED_LOCALES, DEFAULT_LOCALE = "en")
+│   │   ├── config.ts       # Route paths and helpers
+│   │   ├── ui.ts           # UI translation dictionaries
+│   │   └── utils.ts        # Translation helpers and locale detection
 │   ├── layouts/
 │   │   ├── BaseLayout.astro
 │   │   └── ArticleLayout.astro
+│   ├── lib/
+│   │   ├── adapters/       # Hexagonal Adapters (Cloudflare & Fallback drivers + factory)
+│   │   ├── ports/          # Domain contracts (Storage, Search, Telemetry, Captcha, Cache)
+│   │   ├── content/        # Content providers and repository abstractions
+│   │   └── seo/            # Canonical schema-builder.ts
 │   ├── pages/
 │   │   ├── 404.astro
-│   │   ├── index.astro
 │   │   ├── rss.xml.ts
-│   │   ├── blog/
-│   │   │   ├── index.astro
-│   │   │   └── [slug].astro
-│   │   └── projects/
+│   │   ├── search-index.json.ts
+│   │   ├── llms-full.txt.ts
+│   │   └── [...lang]/      # Zero-duplication parameterized i18n dynamic routes
 │   │       ├── index.astro
-│   │       └── [slug].astro
+│   │       ├── blog/
+│   │       ├── experience/
+│   │       ├── projects/
+│   │       ├── resume/
+│   │       └── services/
 │   ├── styles/
 │   │   └── global.css      # Core styles (Tailwind v4 / CSS variables)
 │   └── types/              # Cross-cutting TS declarations
-├── astro.config.mjs
+├── tests/
+│   └── spec-003/           # Comprehensive Bun unit tests for ports, adapters, and edge
+├── wrangler.jsonc          # Production edge configuration (D1, R2, Vectorize, AI, Crons)
 ├── package.json
-└── tsconfig.json
+└── tsconfig.json           # Strictest TypeScript configuration
 ```
 
 ---
@@ -126,55 +155,143 @@ Maintain this standardized folder structure optimized for developer ergonomics, 
 Enforce strict validation of frontmatter using the Astro Content Layer API (`glob` loader + `zod` schemas). Builds must fail immediately on invalid data:
 
 ```typescript
-import { defineCollection, z } from "astro:content";
+import { defineCollection } from "astro:content";
+import { z } from "astro/zod";
 import { glob } from "astro/loaders";
+import { SUPPORTED_LOCALES } from "./i18n/locales";
+
+export const localizedBaseSchema = z.object({
+  canonicalId: z
+    .string()
+    .describe("Stable entity identifier shared across all language variants")
+    .optional(),
+  translationKey: z.string().optional(),
+  locale: z.enum(SUPPORTED_LOCALES),
+  draft: z.boolean().default(false),
+  visible: z.boolean().default(true),
+});
 
 const posts = defineCollection({
-  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/posts" }),
+  loader: glob({
+    pattern: ["**/*.{md,mdx}", "!**/_*"],
+    base: "./src/content/posts",
+  }),
   schema: ({ image }) =>
-    z.object({
-      title: z.string().max(70, "SEO title should be under 70 characters"),
-      description: z
-        .string()
-        .max(160, "Meta description should be under 160 characters"),
+    localizedBaseSchema.extend({
+      title: z.string().max(75, "SEO title under 75 chars"),
+      description: z.string().max(160, "Meta description under 160 chars"),
       pubDate: z.coerce.date(),
+      publishedAt: z.coerce.date().optional(),
       updatedDate: z.coerce.date().optional(),
-      draft: z.boolean().default(false),
+      updatedAt: z.coerce.date().optional(),
+      translationKey: z.string(),
+      category: z.string().default("systems"),
       tags: z.array(z.string()).min(1),
       coverImage: image().optional(),
       coverAlt: z.string().optional(),
+      canonicalUrl: z.string().url().optional(),
+      searchKeywords: z.array(z.string()).optional(),
+      author: z.string().default("Arturo Nava"),
+      readingTimeMinutes: z.number().int().positive().optional(),
     }),
 });
 
 const projects = defineCollection({
-  loader: glob({ pattern: "**/*.md", base: "./src/content/projects" }),
+  loader: glob({
+    pattern: ["**/*.md", "!**/_*"],
+    base: "./src/content/projects",
+  }),
   schema: ({ image }) =>
-    z.object({
+    localizedBaseSchema.extend({
       title: z.string(),
       description: z.string(),
       role: z.string(),
+      company: z.string().optional(),
       featured: z.boolean().default(false),
+      order: z.number().int(),
+      translationKey: z.string(),
       techStack: z.array(z.string()),
+      metrics: z
+        .array(z.object({ label: z.string(), value: z.string() }))
+        .optional(),
       repoUrl: z.string().url().optional(),
       liveUrl: z.string().url().optional(),
-      order: z.number().int(),
       thumbnail: image().optional(),
+      searchKeywords: z.array(z.string()).optional(),
     }),
 });
 
 const experience = defineCollection({
-  loader: glob({ pattern: "**/*.md", base: "./src/content/experience" }),
-  schema: z.object({
+  loader: glob({
+    pattern: ["**/*.md", "!**/_*"],
+    base: "./src/content/experience",
+  }),
+  schema: localizedBaseSchema.extend({
     company: z.string(),
+    companyUrl: z.string().url().optional(),
+    companyDomain: z.string().optional(),
+    companyIndustry: z.string().optional(),
+    companyDescription: z.string().optional(),
     role: z.string(),
+    location: z.string(),
+    employmentType: z.string(),
     startDate: z.coerce.date(),
-    endDate: z.coerce.date().optional(), // undefined = Present
-    skills: z.array(z.string()),
+    endDate: z.coerce.date().optional(),
     order: z.number().int(),
+    skills: z.array(z.string()),
+    keyAchievements: z.array(z.string()),
+    searchKeywords: z.array(z.string()).optional(),
   }),
 });
 
-export const collections = { posts, projects, experience };
+const services = defineCollection({
+  loader: glob({
+    pattern: ["**/*.{md,mdx}", "!**/_*"],
+    base: "./src/content/services",
+  }),
+  schema: ({ image }) =>
+    localizedBaseSchema.extend({
+      title: z.string(),
+      description: z.string(),
+      type: z.enum(["service", "product", "mentorship"]),
+      translationKey: z.string(),
+      featured: z.boolean().default(false),
+      order: z.number().int(),
+      price: z.string().optional(),
+      deliveryTime: z.string().optional(),
+      tags: z.array(z.string()).default([]),
+      deliverables: z.array(z.string()).default([]),
+      ctaUrl: z.string().optional(),
+      ctaText: z.string().optional(),
+      thumbnail: image().optional(),
+      searchKeywords: z.array(z.string()).optional(),
+    }),
+});
+
+const resume = defineCollection({
+  loader: glob({
+    pattern: "ArturoNava-Resume-*.md",
+    base: "./src/content/resume",
+  }),
+  schema: localizedBaseSchema.extend({
+    canonicalId: z.string().default("arturo-nava-resume"),
+    title: z.string().min(1),
+    name: z.string().min(1),
+    role: z.string().min(1),
+    location: z.string().min(1),
+    summary: z.string().min(1),
+    updatedDate: z.coerce.date(),
+    skills: z.record(z.string(), z.array(z.string())),
+    contact: z.object({
+      email: z.string().email(),
+      github: z.string().url(),
+      linkedin: z.string().url(),
+      website: z.string().url(),
+    }),
+  }),
+});
+
+export const collections = { posts, projects, experience, services, resume };
 ```
 
 ---
@@ -198,11 +315,11 @@ When delivering code or architecture decisions:
   - Exclusiones estrictas configuradas en [`codegraph.json`](codegraph.json) (`src/content/**` excluido para preservar la densidad del grafo y evitar polución de tokens con prosa Markdown).
   - Directorio de base de datos e índices SQLite `.codegraph/` ignorado en `.gitignore`.
 - **CUÁNDO usarlo**:
-  1. **Antes de editar código**: Obligatorio antes de refactorizar o modificar cualquier componente Astro, layout o módulo en `src/data/`, `src/i18n/`, `src/utils/` o `cloudflare/`.
+  1. **Antes de editar código**: Obligatorio antes de refactorizar o modificar cualquier componente Astro, layout o módulo en `src/lib/`, `src/data/`, `src/i18n/`, `src/utils/` o `cloudflare/`.
   2. **Exploración de Arquitectura y Blast Radius**: Para determinar llamadores (`callers`), dependencias (`callees`) e impacto transversal sin loops manuales de `grep`/`find`.
   3. **Resolución de bugs**: Para rastrear el flujo exacto de símbolos tipados y sus referencias cruzadas.
 - **CÓMO usarlo**:
-  - Vía MCP: Ejecutar `codegraph_explore` con `projectPath` apuntando a la raíz del repositorio y `query` con los símbolos o rutas objetivo (ej. `"cv.ts searchIndex.ts getCounterpartUrl"`).
+  - Vía MCP: Ejecutar `codegraph_explore` con `projectPath` apuntando a la raíz del repositorio y `query` con los símbolos o rutas objetivo (ej. `"StoragePort CloudflareR2StorageAdapter createStorageAdapter"` o `"locales.ts resume.ts"`).
   - Vía CLI: `codegraph status`, `codegraph sync`, o `codegraph explore "<query>"`.
   - **Restricción**: NUNCA indexar ni consultar archivos Markdown de contenido (`src/content/`) mediante CodeGraph.
 
@@ -213,7 +330,7 @@ When delivering code or architecture decisions:
 - **CUÁNDO usarlo**:
   1. **Al iniciar sesión o nuevo flujo**: Consultar memoria activa o contexto previo (`engram context personal-website` o `mem_context`) para no repetir análisis ni ignorar decisiones tomadas.
   2. **Proactivamente tras decisiones clave (OBLIGATORIO)**:
-     - Cambios de arquitectura, infraestructura o configuración (`output: 'static'`, routing, D1, Tailwind v4).
+     - Cambios de arquitectura, infraestructura o configuración (`output: 'static'`, routing, D1, Tailwind v4, ports/adapters).
      - Corrección de bugs no triviales (documentando causa raíz).
      - Convenciones de equipo o patrones descubiertos.
      - Preferencias y restricciones específicas del usuario.
@@ -227,7 +344,13 @@ When delivering code or architecture decisions:
 # PROJECT MEMORY & DECISIONS
 
 - [2026-09] Tailwind v4 configured via `@theme` in `src/styles/global.css`. Creating `tailwind.config.js` is strictly forbidden.
-- [2026-09] The `posts` collection strictly enforces a Zod schema requiring `pubDate` and `tags`.
 - [2026-09] Pure static deployment on Cloudflare Pages (`output: 'static'`). 0 KB baseline client-side JS enforced as an architectural invariant.
 - [2026-09] CodeGraph configured with `.codegraph/` gitignored and `src/content/**` excluded in `codegraph.json`.
 - [2026-09] Engram initialized in `.engram/config.json` under project `personal-website` with architectural context persisted.
+- [2026-09] Universal draft and visibility system: build-time exclusion filters supporting `draft: true` and `visible: false` across all collections and static data modules.
+- [2026-09] Consolidated zero-duplication i18n parameterized dynamic routes under `src/pages/[...lang]/` eliminating 14 duplicate template pairs.
+- [2026-10] Legacy `src/data/cv.ts` pruned and migrated to unified `src/data/resume.ts` and `src/content/resume/`.
+- [2026-10] Hexagonal Architecture (Ports & Adapters) fully integrated in `src/lib/ports/` and `src/lib/adapters/`: strict vendor decoupling with zero Astro code modifications on platform migrations.
+- [2026-10] Extensible multi-language engine configured in `src/i18n/locales.ts` (`DEFAULT_LOCALE = "en"` with Spanish secondary) and localized base schema in `src/content.config.ts`.
+- [2026-10] Cloudflare Edge platform operationalization: R2 + Cache API (`caches.default`), Workers AI + Vectorize semantic search with static memory fallback, D1 daily rollups cron trigger, serverless corporate email routing ingestion, and WAF L7 bot protection.
+- [2026-10] Strict TypeScript with `exactOptionalPropertyTypes: true` across all domain contracts and adapters.

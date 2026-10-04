@@ -1,8 +1,25 @@
 /// <reference types="@cloudflare/workers-types" />
 
+import { handleAnalyticsRollup } from "./cron-scheduler";
+import {
+  processIncomingEmail,
+  type ForwardableEmailMessage,
+} from "./email-worker";
+import { createSearchAdapter, createCaptchaAdapter } from "../src/lib/adapters";
+
 interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
+  STORAGE_BUCKET?: R2Bucket;
+  VECTORIZE_INDEX?: any;
+  AI?: any;
+  TURNSTILE_SECRET_KEY?: string;
+  DISCORD_WEBHOOK_URL?: string;
+  SLACK_WEBHOOK_URL?: string;
+  APP_STORAGE_DRIVER?: string;
+  APP_SEARCH_DRIVER?: string;
+  APP_TELEMETRY_DRIVER?: string;
+  APP_CAPTCHA_DRIVER?: string;
 }
 
 const STATIC_EXT_REGEX =
@@ -10,6 +27,16 @@ const STATIC_EXT_REGEX =
 
 const BOT_REGEX =
   /bot|spider|crawl|slurp|semrush|ahrefs|yandex|bytespider|gptbot|claudebot|perplexity|anthropic|cohere|applebot/i;
+
+const TRACKING_PARAMS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "fbclid",
+  "gclid",
+];
 
 export default {
   async fetch(
@@ -29,10 +56,104 @@ export default {
       request.headers.get("x-astro-prefetch") !== null ||
       request.headers.get("X-Astro-Prefetch") !== null;
 
-    // 2. Telemetry Ingestion Endpoint
+    // 2. Semantic Search Endpoint with Query Parameter Normalization (SPEC-003 Section 2.2 & 3.2.2)
+    if (url.pathname === "/api/search") {
+      const cleanUrl = new URL(request.url);
+      for (const param of TRACKING_PARAMS) {
+        cleanUrl.searchParams.delete(param);
+      }
+
+      const q = cleanUrl.searchParams.get("q") || "";
+      const locale = cleanUrl.searchParams.get("locale") || "en";
+      const limit = Number(cleanUrl.searchParams.get("limit") || 8);
+      const threshold = cleanUrl.searchParams.get("threshold")
+        ? Number(cleanUrl.searchParams.get("threshold"))
+        : undefined;
+
+      if (!q.trim()) {
+        return new Response(JSON.stringify({ results: [] }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "public, max-age=60, s-maxage=300",
+          },
+        });
+      }
+
+      try {
+        const searchAdapter = createSearchAdapter({
+          env: {
+            APP_SEARCH_DRIVER: env.APP_SEARCH_DRIVER,
+            AI: env.AI,
+            VECTORIZE_INDEX: env.VECTORIZE_INDEX,
+          },
+          executionCtx: ctx,
+        });
+
+        const results = await searchAdapter.search({
+          query: q,
+          locale,
+          limit,
+          threshold,
+        });
+
+        return new Response(JSON.stringify({ results }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "public, max-age=60, s-maxage=300",
+          },
+        });
+      } catch (err) {
+        return new Response(
+          JSON.stringify({
+            results: [],
+            error: err instanceof Error ? err.message : "Search failed",
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+
+    // 3. Captcha / Bot Verification Endpoint (SPEC-003 Section 1.1.4 & 3.4)
+    if (url.pathname === "/api/verify-captcha" && request.method === "POST") {
+      try {
+        const body = (await request.json()) as { token?: string };
+        const clientIp = request.headers.get("cf-connecting-ip") || undefined;
+        const captchaAdapter = createCaptchaAdapter({
+          env: {
+            APP_CAPTCHA_DRIVER: env.APP_CAPTCHA_DRIVER,
+            TURNSTILE_SECRET_KEY: env.TURNSTILE_SECRET_KEY,
+          },
+          executionCtx: ctx,
+        });
+
+        const result = await captchaAdapter.verify({
+          token: body.token || "",
+          remoteIp: clientIp,
+        });
+
+        return new Response(JSON.stringify(result), {
+          status: result.success ? 200 : 403,
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid request" }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+
+    // 4. Telemetry Ingestion Endpoint
     if (url.pathname === "/api/v1/telemetry" && request.method === "POST") {
       if (isPrefetch) {
-        // Discard prefetch requests immediately without hitting D1
         return new Response(null, { status: 204 });
       }
 
@@ -48,23 +169,45 @@ export default {
               request.headers.get("cf-ipcountry") ||
               "XX";
 
-            await env.DB.prepare(
+            const now = Date.now();
+            const path = String(payload.path || "").slice(0, 255);
+            const locale = String(payload.locale || "en").slice(0, 10);
+            const visitorHash = String(payload.visitorHash || "").slice(0, 32);
+
+            // Record raw edge telemetry event
+            const telemetryPromise = env.DB.prepare(
               `INSERT INTO edge_telemetry_events (
                 id, timestamp, path, locale, country, user_agent, visitor_hash
               ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
             )
               .bind(
                 crypto.randomUUID(),
-                Date.now(),
-                String(payload.path || "").slice(0, 255),
-                String(payload.locale || "en").slice(0, 10),
+                now,
+                path,
+                locale,
                 country,
                 userAgent,
-                String(payload.visitorHash || "").slice(0, 32),
+                visitorHash,
               )
               .run();
+
+            // Record into pageview_events for SPEC-003 Daily Rollups
+            const rollupEventPromise = env.DB.prepare(
+              `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
+               VALUES (?, ?, ?, ?, ?)`,
+            )
+              .bind(
+                path,
+                locale,
+                country,
+                String(payload.referrer || "Direct").slice(0, 255),
+                now,
+              )
+              .run();
+
+            await Promise.all([telemetryPromise, rollupEventPromise]);
           } catch {
-            // Edge telemetry errors are discarded to prevent client disruptions
+            // Edge telemetry errors discarded defensively
           }
         })(),
       );
@@ -75,7 +218,7 @@ export default {
       });
     }
 
-    // 3. Pageview analytics for GET requests
+    // 5. Pageview analytics for GET requests
     const isGet = request.method === "GET";
     if (isGet) {
       const pathname = url.pathname.replace(/\/+$/, "") || "/";
@@ -98,10 +241,10 @@ export default {
       }
     }
 
-    // 4. Delegate to Static Assets
+    // 6. Delegate to Static Assets
     const response = await env.ASSETS.fetch(request);
 
-    // 5. Immutable Cache-Control for Hashed Assets
+    // 7. Immutable Cache-Control for Hashed Assets & Specific PDF Cache Rules
     if (
       url.pathname.startsWith("/_astro/") ||
       url.pathname.startsWith("/fonts/")
@@ -111,7 +254,34 @@ export default {
       return new Response(response.body, { status: response.status, headers });
     }
 
+    if (url.pathname.endsWith(".pdf")) {
+      const headers = new Headers(response.headers);
+      headers.set(
+        "Cache-Control",
+        "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+      );
+      return new Response(response.body, { status: response.status, headers });
+    }
+
     return response;
+  },
+
+  // Cron Trigger Engine for Analytics Rollups (SPEC-003 Section 2.3.2)
+  async scheduled(
+    controller: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    ctx.waitUntil(handleAnalyticsRollup(env));
+  },
+
+  // Serverless Corporate Email Ingestion (SPEC-003 Section 2.4)
+  async email(
+    message: ForwardableEmailMessage,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    await processIncomingEmail(message, env, ctx);
   },
 };
 
@@ -272,8 +442,11 @@ async function recordAnalytics(
       .join("")
       .slice(0, 16);
 
-    // Inserción en D1 con límites defensivos en longitud
-    await db
+    const locale = path.startsWith("/es") ? "es" : "en";
+    const now = Date.now();
+
+    // 1. Inserción en D1 pageviews
+    const pageviewsInsert = db
       .prepare(
         `INSERT INTO pageviews (
            path, visitor_hash, referrer, country, 
@@ -294,6 +467,27 @@ async function recordAnalytics(
         isBot,
       )
       .run();
+
+    // 2. Inserción en pageview_events para SPEC-003 Daily Rollups si no es bot
+    if (!isBot) {
+      const rollupInsert = db
+        .prepare(
+          `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
+           VALUES (?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          path.slice(0, 200),
+          locale,
+          country.slice(0, 10),
+          referrer.slice(0, 100),
+          now,
+        )
+        .run();
+
+      await Promise.all([pageviewsInsert, rollupInsert]);
+    } else {
+      await pageviewsInsert;
+    }
   } catch (err) {
     console.error("[Analytics Error]:", err);
   }

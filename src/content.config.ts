@@ -3,27 +3,39 @@ import { z } from "astro/zod";
 import { glob } from "astro/loaders";
 import { SUPPORTED_LOCALES } from "./i18n/locales";
 
+export const localizedBaseSchema = z.object({
+  canonicalId: z
+    .string()
+    .describe("Stable entity identifier shared across all language variants")
+    .optional(),
+  translationKey: z.string().optional(),
+  locale: z.enum(SUPPORTED_LOCALES),
+  draft: z.boolean().default(false),
+  visible: z.boolean().default(true),
+});
+
 const posts = defineCollection({
   loader: glob({
     pattern: ["**/*.{md,mdx}", "!**/_*"],
     base: "./src/content/posts",
   }),
   schema: ({ image }) =>
-    z.object({
+    localizedBaseSchema.extend({
       title: z.string().max(75, "SEO title under 75 chars"),
       description: z.string().max(160, "Meta description under 160 chars"),
       pubDate: z.coerce.date(),
+      publishedAt: z.coerce.date().optional(),
       updatedDate: z.coerce.date().optional(),
-      draft: z.boolean().default(false),
-      visible: z.boolean().default(true),
-      locale: z.enum(["en", "es"]),
+      updatedAt: z.coerce.date().optional(),
       translationKey: z.string(),
       category: z.string().default("systems"),
       tags: z.array(z.string()).min(1),
       coverImage: image().optional(),
       coverAlt: z.string().optional(),
-      canonicalUrl: z.url().optional(),
+      canonicalUrl: z.string().url().optional(),
       searchKeywords: z.array(z.string()).optional(),
+      author: z.string().default("Arturo Nava"),
+      readingTimeMinutes: z.number().int().positive().optional(),
     }),
 });
 
@@ -33,23 +45,20 @@ const projects = defineCollection({
     base: "./src/content/projects",
   }),
   schema: ({ image }) =>
-    z.object({
+    localizedBaseSchema.extend({
       title: z.string(),
       description: z.string(),
       role: z.string(),
       company: z.string().optional(),
       featured: z.boolean().default(false),
-      draft: z.boolean().default(false),
-      visible: z.boolean().default(true),
       order: z.number().int(),
-      locale: z.enum(["en", "es"]),
       translationKey: z.string(),
       techStack: z.array(z.string()),
       metrics: z
         .array(z.object({ label: z.string(), value: z.string() }))
         .optional(),
-      repoUrl: z.url().optional(),
-      liveUrl: z.url().optional(),
+      repoUrl: z.string().url().optional(),
+      liveUrl: z.string().url().optional(),
       thumbnail: image().optional(),
       searchKeywords: z.array(z.string()).optional(),
     }),
@@ -60,9 +69,9 @@ const experience = defineCollection({
     pattern: ["**/*.md", "!**/_*"],
     base: "./src/content/experience",
   }),
-  schema: z.object({
+  schema: localizedBaseSchema.extend({
     company: z.string(),
-    companyUrl: z.url().optional(),
+    companyUrl: z.string().url().optional(),
     companyDomain: z.string().optional(),
     companyIndustry: z.string().optional(),
     companyDescription: z.string().optional(),
@@ -71,10 +80,7 @@ const experience = defineCollection({
     employmentType: z.string(),
     startDate: z.coerce.date(),
     endDate: z.coerce.date().optional(),
-    draft: z.boolean().default(false),
-    visible: z.boolean().default(true),
     order: z.number().int(),
-    locale: z.enum(["en", "es"]),
     skills: z.array(z.string()),
     keyAchievements: z.array(z.string()),
     searchKeywords: z.array(z.string()).optional(),
@@ -87,15 +93,12 @@ const services = defineCollection({
     base: "./src/content/services",
   }),
   schema: ({ image }) =>
-    z.object({
+    localizedBaseSchema.extend({
       title: z.string(),
       description: z.string(),
       type: z.enum(["service", "product", "mentorship"]),
-      locale: z.enum(["en", "es"]),
       translationKey: z.string(),
       featured: z.boolean().default(false),
-      draft: z.boolean().default(false),
-      visible: z.boolean().default(true),
       order: z.number().int(),
       price: z.string().optional(),
       deliveryTime: z.string().optional(),
@@ -113,17 +116,14 @@ const resume = defineCollection({
     pattern: "ArturoNava-Resume-*.md",
     base: "./src/content/resume",
   }),
-  schema: z.object({
+  schema: localizedBaseSchema.extend({
     canonicalId: z.string().default("arturo-nava-resume"),
-    locale: z.enum(SUPPORTED_LOCALES),
     title: z.string().min(1),
     name: z.string().min(1),
     role: z.string().min(1),
     location: z.string().min(1),
     summary: z.string().min(1),
     updatedDate: z.coerce.date(),
-    draft: z.boolean().default(false),
-    visible: z.boolean().default(true),
     skills: z.record(z.string(), z.array(z.string())),
     contact: z.object({
       email: z.string().email(),
