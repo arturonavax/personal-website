@@ -13,11 +13,11 @@ export interface SchemaArticleOptions {
   canonicalUrl: string;
   headline: string;
   description: string;
-  publishedAt: string;
-  updatedAt?: string;
-  authorName?: string;
-  tags?: string[];
-  imageUrl?: string;
+  publishedAt?: string | undefined;
+  updatedAt?: string | undefined;
+  authorName?: string | undefined;
+  tags?: string[] | undefined;
+  imageUrl?: string | undefined;
 }
 
 export function buildPersonJsonLd(
@@ -50,8 +50,10 @@ export function buildArticleJsonLd(
     headline: options.headline,
     description: options.description,
     url: options.canonicalUrl,
-    datePublished: options.publishedAt,
-    dateModified: options.updatedAt || options.publishedAt,
+    ...(options.publishedAt ? { datePublished: options.publishedAt } : {}),
+    ...(options.updatedAt || options.publishedAt
+      ? { dateModified: options.updatedAt || options.publishedAt }
+      : {}),
     author: {
       "@type": "Person",
       "@id": "https://arturonavax.dev/#person",

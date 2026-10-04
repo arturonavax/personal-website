@@ -4,6 +4,8 @@ import type { Locale } from "@/i18n/ui";
 import { formatDate } from "@/i18n/utils";
 import TechIcon from "@/components/ui/TechIcon.astro";
 
+import { buildArticleJsonLd } from "@/lib/seo/schema-builder";
+
 interface Props {
   title: string;
   description: string;
@@ -28,19 +30,19 @@ const {
   backLabel,
 } = Astro.props;
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "TechArticle",
+const siteUrl = "https://arturonavax.dev";
+const rawPath = Astro.url.pathname;
+const normalizedPath = rawPath.endsWith("/") ? rawPath : `${rawPath}/`;
+const canonicalUrl = `${siteUrl}${normalizedPath}`;
+
+const jsonLd = buildArticleJsonLd({
+  locale,
+  canonicalUrl,
   headline: title,
-  description: description,
-  author: {
-    "@type": "Person",
-    name: "Arturo Nava",
-    url: "https://arturonavax.dev",
-  },
-  ...(pubDate ? { datePublished: pubDate.toISOString() } : {}),
-  inLanguage: locale,
-};
+  description,
+  publishedAt: pubDate ? pubDate.toISOString() : undefined,
+  tags,
+});
 ---
 
 <BaseLayout
