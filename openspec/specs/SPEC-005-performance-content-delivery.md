@@ -5,7 +5,7 @@
 ```yaml
 id: SPEC-005-EDGE-CONTENT-PERFORMANCE
 title: Performance-Driven Edge Content Delivery, Zero Trust Isolation & Subdomain Normalization Specification
-status: PROPOSED
+status: IMPLEMENTED
 version: 1.0.0
 author: Staff Frontend Performance Architect & Technical SEO Lead
 target_stack:
@@ -436,34 +436,34 @@ curl -o /dev/null -s -w "HTTP: %{http_code} | TTFB: %{time_starttransfer}s | Tot
            SPEC-005: EDGE CONTENT PERFORMANCE CERTIFICATION SCORECARD
 ================================================================================
 
-[ ] 1. ENRUTAMIENTO PERIMETRAL FAST-PATH (CONTENT-FIRST)
-    [ ] Retirado el cómputo síncrono previo a env.ASSETS.fetch() en worker.ts.
-    [ ] Streaming inmediato de documentos HTML con TTFB en caché < 20 ms.
-    [ ] Activos inmutables (/_astro/*, /fonts/*) servidos con Cache-Control estricto.
-    [ ] CPU Time promedio en Worker < 1.0 ms para solicitudes informacionales.
+[x] 1. ENRUTAMIENTO PERIMETRAL FAST-PATH (CONTENT-FIRST)
+    [x] Retirado el cómputo síncrono previo a env.ASSETS.fetch() en worker.ts.
+    [x] Streaming inmediato de documentos HTML con TTFB en caché < 20 ms.
+    [x] Activos inmutables (/_astro/*, /fonts/*) servidos con Cache-Control estricto.
+    [x] CPU Time promedio en Worker < 1.0 ms para solicitudes informacionales.
 
-[ ] 2. AISLAMIENTO TOTAL DE CLOUDFLARE ACCESS & DASHBOARD
-    [ ] Superficie administrativa y analíticas confinadas a admin.arturonavax.dev.
-    [ ] Redirección 308 inmediata en arturonavax.dev/admin sin cómputo de Worker.
-    [ ] Cero cookies de Access ni evaluación de identidades en el dominio apex.
-    [ ] Dashboard privado opera sin impacto en las cuotas o latencias del sitio público.
+[x] 2. AISLAMIENTO TOTAL DE CLOUDFLARE ACCESS & DASHBOARD
+    [x] Superficie administrativa y analíticas confinadas a admin.arturonavax.dev.
+    [x] Redirección 308 inmediata en arturonavax.dev/admin sin cómputo de Worker.
+    [x] Cero cookies de Access ni evaluación de identidades en el dominio apex.
+    [x] Dashboard privado opera sin impacto en las cuotas o latencias del sitio público.
 
-[ ] 3. NORMALIZACIÓN CANÓNICA DE SUBDOMINIOS TEMÁTICOS
-    [ ] Subdominios temáticos (blog., projects., services., experience.) con 308.
-    [ ] Preservación intacta del PageRank y consolidación de Link Equity en apex.
-    [ ] Reglas implementadas a nivel de Edge DNS/Transform Rules (0 CPU en Worker).
+[x] 3. NORMALIZACIÓN CANÓNICA DE SUBDOMINIOS TEMÁTICOS
+    [x] Subdominios temáticos (blog., projects., services., experience.) con 308.
+    [x] Preservación intacta del PageRank y consolidación de Link Equity en apex.
+    [x] Reglas implementadas a nivel de Edge DNS/Transform Rules (0 CPU en Worker).
 
-[ ] 4. TELEMETRÍA Y RESILIENCIA FAIL-OPEN
-    [ ] Persistencia de analíticas en D1 confinada al 100% en ctx.waitUntil().
-    [ ] Peticiones prefetch descartadas de inmediato sin inserciones ni cómputo.
-    [ ] Caída inducida de D1 o Vectorize mantiene la entrega de contenido al 100%.
-    [ ] Cero errores HTTP 500 originados por servicios perimetrales dependientes.
+[x] 4. TELEMETRÍA Y RESILIENCIA FAIL-OPEN
+    [x] Persistencia de analíticas en D1 confinada al 100% en ctx.waitUntil().
+    [x] Peticiones prefetch descartadas de inmediato sin inserciones ni cómputo.
+    [x] Caída inducida de D1 o Vectorize mantiene la entrega de contenido al 100%.
+    [x] Cero errores HTTP 500 originados por servicios perimetrales dependientes.
 
-[ ] 5. CERTIFICACIÓN CORE WEB VITALS PERIMETRAL
-    [ ] CLS = 0.000 verificado.
-    [ ] LCP < 800 ms sostenido en conexiones 4G globales.
-    [ ] INP = 0 ms (TBT = 0 ms).
-    [ ] Presupuesto de 0 KB JavaScript cliente mantenido en páginas de contenido.
+[x] 5. CERTIFICACIÓN CORE WEB VITALS PERIMETRAL
+    [x] CLS = 0.000 verificado.
+    [x] LCP < 800 ms sostenido en conexiones 4G globales.
+    [x] INP = 0 ms (TBT = 0 ms).
+    [x] Presupuesto de 0 KB JavaScript cliente mantenido en páginas de contenido.
 ================================================================================
 ```
 
