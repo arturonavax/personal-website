@@ -34,6 +34,7 @@ export function serializeResumeToJSON(
   const enriched = {
     "@context": "https://schema.org",
     "@type": "Person",
+    "@id": "https://arturonavax.dev/#person",
     name: data.name,
     jobTitle: data.role,
     address: data.location,

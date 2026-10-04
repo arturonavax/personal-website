@@ -32,7 +32,7 @@ const posts = defineCollection({
       tags: z.array(z.string()).min(1),
       coverImage: image().optional(),
       coverAlt: z.string().optional(),
-      canonicalUrl: z.string().url().optional(),
+      canonicalUrl: z.url().optional(),
       searchKeywords: z.array(z.string()).optional(),
       author: z.string().default("Arturo Nava"),
       readingTimeMinutes: z.number().int().positive().optional(),
@@ -57,8 +57,8 @@ const projects = defineCollection({
       metrics: z
         .array(z.object({ label: z.string(), value: z.string() }))
         .optional(),
-      repoUrl: z.string().url().optional(),
-      liveUrl: z.string().url().optional(),
+      repoUrl: z.url().optional(),
+      liveUrl: z.url().optional(),
       thumbnail: image().optional(),
       searchKeywords: z.array(z.string()).optional(),
     }),
@@ -71,7 +71,7 @@ const experience = defineCollection({
   }),
   schema: localizedBaseSchema.extend({
     company: z.string(),
-    companyUrl: z.string().url().optional(),
+    companyUrl: z.url().optional(),
     companyDomain: z.string().optional(),
     companyIndustry: z.string().optional(),
     companyDescription: z.string().optional(),
@@ -126,10 +126,10 @@ const resume = defineCollection({
     updatedDate: z.coerce.date(),
     skills: z.record(z.string(), z.array(z.string())),
     contact: z.object({
-      email: z.string().email(),
-      github: z.string().url(),
-      linkedin: z.string().url(),
-      website: z.string().url(),
+      email: z.email(),
+      github: z.url(),
+      linkedin: z.url(),
+      website: z.url(),
     }),
   }),
 });
