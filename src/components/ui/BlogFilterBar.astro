@@ -23,7 +23,7 @@ interface Props {
 const { locale, categories, tags, totalPosts } = Astro.props;
 
 const isEs = locale === "es";
-const allLabel = isEs ? "Todos los Ensayos" : "All Essays";
+const allLabel = isEs ? "Todas las Publicaciones" : "All Posts";
 const categoriesHeading =
   locale === "es" ? "Áreas & Especialidades" : "Areas & Specializations";
 const tagsHeading =
@@ -31,11 +31,11 @@ const tagsHeading =
 const noResultsTitle =
   locale === "es"
     ? "No se encontraron notas en esta categoría"
-    : "No essays found in this category";
+    : "No posts found in this category";
 const noResultsDesc =
   locale === "es"
-    ? "Actualmente no hay artículos publicados bajo este filtro. Nuevas publicaciones y notas de investigación serán desplegadas próximamente."
-    : "There are currently no articles published under this filter. New engineering deep dives and research notes will be published soon.";
+    ? "Actualmente no hay notas publicadas bajo este filtro. Nuevas publicaciones y notas de investigación serán desplegadas próximamente."
+    : "There are currently no posts published under this filter. New engineering deep dives and research notes will be published soon.";
 const resetFilterLabel =
   locale === "es" ? "Restablecer Filtro" : "Reset Filter";
 const filterButtonLabel =

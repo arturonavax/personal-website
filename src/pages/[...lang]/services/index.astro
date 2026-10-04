@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import ServiceCard from "@/components/ui/ServiceCard.astro";
+import PaginationController from "@/components/ui/PaginationController.astro";
 import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
 import type { SupportedLocale } from "@/i18n/config";
 import { getVisibleCollection } from "@/utils/visibility";
@@ -67,7 +68,6 @@ const pageDescription = isEs
       </header>
     </div>
 
-    <!-- Services Grid -->
     {sortedServices.length > 0 ? (
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
         {sortedServices.map((service) => (
@@ -80,6 +80,16 @@ const pageDescription = isEs
           ? "No hay servicios de consultoría activos en este momento. Puedes contactarme directamente por los canales oficiales."
           : "No advisory services listed at this moment. Feel free to reach out via direct channels."}
       </div>
+    )}
+
+    <!-- Scalable Pagination Controller -->
+    {sortedServices.length > 0 && (
+      <PaginationController
+        locale={locale}
+        pageSize={4}
+        targetSelector="[data-service-card]"
+        totalItems={sortedServices.length}
+      />
     )}
 
     <!-- Custom Inquiries Banner -->

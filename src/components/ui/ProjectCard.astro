@@ -85,18 +85,21 @@ const detailUrl =
         <button
           type="button"
           data-tech-search={tech}
+          translate="no"
           title={
             locale === "es"
               ? `Buscar proyectos y notas sobre ${tech}`
-              : `Search projects & essays mentioning ${tech}`
+              : `Search projects & posts mentioning ${tech}`
           }
-          class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+          class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer notranslate"
         >
           <TechIcon
             name={tech}
             class="h-3 w-3 text-[var(--color-accent-gold)]"
           />
-          <span>{tech}</span>
+          <span translate="no" class="notranslate">
+            {tech}
+          </span>
         </button>
       ))}
     </div>

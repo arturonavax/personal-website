@@ -96,9 +96,7 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
               {companiesHeading}
             </span>
             <span class="text-[10px]">
-              {isEs
-                ? "(Selección múltiple disponible)"
-                : "(Multi-select enabled)"}
+              {isEs ? "(Selección exclusiva)" : "(Single-select)"}
             </span>
           </div>
           <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
@@ -116,6 +114,7 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
               <button
                 type="button"
                 data-project-filter={c.name.toLowerCase()}
+                data-is-company="true"
                 class="project-filter-pill rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
               >
                 <span>{c.name}</span>
@@ -437,6 +436,24 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
         if (activeFilters.has(filterNorm)) {
           activeFilters.delete(filterNorm);
         } else {
+          // Enforce single-select for company / organization filters
+          const isCompanyFilter = Array.from(filterButtons).some(
+            (b) =>
+              b.hasAttribute("data-is-company") &&
+              (b.getAttribute("data-project-filter") || "")
+                .toLowerCase()
+                .trim() === filterNorm,
+          );
+          if (isCompanyFilter) {
+            filterButtons.forEach((b) => {
+              if (b.hasAttribute("data-is-company")) {
+                const comp = (b.getAttribute("data-project-filter") || "")
+                  .toLowerCase()
+                  .trim();
+                activeFilters.delete(comp);
+              }
+            });
+          }
           activeFilters.add(filterNorm);
         }
       }

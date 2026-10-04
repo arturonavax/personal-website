@@ -1,6 +1,7 @@
 ---
 import type { Locale } from "@/i18n/ui";
 import type { ArchitectureSimulation } from "@/data/simulations";
+import { getCompanyInfo } from "@/data/companies";
 
 interface Props {
   simulation: ArchitectureSimulation;
@@ -11,6 +12,13 @@ interface Props {
 const { simulation, locale, showCompany = false } = Astro.props;
 const isEs = locale === "es";
 const rootId = `sim-card-${simulation.id}`;
+const companyInfo = getCompanyInfo(simulation.company);
+const companyFilterUrl = isEs
+  ? `/es/experience/?company=${encodeURIComponent(simulation.company.toLowerCase().trim())}`
+  : `/experience/?company=${encodeURIComponent(simulation.company.toLowerCase().trim())}`;
+const jobDetailUrl = isEs
+  ? `/es/experience/${simulation.jobSlug}/`
+  : `/experience/${simulation.jobSlug}/`;
 ---
 
 <div
@@ -36,9 +44,74 @@ const rootId = `sim-card-${simulation.id}`;
         {simulation.scriptName}
       </code>
       {showCompany && (
-        <span class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2 py-0.5 text-[11px] text-[var(--color-text-secondary)] font-sans">
-          @{simulation.company}
-        </span>
+        <div
+          class="relative inline-flex items-center gap-1.5 group/company shrink-0 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 shadow-xs"
+          data-company-tooltip-root
+        >
+          <a
+            href={companyFilterUrl}
+            title={
+              isEs
+                ? `Ver trayectoria filtrada para ${simulation.company}`
+                : `Filter timeline for ${simulation.company}`
+            }
+            class="text-xs font-semibold font-mono text-[var(--color-accent-gold)] hover:underline whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          >
+            @{simulation.company}
+          </a>
+
+          <button
+            type="button"
+            aria-expanded="false"
+            aria-label={
+              isEs
+                ? `Ver información sobre ${simulation.company}`
+                : `View information about ${simulation.company}`
+            }
+            title={
+              isEs
+                ? `Información sobre ${simulation.company}`
+                : `About ${simulation.company}`
+            }
+            class="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] text-[9px] font-mono font-bold text-[var(--color-accent-gold)] group-hover/company:bg-[var(--color-accent-gold)] group-hover/company:text-[var(--color-btn-gold-text)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shrink-0"
+            data-company-trigger
+          >
+            <span aria-hidden="true">i</span>
+          </button>
+
+          <div
+            role="tooltip"
+            data-company-tooltip
+            class="pointer-events-none group-hover/company:pointer-events-auto opacity-0 group-hover/company:opacity-100 translate-y-1 group-hover/company:translate-y-0 transition-all duration-200 absolute left-0 sm:left-1/2 sm:-translate-x-1/2 w-[min(280px,calc(100vw-2.5rem))] max-w-[calc(100vw-2.5rem)] sm:w-80 rounded-lg border border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] p-2.5 sm:p-3.5 z-[70] text-left font-sans"
+            style="box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.35), 0 3px 6px -2px rgba(0, 0, 0, 0.25); background-color: var(--color-surface-card);"
+          >
+            <div class="border-b border-[var(--color-surface-border-subtle)] pb-1.5 mb-1.5 sm:pb-2.5 sm:mb-2.5 space-y-0.5">
+              <div class="font-bold font-mono text-xs text-[var(--color-text-primary)]">
+                {companyInfo.name}
+              </div>
+              <p class="text-[10px] sm:text-[11px] font-sans font-medium text-[var(--color-accent-gold)] leading-snug">
+                {isEs ? companyInfo.industryEs : companyInfo.industry}
+              </p>
+            </div>
+            <p class="text-[11px] sm:text-xs text-[var(--color-text-secondary)] leading-normal sm:leading-relaxed mb-2 sm:mb-2.5">
+              {isEs ? companyInfo.descriptionEs : companyInfo.description}
+            </p>
+            <div class="pt-1.5 sm:pt-2 border-t border-[var(--color-surface-border-subtle)] flex items-center justify-between font-mono text-xs">
+              <span class="text-[10px] text-[var(--color-text-muted)] truncate max-w-[110px] sm:max-w-[130px]">
+                {companyInfo.domain}
+              </span>
+              <a
+                href={companyInfo.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1 sm:gap-1.5 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors"
+              >
+                <span>{isEs ? "Visitar Web" : "Visit Website"}</span>
+                <span aria-hidden="true">&nearr;</span>
+              </a>
+            </div>
+          </div>
+        </div>
       )}
     </div>
 
@@ -52,11 +125,20 @@ const rootId = `sim-card-${simulation.id}`;
     </div>
   </div>
 
-  <!-- Title & Description -->
+  <!-- Title & Description with Direct Experience Role Link -->
   <div class="space-y-2 font-sans">
-    <h4 class="text-base sm:text-lg font-bold text-[var(--color-text-primary)] tracking-tight">
-      {isEs ? simulation.titleEs : simulation.title}
-    </h4>
+    <div class="flex items-center justify-between gap-3">
+      <h4 class="text-base sm:text-lg font-bold text-[var(--color-text-primary)] tracking-tight">
+        {isEs ? simulation.titleEs : simulation.title}
+      </h4>
+      <a
+        href={jobDetailUrl}
+        class="shrink-0 text-xs font-mono text-[var(--color-accent-gold)] hover:underline inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+      >
+        <span>{isEs ? "Ver Puesto" : "View Role"}</span>
+        <span aria-hidden="true">&nearr;</span>
+      </a>
+    </div>
     <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
       {isEs ? simulation.descriptionEs : simulation.description}
     </p>
@@ -303,6 +385,40 @@ const rootId = `sim-card-${simulation.id}`;
           }
 
           executeNextStep();
+        });
+      });
+
+      // Initialize tooltips on simulation cards
+      var roots = document.querySelectorAll("[data-company-tooltip-root]");
+      roots.forEach(function (root) {
+        if (!root || root.dataset.simBound) return;
+        root.dataset.simBound = "true";
+        var trigger = root.querySelector("[data-company-trigger]");
+        var tooltip = root.querySelector("[data-company-tooltip]");
+        if (!trigger || !tooltip) return;
+
+        trigger.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var isOpen = root.dataset.tooltipOpen === "true";
+          root.dataset.tooltipOpen = isOpen ? "false" : "true";
+          trigger.setAttribute("aria-expanded", isOpen ? "false" : "true");
+          if (!isOpen) {
+            tooltip.classList.remove("opacity-0", "pointer-events-none");
+            tooltip.classList.add("opacity-100", "pointer-events-auto");
+          } else {
+            tooltip.classList.remove("opacity-100", "pointer-events-auto");
+            tooltip.classList.add("opacity-0", "pointer-events-none");
+          }
+        });
+
+        document.addEventListener("click", function (e) {
+          if (!root.contains(e.target)) {
+            root.dataset.tooltipOpen = "false";
+            trigger.setAttribute("aria-expanded", "false");
+            tooltip.classList.remove("opacity-100", "pointer-events-auto");
+            tooltip.classList.add("opacity-0", "pointer-events-none");
+          }
         });
       });
     }

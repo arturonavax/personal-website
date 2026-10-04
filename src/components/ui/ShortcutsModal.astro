@@ -246,6 +246,10 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
         });
       }
 
+      (window as any).__openShortcutsModal = () => toggleShortcutsModal(true);
+      (window as any).__toggleShortcutsModal = () =>
+        toggleShortcutsModal(!isShortcutsOpen.get());
+
       this.unsubscribeStore = isShortcutsOpen.subscribe((isOpen) => {
         if (!dialog) return;
         if (isOpen && !dialog.open && typeof dialog.showModal === "function") {
@@ -305,36 +309,13 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
         );
       }
 
-      // Esc key global listener
-      document.addEventListener(
+      // Close on Esc within dialog
+      dialog?.addEventListener(
         "keydown",
         (e: KeyboardEvent) => {
           if (e.key === "Escape") {
-            if (dialog && dialog.open) {
-              e.preventDefault();
-              toggleShortcutsModal(false);
-              return;
-            }
-
-            const active = document.activeElement;
-            const tag = active?.tagName?.toUpperCase() || "";
-            if (
-              tag === "INPUT" ||
-              tag === "TEXTAREA" ||
-              (active as HTMLElement)?.isContentEditable
-            ) {
-              return;
-            }
-
-            const path = window.location.pathname.replace(/\/+$/, "") || "/";
-            const isHome = path === "/" || path === "/es";
-            const scrollY =
-              window.scrollY || document.documentElement.scrollTop || 0;
-
-            if (isHome && scrollY <= 120) {
-              e.preventDefault();
-              toggleShortcutsModal(true);
-            }
+            e.preventDefault();
+            toggleShortcutsModal(false);
           }
         },
         { signal },

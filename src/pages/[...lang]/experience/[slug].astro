@@ -176,12 +176,36 @@ const jobIndexItems: IndexItem[] = [
     alignTargetId="role-header"
   />
 
-  <article
-    id="experience-article"
-    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 space-y-4 sm:space-y-6 lg:space-y-8"
+  <!-- Sticky Experience Context Header (REQ-UXE-16) -->
+  <div
+    id="sticky-experience-header"
+    class="fixed top-14 inset-x-0 z-30 pointer-events-none opacity-0 -translate-y-2 transition-all duration-300 border-b border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/90 backdrop-blur-md py-2 px-4 shadow-sm"
+    aria-hidden="true"
   >
-    <!-- Back to Experience Timeline -->
-    <div class="flex items-center justify-between gap-x-4 min-h-[1.75rem] h-[1.75rem] -mb-1 sm:-mb-2 text-xs font-mono">
+    <div class="mx-auto max-w-4xl flex items-center justify-between gap-4 font-mono text-xs">
+      <div class="flex items-center gap-2 truncate">
+        <span class="font-bold text-[var(--color-text-primary)] truncate">
+          {role}
+        </span>
+        <span class="text-[var(--color-text-muted)]">@</span>
+        <span class="text-[var(--color-accent-gold)] truncate">{company}</span>
+      </div>
+      <a
+        href={`${basePath}/experience/`}
+        class="pointer-events-auto inline-flex items-center gap-1 text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] transition-colors shrink-0"
+      >
+        <span>&larr;</span>
+        <span>{isEs ? "Trayectoria" : "Timeline"}</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Top Milestone Bar (Decoupled, never slides, REQ-UXE-08) -->
+  <div class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5">
+    <div
+      id="experience-milestone-bar"
+      class="flex items-center justify-between gap-x-4 min-h-[1.75rem] h-[1.75rem] text-xs font-mono"
+    >
       <a
         href={`${basePath}/experience/`}
         class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] py-0.5 truncate"
@@ -200,348 +224,358 @@ const jobIndexItems: IndexItem[] = [
         </span>
       </div>
     </div>
+  </div>
 
-    <!-- Timeline Rail Container with Horizontal Line & Travel Navigation Steppers (Task 3 & 53) -->
+  <article
+    id="experience-article"
+    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pb-8 sm:pb-12"
+  >
     <div
-      class="relative py-2 sm:py-4 my-1 sm:my-2"
-      id="timeline-rail-container"
+      id="experience-article-content"
+      class="space-y-4 sm:space-y-6 lg:space-y-8"
     >
-      <!-- Horizontal Timeline Axis Line aligned with header title row to prevent vertical jumping -->
-      <div class="absolute top-[5.5rem] sm:top-[7rem] -left-6 -right-6 sm:-left-12 sm:-right-12 -translate-y-1/2 h-0.5 bg-[var(--color-surface-border)] pointer-events-none z-0">
-        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--color-accent-gold)]/50 to-transparent"></div>
-        <svg
-          class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 h-3 w-3 text-[var(--color-accent-gold)] shrink-0 aspect-square"
-          viewBox="0 0 12 12"
-          fill="none"
-          aria-hidden="true"
-        >
-          <circle
-            cx="6"
-            cy="6"
-            r="4.5"
-            fill="var(--color-surface-card)"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </svg>
-        <svg
-          class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-3 w-3 text-[var(--color-accent-gold)] shrink-0 aspect-square"
-          viewBox="0 0 12 12"
-          fill="none"
-          aria-hidden="true"
-        >
-          <circle
-            cx="6"
-            cy="6"
-            r="4.5"
-            fill="var(--color-surface-card)"
-            stroke="currentColor"
-            stroke-width="1.5"
-          />
-        </svg>
-      </div>
-
-      <!-- Left Stepper (Past: older roles towards beginning of career) -->
-      {pastUrl && pastExperience && (
-        <a
-          href={pastUrl}
-          data-timeline-nav="past"
-          data-astro-prefetch="hover"
-          title={`${isEs ? "Hito anterior:" : "Past timeline milestone:"} ${pastExperience.data.role} @ ${pastExperience.data.company}`}
-          class="group/timeline-nav absolute left-0 top-[5.5rem] sm:top-[7rem] -translate-x-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
-          aria-label={`${isEs ? "Rol anterior:" : "Past role:"} ${pastExperience.data.role} (press h)`}
-        >
-          <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
-            h
-          </kbd>
-          <svg
-            class="h-4 w-4 sm:h-5 sm:w-5 stroke-current fill-none"
-            viewBox="0 0 24 24"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="19" y1="12" x2="5" y2="12"></line>
-            <polyline points="12 19 5 12 12 5"></polyline>
-          </svg>
-          <span class="pointer-events-none opacity-0 group-hover/timeline-nav:opacity-100 transition-opacity absolute bottom-full mb-5.5 left-0 whitespace-nowrap rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-[11px] font-mono font-medium text-[var(--color-accent-gold)] shadow-xl z-30">
-            &larr; {pastExperience.data.company}
-          </span>
-        </a>
-      )}
-
-      <!-- Right Stepper (Future/Present: newer roles towards current career) -->
-      {futureUrl && futureExperience && (
-        <a
-          href={futureUrl}
-          data-timeline-nav="future"
-          data-astro-prefetch="hover"
-          title={`${isEs ? "Siguiente hito:" : "Future timeline milestone:"} ${futureExperience.data.role} @ ${futureExperience.data.company}`}
-          class="group/timeline-nav absolute right-0 top-[5.5rem] sm:top-[7rem] translate-x-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
-          aria-label={`${isEs ? "Siguiente rol:" : "Future role:"} ${futureExperience.data.role} (press l)`}
-        >
-          <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
-            l
-          </kbd>
-          <svg
-            class="h-4 w-4 sm:h-5 sm:w-5 stroke-current fill-none"
-            viewBox="0 0 24 24"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
-          <span class="pointer-events-none opacity-0 group-hover/timeline-nav:opacity-100 transition-opacity absolute bottom-full mb-5.5 right-0 whitespace-nowrap rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-[11px] font-mono font-medium text-[var(--color-accent-gold)] shadow-xl z-30">
-            {futureExperience.data.company} &rarr;
-          </span>
-        </a>
-      )}
-
-      <!-- Role Header Card sits on top with z-10 -->
-      <header
-        id="role-header"
-        class="geometric-box relative z-10 rounded-lg p-6 sm:p-8 space-y-6 bg-[var(--color-surface-card)] shadow-card"
+      <!-- Timeline Rail Container with Horizontal Line & Travel Navigation Steppers (Task 3 & 53) -->
+      <div
+        class="relative py-2 sm:py-4 my-1 sm:my-2"
+        id="timeline-rail-container"
       >
-        <div class="space-y-3 border-b border-[var(--color-surface-border-subtle)] pb-6">
-          <div class="flex items-center justify-between gap-3 text-xs font-mono text-[var(--color-text-muted)] min-h-[2rem]">
-            <span class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-accent-gold)] shrink-0">
-              <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)]"></span>
-              <span>{employmentType}</span>
-            </span>
-            <span class="truncate">
-              {startStr} &mdash; {endStr} &bull; {location}
-            </span>
-          </div>
-
-          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--color-text-primary)] min-h-[2.5rem] sm:min-h-[3rem] lg:min-h-[3.25rem] flex items-start">
-            {role}
-          </h1>
-
-          <!-- Company Details & External Link -->
-          <div class="flex flex-wrap items-center gap-3 pt-1">
-            <div class="flex items-center gap-2 font-mono text-sm">
-              <a
-                href={companyFilterUrl}
-                title={`${isEs ? "Filtrar trayectoria para" : "Filter career timeline for"} ${companyInfo.name}`}
-                class="font-bold text-[var(--color-accent-gold)] hover:underline"
-              >
-                @{companyInfo.name}
-              </a>
-              <span class="text-xs text-[var(--color-text-muted)]">
-                &bull;{" "}
-                {isEs
-                  ? companyInfo.industryEs || companyInfo.industry
-                  : companyInfo.industry}
-              </span>
-            </div>
-
-            <a
-              href={companyInfo.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center gap-1.5 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 text-xs font-mono font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors"
-            >
-              <span>
-                {isEs ? "Visitar " : "Visit "}
-                {companyInfo.domain}
-              </span>
-              <svg
-                class="h-3 w-3 stroke-current fill-none"
-                viewBox="0 0 24 24"
-                stroke-width="2"
-              >
-                <line x1="7" y1="17" x2="17" y2="7"></line>
-                <polyline points="7 7 17 7 17 17"></polyline>
-              </svg>
-            </a>
-
-            {sameCompanyExperiences.length > 1 && (
-              <a
-                href={companyFilterUrl}
-                title={
-                  isEs
-                    ? `Filtrar trayectoria para los ${sameCompanyExperiences.length} puestos en ${company}`
-                    : `Filter timeline for all ${sameCompanyExperiences.length} roles at ${company}`
-                }
-                class="inline-flex items-center gap-1.5 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 font-mono text-xs text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all group/same-co shadow-xs"
-              >
-                <span class="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] group-hover/same-co:bg-[var(--color-btn-gold-text)] animate-pulse"></span>
-                <span>
-                  {isEs
-                    ? `${sameCompanyExperiences.length} puestos desempeñados en ${company}`
-                    : `${sameCompanyExperiences.length} positions held at ${company}`}
-                </span>
-                <span class="transition-transform group-hover/same-co:translate-x-0.5">
-                  &rarr;
-                </span>
-              </a>
-            )}
-          </div>
-        </div>
-
-        <!-- Skills Used in this Role -->
-        <div class="space-y-2">
-          <div class="text-xs font-mono text-[var(--color-text-muted)] uppercase tracking-wider flex items-center justify-between">
-            <span>
-              {isEs
-                ? "Tecnologías e Infraestructura Clave"
-                : "Core Technologies & Infrastructure"}
-            </span>
-            <span class="text-[10px] text-[var(--color-text-muted)] lowercase">
-              {isEs ? "clic para buscar" : "click to search"}
-            </span>
-          </div>
-          <div class="flex flex-wrap gap-1.5 font-mono text-xs">
-            {skills.map((skill) => (
-              <button
-                type="button"
-                data-tech-search={skill}
-                title={
-                  isEs
-                    ? `Buscar proyectos y notas sobre ${skill}`
-                    : `Search projects & essays mentioning ${skill}`
-                }
-                class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
-              >
-                <TechIcon
-                  name={skill}
-                  class="h-3.5 w-3.5 text-[var(--color-accent-gold)]"
-                />
-                <span>{skill}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
-    </div>
-
-    <!-- Overview Section -->
-    <section
-      id="role-overview"
-      class="space-y-4 text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed border-b border-[var(--color-surface-border)] pb-8"
-    >
-      <h2 class="text-lg font-bold font-mono text-[var(--color-text-primary)] uppercase tracking-wider">
-        {isEs
-          ? "Resumen del Rol & Perfil Corporativo"
-          : "Role Overview & Company Profile"}
-      </h2>
-      <div class="rounded-lg border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 sm:p-5 font-mono text-xs sm:text-sm space-y-2">
-        <div class="flex items-center gap-2 text-[var(--color-accent-gold)] font-bold">
+        <!-- Horizontal Timeline Axis Line aligned with header title row to prevent vertical jumping -->
+        <div class="absolute top-[5.5rem] sm:top-[7rem] -left-6 -right-6 sm:-left-12 sm:-right-12 -translate-y-1/2 h-0.5 bg-[var(--color-surface-border)] pointer-events-none z-0">
+          <div class="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--color-accent-gold)]/50 to-transparent"></div>
           <svg
-            class="h-4 w-4 stroke-current fill-none shrink-0"
-            viewBox="0 0 24 24"
-            stroke-width="2"
+            class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 h-3 w-3 text-[var(--color-accent-gold)] shrink-0 aspect-square"
+            viewBox="0 0 12 12"
+            fill="none"
+            aria-hidden="true"
           >
-            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            <circle
+              cx="6"
+              cy="6"
+              r="4.5"
+              fill="var(--color-surface-card)"
+              stroke="currentColor"
+              stroke-width="1.5"
+            />
           </svg>
-          <span>
-            {companyInfo.name} &bull;{" "}
-            {isEs
-              ? companyInfo.industryEs || companyInfo.industry
-              : companyInfo.industry}
-          </span>
+          <svg
+            class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-3 w-3 text-[var(--color-accent-gold)] shrink-0 aspect-square"
+            viewBox="0 0 12 12"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="6"
+              cy="6"
+              r="4.5"
+              fill="var(--color-surface-card)"
+              stroke="currentColor"
+              stroke-width="1.5"
+            />
+          </svg>
         </div>
-        <p class="text-[var(--color-text-secondary)] font-sans leading-relaxed">
-          {isEs
-            ? companyInfo.descriptionEs || companyInfo.description
-            : companyInfo.description}
-        </p>
-      </div>
-      <div class="mt-4 [&>p]:leading-8">
-        <Content />
-      </div>
-    </section>
 
-    <!-- Key Architectural Achievements -->
-    <section
-      id="achievements"
-      class="space-y-5 border-b border-[var(--color-surface-border)] pb-8"
-    >
-      <h2 class="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
-        {isEs
-          ? "Principales Hitos de Ingeniería y Arquitectura"
-          : "Key Architectural & Engineering Achievements"}
-      </h2>
-      <ul class="space-y-3.5 text-sm sm:text-base text-[var(--color-text-secondary)] leading-relaxed">
-        {keyAchievements.map((achievement) => (
-          <li class="flex items-start gap-3">
-            <span class="text-[var(--color-accent-gold)] font-bold text-sm select-none shrink-0 mt-0.5">
-              &bull;
+        <!-- Left Stepper (Past: older roles towards beginning of career) -->
+        {pastUrl && pastExperience && (
+          <a
+            href={pastUrl}
+            data-timeline-nav="past"
+            data-astro-prefetch="hover"
+            title={`${isEs ? "Hito anterior:" : "Past timeline milestone:"} ${pastExperience.data.role} @ ${pastExperience.data.company}`}
+            class="group/timeline-nav absolute left-0 top-[5.5rem] sm:top-[7rem] -translate-x-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+            aria-label={`${isEs ? "Rol anterior:" : "Past role:"} ${pastExperience.data.role} (press h)`}
+          >
+            <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
+              h
+            </kbd>
+            <svg
+              class="h-4 w-4 sm:h-5 sm:w-5 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span class="pointer-events-none opacity-0 group-hover/timeline-nav:opacity-100 transition-opacity absolute bottom-full mb-5.5 left-0 whitespace-nowrap rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-[11px] font-mono font-medium text-[var(--color-accent-gold)] shadow-xl z-30">
+              &larr; {pastExperience.data.company}
             </span>
-            <span>{achievement}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
+          </a>
+        )}
 
-    <!-- Interactive Architecture Simulations -->
-    {simulations.length > 0 && (
-      <section id="simulations" class="space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--color-surface-border)] pb-4">
-          <div>
-            <div class="inline-flex items-center gap-2 text-xs font-mono text-[var(--color-accent-gold)] uppercase tracking-wider mb-1">
-              <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
-              <span>
-                {isEs
-                  ? "Casos de Estudio de Arquitectura"
-                  : "Interactive Architecture Case Studies"}
+        <!-- Right Stepper (Future/Present: newer roles towards current career) -->
+        {futureUrl && futureExperience && (
+          <a
+            href={futureUrl}
+            data-timeline-nav="future"
+            data-astro-prefetch="hover"
+            title={`${isEs ? "Siguiente hito:" : "Future timeline milestone:"} ${futureExperience.data.role} @ ${futureExperience.data.company}`}
+            class="group/timeline-nav absolute right-0 top-[5.5rem] sm:top-[7rem] translate-x-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+            aria-label={`${isEs ? "Siguiente rol:" : "Future role:"} ${futureExperience.data.role} (press l)`}
+          >
+            <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
+              l
+            </kbd>
+            <svg
+              class="h-4 w-4 sm:h-5 sm:w-5 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+            <span class="pointer-events-none opacity-0 group-hover/timeline-nav:opacity-100 transition-opacity absolute bottom-full mb-5.5 right-0 whitespace-nowrap rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-[11px] font-mono font-medium text-[var(--color-accent-gold)] shadow-xl z-30">
+              {futureExperience.data.company} &rarr;
+            </span>
+          </a>
+        )}
+
+        <!-- Role Header Card sits on top with z-10 -->
+        <header
+          id="role-header"
+          class="geometric-box relative z-10 rounded-lg p-6 sm:p-8 space-y-6 bg-[var(--color-surface-card)] shadow-card"
+        >
+          <div class="space-y-3 border-b border-[var(--color-surface-border-subtle)] pb-6">
+            <div class="flex items-center justify-between gap-3 text-xs font-mono text-[var(--color-text-muted)] min-h-[2rem]">
+              <span class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-accent-gold)] shrink-0">
+                <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)]"></span>
+                <span>{employmentType}</span>
+              </span>
+              <span class="truncate">
+                {startStr} &mdash; {endStr} &bull; {location}
               </span>
             </div>
-            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text-primary)]">
-              {isEs
-                ? "Cargas de Trabajo Reales y Benchmarks en Producción"
-                : "Production System Workloads & Benchmarks"}
-            </h2>
+
+            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--color-text-primary)] min-h-[2.5rem] sm:min-h-[3rem] lg:min-h-[3.25rem] flex items-start">
+              {role}
+            </h1>
+
+            <!-- Company Details & External Link -->
+            <div class="flex flex-wrap items-center gap-3 pt-1">
+              <div class="flex items-center gap-2 font-mono text-sm">
+                <a
+                  href={companyFilterUrl}
+                  title={`${isEs ? "Filtrar trayectoria para" : "Filter career timeline for"} ${companyInfo.name}`}
+                  class="font-bold text-[var(--color-accent-gold)] hover:underline"
+                >
+                  @{companyInfo.name}
+                </a>
+                <span class="text-xs text-[var(--color-text-muted)]">
+                  &bull;{" "}
+                  {isEs
+                    ? companyInfo.industryEs || companyInfo.industry
+                    : companyInfo.industry}
+                </span>
+              </div>
+
+              <a
+                href={companyInfo.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 text-xs font-mono font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors"
+              >
+                <span>
+                  {isEs ? "Visitar " : "Visit "}
+                  {companyInfo.domain}
+                </span>
+                <svg
+                  class="h-3 w-3 stroke-current fill-none"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                >
+                  <line x1="7" y1="17" x2="17" y2="7"></line>
+                  <polyline points="7 7 17 7 17 17"></polyline>
+                </svg>
+              </a>
+
+              {sameCompanyExperiences.length > 1 && (
+                <a
+                  href={companyFilterUrl}
+                  title={
+                    isEs
+                      ? `Filtrar trayectoria para los ${sameCompanyExperiences.length} puestos en ${company}`
+                      : `Filter timeline for all ${sameCompanyExperiences.length} roles at ${company}`
+                  }
+                  class="inline-flex items-center gap-1.5 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 font-mono text-xs text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all group/same-co shadow-xs"
+                >
+                  <span class="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] group-hover/same-co:bg-[var(--color-btn-gold-text)] animate-pulse"></span>
+                  <span>
+                    {isEs
+                      ? `${sameCompanyExperiences.length} puestos desempeñados en ${company}`
+                      : `${sameCompanyExperiences.length} positions held at ${company}`}
+                  </span>
+                  <span class="transition-transform group-hover/same-co:translate-x-0.5">
+                    &rarr;
+                  </span>
+                </a>
+              )}
+            </div>
           </div>
 
-          <span class="inline-flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1 font-mono text-xs text-[var(--color-text-secondary)] shrink-0">
-            {simulations.length}{" "}
-            {simulations.length === 1
-              ? isEs
-                ? "caso de estudio disponible"
-                : "case study available"
-              : isEs
-                ? "casos de estudio disponibles"
-                : "case studies available"}
-          </span>
-        </div>
+          <!-- Skills Used in this Role -->
+          <div class="space-y-2">
+            <div class="text-xs font-mono text-[var(--color-text-muted)] uppercase tracking-wider flex items-center justify-between">
+              <span>
+                {isEs
+                  ? "Tecnologías e Infraestructura Clave"
+                  : "Core Technologies & Infrastructure"}
+              </span>
+              <span class="text-[10px] text-[var(--color-text-muted)] lowercase">
+                {isEs ? "clic para buscar" : "click to search"}
+              </span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 font-mono text-xs">
+              {skills.map((skill) => (
+                <button
+                  type="button"
+                  data-tech-search={skill}
+                  title={
+                    isEs
+                      ? `Buscar proyectos y notas sobre ${skill}`
+                      : `Search projects & posts mentioning ${skill}`
+                  }
+                  class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+                >
+                  <TechIcon
+                    name={skill}
+                    class="h-3.5 w-3.5 text-[var(--color-accent-gold)]"
+                  />
+                  <span>{skill}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </header>
+      </div>
 
-        <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
+      <!-- Overview Section -->
+      <section
+        id="role-overview"
+        class="space-y-4 text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed border-b border-[var(--color-surface-border)] pb-8"
+      >
+        <h2 class="text-lg font-bold font-mono text-[var(--color-text-primary)] uppercase tracking-wider">
           {isEs
-            ? "Los siguientes casos de estudio interactivos representan las arquitecturas reales diseñadas durante este periodo. Ejecuta cada caso de estudio para inspeccionar las fases orquestadas del pipeline, visualizar la telemetría en vivo y verificar el impacto medido antes y después de la solución."
-            : "The interactive case studies below demonstrate the production architectures implemented during this engagement. Run each case study to inspect the orchestrated pipeline phases, view live stdout telemetry, and verify the measured before-and-after performance impact."}
-        </p>
-
-        <div class="space-y-8">
-          {simulations.map((sim) => (
-            <SimulationCard simulation={sim} locale={currentLocale} />
-          ))}
+            ? "Resumen del Rol & Perfil Corporativo"
+            : "Role Overview & Company Profile"}
+        </h2>
+        <div class="rounded-lg border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 sm:p-5 font-mono text-xs sm:text-sm space-y-2">
+          <div class="flex items-center gap-2 text-[var(--color-accent-gold)] font-bold">
+            <svg
+              class="h-4 w-4 stroke-current fill-none shrink-0"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+            <span>
+              {companyInfo.name} &bull;{" "}
+              {isEs
+                ? companyInfo.industryEs || companyInfo.industry
+                : companyInfo.industry}
+            </span>
+          </div>
+          <p class="text-[var(--color-text-secondary)] font-sans leading-relaxed">
+            {isEs
+              ? companyInfo.descriptionEs || companyInfo.description
+              : companyInfo.description}
+          </p>
+        </div>
+        <div class="mt-4 [&>p]:leading-8">
+          <Content />
         </div>
       </section>
-    )}
 
-    <!-- Bottom Navigation -->
-    <div class="pt-4 flex items-center justify-between font-mono text-xs">
-      <a
-        href={`${basePath}/experience/`}
-        class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
+      <!-- Key Architectural Achievements -->
+      <section
+        id="achievements"
+        class="space-y-5 border-b border-[var(--color-surface-border)] pb-8"
       >
-        &larr;{" "}
-        {isEs
-          ? "Ver todo el historial de experiencia"
-          : "View all experience records"}
-      </a>
-      <a
-        href={`${basePath}/#contact`}
-        class="inline-flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
-      >
-        {isEs
-          ? "Discutir proyectos de arquitectura →"
-          : "Discuss architecture opportunities →"}
-      </a>
+        <h2 class="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
+          {isEs
+            ? "Principales Hitos de Ingeniería y Arquitectura"
+            : "Key Architectural & Engineering Achievements"}
+        </h2>
+        <ul class="space-y-3.5 text-sm sm:text-base text-[var(--color-text-secondary)] leading-relaxed">
+          {keyAchievements.map((achievement) => (
+            <li class="flex items-start gap-3">
+              <span class="text-[var(--color-accent-gold)] font-bold text-sm select-none shrink-0 mt-0.5">
+                &bull;
+              </span>
+              <span>{achievement}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <!-- Interactive Architecture Simulations -->
+      {simulations.length > 0 && (
+        <section id="simulations" class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--color-surface-border)] pb-4">
+            <div>
+              <div class="inline-flex items-center gap-2 text-xs font-mono text-[var(--color-accent-gold)] uppercase tracking-wider mb-1">
+                <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
+                <span>
+                  {isEs
+                    ? "Casos de Estudio de Arquitectura"
+                    : "Interactive Architecture Case Studies"}
+                </span>
+              </div>
+              <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text-primary)]">
+                {isEs
+                  ? "Cargas de Trabajo Reales y Benchmarks en Producción"
+                  : "Production System Workloads & Benchmarks"}
+              </h2>
+            </div>
+
+            <span class="inline-flex items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1 font-mono text-xs text-[var(--color-text-secondary)] shrink-0">
+              {simulations.length}{" "}
+              {simulations.length === 1
+                ? isEs
+                  ? "caso de estudio disponible"
+                  : "case study available"
+                : isEs
+                  ? "casos de estudio disponibles"
+                  : "case studies available"}
+            </span>
+          </div>
+
+          <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
+            {isEs
+              ? "Los siguientes casos de estudio interactivos representan las arquitecturas reales diseñadas durante este periodo. Ejecuta cada caso de estudio para inspeccionar las fases orquestadas del pipeline, visualizar la telemetría en vivo y verificar el impacto medido antes y después de la solución."
+              : "The interactive case studies below demonstrate the production architectures implemented during this engagement. Run each case study to inspect the orchestrated pipeline phases, view live stdout telemetry, and verify the measured before-and-after performance impact."}
+          </p>
+
+          <div class="space-y-8">
+            {simulations.map((sim) => (
+              <SimulationCard simulation={sim} locale={currentLocale} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <!-- Bottom Navigation -->
+      <div class="pt-4 flex items-center justify-between font-mono text-xs">
+        <a
+          href={`${basePath}/experience/`}
+          class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
+        >
+          &larr;{" "}
+          {isEs
+            ? "Ver todo el historial de experiencia"
+            : "View all experience records"}
+        </a>
+        <a
+          href={`${basePath}/#contact`}
+          class="inline-flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
+        >
+          {isEs
+            ? "Discutir proyectos de arquitectura →"
+            : "Discuss architecture opportunities →"}
+        </a>
+      </div>
     </div>
   </article>
 
@@ -590,11 +624,13 @@ const jobIndexItems: IndexItem[] = [
         var exitDistance = isFuture ? "-36px" : "36px";
         var enterDistance = isFuture ? "36px" : "-36px";
 
-        article.style.willChange = "transform, opacity";
-        article.style.transition =
+        var animTarget =
+          document.getElementById("experience-article-content") || article;
+        animTarget.style.willChange = "transform, opacity";
+        animTarget.style.transition =
           "transform 0.13s cubic-bezier(0.4, 0, 1, 1), opacity 0.13s cubic-bezier(0.4, 0, 1, 1)";
-        article.style.transform = "translate3d(" + exitDistance + ", 0, 0)";
-        article.style.opacity = "0";
+        animTarget.style.transform = "translate3d(" + exitDistance + ", 0, 0)";
+        animTarget.style.opacity = "0";
 
         var timerPromise = new Promise(function (resolve) {
           setTimeout(resolve, 130);
@@ -637,6 +673,22 @@ const jobIndexItems: IndexItem[] = [
               }
             }
 
+            // Update decoupled milestone bar without sliding
+            var oldMilestone = document.getElementById(
+              "experience-milestone-bar",
+            );
+            var newMilestone = doc.getElementById("experience-milestone-bar");
+            if (oldMilestone && newMilestone) {
+              oldMilestone.innerHTML = newMilestone.innerHTML;
+            }
+
+            // Update sticky header
+            var oldSticky = document.getElementById("sticky-experience-header");
+            var newSticky = doc.getElementById("sticky-experience-header");
+            if (oldSticky && newSticky) {
+              oldSticky.innerHTML = newSticky.innerHTML;
+            }
+
             article.innerHTML = newArticle.innerHTML;
             article.className = newArticle.className;
 
@@ -644,26 +696,29 @@ const jobIndexItems: IndexItem[] = [
               window.scrollTo({ top: 0, behavior: "instant" });
             }
 
-            article.style.transition = "none";
-            article.style.transform =
+            var nextAnimTarget =
+              document.getElementById("experience-article-content") || article;
+            nextAnimTarget.style.transition = "none";
+            nextAnimTarget.style.transform =
               "translate3d(" + enterDistance + ", 0, 0)";
-            article.style.opacity = "0";
+            nextAnimTarget.style.opacity = "0";
 
-            void article.offsetHeight;
+            void nextAnimTarget.offsetHeight;
 
-            article.style.transition =
+            nextAnimTarget.style.transition =
               "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
-            article.style.transform = "translate3d(0, 0, 0)";
-            article.style.opacity = "1";
+            nextAnimTarget.style.transform = "translate3d(0, 0, 0)";
+            nextAnimTarget.style.opacity = "1";
 
             setTimeout(function () {
-              article.style.transform = "";
-              article.style.opacity = "";
-              article.style.transition = "";
-              article.style.willChange = "";
+              nextAnimTarget.style.transform = "";
+              nextAnimTarget.style.opacity = "";
+              nextAnimTarget.style.transition = "";
+              nextAnimTarget.style.willChange = "";
               isTransitioning = false;
             }, 230);
 
+            updateStickyHeader();
             document.dispatchEvent(new Event("astro:page-load"));
           })
           .catch(function () {
@@ -848,6 +903,44 @@ const jobIndexItems: IndexItem[] = [
             { passive: true },
           );
         }
+
+        function updateStickyHeader() {
+          var sticky = document.getElementById("sticky-experience-header");
+          var roleHeader = document.getElementById("role-header");
+          if (!sticky || !roleHeader) return;
+          var rect = roleHeader.getBoundingClientRect();
+          if (rect.bottom < 56) {
+            sticky.classList.remove(
+              "pointer-events-none",
+              "opacity-0",
+              "-translate-y-2",
+            );
+            sticky.classList.add(
+              "pointer-events-auto",
+              "opacity-100",
+              "translate-y-0",
+            );
+          } else {
+            sticky.classList.remove(
+              "pointer-events-auto",
+              "opacity-100",
+              "translate-y-0",
+            );
+            sticky.classList.add(
+              "pointer-events-none",
+              "opacity-0",
+              "-translate-y-2",
+            );
+          }
+        }
+
+        if (!window.__experienceStickyBound) {
+          window.__experienceStickyBound = true;
+          window.addEventListener("scroll", updateStickyHeader, {
+            passive: true,
+          });
+        }
+        updateStickyHeader();
       }
 
       if (document.readyState === "loading") {

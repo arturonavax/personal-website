@@ -43,8 +43,8 @@ const searchIndexPath = "/search-index.json";
             spellcheck="false"
             placeholder={
               isEs
-                ? "Buscar proyectos, ensayos, experiencia... (ej. Go, Rust)"
-                : "Search projects, essays, experience... (e.g. Go, Rust)"
+                ? "Buscar proyectos, notas, experiencia... (ej. Go, Rust)"
+                : "Search projects, posts, experience... (e.g. Go, Rust)"
             }
             class="w-full bg-transparent font-mono text-sm sm:text-base text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none pr-10 [&::-webkit-search-cancel-button]:hidden"
           />
@@ -160,22 +160,26 @@ const searchIndexPath = "/search-index.json";
 
       <!-- Dialog Footer -->
       <div class="flex items-center justify-between border-t border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/80 px-4 py-2.5 sm:px-5 font-mono text-xs text-[var(--color-text-muted)]">
-        <div class="flex items-center gap-3">
-          <span class="hidden sm:inline">
-            <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.5 text-xs font-semibold">
+        <div class="flex items-center gap-4 text-xs font-mono text-[var(--color-text-muted)]">
+          <span class="hidden sm:inline-flex items-center gap-2">
+            <kbd class="inline-flex h-5 min-w-[2rem] items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 text-[10px] font-semibold text-[var(--color-text-secondary)] shadow-xs leading-none">
               Esc
-            </kbd>{" "}
-            {isEs ? "cerrar" : "close"}
+            </kbd>
+            <span class="leading-none text-[11px]">
+              {isEs ? "cerrar" : "close"}
+            </span>
           </span>
-          <span class="hidden sm:inline">
-            <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.5 text-xs font-semibold">
+          <span class="hidden sm:inline-flex items-center gap-2">
+            <kbd class="inline-flex h-5 min-w-[2rem] items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 text-[11px] font-semibold text-[var(--color-text-secondary)] shadow-xs leading-none">
               &uarr;&darr;
-            </kbd>{" "}
-            {isEs ? "navegar" : "navigate"}
+            </kbd>
+            <span class="leading-none text-[11px]">
+              {isEs ? "navegar" : "navigate"}
+            </span>
           </span>
           <span
             id="search-count-badge"
-            class="text-[var(--color-accent-gold)] font-medium"
+            class="text-[var(--color-accent-gold)] font-medium ml-1"
           ></span>
         </div>
         <a
@@ -401,8 +405,8 @@ const searchIndexPath = "/search-index.json";
 
         if (curInput) {
           curInput.placeholder = isEs
-            ? "Buscar proyectos, ensayos, experiencia... (ej. Go, Rust)"
-            : "Search projects, essays, experience... (e.g. Go, Rust)";
+            ? "Buscar proyectos, notas, experiencia... (ej. Go, Rust)"
+            : "Search projects, posts, experience... (e.g. Go, Rust)";
         }
         if (curLink) {
           var q = curInput && curInput.value ? curInput.value.trim() : "";
@@ -1287,10 +1291,15 @@ const searchIndexPath = "/search-index.json";
           }
         });
 
-        // 3. Score and rank: massive +5000 bonus for current page language, plus field relevancies
+        // 3. Score and rank: massive +5000 bonus for current page language, plus field relevancies & priority
         function computeScore(item) {
           var score = 0;
           if (item.locale === pageLang) score += 5000;
+
+          // SPEC-006 REQ-UXE-12: Static entity priority score (1-100)
+          var entityPriority =
+            typeof item.priority === "number" ? item.priority : 50;
+          score += entityPriority * 5;
 
           var titleL = (item.title || "").toLowerCase();
           var metaL = (item.meta || "").toLowerCase();

@@ -1,0 +1,79 @@
+---
+interface Props {
+  locale?: "en" | "es" | undefined;
+}
+
+const { locale = "en" } = Astro.props;
+const isEs = locale === "es";
+---
+
+<button
+  type="button"
+  id="back-to-top-btn"
+  aria-label={isEs ? "Volver arriba" : "Back to top"}
+  title={isEs ? "Volver arriba" : "Back to top"}
+  class="pointer-events-none opacity-0 translate-y-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 text-[var(--color-text-secondary)] shadow-card backdrop-blur-md transition-all duration-300 hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer order-2"
+>
+  <svg
+    class="h-4 w-4 stroke-current fill-none shrink-0"
+    viewBox="0 0 24 24"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <polyline points="18 15 12 9 6 15"></polyline>
+  </svg>
+</button>
+
+<script is:inline>
+  (function () {
+    function setupBackToTop() {
+      var btn = document.getElementById("back-to-top-btn");
+      if (!btn || btn.dataset.bound) return;
+      btn.dataset.bound = "true";
+
+      function onScroll() {
+        var scrollY =
+          window.pageYOffset || document.documentElement.scrollTop || 0;
+        if (scrollY > 400) {
+          btn.classList.remove(
+            "pointer-events-none",
+            "opacity-0",
+            "translate-y-2",
+          );
+          btn.classList.add(
+            "pointer-events-auto",
+            "opacity-100",
+            "translate-y-0",
+          );
+        } else {
+          btn.classList.remove(
+            "pointer-events-auto",
+            "opacity-100",
+            "translate-y-0",
+          );
+          btn.classList.add(
+            "pointer-events-none",
+            "opacity-0",
+            "translate-y-2",
+          );
+        }
+      }
+
+      btn.addEventListener("click", function () {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupBackToTop);
+    } else {
+      setupBackToTop();
+    }
+    document.addEventListener("astro:page-load", setupBackToTop);
+  })();
+</script>
