@@ -61,6 +61,7 @@ export default defineConfig({
     inlineStylesheets: "auto",
     format: "directory",
   },
+  compressHTML: true,
   prefetch: {
     prefetchAll: false,
     defaultStrategy: "hover",
@@ -76,6 +77,7 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     build: {
+      cssCodeSplit: true,
       cssMinify: "lightningcss",
     },
   },

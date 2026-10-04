@@ -1,0 +1,13 @@
+---
+// Component: src/components/ui/EdgeViewCounter.astro (SPEC-004 Section 3.1.2)
+interface Props {
+  contentId: string;
+}
+
+const { contentId } = Astro.props;
+---
+
+<div class="flex items-center gap-2 font-mono text-xs text-neutral-500">
+  <span class="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+  <span id={`counter-${contentId}`}>-- views</span>
+</div>

@@ -3,6 +3,18 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = "en";
 
+export interface LocaleDefinition {
+  code: Locale;
+  isoCode: string;
+  name: string;
+  dir: "ltr" | "rtl";
+}
+
+export const LOCALES: Record<Locale, LocaleDefinition> = {
+  en: { code: "en", isoCode: "en-US", name: "English", dir: "ltr" },
+  es: { code: "es", isoCode: "es-CO", name: "Español", dir: "ltr" },
+};
+
 export interface LocaleConfig {
   code: Locale;
   isoCode: string;

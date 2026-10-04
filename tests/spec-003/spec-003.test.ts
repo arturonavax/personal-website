@@ -302,7 +302,10 @@ describe("SPEC-003: Cloudflare Edge Storage (R2 + Cache API) & S3 Fallback", () 
       },
     };
 
-    const r2Store = new Map<string, { body: Uint8Array; size: number; contentType?: string; etag: string }>();
+    const r2Store = new Map<
+      string,
+      { body: Uint8Array; size: number; contentType?: string; etag: string }
+    >();
     const mockBucket = {
       get: async (key: string) => {
         const item = r2Store.get(key);
@@ -319,7 +322,8 @@ describe("SPEC-003: Cloudflare Edge Storage (R2 + Cache API) & S3 Fallback", () 
         r2Store.set(key, {
           body: bytes,
           size: bytes.length,
-          contentType: options?.httpMetadata?.contentType || "application/octet-stream",
+          contentType:
+            options?.httpMetadata?.contentType || "application/octet-stream",
           etag: '"mock-r2-etag"',
         });
       },
@@ -333,10 +337,16 @@ describe("SPEC-003: Cloudflare Edge Storage (R2 + Cache API) & S3 Fallback", () 
       waitUntil: (p: Promise<any>) => waitUntils.push(p),
     } as ExecutionContext;
 
-    const r2Adapter = new CloudflareR2StorageAdapter(mockBucket, "arturonavax.dev", mockCtx);
+    const r2Adapter = new CloudflareR2StorageAdapter(
+      mockBucket,
+      "arturonavax.dev",
+      mockCtx,
+    );
 
     // 1. Put document into R2
-    await r2Adapter.put("doc.pdf", Buffer.from("PDF DATA"), { contentType: "application/pdf" });
+    await r2Adapter.put("doc.pdf", Buffer.from("PDF DATA"), {
+      contentType: "application/pdf",
+    });
 
     // 2. First get: Cache miss -> loads from R2 and stores into Cache API via waitUntil
     const res1 = await r2Adapter.get("doc.pdf");
@@ -351,7 +361,9 @@ describe("SPEC-003: Cloudflare Edge Storage (R2 + Cache API) & S3 Fallback", () 
     expect(res2!.metadata.contentType).toBe("application/pdf");
 
     // 4. Public URL check
-    expect(r2Adapter.getPublicUrl("doc.pdf")).toBe("https://arturonavax.dev/doc.pdf");
+    expect(r2Adapter.getPublicUrl("doc.pdf")).toBe(
+      "https://arturonavax.dev/doc.pdf",
+    );
 
     // 5. Delete
     await r2Adapter.delete("doc.pdf");
@@ -363,7 +375,10 @@ describe("SPEC-003: Cloudflare Edge Storage (R2 + Cache API) & S3 Fallback", () 
     const originalFetch = globalThis.fetch;
     const store = new Map<string, { body: string; headers: Headers }>();
 
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
       const url = String(input);
       const method = init?.method || "GET";
 
@@ -379,7 +394,8 @@ describe("SPEC-003: Cloudflare Edge Storage (R2 + Cache API) & S3 Fallback", () 
         return new Response(item.body, {
           status: 200,
           headers: {
-            "content-type": item.headers.get("Content-Type") || "application/octet-stream",
+            "content-type":
+              item.headers.get("Content-Type") || "application/octet-stream",
             "content-length": String(item.body.length),
             etag: '"s3-etag"',
           },
@@ -400,11 +416,15 @@ describe("SPEC-003: Cloudflare Edge Storage (R2 + Cache API) & S3 Fallback", () 
       publicUrl: "https://cdn.example.com",
     });
 
-    await s3Adapter.put("resume.pdf", "S3 CONTENT", { contentType: "application/pdf" });
+    await s3Adapter.put("resume.pdf", "S3 CONTENT", {
+      contentType: "application/pdf",
+    });
     const item = await s3Adapter.get("resume.pdf");
     expect(item).not.toBeNull();
     expect(item!.metadata.contentType).toBe("application/pdf");
-    expect(s3Adapter.getPublicUrl("resume.pdf")).toBe("https://cdn.example.com/resume.pdf");
+    expect(s3Adapter.getPublicUrl("resume.pdf")).toBe(
+      "https://cdn.example.com/resume.pdf",
+    );
 
     await s3Adapter.delete("resume.pdf");
     const afterDelete = await s3Adapter.get("resume.pdf");
@@ -521,15 +541,23 @@ describe("SPEC-003: Cloudflare D1 Telemetry Adapter & Turnstile Captcha", () => 
     expect(executedD1Calls[0].sql).toContain("INSERT INTO pageview_events");
     expect(executedD1Calls[0].params[0]).toBe("/experience");
 
-    const metrics = await adapter.getAggregatedMetrics("2026-10-01", "2026-10-03");
+    const metrics = await adapter.getAggregatedMetrics(
+      "2026-10-01",
+      "2026-10-03",
+    );
     expect(metrics.length).toBe(1);
     expect(metrics[0].views).toBe(10);
   });
 
   it("TurnstileCaptchaAdapter verifies human challenge against Cloudflare API", async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-      expect(String(input)).toBe("https://challenges.cloudflare.com/turnstile/v0/siteverify");
+    globalThis.fetch = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      expect(String(input)).toBe(
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      );
       return new Response(
         JSON.stringify({
           success: true,
@@ -541,7 +569,10 @@ describe("SPEC-003: Cloudflare D1 Telemetry Adapter & Turnstile Captcha", () => 
     }) as typeof fetch;
 
     const turnstile = new TurnstileCaptchaAdapter("0x4AAAAAAAMockSecret");
-    const result = await turnstile.verify({ token: "valid-turnstile-token", remoteIp: "1.2.3.4" });
+    const result = await turnstile.verify({
+      token: "valid-turnstile-token",
+      remoteIp: "1.2.3.4",
+    });
 
     expect(result.success).toBe(true);
     expect(result.hostname).toBe("arturonavax.dev");
@@ -567,7 +598,9 @@ describe("SPEC-003: Cloudflare D1 Telemetry Adapter & Turnstile Captcha", () => 
 
     const cacheAdapter = new CloudflareCacheApiAdapter();
     const testReq = new Request("https://arturonavax.dev/cached-page");
-    const testRes = new Response("Cached HTML content", { headers: { "Content-Type": "text/html" } });
+    const testRes = new Response("Cached HTML content", {
+      headers: { "Content-Type": "text/html" },
+    });
 
     await cacheAdapter.put(testReq, testRes);
     const cached = await cacheAdapter.get(testReq);

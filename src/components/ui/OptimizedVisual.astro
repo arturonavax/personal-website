@@ -1,0 +1,30 @@
+---
+// Component: src/components/ui/OptimizedVisual.astro (SPEC-004 REQ-CWV-01 / Section 3.4.1)
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+
+interface Props {
+  source: ImageMetadata;
+  altText: string;
+  isHero?: boolean | undefined;
+  class?: string | undefined;
+}
+
+const { source, altText, isHero = false, class: className = "" } = Astro.props;
+---
+
+<div
+  class={`relative overflow-hidden w-full bg-neutral-100 dark:bg-neutral-900 ${className}`.trim()}
+  style={`aspect-ratio: ${source.width} / ${source.height}`}
+>
+  <Image
+    src={source}
+    alt={altText}
+    width={source.width}
+    height={source.height}
+    loading={isHero ? "eager" : "lazy"}
+    decoding={isHero ? "sync" : "async"}
+    fetchpriority={isHero ? "high" : "auto"}
+    class="w-full h-full object-cover transition-opacity duration-300"
+  />
+</div>

@@ -3,6 +3,8 @@ export function getHomepageJsonLd(locale: "en" | "es" = "en") {
 
   return {
     "@context": "https://schema.org",
+    "@id": "https://arturonavax.dev/#person",
+    inLanguage: isEs ? "es" : "en",
     "@graph": [
       {
         "@type": "WebSite",
