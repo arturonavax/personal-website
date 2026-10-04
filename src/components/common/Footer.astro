@@ -8,7 +8,7 @@ interface Props {
 
 const { locale } = Astro.props;
 const t = useTranslations(locale);
-const rssUrl = locale === "es" ? "/es/rss.xml" : "/rss.xml";
+const rssUrl = "/rss.xml";
 const currentYear = new Date().getFullYear();
 ---
 

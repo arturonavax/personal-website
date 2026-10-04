@@ -1,0 +1,315 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import MetricCallout from "@/components/ui/MetricCallout.astro";
+import ProjectCard from "@/components/ui/ProjectCard.astro";
+import ExperienceTimeline from "@/components/ui/ExperienceTimeline.astro";
+import PostCard from "@/components/ui/PostCard.astro";
+import HeroHeaderBanner from "@/components/ui/HeroHeaderBanner.astro";
+import SystemTelemetryDemo from "@/components/ui/SystemTelemetryDemo.astro";
+import ContactSection from "@/components/ui/ContactSection.astro";
+import CoffeeSponsorshipModal from "@/components/ui/CoffeeSponsorshipModal.astro";
+import PageIndexNav from "@/components/ui/PageIndexNav.astro";
+import { hasSponsorshipMethods } from "@/data/sponsorships";
+import { simulationsData } from "@/data/simulations";
+import { useTranslations } from "@/i18n/utils";
+import { getHomepageJsonLd } from "@/data/schemaOrg";
+import type { SupportedLocale } from "@/i18n/config";
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: undefined }, props: { locale: "en" as const } },
+    { params: { lang: "es" }, props: { locale: "es" as const } },
+  ];
+}
+
+interface Props {
+  locale: SupportedLocale;
+}
+
+const { locale } = Astro.props;
+const isEs = locale === "es";
+const t = useTranslations(locale);
+const hasCaseStudies = Boolean(simulationsData && simulationsData.length > 0);
+const basePath = isEs ? "/es" : "";
+
+const allProjectsList = await getCollection(
+  "projects",
+  ({ data }) => data.locale === locale,
+);
+const allProjects = allProjectsList.filter((p) => p.data.featured);
+const featuredProjects = allProjects
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 3);
+
+const allExperience = await getCollection(
+  "experience",
+  ({ data }) => data.locale === locale,
+);
+const recentExperience = allExperience
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 4);
+
+const allPosts = await getCollection(
+  "posts",
+  ({ data }) => data.locale === locale && !data.draft,
+);
+const recentPosts = allPosts
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
+  .slice(0, 3);
+
+const jsonLd = getHomepageJsonLd(locale);
+---
+
+<BaseLayout
+  title={
+    isEs
+      ? "Arturo Nava — Ingeniero de Software Senior / IA"
+      : "Arturo Nava — Senior Software / AI Engineer"
+  }
+  description={
+    isEs
+      ? "Ingeniero de Software Senior / IA especializado en Go, Rust, Sistemas Distribuidos, Alta Concurrencia y Seguridad de Aplicaciones."
+      : "Senior Software / AI Engineer specializing in Go, Rust, Distributed Systems, High Concurrency, and Application Security."
+  }
+  locale={locale}
+  canonicalUrl={
+    isEs ? "https://arturonavax.dev/es/" : "https://arturonavax.dev/"
+  }
+  jsonLd={jsonLd}
+  hideSubtleCoffee={true}
+>
+  <!-- Page Navigation Index (Dual Mode: Left Sidebar at >1600px & Floating Button below) -->
+  <PageIndexNav locale={locale} />
+
+  <div class="mx-auto max-w-5xl px-2 min-[360px]:px-3 sm:px-6 pt-1.5 sm:pt-4 lg:pt-6 pb-12 sm:pb-16 space-y-10 sm:space-y-14">
+    <!-- Hero Header Banner with Photo, Philosophies, Tech Stack, & AI Engineering Workflow -->
+    <HeroHeaderBanner locale={locale} />
+
+    <!-- Operational Metrics Grid -->
+    <section
+      id="metrics"
+      aria-label="Operational Metrics"
+      class="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-4"
+    >
+      <MetricCallout
+        value={t("metrics.latency.value")}
+        label={t("metrics.latency.label")}
+        subtext="Strategy Pattern / Redis"
+      />
+      <MetricCallout
+        value={t("metrics.olap.value")}
+        label={t("metrics.olap.label")}
+        subtext="100% OLTP Decoupling"
+      />
+      <MetricCallout
+        value={t("metrics.simd.value")}
+        label={t("metrics.simd.label")}
+        subtext="4.8x AVX2 Throughput"
+      />
+      <MetricCallout
+        value={t("metrics.security.value")}
+        label={t("metrics.security.label")}
+        subtext="Shift-Left Compliance"
+      />
+    </section>
+
+    <!-- Career Timeline -->
+    {recentExperience.length > 0 && (
+      <section
+        id="experience"
+        aria-labelledby="experience-heading"
+        class="space-y-6"
+      >
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
+          <h2
+            id="experience-heading"
+            class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl"
+          >
+            {t("section.experience")}
+          </h2>
+          <a
+            href={`${basePath}/experience/`}
+            class="btn-secondary px-3.5 py-1.5 font-mono text-xs sm:text-sm text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] inline-flex items-center gap-1.5 min-h-[38px] transition-colors"
+          >
+            <span>{t("section.experience.viewAll")}</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+
+        <ExperienceTimeline items={recentExperience} locale={locale} />
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[var(--color-surface-border-subtle)] font-mono text-xs sm:text-sm">
+          <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
+            <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
+            <span>
+              {isEs
+                ? `Mostrando 4 de ${allExperience.length} etapas profesionales • `
+                : `Showing 4 of ${allExperience.length} milestones • `}
+              <strong class="text-[var(--color-accent-gold)]">
+                +{allExperience.length - recentExperience.length}{" "}
+                {isEs ? "más" : "more"}
+              </strong>{" "}
+              {isEs ? "en la trayectoria completa" : "in full timeline"}
+            </span>
+          </div>
+          <a
+            href={`${basePath}/experience/`}
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+          >
+            <span>
+              {isEs
+                ? "Ver trayectoria completa y roles anteriores"
+                : "View full career timeline & earlier roles"}
+            </span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+      </section>
+    )}
+
+    <!-- Featured Projects -->
+    {featuredProjects.length > 0 && (
+      <section
+        id="projects"
+        aria-labelledby="projects-heading"
+        class="space-y-6"
+      >
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
+          <h2
+            id="projects-heading"
+            class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl"
+          >
+            {t("section.projects")}
+          </h2>
+          <a
+            href={`${basePath}/projects/`}
+            class="btn-secondary px-3.5 py-1.5 font-mono text-xs sm:text-sm text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] inline-flex items-center gap-1.5 min-h-[38px] transition-colors"
+          >
+            <span>{t("section.projects.viewAll")}</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {featuredProjects.map((project) => (
+            <ProjectCard project={project} locale={locale} />
+          ))}
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[var(--color-surface-border-subtle)] font-mono text-xs sm:text-sm">
+          <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
+            <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
+            <span>
+              {isEs
+                ? `Mostrando ${featuredProjects.length} de ${allProjectsList.length} sistemas • `
+                : `Showing ${featuredProjects.length} of ${allProjectsList.length} systems • `}
+              <strong class="text-[var(--color-accent-gold)]">
+                +{allProjectsList.length - featuredProjects.length}{" "}
+                {isEs ? "más" : "more"}
+              </strong>{" "}
+              {isEs ? "en catálogo" : "in catalog"}
+            </span>
+          </div>
+          <a
+            href={`${basePath}/projects/`}
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+          >
+            <span>
+              {isEs
+                ? "Explorar todos los proyectos"
+                : "Explore all architectural projects"}
+            </span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+      </section>
+    )}
+
+    <!-- Technical Essays -->
+    {recentPosts.length > 0 && (
+      <section id="blog" aria-labelledby="posts-heading" class="space-y-6">
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
+          <h2
+            id="posts-heading"
+            class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl"
+          >
+            {t("section.blog")}
+          </h2>
+          <a
+            href={`${basePath}/blog/`}
+            class="btn-secondary px-3.5 py-1.5 font-mono text-xs sm:text-sm text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] inline-flex items-center gap-1.5 min-h-[38px] transition-colors"
+          >
+            <span>{t("section.blog.viewAll")}</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {recentPosts.map((post) => (
+            <PostCard post={post} locale={locale} />
+          ))}
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[var(--color-surface-border-subtle)] font-mono text-xs sm:text-sm">
+          <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
+            <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
+            <span>
+              {isEs
+                ? `Mostrando ${recentPosts.length} de ${allPosts.length} ensayos • `
+                : `Showing ${recentPosts.length} of ${allPosts.length} essays • `}
+              <strong class="text-[var(--color-accent-gold)]">
+                +{allPosts.length - recentPosts.length} {isEs ? "más" : "more"}
+              </strong>{" "}
+              {isEs ? "en el archivo" : "in blog archive"}
+            </span>
+          </div>
+          <a
+            href={`${basePath}/blog/`}
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+          >
+            <span>
+              {isEs
+                ? "Leer todos los ensayos y notas técnicas"
+                : "Read all technical essays & notes"}
+            </span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+      </section>
+    )}
+
+    <!-- Interactive Architecture Case Studies & Distributed Telemetry -->
+    {hasCaseStudies && (
+      <section
+        id="telemetry"
+        aria-label={
+          isEs
+            ? "Casos de Estudio Interactivos de Arquitectura"
+            : "Interactive Architecture Case Studies"
+        }
+        class="space-y-3"
+      >
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2 font-mono text-xs sm:text-sm text-[var(--color-text-muted)]">
+          <span class="text-[var(--color-accent-gold)] uppercase tracking-wider text-xs font-semibold">
+            {isEs
+              ? "Casos de Estudio de Arquitectura & Telemetría"
+              : "Interactive Architecture Case Studies"}
+          </span>
+          <span class="hidden sm:inline text-xs">
+            {isEs
+              ? "Telemetría en Pipeline Sub-50ms"
+              : "Sub-50ms Pipeline Telemetry Lab"}
+          </span>
+        </div>
+        <SystemTelemetryDemo locale={locale} />
+      </section>
+    )}
+
+    <!-- Dedicated Contact & Recruiter Hub -->
+    <ContactSection locale={locale} />
+
+    <!-- Discreet Coffee / Contributions Modal -->
+    {hasSponsorshipMethods && <CoffeeSponsorshipModal locale={locale} />}
+  </div>
+</BaseLayout>

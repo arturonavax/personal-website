@@ -1,0 +1,46 @@
+---
+import { getCollection, render } from "astro:content";
+import ArticleLayout from "@/layouts/ArticleLayout.astro";
+import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("posts", ({ data }) => !data.draft);
+
+  return posts.map((post) => {
+    const [localePart, ...slugParts] = post.id
+      .replace(/\.(md|mdx)$/, "")
+      .split("/");
+    const slugPart = slugParts.join("/");
+    const lang = localePart === DEFAULT_LOCALE ? undefined : localePart;
+
+    return {
+      params: {
+        lang,
+        slug: slugPart,
+      },
+      props: {
+        post,
+        currentLocale: localePart as SupportedLocale,
+      },
+    };
+  });
+}
+
+const { post, currentLocale } = Astro.props;
+const { Content } = await render(post);
+const isEs = currentLocale === "es";
+---
+
+<ArticleLayout
+  title={post.data.title}
+  description={post.data.description}
+  locale={currentLocale}
+  pubDate={post.data.pubDate}
+  tags={post.data.tags}
+  translationKey={post.data.translationKey}
+  collectionName="posts"
+  backHref={isEs ? "/es/blog/" : "/blog/"}
+  backLabel={isEs ? "Volver a ensayos" : "Back to essays"}
+>
+  <Content />
+</ArticleLayout>

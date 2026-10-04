@@ -16,7 +16,10 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
 ---
 
 {hasShortcuts && (
-  <div data-shortcuts-root class="pointer-events-auto order-1">
+  <shortcuts-modal
+    data-shortcuts-root
+    class="pointer-events-auto order-1 block"
+  >
     <button
       type="button"
       id="open-shortcuts-btn"
@@ -198,304 +201,171 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
         </div>
       </div>
     </dialog>
-  </div>
+  </shortcuts-modal>
 )}
 
-<script is:inline>
-  // @ts-nocheck
-  (function () {
-    var boundElements =
-      window.__shortcutsBoundElements ||
-      (window.__shortcutsBoundElements = new WeakSet());
+<script>
+  import { isShortcutsOpen, toggleShortcutsModal } from "@/stores/uiState";
 
-    function setupShortcuts() {
-      var dialog = document.getElementById("shortcuts-dialog");
-      var openBtn = document.getElementById("open-shortcuts-btn");
-      var closeBtn = document.getElementById("close-shortcuts-btn");
-      var gridScroll = document.getElementById("shortcuts-grid-scroll");
-      var gridHint = document.getElementById("shortcuts-scroll-hint");
+  class ShortcutsModalElement extends HTMLElement {
+    private abortController: AbortController | null = null;
+    private unsubscribeStore: (() => void) | null = null;
+    private footerObs: IntersectionObserver | null = null;
 
-      function updateShortcutsScrollHint() {
+    connectedCallback() {
+      this.abortController = new AbortController();
+      const { signal } = this.abortController;
+
+      const dialog = this.querySelector<HTMLDialogElement>("#shortcuts-dialog");
+      const openBtn = this.querySelector<HTMLButtonElement>(
+        "#open-shortcuts-btn",
+      );
+      const closeBtn = this.querySelector<HTMLButtonElement>(
+        "#close-shortcuts-btn",
+      );
+      const gridScroll = this.querySelector<HTMLElement>(
+        "#shortcuts-grid-scroll",
+      );
+      const gridHint = this.querySelector<HTMLElement>(
+        "#shortcuts-scroll-hint",
+      );
+
+      const updateScrollHint = () => {
         if (!gridScroll || !gridHint) return;
-        var hasMore =
+        const hasMore =
           gridScroll.scrollHeight >
           gridScroll.clientHeight + gridScroll.scrollTop + 14;
-        if (hasMore) {
-          gridHint.classList.remove("opacity-0");
-          gridHint.classList.add("opacity-100");
-        } else {
-          gridHint.classList.remove("opacity-100");
-          gridHint.classList.add("opacity-0");
-        }
-      }
+        gridHint.classList.toggle("opacity-0", !hasMore);
+        gridHint.classList.toggle("opacity-100", hasMore);
+      };
 
-      if (gridScroll && !boundElements.has(gridScroll)) {
-        boundElements.add(gridScroll);
-        gridScroll.addEventListener("scroll", updateShortcutsScrollHint, {
+      if (gridScroll) {
+        gridScroll.addEventListener("scroll", updateScrollHint, {
           passive: true,
+          signal,
         });
       }
 
-      if (openBtn && dialog && !boundElements.has(openBtn)) {
-        boundElements.add(openBtn);
-
-        openBtn.addEventListener("click", function () {
-          var currentDialog = document.getElementById("shortcuts-dialog");
-          if (currentDialog && typeof currentDialog.showModal === "function") {
-            currentDialog.showModal();
-            openBtn.setAttribute("aria-expanded", "true");
-            requestAnimationFrame(updateShortcutsScrollHint);
-          }
-        });
-
-        if (closeBtn && !boundElements.has(closeBtn)) {
-          boundElements.add(closeBtn);
-          closeBtn.addEventListener("click", function () {
-            var currentDialog = document.getElementById("shortcuts-dialog");
-            if (currentDialog) currentDialog.close();
-            openBtn.setAttribute("aria-expanded", "false");
-          });
+      this.unsubscribeStore = isShortcutsOpen.subscribe((isOpen) => {
+        if (!dialog) return;
+        if (isOpen && !dialog.open && typeof dialog.showModal === "function") {
+          dialog.showModal();
+          openBtn?.setAttribute("aria-expanded", "true");
+          requestAnimationFrame(updateScrollHint);
+        } else if (!isOpen && dialog.open) {
+          dialog.close();
+          openBtn?.setAttribute("aria-expanded", "false");
         }
+      });
 
-        if (!boundElements.has(dialog)) {
-          boundElements.add(dialog);
-          dialog.addEventListener("click", function (e) {
-            var rect = dialog.getBoundingClientRect();
-            var isInDialog =
+      if (openBtn) {
+        openBtn.addEventListener(
+          "click",
+          () => {
+            toggleShortcutsModal(true);
+          },
+          { signal },
+        );
+      }
+
+      if (closeBtn) {
+        closeBtn.addEventListener(
+          "click",
+          () => {
+            toggleShortcutsModal(false);
+          },
+          { signal },
+        );
+      }
+
+      if (dialog) {
+        dialog.addEventListener(
+          "close",
+          () => {
+            if (isShortcutsOpen.get()) toggleShortcutsModal(false);
+            openBtn?.setAttribute("aria-expanded", "false");
+          },
+          { signal },
+        );
+
+        dialog.addEventListener(
+          "click",
+          (e) => {
+            const rect = dialog.getBoundingClientRect();
+            const isInDialog =
               rect.top <= e.clientY &&
               e.clientY <= rect.top + rect.height &&
               rect.left <= e.clientX &&
               e.clientX <= rect.left + rect.width;
             if (!isInDialog) {
-              dialog.close();
-              openBtn.setAttribute("aria-expanded", "false");
+              toggleShortcutsModal(false);
             }
-          });
-
-          dialog.addEventListener("close", function () {
-            openBtn.setAttribute("aria-expanded", "false");
-          });
-        }
-
-        // Tucking behavior upon reaching footer (deferred to first scroll)
-        var shortcutsFooterObsAttached = false;
-        function attachShortcutsFooterObs() {
-          if (shortcutsFooterObsAttached) return;
-          shortcutsFooterObsAttached = true;
-          var footer = document.querySelector("footer");
-          if (footer && "IntersectionObserver" in window) {
-            if (window.__shortcutsFooterObs) {
-              window.__shortcutsFooterObs.disconnect();
-            }
-            var obs = new IntersectionObserver(
-              function (entries) {
-                entries.forEach(function (entry) {
-                  if (entry.isIntersecting) {
-                    openBtn.classList.add("footer-tucked");
-                  } else {
-                    openBtn.classList.remove("footer-tucked");
-                  }
-                });
-              },
-              { threshold: 0.05 },
-            );
-            obs.observe(footer);
-            window.__shortcutsFooterObs = obs;
-          }
-        }
-        window.addEventListener("scroll", attachShortcutsFooterObs, {
-          once: true,
-          passive: true,
-        });
+          },
+          { signal },
+        );
       }
 
-      // Document-level delegation for opening and closing shortcuts modal
-      if (!window.__globalShortcutsDelegationBound) {
-        window.__globalShortcutsDelegationBound = true;
-        document.addEventListener("click", function (e) {
-          var target = e.target;
-          if (!target) return;
-
-          var openEl = target.closest("#open-shortcuts-btn");
-          if (openEl) {
-            e.preventDefault();
-            var d = document.getElementById("shortcuts-dialog");
-            if (d && typeof d.showModal === "function") {
-              d.showModal();
-              openEl.setAttribute("aria-expanded", "true");
-              var gs = document.getElementById("shortcuts-grid-scroll");
-              var gh = document.getElementById("shortcuts-scroll-hint");
-              if (gs && gh) {
-                var hm = gs.scrollHeight > gs.clientHeight + gs.scrollTop + 14;
-                if (hm) {
-                  gh.classList.remove("opacity-0");
-                  gh.classList.add("opacity-100");
-                } else {
-                  gh.classList.remove("opacity-100");
-                  gh.classList.add("opacity-0");
-                }
-              }
+      // Esc key global listener
+      document.addEventListener(
+        "keydown",
+        (e: KeyboardEvent) => {
+          if (e.key === "Escape") {
+            if (dialog && dialog.open) {
+              e.preventDefault();
+              toggleShortcutsModal(false);
+              return;
             }
-            return;
-          }
 
-          var closeEl = target.closest("#close-shortcuts-btn");
-          if (closeEl) {
-            e.preventDefault();
-            var d = document.getElementById("shortcuts-dialog");
-            if (d && typeof d.close === "function") d.close();
-            var ob = document.getElementById("open-shortcuts-btn");
-            if (ob) ob.setAttribute("aria-expanded", "false");
-            return;
-          }
+            const active = document.activeElement;
+            const tag = active?.tagName?.toUpperCase() || "";
+            if (
+              tag === "INPUT" ||
+              tag === "TEXTAREA" ||
+              (active as HTMLElement)?.isContentEditable
+            ) {
+              return;
+            }
 
-          var activeDialog = document.getElementById("shortcuts-dialog");
-          if (activeDialog && activeDialog.open && target === activeDialog) {
-            var rect = activeDialog.getBoundingClientRect();
-            var isInDialog =
-              rect.top <= e.clientY &&
-              e.clientY <= rect.top + rect.height &&
-              rect.left <= e.clientX &&
-              e.clientX <= rect.left + rect.width;
-            if (!isInDialog) {
-              activeDialog.close();
-              var ob = document.getElementById("open-shortcuts-btn");
-              if (ob) ob.setAttribute("aria-expanded", "false");
+            const path = window.location.pathname.replace(/\/+$/, "") || "/";
+            const isHome = path === "/" || path === "/es";
+            const scrollY =
+              window.scrollY || document.documentElement.scrollTop || 0;
+
+            if (isHome && scrollY <= 120) {
+              e.preventDefault();
+              toggleShortcutsModal(true);
             }
           }
-        });
-      }
+        },
+        { signal },
+      );
 
-      // Esc key listener: Prioritize closing modals and open index before navigation/scroll (Task 6)
-      if (!window.__escListenerBound) {
-        window.__escListenerBound = true;
-
-        document.addEventListener("keydown", function (event) {
-          if (event.key === "Escape") {
-            // 0. If floating index panel is open, close it first and STOP before doing any scroll or back (Task 6)
-            var indexPanel = document.getElementById("index-expanded-panel");
-            if (indexPanel && !indexPanel.classList.contains("hidden")) {
-              event.preventDefault();
-              if (typeof window.__toggleIndexPanel === "function") {
-                window.__toggleIndexPanel(false);
-              } else {
-                indexPanel.classList.add("hidden");
-                var indexBtn = document.getElementById(
-                  "open-index-floating-btn",
-                );
-                if (indexBtn) indexBtn.setAttribute("aria-expanded", "false");
-              }
-              return;
-            }
-
-            // 1. If shortcuts dialog is open, close it
-            var activeDialog = document.getElementById("shortcuts-dialog");
-            if (activeDialog && activeDialog.open) {
-              activeDialog.close();
-              var ob = document.getElementById("open-shortcuts-btn");
-              if (ob) ob.setAttribute("aria-expanded", "false");
-              return;
-            }
-
-            // 2. If universal search dialog is open, close it
-            var searchDialog = document.getElementById("search-dialog");
-            if (searchDialog && searchDialog.open) {
-              searchDialog.close();
-              return;
-            }
-
-            // 3. If coffee dialog or judges dialog is open, close it
-            var coffeeDialog = document.getElementById(
-              "coffee-sponsorship-dialog",
-            );
-            if (coffeeDialog && coffeeDialog.open) {
-              coffeeDialog.close();
-              return;
-            }
-            var judgesDialog = document.getElementById("online-judges-dialog");
-            if (judgesDialog && judgesDialog.open) {
-              judgesDialog.close();
-              return;
-            }
-
-            // 4. If mobile navigation details is open, close it
-            var openDetails = document.querySelector("header details[open]");
-            if (openDetails) {
-              openDetails.removeAttribute("open");
-              return;
-            }
-
-            // 5. If active focus is in an input or textarea, blur it first
-            var activeTag = document.activeElement
-              ? document.activeElement.tagName
-              : "";
-            if (activeTag === "INPUT" || activeTag === "TEXTAREA") {
-              document.activeElement.blur();
-              return;
-            }
-
-            var currentScroll =
-              window.scrollY ||
-              window.pageYOffset ||
-              document.documentElement.scrollTop ||
-              document.body.scrollTop ||
-              0;
-
-            // 6. Determine whether we are on the homepage
-            var p = window.location.pathname.replace(/\/+$/, "") || "/";
-            var isHomePage = p === "/" || p === "/es";
-
-            if (!isHomePage) {
-              // Subpages (e.g. /experience/, /projects/, /blog/, /search/, /projects/[slug]/):
-              // If not at top (> 100px margin), scroll to top
-              if (currentScroll > 100) {
-                event.preventDefault();
-                window.scrollTo({ top: 0, behavior: "smooth" });
-                return;
-              }
-
-              // If already at top (<= 100px margin), go to previous page
-              event.preventDefault();
-              var homeUrl = p.startsWith("/es") ? "/es" : "/";
-              if (
-                window.history.length > 1 &&
-                document.referrer &&
-                document.referrer.indexOf(window.location.host) !== -1
-              ) {
-                window.history.back();
-              } else {
-                window.location.href = homeUrl;
-              }
-              return;
-            }
-
-            // 7. On homepage: if scrolled, scroll to top; if at top, open shortcuts modal
-            if (currentScroll > 120) {
-              event.preventDefault();
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            } else {
-              event.preventDefault();
-              var curDialog = document.getElementById("shortcuts-dialog");
-              var curBtn = document.getElementById("open-shortcuts-btn");
-              if (
-                curDialog &&
-                typeof curDialog.showModal === "function" &&
-                !curDialog.open
-              ) {
-                curDialog.showModal();
-                if (curBtn) curBtn.setAttribute("aria-expanded", "true");
-              }
-            }
-          }
-        });
+      // Footer tuck observer
+      const footer = document.querySelector("footer");
+      if (footer && openBtn && "IntersectionObserver" in window) {
+        this.footerObs = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              openBtn.classList.toggle("footer-tucked", entry.isIntersecting);
+            });
+          },
+          { threshold: 0.05 },
+        );
+        this.footerObs.observe(footer);
       }
     }
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", setupShortcuts);
-    } else {
-      setupShortcuts();
+    disconnectedCallback() {
+      this.unsubscribeStore?.();
+      this.unsubscribeStore = null;
+      this.abortController?.abort();
+      this.abortController = null;
+      this.footerObs?.disconnect();
+      this.footerObs = null;
     }
-    document.addEventListener("astro:page-load", setupShortcuts);
-  })();
+  }
+
+  if (!customElements.get("shortcuts-modal")) {
+    customElements.define("shortcuts-modal", ShortcutsModalElement);
+  }
 </script>

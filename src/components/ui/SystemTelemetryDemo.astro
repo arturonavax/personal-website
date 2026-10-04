@@ -26,9 +26,9 @@ const initialCompanyFilterUrl = initialSim
 
 {hasSimulations && initialSim && initialCompanyInfo && (
   <>
-    <div
+    <system-telemetry-demo
       id="random-telemetry-viewer"
-      class="geometric-box no-corner-accents w-full relative rounded bg-[var(--color-surface-card)] has-[[data-company-tooltip-root]:hover]:z-50 has-[[data-tooltip-open='true']]:z-50"
+      class="block geometric-box no-corner-accents w-full relative rounded bg-[var(--color-surface-card)] has-[[data-company-tooltip-root]:hover]:z-50 has-[[data-tooltip-open='true']]:z-50"
       data-telemetry-random-viewer
       data-initial-index={initialIndex}
       data-locale={locale}
@@ -390,7 +390,7 @@ const initialCompanyFilterUrl = initialSim
           </div>
         </div>
       </div>
-    </div>
+    </system-telemetry-demo>
 
     <script
       type="application/json"
@@ -400,69 +400,92 @@ const initialCompanyFilterUrl = initialSim
         companies: companiesData,
       })}
     />
-    <script is:inline>
-      // @ts-nocheck
-      (function () {
-        function setupRandomViewer() {
-          var root = document.getElementById("random-telemetry-viewer");
-          if (!root || root.dataset.bound) return;
-          root.dataset.bound = "true";
+    <script>
+      class SystemTelemetryDemoElement extends HTMLElement {
+        private abortController: AbortController | null = null;
+        private stepTimeoutId: ReturnType<typeof setTimeout> | null = null;
+        private tooltipTimeoutId: ReturnType<typeof setTimeout> | null = null;
+        private pingTimeoutId: ReturnType<typeof setTimeout> | null = null;
+        private statusTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-          var dataEl = document.getElementById("telemetry-data");
-          var telemetryData = dataEl
+        connectedCallback() {
+          this.abortController = new AbortController();
+          const { signal } = this.abortController;
+
+          const dataEl = document.getElementById("telemetry-data");
+          const telemetryData = dataEl
             ? JSON.parse(dataEl.textContent || "{}")
             : {};
-          var allSimulations = telemetryData.simulations || [];
-          var allCompanies = telemetryData.companies || {};
+          const allSimulations = telemetryData.simulations || [];
+          const allCompanies = telemetryData.companies || {};
 
-          var locale =
-            root.dataset.locale ||
+          const locale =
+            this.dataset.locale ||
             (document.documentElement.lang === "es" ? "es" : "en");
-          var isEs = locale === "es";
-          var initialIndex = parseInt(root.dataset.initialIndex || "0", 10);
-          var currentIndex = initialIndex;
+          const isEs = locale === "es";
+          let currentIndex = parseInt(this.dataset.initialIndex || "0", 10);
 
-          var scriptNameEl = document.getElementById("viewer-script-name");
-          var companyRoot = document.getElementById("viewer-company-root");
-          var companyLinkEl = document.getElementById("viewer-company-link");
-          var companyTriggerEl = document.getElementById(
-            "viewer-company-trigger",
+          const scriptNameEl = this.querySelector<HTMLElement>(
+            "#viewer-script-name",
           );
-          var companyTooltip = document.getElementById(
-            "viewer-company-tooltip",
+          const companyRoot = this.querySelector<HTMLElement>(
+            "#viewer-company-root",
           );
-          var ttNameEl = document.getElementById("viewer-tt-name");
-          var ttIndustryEl = document.getElementById("viewer-tt-industry");
-          var ttDescEl = document.getElementById("viewer-tt-desc");
-          var ttDomainEl = document.getElementById("viewer-tt-domain");
-          var ttUrlEl = document.getElementById("viewer-tt-url");
+          const companyLinkEl = this.querySelector<HTMLAnchorElement>(
+            "#viewer-company-link",
+          );
+          const companyTriggerEl = this.querySelector<HTMLButtonElement>(
+            "#viewer-company-trigger",
+          );
+          const companyTooltip = this.querySelector<HTMLElement>(
+            "#viewer-company-tooltip",
+          );
+          const ttNameEl = this.querySelector<HTMLElement>("#viewer-tt-name");
+          const ttIndustryEl = this.querySelector<HTMLElement>(
+            "#viewer-tt-industry",
+          );
+          const ttDescEl = this.querySelector<HTMLElement>("#viewer-tt-desc");
+          const ttDomainEl =
+            this.querySelector<HTMLElement>("#viewer-tt-domain");
+          const ttUrlEl =
+            this.querySelector<HTMLAnchorElement>("#viewer-tt-url");
 
-          var titleEl = document.getElementById("viewer-title");
-          var descEl = document.getElementById("viewer-description");
-          var jobLinkEl = document.getElementById("viewer-job-link");
-          var stepsGrid = document.getElementById("viewer-steps-grid");
-          var metricsGrid = document.getElementById("viewer-metrics-grid");
-          var logFeed = document.getElementById("viewer-log-feed");
-          var timerEl = document.getElementById("viewer-timer");
-          var phaseStatus = document.getElementById("viewer-phase-status");
-          var counterEl = document.getElementById("viewer-sim-counter");
-
-          var runBtn = document.getElementById("viewer-run-btn");
-          var prevBtn = document.getElementById("sim-prev-btn");
-          var nextBtn = document.getElementById("sim-next-btn");
-          var stepperLabel = document.getElementById(
-            "viewer-sim-stepper-label",
+          const titleEl = this.querySelector<HTMLElement>("#viewer-title");
+          const descEl = this.querySelector<HTMLElement>("#viewer-description");
+          const jobLinkEl =
+            this.querySelector<HTMLAnchorElement>("#viewer-job-link");
+          const stepsGrid =
+            this.querySelector<HTMLElement>("#viewer-steps-grid");
+          const metricsGrid = this.querySelector<HTMLElement>(
+            "#viewer-metrics-grid",
+          );
+          const logFeed = this.querySelector<HTMLElement>("#viewer-log-feed");
+          const timerEl = this.querySelector<HTMLElement>("#viewer-timer");
+          const phaseStatus = this.querySelector<HTMLElement>(
+            "#viewer-phase-status",
+          );
+          const counterEl = this.querySelector<HTMLElement>(
+            "#viewer-sim-counter",
           );
 
-          function getCompInfo(name) {
-            var k = (name || "").toLowerCase().trim();
+          const runBtn =
+            this.querySelector<HTMLButtonElement>("#viewer-run-btn");
+          const prevBtn =
+            this.querySelector<HTMLButtonElement>("#sim-prev-btn");
+          const nextBtn =
+            this.querySelector<HTMLButtonElement>("#sim-next-btn");
+          const stepperLabel = this.querySelector<HTMLElement>(
+            "#viewer-sim-stepper-label",
+          );
+
+          const getCompInfo = (name: string) => {
+            const k = (name || "").toLowerCase().trim();
             if (allCompanies[k]) return allCompanies[k];
-            for (var key in allCompanies) {
-              if (k.indexOf(key) !== -1 || key.indexOf(k) !== -1)
-                return allCompanies[key];
+            for (const key in allCompanies) {
+              if (k.includes(key) || key.includes(k)) return allCompanies[key];
             }
             return {
-              name: name,
+              name,
               url:
                 "https://www.google.com/search?q=" + encodeURIComponent(name),
               domain: name.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com",
@@ -473,46 +496,42 @@ const initialCompanyFilterUrl = initialSim
               descriptionEs:
                 "Proyecto de arquitectura e infraestructura en producción empresarial.",
             };
-          }
+          };
 
           // Tooltip interactive state
           if (companyRoot && companyTriggerEl && companyTooltip) {
-            var hideTimeout;
-
-            function updatePlacement() {
-              var header = document.querySelector("header");
-              var headerBottom = header
+            const updatePlacement = () => {
+              const header = document.querySelector("header");
+              const headerBottom = header
                 ? header.getBoundingClientRect().bottom
                 : 56;
-              var triggerRect = companyTriggerEl.getBoundingClientRect();
-              var rootRect = companyRoot.getBoundingClientRect();
-              var spaceAbove = triggerRect.top - headerBottom;
-              var ttHeight = companyTooltip.offsetHeight || 180;
-              if (spaceAbove < ttHeight + 16) {
-                companyRoot.dataset.placement = "bottom";
-              } else {
-                companyRoot.dataset.placement = "top";
-              }
+              const triggerRect = companyTriggerEl.getBoundingClientRect();
+              const rootRect = companyRoot.getBoundingClientRect();
+              const spaceAbove = triggerRect.top - headerBottom;
+              const ttHeight = companyTooltip.offsetHeight || 180;
+              companyRoot.dataset.placement =
+                spaceAbove < ttHeight + 16 ? "bottom" : "top";
 
-              // Horizontal bounds clamping for small screens to prevent right overflow
-              var viewportWidth =
+              const viewportWidth =
                 window.innerWidth || document.documentElement.clientWidth;
-              var ttWidth = companyTooltip.offsetWidth || 280;
-              var caret = companyRoot.querySelector(".company-tooltip-caret");
+              const ttWidth = companyTooltip.offsetWidth || 280;
+              const caret = companyRoot.querySelector<HTMLElement>(
+                ".company-tooltip-caret",
+              );
               if (viewportWidth < 640) {
-                var safeMarginRight = 18;
-                var safeMarginLeft = 12;
-                var maxViewportX = viewportWidth - ttWidth - safeMarginRight;
-                var minViewportX = safeMarginLeft;
-                var idealViewportX = rootRect.left;
-                var clampedViewportX = Math.max(
+                const safeMarginRight = 18;
+                const safeMarginLeft = 12;
+                const maxViewportX = viewportWidth - ttWidth - safeMarginRight;
+                const minViewportX = safeMarginLeft;
+                const idealViewportX = rootRect.left;
+                const clampedViewportX = Math.max(
                   minViewportX,
                   Math.min(idealViewportX, maxViewportX),
                 );
-                var relativeLeft = clampedViewportX - rootRect.left;
+                const relativeLeft = clampedViewportX - rootRect.left;
                 companyTooltip.style.left = relativeLeft + "px";
                 if (caret) {
-                  var caretPos =
+                  const caretPos =
                     rootRect.left + rootRect.width / 2 - clampedViewportX;
                   caret.style.left =
                     Math.max(16, Math.min(ttWidth - 16, caretPos)) + "px";
@@ -521,10 +540,10 @@ const initialCompanyFilterUrl = initialSim
                 companyTooltip.style.left = "";
                 if (caret) caret.style.left = "";
               }
-            }
+            };
 
-            function openTooltip() {
-              clearTimeout(hideTimeout);
+            const openTooltip = () => {
+              if (this.tooltipTimeoutId) clearTimeout(this.tooltipTimeoutId);
               updatePlacement();
               companyRoot.dataset.tooltipOpen = "true";
               companyTriggerEl.setAttribute("aria-expanded", "true");
@@ -538,10 +557,10 @@ const initialCompanyFilterUrl = initialSim
                 "pointer-events-auto",
                 "translate-y-0",
               );
-            }
+            };
 
-            function closeTooltip() {
-              hideTimeout = setTimeout(function () {
+            const closeTooltip = () => {
+              this.tooltipTimeoutId = setTimeout(() => {
                 companyRoot.dataset.tooltipOpen = "false";
                 companyTriggerEl.setAttribute("aria-expanded", "false");
                 companyTooltip.classList.add(
@@ -555,75 +574,89 @@ const initialCompanyFilterUrl = initialSim
                   "translate-y-0",
                 );
               }, 200);
-            }
+            };
 
-            companyRoot.addEventListener("mouseenter", openTooltip);
-            companyRoot.addEventListener("mouseleave", closeTooltip);
+            companyRoot.addEventListener("mouseenter", openTooltip, { signal });
+            companyRoot.addEventListener("mouseleave", closeTooltip, {
+              signal,
+            });
             window.addEventListener(
               "scroll",
-              function () {
+              () => {
                 if (companyRoot.dataset.tooltipOpen === "true") {
                   updatePlacement();
                 }
               },
-              { passive: true },
+              { passive: true, signal },
             );
 
-            companyTriggerEl.addEventListener("click", function (e) {
-              e.stopPropagation();
-              var isOpen =
-                companyTriggerEl.getAttribute("aria-expanded") === "true";
-              if (isOpen) {
-                closeTooltip();
-              } else {
-                openTooltip();
-              }
-            });
+            companyTriggerEl.addEventListener(
+              "click",
+              (e) => {
+                e.stopPropagation();
+                const isOpen =
+                  companyTriggerEl.getAttribute("aria-expanded") === "true";
+                if (isOpen) {
+                  closeTooltip();
+                } else {
+                  openTooltip();
+                }
+              },
+              { signal },
+            );
 
-            document.addEventListener("click", function (e) {
-              if (companyRoot && !companyRoot.contains(e.target)) {
-                companyRoot.dataset.tooltipOpen = "false";
-                companyTriggerEl.setAttribute("aria-expanded", "false");
-                companyTooltip.classList.add(
-                  "opacity-0",
-                  "pointer-events-none",
-                  "translate-y-1",
-                );
-                companyTooltip.classList.remove(
-                  "opacity-100",
-                  "pointer-events-auto",
-                  "translate-y-0",
-                );
-              }
-            });
+            document.addEventListener(
+              "click",
+              (e) => {
+                if (companyRoot && !companyRoot.contains(e.target as Node)) {
+                  companyRoot.dataset.tooltipOpen = "false";
+                  companyTriggerEl.setAttribute("aria-expanded", "false");
+                  companyTooltip.classList.add(
+                    "opacity-0",
+                    "pointer-events-none",
+                    "translate-y-1",
+                  );
+                  companyTooltip.classList.remove(
+                    "opacity-100",
+                    "pointer-events-auto",
+                    "translate-y-0",
+                  );
+                }
+              },
+              { signal },
+            );
 
-            document.addEventListener("keydown", function (e) {
-              if (e.key === "Escape") {
-                companyRoot.dataset.tooltipOpen = "false";
-                companyTriggerEl.setAttribute("aria-expanded", "false");
-                companyTooltip.classList.add(
-                  "opacity-0",
-                  "pointer-events-none",
-                  "translate-y-1",
-                );
-                companyTooltip.classList.remove(
-                  "opacity-100",
-                  "pointer-events-auto",
-                  "translate-y-0",
-                );
-              }
-            });
+            document.addEventListener(
+              "keydown",
+              (e) => {
+                if (e.key === "Escape") {
+                  companyRoot.dataset.tooltipOpen = "false";
+                  companyTriggerEl.setAttribute("aria-expanded", "false");
+                  companyTooltip.classList.add(
+                    "opacity-0",
+                    "pointer-events-none",
+                    "translate-y-1",
+                  );
+                  companyTooltip.classList.remove(
+                    "opacity-100",
+                    "pointer-events-auto",
+                    "translate-y-0",
+                  );
+                }
+              },
+              { signal },
+            );
           }
 
-          function renderCurrentSim() {
-            var sim = allSimulations[currentIndex];
+          const renderCurrentSim = () => {
+            const sim = allSimulations[currentIndex];
             if (!sim) return;
 
             if (scriptNameEl) scriptNameEl.textContent = sim.scriptName;
 
-            var comp = sim.company;
-            var info = getCompInfo(comp);
-            var compFilterUrl =
+            const comp = sim.company;
+            const info = getCompInfo(comp);
+            const compFilterUrl =
               (isEs ? "/es/experience/?company=" : "/experience/?company=") +
               encodeURIComponent(comp.toLowerCase().trim());
 
@@ -678,24 +711,23 @@ const initialCompanyFilterUrl = initialSim
             // Render Steps Grid
             if (stepsGrid) {
               stepsGrid.innerHTML = "";
-              sim.steps.forEach(function (step, idx) {
-                var node = document.createElement("div");
+              sim.steps.forEach((step: any, idx: number) => {
+                const node = document.createElement("div");
                 node.className =
                   "viewer-step-node rounded border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-2.5 transition-all";
-                node.setAttribute("data-step-index", idx);
-                node.innerHTML =
-                  '<div class="flex items-center justify-between text-[11px] mb-1">' +
-                  '<span class="text-[var(--color-accent-gold)] font-bold">' +
-                  step.stepNumber +
-                  "</span>" +
-                  '<span class="viewer-step-dot h-1.5 w-1.5 rounded-full bg-[var(--color-surface-border)]"></span>' +
-                  "</div>" +
-                  '<div class="viewer-step-title text-xs font-bold text-[var(--color-text-primary)] truncate">' +
-                  (isEs ? step.titleEs : step.title) +
-                  "</div>" +
-                  '<div class="viewer-step-detail text-[10px] text-[var(--color-text-muted)] mt-0.5 line-clamp-1">' +
-                  (isEs ? step.detailEs : step.detail) +
-                  "</div>";
+                node.setAttribute("data-step-index", String(idx));
+                node.innerHTML = `
+                  <div class="flex items-center justify-between text-[11px] mb-1">
+                    <span class="text-[var(--color-accent-gold)] font-bold">${step.stepNumber}</span>
+                    <span class="viewer-step-dot h-1.5 w-1.5 rounded-full bg-[var(--color-surface-border)]"></span>
+                  </div>
+                  <div class="viewer-step-title text-xs font-bold text-[var(--color-text-primary)] truncate">
+                    ${isEs ? step.titleEs : step.title}
+                  </div>
+                  <div class="viewer-step-detail text-[10px] text-[var(--color-text-muted)] mt-0.5 line-clamp-1">
+                    ${isEs ? step.detailEs : step.detail}
+                  </div>
+                `;
                 stepsGrid.appendChild(node);
               });
             }
@@ -703,216 +735,220 @@ const initialCompanyFilterUrl = initialSim
             // Render Metrics Grid
             if (metricsGrid) {
               metricsGrid.innerHTML = "";
-              sim.metrics.forEach(function (m) {
-                var card = document.createElement("div");
+              sim.metrics.forEach((m: any) => {
+                const card = document.createElement("div");
                 card.className =
                   "viewer-metric-card rounded border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-3 space-y-2";
-                var impBadge = (isEs ? m.improvementEs : m.improvement)
-                  ? '<span class="metric-improvement text-[10px] rounded bg-[var(--color-accent-gold)]/10 px-1.5 py-0.2 text-[var(--color-accent-gold)]">' +
-                    (isEs ? m.improvementEs : m.improvement) +
-                    "</span>"
+                const impText = isEs ? m.improvementEs : m.improvement;
+                const impBadge = impText
+                  ? `<span class="metric-improvement text-[10px] rounded bg-[var(--color-accent-gold)]/10 px-1.5 py-0.2 text-[var(--color-accent-gold)]">${impText}</span>`
                   : "";
-                card.innerHTML =
-                  '<div class="text-xs font-semibold text-[var(--color-text-primary)] flex items-center justify-between">' +
-                  "<span>" +
-                  (isEs ? m.nameEs : m.name) +
-                  "</span>" +
-                  impBadge +
-                  "</div>" +
-                  '<div class="space-y-1.5 text-xs">' +
-                  '<div class="flex items-center gap-2 text-[var(--color-text-muted)]">' +
-                  '<span class="text-[10px] uppercase font-bold text-[var(--color-text-muted)] shrink-0 line-through">before:</span>' +
-                  '<span class="text-[11px] line-through opacity-75">' +
-                  m.beforeValue +
-                  "</span>" +
-                  "</div>" +
-                  '<div class="viewer-now-row flex items-center gap-2 text-[var(--color-text-primary)] bg-[var(--color-surface-card)] rounded p-1.5 border border-[var(--color-surface-border)]">' +
-                  '<span class="text-[10px] uppercase font-bold text-[var(--color-accent-status)] shrink-0 flex items-center gap-1">' +
-                  '<span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)]"></span>' +
-                  "now:" +
-                  "</span>" +
-                  '<span class="text-xs font-bold text-[var(--color-accent-gold)]">' +
-                  m.nowValue +
-                  "</span>" +
-                  "</div>" +
-                  "</div>";
+                card.innerHTML = `
+                  <div class="text-xs font-semibold text-[var(--color-text-primary)] flex items-center justify-between">
+                    <span>${isEs ? m.nameEs : m.name}</span>
+                    ${impBadge}
+                  </div>
+                  <div class="space-y-1.5 text-xs">
+                    <div class="flex items-center gap-2 text-[var(--color-text-muted)]">
+                      <span class="text-[10px] uppercase font-bold text-[var(--color-text-muted)] shrink-0 line-through">before:</span>
+                      <span class="metric-before text-[11px] line-through opacity-75">${m.beforeValue}</span>
+                    </div>
+                    <div class="viewer-now-row flex items-center gap-2 text-[var(--color-text-primary)] bg-[var(--color-surface-card)] rounded p-1.5 border border-[var(--color-surface-border)]">
+                      <span class="text-[10px] uppercase font-bold text-[var(--color-accent-status)] shrink-0 flex items-center gap-1">
+                        <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)]"></span>
+                        now:
+                      </span>
+                      <span class="metric-now text-xs font-bold text-[var(--color-accent-gold)]">${m.nowValue}</span>
+                    </div>
+                  </div>
+                `;
                 metricsGrid.appendChild(card);
               });
             }
 
-            // Reset logs and timer
             if (logFeed) {
-              logFeed.innerHTML =
-                '<div class="text-[var(--color-text-muted)] italic">' +
-                (isEs
+              logFeed.innerHTML = `<div class="text-[var(--color-text-muted)] italic">${
+                isEs
                   ? '$ Presiona "Ejecutar Caso de Estudio" para disparar la carga...'
-                  : '$ Click "Run Case Study" to execute the workload...') +
-                "</div>";
+                  : '$ Click "Run Case Study" to execute the workload...'
+              }</div>`;
             }
             if (timerEl) timerEl.textContent = "0.0ms";
             if (phaseStatus)
               phaseStatus.textContent = isEs ? "En espera" : "Idle state";
-          }
+          };
 
-          // Stepper navigation arrows
           if (prevBtn) {
-            prevBtn.addEventListener("click", function () {
-              currentIndex =
-                (currentIndex - 1 + allSimulations.length) %
-                allSimulations.length;
-              renderCurrentSim();
-            });
+            prevBtn.addEventListener(
+              "click",
+              () => {
+                currentIndex =
+                  (currentIndex - 1 + allSimulations.length) %
+                  allSimulations.length;
+                renderCurrentSim();
+              },
+              { signal },
+            );
           }
 
           if (nextBtn) {
-            nextBtn.addEventListener("click", function () {
-              currentIndex = (currentIndex + 1) % allSimulations.length;
-              renderCurrentSim();
-            });
-          }
-
-          // Run Simulation button
-          if (runBtn) {
-            runBtn.addEventListener("click", function () {
-              var sim = allSimulations[currentIndex];
-              if (!sim || runBtn.disabled) return;
-
-              runBtn.disabled = true;
-              runBtn.classList.add("opacity-60", "cursor-not-allowed");
-
-              if (logFeed) logFeed.innerHTML = "";
-              if (phaseStatus)
-                phaseStatus.textContent = isEs
-                  ? "Ejecutando pipeline..."
-                  : "Executing pipeline...";
-
-              var stepNodes = root.querySelectorAll(".viewer-step-node");
-              var nowRows = root.querySelectorAll(".viewer-now-row");
-
-              stepNodes.forEach(function (node) {
-                node.classList.remove(
-                  "border-[var(--color-accent-gold)]",
-                  "bg-[var(--color-surface-card)]",
-                );
-                var dot = node.querySelector(".viewer-step-dot");
-                if (dot)
-                  dot.classList.replace(
-                    "bg-[var(--color-accent-status)]",
-                    "bg-[var(--color-surface-border)]",
-                  );
-              });
-
-              nowRows.forEach(function (r) {
-                r.classList.add("opacity-40");
-              });
-
-              var currentStep = 0;
-              var startTime = performance.now();
-
-              function executeNextStep() {
-                if (currentStep < sim.steps.length) {
-                  var step = sim.steps[currentStep];
-                  var node = stepNodes[currentStep];
-                  if (node) {
-                    node.classList.add(
-                      "border-[var(--color-accent-gold)]",
-                      "bg-[var(--color-surface-card)]",
-                    );
-                    var dot = node.querySelector(".viewer-step-dot");
-                    if (dot) {
-                      dot.classList.remove("bg-[var(--color-surface-border)]");
-                      dot.classList.add(
-                        "bg-[var(--color-accent-status)]",
-                        "animate-ping",
-                      );
-                      setTimeout(function () {
-                        dot.classList.remove("animate-ping");
-                      }, 400);
-                    }
-                  }
-
-                  var elapsed = (performance.now() - startTime).toFixed(1);
-                  if (timerEl) timerEl.textContent = elapsed + "ms";
-
-                  if (logFeed) {
-                    var line = document.createElement("div");
-                    line.className =
-                      "text-[var(--color-text-primary)] flex items-start gap-1.5 animate-fade-in";
-                    line.innerHTML =
-                      '<span class="text-[var(--color-accent-gold)]">&rarr;</span> <span>' +
-                      step.log +
-                      "</span>";
-                    logFeed.appendChild(line);
-                    logFeed.scrollTop = logFeed.scrollHeight;
-                  }
-
-                  currentStep++;
-                  setTimeout(executeNextStep, step.durationMs * 25 + 150);
-                } else {
-                  var totalElapsed = (performance.now() - startTime).toFixed(1);
-                  if (timerEl) timerEl.textContent = totalElapsed + "ms (DONE)";
-                  if (phaseStatus)
-                    phaseStatus.textContent = isEs
-                      ? "Completado con Éxito ✓"
-                      : "Completed Successfully ✓";
-
-                  nowRows.forEach(function (r) {
-                    r.classList.remove("opacity-40");
-                    r.classList.add("border-[var(--color-accent-status)]");
-                    setTimeout(function () {
-                      r.classList.remove("border-[var(--color-accent-status)]");
-                    }, 2000);
-                  });
-
-                  runBtn.disabled = false;
-                  runBtn.classList.remove("opacity-60", "cursor-not-allowed");
-                }
-              }
-
-              executeNextStep();
-            });
-          }
-        }
-
-        function scheduleInit() {
-          var root = document.getElementById("random-telemetry-viewer");
-          if (!root || root.dataset.bound === "true") return;
-          if ("IntersectionObserver" in window) {
-            var obs = new IntersectionObserver(
-              function (entries) {
-                if (entries[0] && entries[0].isIntersecting) {
-                  obs.disconnect();
-                  setupRandomViewer();
-                }
+            nextBtn.addEventListener(
+              "click",
+              () => {
+                currentIndex = (currentIndex + 1) % allSimulations.length;
+                renderCurrentSim();
               },
-              { rootMargin: "300px" },
+              { signal },
             );
-            obs.observe(root);
-          } else {
-            root.addEventListener("pointerenter", setupRandomViewer, {
-              once: true,
-            });
-            root.addEventListener("focusin", setupRandomViewer, { once: true });
+          }
+
+          if (runBtn) {
+            runBtn.addEventListener(
+              "click",
+              () => {
+                const sim = allSimulations[currentIndex];
+                if (!sim || runBtn.disabled) return;
+
+                runBtn.disabled = true;
+                runBtn.classList.add("opacity-60", "cursor-not-allowed");
+
+                if (logFeed) logFeed.innerHTML = "";
+                if (phaseStatus)
+                  phaseStatus.textContent = isEs
+                    ? "Ejecutando pipeline..."
+                    : "Executing pipeline...";
+
+                const stepNodes =
+                  this.querySelectorAll<HTMLElement>(".viewer-step-node");
+                const nowRows =
+                  this.querySelectorAll<HTMLElement>(".viewer-now-row");
+
+                stepNodes.forEach((node) => {
+                  node.classList.remove(
+                    "border-[var(--color-accent-gold)]",
+                    "bg-[var(--color-surface-card)]",
+                  );
+                  const dot = node.querySelector(".viewer-step-dot");
+                  if (dot)
+                    dot.classList.replace(
+                      "bg-[var(--color-accent-status)]",
+                      "bg-[var(--color-surface-border)]",
+                    );
+                });
+
+                nowRows.forEach((r) => r.classList.add("opacity-40"));
+
+                let currentStep = 0;
+                const startTime = performance.now();
+
+                const executeNextStep = () => {
+                  if (!this.isConnected) return;
+                  if (currentStep < sim.steps.length) {
+                    const step = sim.steps[currentStep];
+                    const node = stepNodes[currentStep];
+                    if (node) {
+                      node.classList.add(
+                        "border-[var(--color-accent-gold)]",
+                        "bg-[var(--color-surface-card)]",
+                      );
+                      const dot = node.querySelector(".viewer-step-dot");
+                      if (dot) {
+                        dot.classList.remove(
+                          "bg-[var(--color-surface-border)]",
+                        );
+                        dot.classList.add(
+                          "bg-[var(--color-accent-status)]",
+                          "animate-ping",
+                        );
+                        this.pingTimeoutId = setTimeout(() => {
+                          dot.classList.remove("animate-ping");
+                        }, 400);
+                      }
+                    }
+
+                    const elapsed = (performance.now() - startTime).toFixed(1);
+                    if (timerEl) timerEl.textContent = elapsed + "ms";
+
+                    if (logFeed) {
+                      const line = document.createElement("div");
+                      line.className =
+                        "text-[var(--color-text-primary)] flex items-start gap-1.5 animate-fade-in";
+                      line.innerHTML = `<span class="text-[var(--color-accent-gold)]">&rarr;</span> <span>${step.log}</span>`;
+                      logFeed.appendChild(line);
+                      logFeed.scrollTop = logFeed.scrollHeight;
+                    }
+
+                    currentStep++;
+                    this.stepTimeoutId = setTimeout(
+                      executeNextStep,
+                      step.durationMs * 25 + 150,
+                    );
+                  } else {
+                    const totalElapsed = (
+                      performance.now() - startTime
+                    ).toFixed(1);
+                    if (timerEl)
+                      timerEl.textContent = totalElapsed + "ms (DONE)";
+                    if (phaseStatus) {
+                      phaseStatus.textContent = isEs
+                        ? "Completado con Éxito ✓"
+                        : "Completed Successfully ✓";
+                    }
+
+                    nowRows.forEach((r) => {
+                      r.classList.remove("opacity-40");
+                      r.classList.add("border-[var(--color-accent-status)]");
+                      this.statusTimeoutId = setTimeout(() => {
+                        r.classList.remove(
+                          "border-[var(--color-accent-status)]",
+                        );
+                      }, 2000);
+                    });
+
+                    runBtn.disabled = false;
+                    runBtn.classList.remove("opacity-60", "cursor-not-allowed");
+                  }
+                };
+
+                executeNextStep();
+              },
+              { signal },
+            );
+          }
+
+          renderCurrentSim();
+        }
+
+        disconnectedCallback() {
+          if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+          }
+          if (this.stepTimeoutId) {
+            clearTimeout(this.stepTimeoutId);
+            this.stepTimeoutId = null;
+          }
+          if (this.tooltipTimeoutId) {
+            clearTimeout(this.tooltipTimeoutId);
+            this.tooltipTimeoutId = null;
+          }
+          if (this.pingTimeoutId) {
+            clearTimeout(this.pingTimeoutId);
+            this.pingTimeoutId = null;
+          }
+          if (this.statusTimeoutId) {
+            clearTimeout(this.statusTimeoutId);
+            this.statusTimeoutId = null;
           }
         }
+      }
 
-        var telemetryInitStarted = false;
-        function startTelemetryInit() {
-          if (telemetryInitStarted) return;
-          telemetryInitStarted = true;
-          scheduleInit();
-        }
-
-        window.addEventListener("scroll", startTelemetryInit, {
-          once: true,
-          passive: true,
-        });
-        window.addEventListener("pointerdown", startTelemetryInit, {
-          once: true,
-          passive: true,
-        });
-        document.addEventListener("astro:page-load", scheduleInit);
-      })();
+      if (!customElements.get("system-telemetry-demo")) {
+        customElements.define(
+          "system-telemetry-demo",
+          SystemTelemetryDemoElement,
+        );
+      }
     </script>
   </>
 )}

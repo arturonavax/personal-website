@@ -1,0 +1,39 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
+import LinkGenerator from "@/components/ui/LinkGenerator.astro";
+import type { SupportedLocale } from "@/i18n/config";
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: undefined }, props: { locale: "en" as const } },
+    { params: { lang: "es" }, props: { locale: "es" as const } },
+  ];
+}
+
+interface Props {
+  locale: SupportedLocale;
+}
+
+const { locale } = Astro.props;
+const isEs = locale === "es";
+---
+
+<BaseLayout
+  title={
+    isEs
+      ? "Arturo Nava — Generador de Enlaces de Atribución"
+      : "Arturo Nava — Attribution Link Generator"
+  }
+  description={
+    isEs
+      ? "Generador estandarizado de enlaces y parámetros UTM para la medición consistente de campañas y procedencia de tráfico."
+      : "Generate standardized campaign and attribution links with UTM parameters for consistent referral tracking."
+  }
+  locale={locale}
+>
+  <div class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-6 sm:space-y-8">
+    <BackToHomeButton locale={locale} />
+    <LinkGenerator locale={locale} />
+  </div>
+</BaseLayout>

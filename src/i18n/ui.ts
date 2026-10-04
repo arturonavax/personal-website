@@ -1,11 +1,13 @@
+import { LOCALES, type SupportedLocale, DEFAULT_LOCALE } from "./config";
+
 export const languages = {
-  en: "English",
-  es: "Español",
+  en: LOCALES.en.label,
+  es: LOCALES.es.label,
 } as const;
 
-export type Locale = keyof typeof languages;
+export type Locale = SupportedLocale;
 
-export const defaultLang: Locale = "en";
+export const defaultLang: Locale = DEFAULT_LOCALE;
 
 export const ui = {
   en: {

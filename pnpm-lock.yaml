@@ -219,6 +219,9 @@ importers:
       astro:
         specifier: 7.3.4
         version: 7.3.4(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@types/node@24.13.6)(jiti@2.7.0)(yaml@2.9.1)
+      nanostores:
+        specifier: ^1.5.4
+        version: 1.5.4
       sharp:
         specifier: 0.35.4
         version: 0.35.4(@types/node@24.13.6)
@@ -2942,6 +2945,13 @@ packages:
     engines: { node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1 }
     hasBin: true
 
+  nanostores@1.5.4:
+    resolution:
+      {
+        integrity: sha512-4UXY7OAJEK0Y6V3SudBU7cXjAzTDc189R78dDOh0Xbm19gpKYto6WizSg58LJf12lTsRxKSLGyE117OiLpM4DQ==,
+      }
+    engines: { node: ^20.0.0 || >=22.0.0 }
+
   neotraverse@1.0.1:
     resolution:
       {
@@ -5491,6 +5501,8 @@ snapshots:
   muggle-string@0.4.1: {}
 
   nanoid@3.3.19: {}
+
+  nanostores@1.5.4: {}
 
   neotraverse@1.0.1: {}
 

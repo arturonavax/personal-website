@@ -8,60 +8,77 @@ interface Props {
 const { locale } = Astro.props;
 const isEs = locale === "es";
 const searchUrl = isEs ? "/es/search/" : "/search/";
-const searchIndexPath = isEs
-  ? "/search-index-es.json"
-  : "/search-index-en.json";
+const searchIndexPath = "/search-index.json";
 ---
 
 <!-- Universal Search Dialog -->
-<dialog
-  id="search-dialog"
-  data-search-index-path={searchIndexPath}
-  aria-labelledby="search-dialog-title"
-  class="fixed inset-0 m-auto max-h-[min(88dvh,calc(100dvh-1.5rem))] sm:max-h-[85vh] w-[94vw] max-w-2xl rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-0 text-[var(--color-text-primary)] backdrop:bg-black/80 backdrop:backdrop-blur-sm open:animate-fade-in"
-  style="box-shadow: var(--shadow-modal);"
->
-  <div class="flex flex-col h-full max-h-[min(88dvh,calc(100dvh-1.5rem))] sm:max-h-[85vh]">
-    <!-- Search Bar Input Header -->
-    <div class="relative flex items-center border-b border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/80 px-3.5 py-2.5 sm:px-5 sm:py-4">
-      <svg
-        class="h-5 w-5 text-[var(--color-accent-gold)] shrink-0 mr-2.5 sm:mr-3"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-      <div class="relative flex-1 flex items-center min-w-0">
-        <input
-          type="search"
-          id="universal-search-input"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder={
-            isEs
-              ? "Buscar proyectos, ensayos, experiencia... (ej. Go, Rust)"
-              : "Search projects, essays, experience... (e.g. Go, Rust)"
-          }
-          class="w-full bg-transparent font-mono text-sm sm:text-base text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none pr-10 [&::-webkit-search-cancel-button]:hidden"
-        />
+<universal-search-modal class="block">
+  <dialog
+    id="search-dialog"
+    data-search-index-path={searchIndexPath}
+    aria-labelledby="search-dialog-title"
+    class="fixed inset-0 m-auto max-h-[min(88dvh,calc(100dvh-1.5rem))] sm:max-h-[85vh] w-[94vw] max-w-2xl rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-0 text-[var(--color-text-primary)] backdrop:bg-black/80 backdrop:backdrop-blur-sm open:animate-fade-in"
+    style="box-shadow: var(--shadow-modal);"
+  >
+    <div class="flex flex-col h-full max-h-[min(88dvh,calc(100dvh-1.5rem))] sm:max-h-[85vh]">
+      <!-- Search Bar Input Header -->
+      <div class="relative flex items-center border-b border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/80 px-3.5 py-2.5 sm:px-5 sm:py-4">
+        <svg
+          class="h-5 w-5 text-[var(--color-accent-gold)] shrink-0 mr-2.5 sm:mr-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <div class="relative flex-1 flex items-center min-w-0">
+          <input
+            type="search"
+            id="universal-search-input"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder={
+              isEs
+                ? "Buscar proyectos, ensayos, experiencia... (ej. Go, Rust)"
+                : "Search projects, essays, experience... (e.g. Go, Rust)"
+            }
+            class="w-full bg-transparent font-mono text-sm sm:text-base text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none pr-10 [&::-webkit-search-cancel-button]:hidden"
+          />
+          <button
+            type="button"
+            id="clear-search-btn"
+            aria-label={
+              isEs ? "Borrar término de búsqueda" : "Clear search query"
+            }
+            title={isEs ? "Borrar búsqueda" : "Clear search"}
+            class="hidden absolute right-1 h-8 w-8 min-h-[32px] min-w-[32px] sm:h-9 sm:w-9 sm:min-h-[36px] sm:min-w-[36px] items-center justify-center rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
+          >
+            <svg
+              class="h-4 w-4 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
         <button
           type="button"
-          id="clear-search-btn"
-          aria-label={
-            isEs ? "Borrar término de búsqueda" : "Clear search query"
-          }
-          title={isEs ? "Borrar búsqueda" : "Clear search"}
-          class="hidden absolute right-1 h-8 w-8 min-h-[32px] min-w-[32px] sm:h-9 sm:w-9 sm:min-h-[36px] sm:min-w-[36px] items-center justify-center rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
+          id="close-search-btn"
+          aria-label={isEs ? "Cerrar búsqueda" : "Close search"}
+          class="ml-2.5 sm:ml-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-2 text-[var(--color-text-muted)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer shrink-0"
         >
           <svg
             class="h-4 w-4 stroke-current fill-none"
             viewBox="0 0 24 24"
-            stroke-width="2.5"
+            stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
           >
@@ -70,130 +87,166 @@ const searchIndexPath = isEs
           </svg>
         </button>
       </div>
-      <button
-        type="button"
-        id="close-search-btn"
-        aria-label={isEs ? "Cerrar búsqueda" : "Close search"}
-        class="ml-2.5 sm:ml-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-2 text-[var(--color-text-muted)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer shrink-0"
-      >
-        <svg
-          class="h-4 w-4 stroke-current fill-none"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
 
-    <!-- Suggested Quick Queries Bar -->
-    <div
-      id="search-suggestions"
-      class="flex flex-wrap items-center gap-1.5 border-b border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 px-4 py-2 text-xs font-mono"
-    >
-      <span class="text-[var(--color-text-muted)]">
-        {isEs ? "Populares:" : "Popular:"}
-      </span>
-      {[
-        "Golang",
-        "Rust",
-        "SIMD",
-        "Snowflake",
-        "Kafka",
-        "Redis",
-        "Mercado Libre",
-        "Docker",
-      ].map((keyword) => (
-        <button
-          type="button"
-          data-search-chip={keyword}
-          class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
-        >
-          {keyword}
-        </button>
-      ))}
-    </div>
-
-    <!-- Dynamic Live Search Results List (Task 2: Permanent Scroll & Bottom Overflow Hint) -->
-    <div class="relative flex-1 min-h-0">
+      <!-- Suggested Quick Queries Bar -->
       <div
-        id="search-results-list"
-        class="overflow-y-auto p-4 sm:p-5 space-y-3 max-h-[50vh]"
-        data-scrollable
+        id="search-suggestions"
+        class="flex flex-wrap items-center gap-1.5 border-b border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 px-4 py-2 text-xs font-mono"
       >
-        <!-- Populated via JavaScript dynamically on every keystroke -->
+        <span class="text-[var(--color-text-muted)]">
+          {isEs ? "Populares:" : "Popular:"}
+        </span>
+        {[
+          "Golang",
+          "Rust",
+          "SIMD",
+          "Snowflake",
+          "Kafka",
+          "Redis",
+          "Mercado Libre",
+          "Docker",
+        ].map((keyword) => (
+          <button
+            type="button"
+            data-search-chip={keyword}
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+          >
+            {keyword}
+          </button>
+        ))}
+      </div>
+
+      <!-- Dynamic Live Search Results List (Task 2: Permanent Scroll & Bottom Overflow Hint) -->
+      <div class="relative flex-1 min-h-0">
         <div
-          id="search-empty-state"
-          class="py-8 text-center text-sm font-mono text-[var(--color-text-muted)]"
+          id="search-results-list"
+          class="overflow-y-auto p-4 sm:p-5 space-y-3 max-h-[50vh]"
+          data-scrollable
         >
-          <p>
-            {isEs
-              ? "Escribe cualquier tecnología o palabra clave para ver resultados instantáneos."
-              : "Type any technology, keyword, or company to see live results."}
-          </p>
+          <!-- Populated via JavaScript dynamically on every keystroke -->
+          <div
+            id="search-empty-state"
+            class="py-8 text-center text-sm font-mono text-[var(--color-text-muted)]"
+          >
+            <p>
+              {isEs
+                ? "Escribe cualquier tecnología o palabra clave para ver resultados instantáneos."
+                : "Type any technology, keyword, or company to see live results."}
+            </p>
+          </div>
+        </div>
+        <!-- Subtle bottom gradient indicator showing more content can be scrolled down -->
+        <div
+          id="search-scroll-hint"
+          class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/90 to-transparent flex items-end justify-center pb-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] tracking-wide opacity-0 transition-opacity duration-200 select-none"
+          aria-hidden="true"
+        >
+          <span class="flex items-center gap-1.5 opacity-90 drop-shadow-sm font-medium">
+            <svg
+              class="h-3 w-3 animate-bounce shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+            <span>{isEs ? "Más resultados abajo" : "More results below"}</span>
+          </span>
         </div>
       </div>
-      <!-- Subtle bottom gradient indicator showing more content can be scrolled down -->
-      <div
-        id="search-scroll-hint"
-        class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/90 to-transparent flex items-end justify-center pb-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] tracking-wide opacity-0 transition-opacity duration-200 select-none"
-        aria-hidden="true"
-      >
-        <span class="flex items-center gap-1.5 opacity-90 drop-shadow-sm font-medium">
-          <svg
-            class="h-3 w-3 animate-bounce shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-          <span>{isEs ? "Más resultados abajo" : "More results below"}</span>
-        </span>
-      </div>
-    </div>
 
-    <!-- Dialog Footer -->
-    <div class="flex items-center justify-between border-t border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/80 px-4 py-2.5 sm:px-5 font-mono text-xs text-[var(--color-text-muted)]">
-      <div class="flex items-center gap-3">
-        <span class="hidden sm:inline">
-          <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.5 text-xs font-semibold">
-            Esc
-          </kbd>{" "}
-          {isEs ? "cerrar" : "close"}
-        </span>
-        <span class="hidden sm:inline">
-          <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.5 text-xs font-semibold">
-            &uarr;&darr;
-          </kbd>{" "}
-          {isEs ? "navegar" : "navigate"}
-        </span>
-        <span
-          id="search-count-badge"
-          class="text-[var(--color-accent-gold)] font-medium"
-        ></span>
+      <!-- Dialog Footer -->
+      <div class="flex items-center justify-between border-t border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/80 px-4 py-2.5 sm:px-5 font-mono text-xs text-[var(--color-text-muted)]">
+        <div class="flex items-center gap-3">
+          <span class="hidden sm:inline">
+            <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.5 text-xs font-semibold">
+              Esc
+            </kbd>{" "}
+            {isEs ? "cerrar" : "close"}
+          </span>
+          <span class="hidden sm:inline">
+            <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.5 text-xs font-semibold">
+              &uarr;&darr;
+            </kbd>{" "}
+            {isEs ? "navegar" : "navigate"}
+          </span>
+          <span
+            id="search-count-badge"
+            class="text-[var(--color-accent-gold)] font-medium"
+          ></span>
+        </div>
+        <a
+          id="view-search-page-link"
+          href={searchUrl}
+          class="text-[var(--color-accent-gold)] hover:underline inline-flex items-center gap-1 font-semibold"
+        >
+          <span>
+            {isEs ? "Ver página completa" : "Open dedicated search page"}
+          </span>
+          <span>&rarr;</span>
+        </a>
       </div>
-      <a
-        id="view-search-page-link"
-        href={searchUrl}
-        class="text-[var(--color-accent-gold)] hover:underline inline-flex items-center gap-1 font-semibold"
-      >
-        <span>
-          {isEs ? "Ver página completa" : "Open dedicated search page"}
-        </span>
-        <span>&rarr;</span>
-      </a>
     </div>
-  </div>
-</dialog>
+  </dialog>
+</universal-search-modal>
 
 <!-- Pure Vanilla Keystroke Search Engine (0 KB External JS, Decoupled Search Index) -->
+<script>
+  import { isSearchOpen, toggleSearchModal } from "@/stores/uiState";
+
+  class UniversalSearchModalElement extends HTMLElement {
+    private abortController: AbortController | null = null;
+    private unsubscribeStore: (() => void) | null = null;
+
+    connectedCallback() {
+      this.abortController = new AbortController();
+      const { signal } = this.abortController;
+
+      this.unsubscribeStore = isSearchOpen.subscribe((isOpen) => {
+        const dialog = this.querySelector<HTMLDialogElement>("#search-dialog");
+        if (!dialog) return;
+        if (isOpen && !dialog.open && typeof dialog.showModal === "function") {
+          dialog.showModal();
+          const input = this.querySelector<HTMLInputElement>(
+            "#universal-search-input",
+          );
+          input?.focus();
+        } else if (!isOpen && dialog.open) {
+          dialog.close();
+        }
+      });
+
+      const dialog = this.querySelector<HTMLDialogElement>("#search-dialog");
+      if (dialog) {
+        dialog.addEventListener(
+          "close",
+          () => {
+            if (isSearchOpen.get()) toggleSearchModal(false);
+          },
+          { signal },
+        );
+      }
+    }
+
+    disconnectedCallback() {
+      this.unsubscribeStore?.();
+      this.unsubscribeStore = null;
+      this.abortController?.abort();
+      this.abortController = null;
+    }
+  }
+
+  if (!customElements.get("universal-search-modal")) {
+    customElements.define(
+      "universal-search-modal",
+      UniversalSearchModalElement,
+    );
+  }
+</script>
+
 <script is:inline>
   // @ts-nocheck
   (function () {
@@ -275,9 +328,7 @@ const searchIndexPath = isEs
       }
 
       function getIndexPath() {
-        return getCurrentLocale() === "es"
-          ? "/search-index-es.json"
-          : "/search-index-en.json";
+        return "/search-index.json";
       }
 
       function getBasePath() {
@@ -310,7 +361,7 @@ const searchIndexPath = isEs
             return res.json();
           })
           .then(function (data) {
-            window.__searchIndexCache[path] = Array.isArray(data) ? data : [];
+            window.__searchIndexCache[path] = data;
             return window.__searchIndexCache[path];
           })
           .catch(function (err) {
@@ -1115,7 +1166,15 @@ const searchIndexPath = isEs
           return;
         }
 
-        var searchData = window.__searchIndexCache[indexPath] || [];
+        var rawData = window.__searchIndexCache[indexPath];
+        var searchData = [];
+        if (Array.isArray(rawData)) {
+          searchData = rawData;
+        } else if (rawData && typeof rawData === "object") {
+          var preferred = rawData[currentLocale] || [];
+          var secondary = rawData[otherLang] || [];
+          searchData = preferred.concat(secondary);
+        }
         var words = q.split(/\s+/).filter(Boolean);
 
         var matches = searchData.filter(function (item) {
