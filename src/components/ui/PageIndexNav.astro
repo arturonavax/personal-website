@@ -1,8 +1,8 @@
 ---
-import { getCollection } from "astro:content";
 import { sponsorshipData } from "@/data/sponsorships";
 import { simulationsData } from "@/data/simulations";
 import type { Locale } from "@/i18n/ui";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export interface IndexSubItem {
   id: string;
@@ -52,9 +52,9 @@ const hasSponsorships =
   (sponsorshipData.platforms && sponsorshipData.platforms.length > 0);
 const hasCaseStudies = Boolean(simulationsData && simulationsData.length > 0);
 const [allProjects, allExperience, allPosts] = await Promise.all([
-  getCollection("projects", ({ data }) => data.locale === locale),
-  getCollection("experience", ({ data }) => data.locale === locale),
-  getCollection("posts", ({ data }) => data.locale === locale && !data.draft),
+  getVisibleCollection("projects", ({ data }) => data.locale === locale),
+  getVisibleCollection("experience", ({ data }) => data.locale === locale),
+  getVisibleCollection("posts", ({ data }) => data.locale === locale),
 ]);
 const hasProjects = allProjects.length > 0;
 const hasExperience = allExperience.length > 0;

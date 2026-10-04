@@ -1,4 +1,5 @@
-// import { hasResume } from "./cv"; // TODO: reactivate
+import { isItemVisible } from "@/utils/visibility";
+import { hasResume } from "./cv";
 
 export interface ShortcutItem {
   id: string;
@@ -11,14 +12,14 @@ export interface ShortcutItem {
   badge?: string;
   badgeEs?: string;
   icon: "cv" | "github" | "terminal" | "architecture" | "app";
+  draft?: boolean | undefined;
+  visible?: boolean | undefined;
 }
 
 // Configurable shortcuts registry:
-// If this array is empty ([]), the shortcuts floating trigger button and modal will NOT appear.
-export const shortcuts: ShortcutItem[] = [];
-
-/* TODO: reactivate
-export const shortcuts: ShortcutItem[] = [
+// Items with draft: true or visible: false are automatically excluded.
+// If this array resolves to empty ([]), the shortcuts floating button and modal will NOT appear.
+export const rawShortcuts: ShortcutItem[] = [
   ...(hasResume
     ? [
         {
@@ -78,4 +79,5 @@ export const shortcuts: ShortcutItem[] = [
     icon: "terminal",
   },
 ];
-*/
+
+export const shortcuts: ShortcutItem[] = rawShortcuts.filter(isItemVisible);

@@ -1,9 +1,9 @@
 import type { IContentSourceProvider, PostEntity } from "./repository";
-import { getCollection } from "astro:content";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export class LocalFilesystemProvider implements IContentSourceProvider {
   async fetchPosts(locale?: string): Promise<PostEntity[]> {
-    const rawPosts = await getCollection("posts");
+    const rawPosts = await getVisibleCollection("posts");
     return rawPosts
       .filter((post) => {
         const [postLocale] = post.id.split("/");

@@ -1,3 +1,5 @@
+import { isItemVisible } from "@/utils/visibility";
+
 export interface MetricItem {
   label: string;
   labelEs: string;
@@ -16,12 +18,11 @@ export interface JudgeProfile {
   accentColor: string;
   icon: string;
   metrics: MetricItem[];
+  draft?: boolean;
+  visible?: boolean;
 }
 
-export const judgeProfiles: JudgeProfile[] = [];
-
-/* TODO: reactivate
-export const judgeProfiles: JudgeProfile[] = [
+export const rawJudgeProfiles: JudgeProfile[] = [
   {
     name: "LeetCode",
     handle: "arturonavax",
@@ -155,4 +156,6 @@ export const judgeProfiles: JudgeProfile[] = [
     ],
   },
 ];
-*/
+
+export const judgeProfiles: JudgeProfile[] =
+  rawJudgeProfiles.filter(isItemVisible);

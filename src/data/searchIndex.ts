@@ -1,5 +1,5 @@
-import { getCollection } from "astro:content";
 import { getCompanyInfo } from "@/data/companies";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export interface SearchDoc {
   id: string;
@@ -32,14 +32,14 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
     enServices,
     esServices,
   ] = await Promise.all([
-    getCollection("projects", ({ data }) => data.locale === "en"),
-    getCollection("projects", ({ data }) => data.locale === "es"),
-    getCollection("experience", ({ data }) => data.locale === "en"),
-    getCollection("experience", ({ data }) => data.locale === "es"),
-    getCollection("posts", ({ data }) => data.locale === "en" && !data.draft),
-    getCollection("posts", ({ data }) => data.locale === "es" && !data.draft),
-    getCollection("services", ({ data }) => data.locale === "en"),
-    getCollection("services", ({ data }) => data.locale === "es"),
+    getVisibleCollection("projects", ({ data }) => data.locale === "en"),
+    getVisibleCollection("projects", ({ data }) => data.locale === "es"),
+    getVisibleCollection("experience", ({ data }) => data.locale === "en"),
+    getVisibleCollection("experience", ({ data }) => data.locale === "es"),
+    getVisibleCollection("posts", ({ data }) => data.locale === "en"),
+    getVisibleCollection("posts", ({ data }) => data.locale === "es"),
+    getVisibleCollection("services", ({ data }) => data.locale === "en"),
+    getVisibleCollection("services", ({ data }) => data.locale === "es"),
   ]);
 
   // English Documents (Priority 1: Ranked First)

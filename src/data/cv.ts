@@ -2,7 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import type { IndexItem } from "@/components/ui/PageIndexNav.astro";
 
+export const cvVisibilityConfig = {
+  draft: false,
+  visible: true,
+};
+
 function resolveCVPath(locale: "en" | "es"): string | null {
+  if (cvVisibilityConfig.draft || !cvVisibilityConfig.visible) {
+    return null;
+  }
+
   const baseName = locale === "es" ? "ArturoNava-CV-es" : "ArturoNava-CV-en";
   const candidates = [
     path.resolve(`./src/content/cv/${baseName}.md`),
@@ -12,6 +21,16 @@ function resolveCVPath(locale: "en" | "es"): string | null {
   ];
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
+      try {
+        const content = fs.readFileSync(candidate, "utf8");
+        const fmMatch = content.match(/^---\s*[\r\n]+([\s\S]*?)[\r\n]+---/);
+        if (fmMatch && fmMatch[1]) {
+          const fm = fmMatch[1];
+          if (/draft:\s*true/i.test(fm) || /visible:\s*false/i.test(fm)) {
+            return null;
+          }
+        }
+      } catch (_) {}
       return candidate;
     }
   }
@@ -304,7 +323,11 @@ function cvToXml(s: CVStructured): string {
 }
 
 function parseMarkdownCV(md: string): CVData {
-  const lines = md.split(/\r?\n/);
+  const contentWithoutFrontmatter = md.replace(
+    /^---\s*[\r\n]+[\s\S]*?[\r\n]+---\s*/,
+    "",
+  );
+  const lines = contentWithoutFrontmatter.split(/\r?\n/);
   const items: IndexItem[] = [];
   let currentParent: IndexItem | null = null;
   const htmlParts: string[] = [];
