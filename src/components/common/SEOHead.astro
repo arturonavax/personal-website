@@ -45,24 +45,22 @@ try {
   cleanCanonicalUrl = rawCanonical.split("?")[0]!;
 }
 
-// Hreflang URLs con trailing slash estricto
-const enPath =
-  alternateEnUrl ??
-  (locale === "es"
-    ? normalizedPath.replace(/^\/es(?:\/|$)/, "/") || "/"
-    : normalizedPath);
+// Hreflang URLs con trailing slash estricto (solo si la contraparte existe)
+const enUrl =
+  locale === "en"
+    ? cleanCanonicalUrl
+    : alternateEnUrl
+      ? `${siteUrl}${alternateEnUrl.endsWith("/") ? alternateEnUrl : `${alternateEnUrl}/`}`
+      : undefined;
 
-const esPath =
-  alternateEsUrl ??
-  (locale === "en"
-    ? normalizedPath === "/"
-      ? "/es/"
-      : `/es${normalizedPath}`
-    : normalizedPath);
+const esUrl =
+  locale === "es"
+    ? cleanCanonicalUrl
+    : alternateEsUrl
+      ? `${siteUrl}${alternateEsUrl.endsWith("/") ? alternateEsUrl : `${alternateEsUrl}/`}`
+      : undefined;
 
-const enUrl = `${siteUrl}${enPath.endsWith("/") ? enPath : `${enPath}/`}`;
-const esUrl = `${siteUrl}${esPath.endsWith("/") ? esPath : `${esPath}/`}`;
-const xDefaultUrl = enUrl;
+const xDefaultUrl = enUrl ?? `${siteUrl}/`;
 
 const pageTitle = title.includes("Arturo Nava")
   ? title
@@ -125,9 +123,11 @@ const resolvedOgImage = ogImage.startsWith("http")
 <link rel="canonical" href={cleanCanonicalUrl} />
 
 <!-- Alternate Multilingual Hreflang Tags -->
-<link rel="alternate" hreflang="en" href={enUrl} />
-<link rel="alternate" hreflang="es" href={esUrl} />
-<link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
+{enUrl && <link rel="alternate" hreflang="en" href={enUrl} />}
+{esUrl && <link rel="alternate" hreflang="es" href={esUrl} />}
+{xDefaultUrl && (
+  <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
+)}
 
 <!-- Dynamic Canonical Synchronization across ClientRouter Transitions -->
 <script is:inline>

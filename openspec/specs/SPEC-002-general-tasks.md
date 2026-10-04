@@ -70,31 +70,31 @@ Esta especificación técnica consolida la refactorización integral, la higiene
 
 ### 2.1. Requerimientos Funcionales y Técnicos (REQ-*)
 
-| ID | Requerimiento Técnico | Componente / Capa Afectada | Criterio de Aceptación |
-| :--- | :--- | :--- | :--- |
-| **REQ-01** | **Asset Pruning & Hygiene** | `public/banner-*` | Eliminación de los 9 archivos PNG obsoletos (`16x9`, `3x1`, `4x1`). Bundle limpio en producción. |
-| **REQ-02** | **Clipboard Protocol (Anti-Mailto)** | `src/components/ui/EmailCopyButton.astro` | Cero activaciones accidentales del cliente de correo (`mailto:` eliminado). Copia asíncrona con toast accesible (`aria-live="polite"`). |
-| **REQ-03** | **Dynamic Canonical URL Integrity** | `src/components/common/SEOHead.astro` | Eliminación estricta de query params (`utm_*`, `tag`, `company`). Actualización reactiva tras transiciones de `ClientRouter`. |
-| **REQ-04** | **Prefetch Telemetry Shielding** | `cloudflare/worker.ts` | Detección de cabeceras `Purpose: prefetch` y `Sec-Purpose: prefetch`. Bypass de mutaciones D1 y ejecución no bloqueante vía `ctx.waitUntil()`. |
-| **REQ-05** | **Single-Select Filter Bar** | `src/components/ui/ExperienceFilterBar.astro` | Selección mutuamente excluyente de empresas con alternancia a "All" al hacer clic en el filtro activo. |
-| **REQ-06** | **Search Modal SPA Routing** | `src/components/ui/UniversalSearchModal.astro` | Navegación por teclado (`Enter`) acoplada a la API `navigate()` de `astro:transitions/client`. Cero full page reloads. |
-| **REQ-07** | **Domain Migration: `cv` -> `resume`** | `src/content/`, `src/data/`, `src/types/` | Migración de esquemas en `content.config.ts`, renombrado de archivos, colecciones y componentes de exportación. |
-| **REQ-08** | **Cross-Browser Print Engine** | `src/styles/global.css`, `resume/index.astro` | Reglas `@page` y `@media print` normalizadas. Título dinámico `ArturoNava-CV-{lang}.pdf` sincronizado mediante `beforeprint`/`afterprint`. |
-| **REQ-09** | **Scroll-Margin Offset Normalization** | `src/styles/global.css`, `PageIndexNav.astro` | Anclas y encabezados con `scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem)`. Cero oclusiones con sticky header. |
-| **REQ-10** | **WAAPI Circular Reveal Hardening** | `src/components/common/ThemeToggle.astro` | Aislamiento en `::view-transition-group(root)` con contención explícita. Cero parpadeos en Firefox 129+ y Safari iOS. |
-| **REQ-11** | **Multi-Format Serializers** | `src/utils/resumeExporters.ts` | Serialización reactiva a Markdown puro, JSON tipado (Schema.org), TOML y XML estructurado con inyección dinámica de UTM. |
-| **REQ-12** | **Resume Maker Studio Route** | `src/pages/[...lang]/resume/maker.astro` | Editor monospace en tiempo real, selector de teléfono, sanitización de enlaces y vista previa idéntica a `/resume`. |
+| ID         | Requerimiento Técnico                  | Componente / Capa Afectada                     | Criterio de Aceptación                                                                                                                         |
+| :--------- | :------------------------------------- | :--------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| **REQ-01** | **Asset Pruning & Hygiene**            | `public/banner-*`                              | Eliminación de los 9 archivos PNG obsoletos (`16x9`, `3x1`, `4x1`). Bundle limpio en producción.                                               |
+| **REQ-02** | **Clipboard Protocol (Anti-Mailto)**   | `src/components/ui/EmailCopyButton.astro`      | Cero activaciones accidentales del cliente de correo (`mailto:` eliminado). Copia asíncrona con toast accesible (`aria-live="polite"`).        |
+| **REQ-03** | **Dynamic Canonical URL Integrity**    | `src/components/common/SEOHead.astro`          | Eliminación estricta de query params (`utm_*`, `tag`, `company`). Actualización reactiva tras transiciones de `ClientRouter`.                  |
+| **REQ-04** | **Prefetch Telemetry Shielding**       | `cloudflare/worker.ts`                         | Detección de cabeceras `Purpose: prefetch` y `Sec-Purpose: prefetch`. Bypass de mutaciones D1 y ejecución no bloqueante vía `ctx.waitUntil()`. |
+| **REQ-05** | **Single-Select Filter Bar**           | `src/components/ui/ExperienceFilterBar.astro`  | Selección mutuamente excluyente de empresas con alternancia a "All" al hacer clic en el filtro activo.                                         |
+| **REQ-06** | **Search Modal SPA Routing**           | `src/components/ui/UniversalSearchModal.astro` | Navegación por teclado (`Enter`) acoplada a la API `navigate()` de `astro:transitions/client`. Cero full page reloads.                         |
+| **REQ-07** | **Domain Migration: `cv` -> `resume`** | `src/content/`, `src/data/`, `src/types/`      | Migración de esquemas en `content.config.ts`, renombrado de archivos, colecciones y componentes de exportación.                                |
+| **REQ-08** | **Cross-Browser Print Engine**         | `src/styles/global.css`, `resume/index.astro`  | Reglas `@page` y `@media print` normalizadas. Título dinámico `ArturoNava-CV-{lang}.pdf` sincronizado mediante `beforeprint`/`afterprint`.     |
+| **REQ-09** | **Scroll-Margin Offset Normalization** | `src/styles/global.css`, `PageIndexNav.astro`  | Anclas y encabezados con `scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem)`. Cero oclusiones con sticky header.                    |
+| **REQ-10** | **WAAPI Circular Reveal Hardening**    | `src/components/common/ThemeToggle.astro`      | Aislamiento en `::view-transition-group(root)` con contención explícita. Cero parpadeos en Firefox 129+ y Safari iOS.                          |
+| **REQ-11** | **Multi-Format Serializers**           | `src/utils/resumeExporters.ts`                 | Serialización reactiva a Markdown puro, JSON tipado (Schema.org), TOML y XML estructurado con inyección dinámica de UTM.                       |
+| **REQ-12** | **Resume Maker Studio Route**          | `src/pages/[...lang]/resume/maker.astro`       | Editor monospace en tiempo real, selector de teléfono, sanitización de enlaces y vista previa idéntica a `/resume`.                            |
 
 ### 2.2. Criterios de Aceptación Cuantitativos y Umbrales de Rendimiento
 
-| Métrica / Parámetro | Condición de Aprobación (PASS) | Condición de Fallo (FAIL) | Método de Medición |
-| :--- | :--- | :--- | :--- |
-| **Higiene de `public/`** | 0 archivos `banner-*` en `public/` | $\ge 1$ archivo huérfano detectado | `find public/ -name "banner*"` |
-| **Invocación de Correo** | 0 aperturas de cliente nativo (`mailto:`) | Cualquier apertura forzada del SO | Pruebas de interacción automatizadas |
-| **Canónicos Limpios** | URL canónica idéntica a `origin + pathname` | Parámetros UTM o filtros presentes en `link[rel=canonical]` | Inspección DOM en carga y tras navegación SPA |
-| **Protección D1** | 0 mutaciones en base de datos en peticiones prefetch | Inserción en D1 con cabecera `Purpose: prefetch` | Simulación HTTP curl a `/api/v1/telemetry` |
-| **Rendimiento de Impresión** | 0 cortes de bloques tipográficos entre páginas | Corte huérfano en cabeceras o items de experiencia | Renderizado de prueba PDF en Chromium y Gecko |
-| **Presupuesto de Estudio Maker** | Latencia de parseo Markdown $< 16\text{ ms}$ (60 FPS) | Bloqueo de hilo principal $> 50\text{ ms}$ en escritura | Profiling de CPU en DevTools |
+| Métrica / Parámetro              | Condición de Aprobación (PASS)                        | Condición de Fallo (FAIL)                                   | Método de Medición                            |
+| :------------------------------- | :---------------------------------------------------- | :---------------------------------------------------------- | :-------------------------------------------- |
+| **Higiene de `public/`**         | 0 archivos `banner-*` en `public/`                    | $\ge 1$ archivo huérfano detectado                          | `find public/ -name "banner*"`                |
+| **Invocación de Correo**         | 0 aperturas de cliente nativo (`mailto:`)             | Cualquier apertura forzada del SO                           | Pruebas de interacción automatizadas          |
+| **Canónicos Limpios**            | URL canónica idéntica a `origin + pathname`           | Parámetros UTM o filtros presentes en `link[rel=canonical]` | Inspección DOM en carga y tras navegación SPA |
+| **Protección D1**                | 0 mutaciones en base de datos en peticiones prefetch  | Inserción en D1 con cabecera `Purpose: prefetch`            | Simulación HTTP curl a `/api/v1/telemetry`    |
+| **Rendimiento de Impresión**     | 0 cortes de bloques tipográficos entre páginas        | Corte huérfano en cabeceras o items de experiencia          | Renderizado de prueba PDF en Chromium y Gecko |
+| **Presupuesto de Estudio Maker** | Latencia de parseo Markdown $< 16\text{ ms}$ (60 FPS) | Bloqueo de hilo principal $> 50\text{ ms}$ en escritura     | Profiling de CPU en DevTools                  |
 
 ---
 
@@ -103,6 +103,7 @@ Esta especificación técnica consolida la refactorización integral, la higiene
 ### 3.1. Reestructuración del Modelo de Dominio y Colecciones
 
 Se reestructura la ruta `src/pages/[...lang]/resume.astro` hacia un subdirectorio modular:
+
 - `src/pages/[...lang]/resume/index.astro` (Vista principal del currículum para lectura e impresión).
 - `src/pages/[...lang]/resume/maker.astro` (Estudio de personalización y edición interactiva).
 
@@ -349,9 +350,7 @@ interface Props {
 const { title, description, locale, image } = Astro.props;
 
 // Normalización canónica absoluta sin query parameters
-const siteOrigin = Astro.site
-  ? Astro.site.origin
-  : "https://arturonavax.dev";
+const siteOrigin = Astro.site ? Astro.site.origin : "https://arturonavax.dev";
 const canonicalURL = new URL(Astro.url.pathname, siteOrigin);
 ---
 
@@ -920,16 +919,16 @@ const initialBody = activeEntry?.body || "";
 
 ### 4.12. Matriz de Validación Operativa (VAL-*)
 
-| ID | Objetivo de Verificación | Procedimiento Operativo de Prueba | Umbral de Aceptación |
-| :--- | :--- | :--- | :--- |
-| **VAL-01** | Huella de Activos | Ejecutar `find public/ -name "banner*"` | 0 archivos encontrados. Bundle estático sin imágenes huérfanas. |
-| **VAL-02** | Neutralización Mailto | Clic en cualquier botón de email | Portapapeles actualizado; toast visible; cero ventanas del SO abiertas. |
-| **VAL-03** | Sanitización Canónica | Acceder a `/resume?utm_source=test&ref=github` | `<link rel="canonical">` refleja estrictamente `https://arturonavax.dev/resume`. |
-| **VAL-04** | Blindaje Prefetch | `curl -H "Purpose: prefetch" -X POST /api/v1/telemetry` | HTTP 204 No Content; 0 escrituras en base de datos D1. |
-| **VAL-05** | Filtro Exclusivo | Clic alternado entre empresas en Timeline | Máximo 1 empresa activa; retorno a "All" al presionar botón activo. |
-| **VAL-06** | Router SPA en Búsqueda | Seleccionar resultado en modal y presionar `Enter` | Cambio de ruta instantáneo mediante `ClientRouter` sin flash de recarga. |
-| **VAL-07** | Límites de Impresión | `window.print()` en Chrome, Firefox y Safari | Nombre `ArturoNava-CV-{lang}.pdf`, cero elementos UI visibles, sin saltos de página en bloques. |
-| **VAL-08** | Paridad de Estudio Maker | Edición de markdown en `/resume/maker` | Renderizado sub-16 ms en DOM preview; estilos tipográficos 1:1 con `/resume`. |
+| ID         | Objetivo de Verificación | Procedimiento Operativo de Prueba                       | Umbral de Aceptación                                                                            |
+| :--------- | :----------------------- | :------------------------------------------------------ | :---------------------------------------------------------------------------------------------- |
+| **VAL-01** | Huella de Activos        | Ejecutar `find public/ -name "banner*"`                 | 0 archivos encontrados. Bundle estático sin imágenes huérfanas.                                 |
+| **VAL-02** | Neutralización Mailto    | Clic en cualquier botón de email                        | Portapapeles actualizado; toast visible; cero ventanas del SO abiertas.                         |
+| **VAL-03** | Sanitización Canónica    | Acceder a `/resume?utm_source=test&ref=github`          | `<link rel="canonical">` refleja estrictamente `https://arturonavax.dev/resume`.                |
+| **VAL-04** | Blindaje Prefetch        | `curl -H "Purpose: prefetch" -X POST /api/v1/telemetry` | HTTP 204 No Content; 0 escrituras en base de datos D1.                                          |
+| **VAL-05** | Filtro Exclusivo         | Clic alternado entre empresas en Timeline               | Máximo 1 empresa activa; retorno a "All" al presionar botón activo.                             |
+| **VAL-06** | Router SPA en Búsqueda   | Seleccionar resultado en modal y presionar `Enter`      | Cambio de ruta instantáneo mediante `ClientRouter` sin flash de recarga.                        |
+| **VAL-07** | Límites de Impresión     | `window.print()` en Chrome, Firefox y Safari            | Nombre `ArturoNava-CV-{lang}.pdf`, cero elementos UI visibles, sin saltos de página en bloques. |
+| **VAL-08** | Paridad de Estudio Maker | Edición de markdown en `/resume/maker`                  | Renderizado sub-16 ms en DOM preview; estilos tipográficos 1:1 con `/resume`.                   |
 
 ---
 

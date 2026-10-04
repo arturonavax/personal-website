@@ -5,6 +5,7 @@ import Header from "@/components/common/Header.astro";
 import Footer from "@/components/common/Footer.astro";
 import MatrixBackground from "@/components/ui/MatrixBackground.astro";
 import ShortcutsModal from "@/components/ui/ShortcutsModal.astro";
+import LanguageSuggestionBanner from "@/components/ui/LanguageSuggestionBanner.astro";
 import UniversalSearchModal from "@/components/ui/UniversalSearchModal.astro";
 import CoffeeSponsorshipModal from "@/components/ui/CoffeeSponsorshipModal.astro";
 import OnlineJudgesModal from "@/components/ui/OnlineJudgesModal.astro";
@@ -99,22 +100,52 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <script is:inline>
       (function () {
         var path = window.location.pathname;
+        var isRoot = path === "/" || path === "/es" || path === "/es/";
         var isEsPath = path === "/es/" || path.indexOf("/es/") === 0;
-        var savedLocale = sessionStorage.getItem("preferred_locale");
 
-        // 1. Redirección limpia: ÚNICAMENTE si el usuario seleccionó una preferencia explícita
-        if (savedLocale === "es" && !isEsPath) {
-          var targetEs =
-            "/es" + (path === "/" ? "/" : path.replace(/\/+$/, "") + "/");
-          window.location.replace(
-            targetEs + window.location.search + window.location.hash,
-          );
-        } else if (savedLocale === "en" && isEsPath) {
-          var targetEn = path.replace(/^\/es(?:\/|$)/, "/") || "/";
-          if (!targetEn.endsWith("/")) targetEn += "/";
-          window.location.replace(
-            targetEn + window.location.search + window.location.hash,
-          );
+        // 1. Recuperar preferencia explícita guardada (localStorage tiene precedencia, con fallback a sessionStorage)
+        var savedLocale = null;
+        try {
+          savedLocale =
+            localStorage.getItem("preferred_locale") ||
+            sessionStorage.getItem("preferred_locale");
+        } catch (_) {}
+
+        // Redirección limpia en la raíz: respeta preferencia explícita o detecta idioma en primer ingreso
+        if (isRoot) {
+          if (savedLocale === "es" && !isEsPath) {
+            window.location.replace(
+              "/es/" + window.location.search + window.location.hash,
+            );
+          } else if (savedLocale === "en" && isEsPath) {
+            window.location.replace(
+              "/" + window.location.search + window.location.hash,
+            );
+          } else if (!savedLocale) {
+            // Primer visitante sin preferencia guardada:
+            // Solo redirigir si no proviene de un motor de búsqueda externo
+            var ref = document.referrer ? document.referrer.toLowerCase() : "";
+            var isSearchEngine =
+              ref.indexOf("google.") !== -1 ||
+              ref.indexOf("bing.") !== -1 ||
+              ref.indexOf("duckduckgo.") !== -1 ||
+              ref.indexOf("yahoo.") !== -1 ||
+              ref.indexOf("ecosia.") !== -1 ||
+              ref.indexOf("yandex.") !== -1;
+
+            if (!isSearchEngine && path === "/") {
+              var userLangs = (
+                navigator.languages || [navigator.language || ""]
+              ).map(function (l) {
+                return (l || "").toLowerCase().split("-")[0];
+              });
+              if (userLangs[0] === "es") {
+                window.location.replace(
+                  "/es/" + window.location.search + window.location.hash,
+                );
+              }
+            }
+          }
         }
 
         // 2. Supresión condicional del popup de traducción solo para usuarios que dominen EN o ES
@@ -222,6 +253,11 @@ const hasShortcuts = Boolean(shortcuts?.length);
       locale={locale}
       translationKey={translationKey}
       collectionName={collectionName}
+    />
+
+    <LanguageSuggestionBanner
+      currentLocale={locale}
+      counterpartUrl={locale === "en" ? alternateEsUrl : alternateEnUrl}
     />
 
     <aside

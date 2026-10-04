@@ -40,6 +40,16 @@ const [allProjects, allExperience, allPosts, allServices, targetUrl] =
     ),
   ]);
 
+const effectiveTargetUrl =
+  targetUrl ??
+  (targetLocale === "es"
+    ? collectionName
+      ? `/es/${collectionName === "posts" ? "blog" : collectionName}/`
+      : "/es/"
+    : collectionName
+      ? `/${collectionName === "posts" ? "blog" : collectionName}/`
+      : "/");
+
 const hasProjects = allProjects.length > 0;
 const hasExperience = allExperience.length > 0;
 const hasPosts = allPosts.length > 0;
@@ -752,7 +762,7 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
               </span>
               <div class="flex items-center gap-1">
                 <a
-                  href={targetUrl}
+                  href={effectiveTargetUrl}
                   data-astro-prefetch="hover"
                   data-lang-switch={targetLocale}
                   class="rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2 py-0.5 text-[11px] font-bold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors"

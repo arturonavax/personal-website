@@ -31,6 +31,7 @@ cross_references:
 Este documento constituye la especificación formal y el protocolo de certificación de calidad técnica más riguroso y exhaustivo aplicable al ecosistema web `arturonavax.dev`. Su propósito es erradicar cualquier compromiso de ingeniería, suposición no verificada o regresión invisible en aplicaciones construidas sobre **Astro**, **Tailwind CSS v4** y la red perimetral de **Cloudflare**.
 
 El diagnóstico del sistema previo identificó riesgos críticos que requerían una compuerta automatizada de control:
+
 1. **Regresiones Silenciosas de JavaScript en Cliente:** Riesgo de hidratación accidental mediante directivas permisivas (`client:load`) en rutas estrictamente informacionales (artículos técnicos, landing, currículum), violando el presupuesto de 0 KB JS.
 2. **Layout Thrashing por Animaciones en Hilo Principal:** Transiciones CSS que afectaban propiedades de geometría (`width`, `height`, `margin`, `padding`), colapsando el frame rate en dispositivos móviles con baja tasa de refresco.
 3. **Fugas de Memoria en GPU por Declaraciones Estáticas de `will-change`:** Uso no controlado de aceleración por hardware que consumía memoria de vídeo de forma permanente y reducía la nitidez del renderizado de fuentes vectoriales.
@@ -91,23 +92,23 @@ Cada requisito en esta matriz representa una compuerta infranqueable en el pipel
 
 ### 2.1. Requerimientos Técnicos y Umbrales de Rendimiento
 
-| Área | ID | Criterio de Medición | Umbral de Fallo (FAIL Condition) |
-| :--- | :--- | :--- | :--- |
-| **Compiler** | `REQ-COM-01` | JavaScript en Rutas Estáticas | > 0 KB de JavaScript cliente en páginas de lectura/artículos. |
-| **Compiler** | `REQ-COM-02` | Presupuesto Total de Islas | > 12 KB (gzip) de JavaScript total combinado en páginas interactivas. |
-| **Styling** | `REQ-STY-01` | Arquitectura Tailwind v4 | Existencia de archivos `tailwind.config.*` o `postcss.config.*` en el árbol. |
-| **Styling** | `REQ-STY-02` | Contaminación CSS | Reglas CSS globales no utilizadas superiores al 2% del bundle CSS. |
-| **Layout** | `REQ-CWV-01` | Cumulative Layout Shift (CLS) | **CLS > 0.000** en cualquier punto del ciclo de vida de la página. |
-| **Hydration** | `REQ-CWV-02` | Flash of Unstyled Content (FOUC) | > 0ms de discrepancia de color o parpadeo durante cambios de tema. |
-| **Loading** | `REQ-CWV-03` | Largest Contentful Paint (LCP) | **LCP > 800ms** en perfil móvil simulado (Fast 4G, 1.6 Mbps/150ms RTT). |
-| **Interaction** | `REQ-CWV-04` | Interaction to Next Paint (INP) | **INP > 50ms** en cualquier evento de teclado, clic o toque. |
-| **Compositor** | `REQ-MOT-01` | Main-Thread Layout Thrashing | Animaciones CSS o JS que muten `width`, `height`, `margin`, `padding`, `top`, `left`. |
-| **Compositor** | `REQ-MOT-02` | Ciclo de Vida de `will-change` | Declaraciones estáticas permanentes de `will-change` en hojas de estilo. |
-| **Edge Cache** | `REQ-EDG-01` | Inmutabilidad de Chunks | Chunks versionados (`/_astro/*`, `/fonts/*`) servidos sin `immutable` o `< 31536000s`. |
-| **Edge Compute** | `REQ-EDG-02` | D1 Prefetch Protection | Petición especulativa (`Purpose: prefetch`) que dispare escrituras en base de datos. |
-| **Edge Storage** | `REQ-EDG-03` | R2 Class B Optimization | Descargas directas de R2 sin pasar por capa de absorción de la Workers Cache API. |
-| **SEO & i18n** | `REQ-SEO-01` | Integridad de Esquemas JSON-LD | Idioma del JSON-LD no coincide con la URL (`inLanguage`), o errores en Google Rich Results. |
-| **SEO & i18n** | `REQ-SEO-02` | Canonicidad Limpia | Etiquetas canónicas que conserven parámetros de rastreo (`utm_*`, `ref`, `tag`). |
+| Área             | ID           | Criterio de Medición             | Umbral de Fallo (FAIL Condition)                                                            |
+| :--------------- | :----------- | :------------------------------- | :------------------------------------------------------------------------------------------ |
+| **Compiler**     | `REQ-COM-01` | JavaScript en Rutas Estáticas    | > 0 KB de JavaScript cliente en páginas de lectura/artículos.                               |
+| **Compiler**     | `REQ-COM-02` | Presupuesto Total de Islas       | > 12 KB (gzip) de JavaScript total combinado en páginas interactivas.                       |
+| **Styling**      | `REQ-STY-01` | Arquitectura Tailwind v4         | Existencia de archivos `tailwind.config.*` o `postcss.config.*` en el árbol.                |
+| **Styling**      | `REQ-STY-02` | Contaminación CSS                | Reglas CSS globales no utilizadas superiores al 2% del bundle CSS.                          |
+| **Layout**       | `REQ-CWV-01` | Cumulative Layout Shift (CLS)    | **CLS > 0.000** en cualquier punto del ciclo de vida de la página.                          |
+| **Hydration**    | `REQ-CWV-02` | Flash of Unstyled Content (FOUC) | > 0ms de discrepancia de color o parpadeo durante cambios de tema.                          |
+| **Loading**      | `REQ-CWV-03` | Largest Contentful Paint (LCP)   | **LCP > 800ms** en perfil móvil simulado (Fast 4G, 1.6 Mbps/150ms RTT).                     |
+| **Interaction**  | `REQ-CWV-04` | Interaction to Next Paint (INP)  | **INP > 50ms** en cualquier evento de teclado, clic o toque.                                |
+| **Compositor**   | `REQ-MOT-01` | Main-Thread Layout Thrashing     | Animaciones CSS o JS que muten `width`, `height`, `margin`, `padding`, `top`, `left`.       |
+| **Compositor**   | `REQ-MOT-02` | Ciclo de Vida de `will-change`   | Declaraciones estáticas permanentes de `will-change` en hojas de estilo.                    |
+| **Edge Cache**   | `REQ-EDG-01` | Inmutabilidad de Chunks          | Chunks versionados (`/_astro/*`, `/fonts/*`) servidos sin `immutable` o `< 31536000s`.      |
+| **Edge Compute** | `REQ-EDG-02` | D1 Prefetch Protection           | Petición especulativa (`Purpose: prefetch`) que dispare escrituras en base de datos.        |
+| **Edge Storage** | `REQ-EDG-03` | R2 Class B Optimization          | Descargas directas de R2 sin pasar por capa de absorción de la Workers Cache API.           |
+| **SEO & i18n**   | `REQ-SEO-01` | Integridad de Esquemas JSON-LD   | Idioma del JSON-LD no coincide con la URL (`inLanguage`), o errores en Google Rich Results. |
+| **SEO & i18n**   | `REQ-SEO-02` | Canonicidad Limpia               | Etiquetas canónicas que conserven parámetros de rastreo (`utm_*`, `ref`, `tag`).            |
 
 ---
 
@@ -686,11 +687,15 @@ test.describe("Top #1 Tier Architectural and Performance Certification", () => {
   }) => {
     // 1. Inject PerformanceObserver to intercept layout shifts
     await page.addInitScript(() => {
-      (window as unknown as { __cumulativeLayoutShift: number }).__cumulativeLayoutShift = 0;
+      (
+        window as unknown as { __cumulativeLayoutShift: number }
+      ).__cumulativeLayoutShift = 0;
       const observer = new PerformanceObserver((entryList) => {
         for (const entry of entryList.getEntries()) {
           if (!(entry as { hadRecentInput?: boolean }).hadRecentInput) {
-            (window as unknown as { __cumulativeLayoutShift: number }).__cumulativeLayoutShift += (entry as { value: number }).value;
+            (
+              window as unknown as { __cumulativeLayoutShift: number }
+            ).__cumulativeLayoutShift += (entry as { value: number }).value;
           }
         }
       });
@@ -727,7 +732,9 @@ test.describe("Top #1 Tier Architectural and Performance Certification", () => {
 
     // 4. Assert Cumulative Layout Shift
     const finalCls = await page.evaluate(
-      () => (window as unknown as { __cumulativeLayoutShift: number }).__cumulativeLayoutShift,
+      () =>
+        (window as unknown as { __cumulativeLayoutShift: number })
+          .__cumulativeLayoutShift,
     );
     expect(finalCls).toBe(0.0);
 
