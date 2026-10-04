@@ -1,5 +1,4 @@
 ---
-import { getCollection } from "astro:content";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import MetricCallout from "@/components/ui/MetricCallout.astro";
 import ProjectCard from "@/components/ui/ProjectCard.astro";
@@ -15,6 +14,7 @@ import { simulationsData } from "@/data/simulations";
 import { useTranslations } from "@/i18n/utils";
 import { getHomepageJsonLd } from "@/data/schemaOrg";
 import type { SupportedLocale } from "@/i18n/config";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export function getStaticPaths() {
   return [
@@ -33,7 +33,7 @@ const t = useTranslations(locale);
 const hasCaseStudies = Boolean(simulationsData && simulationsData.length > 0);
 const basePath = isEs ? "/es" : "";
 
-const allProjectsList = await getCollection(
+const allProjectsList = await getVisibleCollection(
   "projects",
   ({ data }) => data.locale === locale,
 );
@@ -42,7 +42,7 @@ const featuredProjects = allProjects
   .sort((a, b) => a.data.order - b.data.order)
   .slice(0, 3);
 
-const allExperience = await getCollection(
+const allExperience = await getVisibleCollection(
   "experience",
   ({ data }) => data.locale === locale,
 );
@@ -50,9 +50,9 @@ const recentExperience = allExperience
   .sort((a, b) => a.data.order - b.data.order)
   .slice(0, 4);
 
-const allPosts = await getCollection(
+const allPosts = await getVisibleCollection(
   "posts",
-  ({ data }) => data.locale === locale && !data.draft,
+  ({ data }) => data.locale === locale,
 );
 const recentPosts = allPosts
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())

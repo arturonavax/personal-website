@@ -17,6 +17,8 @@ export interface SimulationStep {
   durationMs: number;
 }
 
+import { isItemVisible } from "@/utils/visibility";
+
 export interface ArchitectureSimulation {
   id: string;
   name: string;
@@ -29,12 +31,11 @@ export interface ArchitectureSimulation {
   descriptionEs: string;
   steps: SimulationStep[];
   metrics: SimulationMetric[];
+  draft?: boolean | undefined;
+  visible?: boolean | undefined;
 }
 
-export const simulationsData: ArchitectureSimulation[] = [];
-
-/* TODO: reactivate
-export const simulationsData: ArchitectureSimulation[] = [
+export const rawSimulationsData: ArchitectureSimulation[] = [
   {
     id: "fraud-engine",
     name: "real-time-fraud-evaluation",
@@ -376,7 +377,9 @@ export const simulationsData: ArchitectureSimulation[] = [
     ],
   },
 ];
-*/
+
+export const simulationsData: ArchitectureSimulation[] =
+  rawSimulationsData.filter(isItemVisible);
 
 export function getSimulationsForJob(
   jobSlug: string,
@@ -393,15 +396,12 @@ export function getSimulationCountForJob(jobSlug: string): number {
 
 export function getRandomSimulation(
   excludeId?: string,
-): ArchitectureSimulation {
+): ArchitectureSimulation | null {
   const available = excludeId
     ? simulationsData.filter((s) => s.id !== excludeId)
     : simulationsData;
   const pool = available.length > 0 ? available : simulationsData;
+  if (!pool.length) return null;
   const index = Math.floor(Math.random() * pool.length);
-  const sim = pool[index] ?? simulationsData[0];
-  if (!sim) {
-    throw new Error("No architecture simulations available");
-  }
-  return sim;
+  return pool[index] ?? null;
 }

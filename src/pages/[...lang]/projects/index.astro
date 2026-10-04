@@ -1,5 +1,4 @@
 ---
-import { getCollection } from "astro:content";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import ProjectCard from "@/components/ui/ProjectCard.astro";
 import ProjectsFilterBar from "@/components/ui/ProjectsFilterBar.astro";
@@ -7,6 +6,7 @@ import PaginationController from "@/components/ui/PaginationController.astro";
 import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
 import { useTranslations } from "@/i18n/utils";
 import type { SupportedLocale } from "@/i18n/config";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export function getStaticPaths() {
   return [
@@ -23,7 +23,7 @@ const { locale } = Astro.props;
 const isEs = locale === "es";
 const t = useTranslations(locale);
 
-const allProjects = await getCollection(
+const allProjects = await getVisibleCollection(
   "projects",
   ({ data }) => data.locale === locale,
 );

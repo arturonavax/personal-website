@@ -1,5 +1,6 @@
-import { getCollection, type CollectionKey } from "astro:content";
+import { type CollectionKey } from "astro:content";
 import { ui, defaultLang, type Locale, type UIKey } from "./ui";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export function getLocaleFromUrl(url: URL): Locale {
   const [, lang] = url.pathname.split("/");
@@ -31,7 +32,7 @@ export async function getCounterpartUrl(
 
   // 1. Coincidencia por translationKey en colecciones
   if (collectionName && translationKey) {
-    const entries = await getCollection(collectionName as CollectionKey);
+    const entries = await getVisibleCollection(collectionName as CollectionKey);
     const targetEntry = entries.find((entry) => {
       const data = entry.data as { locale?: string; translationKey?: string };
       return (

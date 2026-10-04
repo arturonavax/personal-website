@@ -1,9 +1,9 @@
 ---
-import { getCollection } from "astro:content";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import ServiceCard from "@/components/ui/ServiceCard.astro";
 import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
 import type { SupportedLocale } from "@/i18n/config";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export function getStaticPaths() {
   return [
@@ -20,7 +20,7 @@ const { locale } = Astro.props;
 const isEs = locale === "es";
 const basePath = isEs ? "/es" : "";
 
-const allServices = await getCollection(
+const allServices = await getVisibleCollection(
   "services",
   ({ data }) => data.locale === locale,
 );

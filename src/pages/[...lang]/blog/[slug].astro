@@ -1,10 +1,11 @@
 ---
-import { getCollection, render } from "astro:content";
+import { render } from "astro:content";
 import ArticleLayout from "@/layouts/ArticleLayout.astro";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export async function getStaticPaths() {
-  const posts = await getCollection("posts", ({ data }) => !data.draft);
+  const posts = await getVisibleCollection("posts");
 
   return posts.map((post) => {
     const [localePart, ...slugParts] = post.id

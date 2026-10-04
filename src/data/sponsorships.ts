@@ -1,3 +1,5 @@
+import { isItemVisible } from "@/utils/visibility";
+
 export interface CryptoAddress {
   id: string;
   name: string;
@@ -6,6 +8,8 @@ export interface CryptoAddress {
   networkEs: string;
   address: string;
   memo?: string;
+  draft?: boolean | undefined;
+  visible?: boolean | undefined;
 }
 
 export interface DirectPlatform {
@@ -17,6 +21,8 @@ export interface DirectPlatform {
   badge: string;
   badgeEs: string;
   icon: "paypal" | "github";
+  draft?: boolean | undefined;
+  visible?: boolean | undefined;
 }
 
 export interface FutureIntegration {
@@ -28,6 +34,8 @@ export interface FutureIntegration {
   badgeEs: string;
   type: "stripe" | "web3";
   status: "planned" | "prototype";
+  draft?: boolean | undefined;
+  visible?: boolean | undefined;
 }
 
 export interface SponsorshipData {
@@ -36,14 +44,7 @@ export interface SponsorshipData {
   futureIntegrations: FutureIntegration[];
 }
 
-export const sponsorshipData: SponsorshipData = {
-  crypto: [],
-  platforms: [],
-  futureIntegrations: [],
-};
-
-/* TODO: reactivate
-export const sponsorshipData: SponsorshipData = {
+export const rawSponsorshipData: SponsorshipData = {
   crypto: [
     {
       id: "btc",
@@ -130,7 +131,13 @@ export const sponsorshipData: SponsorshipData = {
     },
   ],
 };
-*/
+
+export const sponsorshipData: SponsorshipData = {
+  crypto: rawSponsorshipData.crypto.filter(isItemVisible),
+  platforms: rawSponsorshipData.platforms.filter(isItemVisible),
+  futureIntegrations:
+    rawSponsorshipData.futureIntegrations.filter(isItemVisible),
+};
 
 export const hasSponsorshipMethods =
   (sponsorshipData.crypto && sponsorshipData.crypto.length > 0) ||

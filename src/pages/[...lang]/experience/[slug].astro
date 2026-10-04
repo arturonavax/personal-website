@@ -1,5 +1,5 @@
 ---
-import { getCollection, render } from "astro:content";
+import { render } from "astro:content";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageIndexNav, {
   type IndexItem,
@@ -10,9 +10,10 @@ import { getCompanyInfo } from "@/data/companies";
 import { getSimulationsForJob } from "@/data/simulations";
 import { formatDate, useTranslations } from "@/i18n/utils";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export async function getStaticPaths() {
-  const experiences = await getCollection("experience");
+  const experiences = await getVisibleCollection("experience");
 
   return experiences.map((experience) => {
     const [localePart, ...slugParts] = experience.id
@@ -67,7 +68,7 @@ const startStr = formatDate(startDate, currentLocale);
 const endStr = endDate ? formatDate(endDate, currentLocale) : t("meta.present");
 
 // Retrieve all experiences for navigation rail and same-company counts
-const allExperiences = await getCollection(
+const allExperiences = await getVisibleCollection(
   "experience",
   ({ data }) => data.locale === currentLocale,
 );

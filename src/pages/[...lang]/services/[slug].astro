@@ -1,11 +1,12 @@
 ---
-import { getCollection, render } from "astro:content";
+import { render } from "astro:content";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import TechIcon from "@/components/ui/TechIcon.astro";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export async function getStaticPaths() {
-  const services = await getCollection("services");
+  const services = await getVisibleCollection("services");
 
   return services.map((service) => {
     const [localePart, ...slugParts] = service.id

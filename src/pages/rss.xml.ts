@@ -1,6 +1,6 @@
 import rss from "@astrojs/rss";
-import { getCollection } from "astro:content";
 import type { APIContext } from "astro";
+import { getVisibleCollection } from "@/utils/visibility";
 
 // Fecha base estática para calcular timestamps consistentes según 'order'.
 // Evita que cada despliegue en Cloudflare alerte a los lectores RSS con artículos duplicados.
@@ -11,7 +11,7 @@ export async function GET(context: APIContext) {
   // 1. Obtener todos los artículos de blog activos (bilingüe consolidado)
   let blogItems: any[] = [];
   try {
-    const posts = await getCollection("posts", ({ data }) => !data.draft);
+    const posts = await getVisibleCollection("posts");
 
     if (posts.length > 0) {
       blogItems = posts
@@ -39,7 +39,7 @@ export async function GET(context: APIContext) {
   let projectItems: any[] = [];
   if (blogItems.length === 0) {
     try {
-      const projects = await getCollection("projects");
+      const projects = await getVisibleCollection("projects");
 
       projectItems = projects
         .sort((a, b) => a.data.order - b.data.order)

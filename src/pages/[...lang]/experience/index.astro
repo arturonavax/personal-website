@@ -1,11 +1,11 @@
 ---
-import { getCollection } from "astro:content";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import ExperienceTimeline from "@/components/ui/ExperienceTimeline.astro";
 import ExperienceFilterBar from "@/components/ui/ExperienceFilterBar.astro";
 import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
 import { useTranslations } from "@/i18n/utils";
 import type { SupportedLocale } from "@/i18n/config";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export function getStaticPaths() {
   return [
@@ -22,7 +22,7 @@ const { locale } = Astro.props;
 const isEs = locale === "es";
 const t = useTranslations(locale);
 
-const allExperience = await getCollection(
+const allExperience = await getVisibleCollection(
   "experience",
   ({ data }) => data.locale === locale,
 );
