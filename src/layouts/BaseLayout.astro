@@ -270,7 +270,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <!-- Edge Fetch Navigation Loading Beacon -->
     <div
       id="page-navigation-beacon"
-      transition:persist="page-navigation-beacon"
+      data-astro-transition-persist="page-navigation-beacon"
       class="pointer-events-none fixed z-[9999] top-16 sm:top-[4.25rem] left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--color-accent-gold)]/50 bg-[var(--color-surface-card)]/95 backdrop-blur-md px-3 py-1.5 font-mono text-[10px] text-[var(--color-accent-gold)] shadow-xl opacity-0 scale-95 transition-[opacity,transform] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] select-none"
       aria-hidden="true"
     >

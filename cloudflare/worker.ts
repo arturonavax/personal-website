@@ -5,7 +5,11 @@ import {
   processIncomingEmail,
   type ForwardableEmailMessage,
 } from "./email-worker";
-import { createSearchAdapter, createCaptchaAdapter } from "../src/lib/adapters";
+import {
+  createSearchAdapter,
+  createCaptchaAdapter,
+  createStorageAdapter,
+} from "../src/lib/adapters";
 
 interface Env {
   DB: D1Database;
@@ -212,7 +216,7 @@ export default {
         })(),
       );
 
-      return new Response(JSON.stringify({ queued: true }), {
+      return new Response(JSON.stringify({ status: "queued", queued: true }), {
         status: 202,
         headers: { "Content-Type": "application/json" },
       });
@@ -241,7 +245,35 @@ export default {
       }
     }
 
-    // 6. Delegate to Static Assets
+    // 6. R2 Class B Optimization via Workers Cache API (SPEC-004 REQ-EDG-03)
+    if (url.pathname.startsWith("/cdn-assets/") && env.STORAGE_BUCKET) {
+      const key = url.pathname.replace(/^\/cdn-assets\//, "");
+      const storageAdapter = createStorageAdapter({
+        env: {
+          APP_STORAGE_DRIVER: env.APP_STORAGE_DRIVER,
+          STORAGE_BUCKET: env.STORAGE_BUCKET,
+        },
+        executionCtx: ctx,
+      });
+
+      const item = await storageAdapter.get(key);
+      if (!item) {
+        return new Response("Not Found", { status: 404 });
+      }
+
+      return new Response(item.data, {
+        status: 200,
+        headers: {
+          "Content-Type": item.metadata.contentType,
+          "Content-Length": String(item.metadata.sizeBytes),
+          ...(item.metadata.etag ? { ETag: item.metadata.etag } : {}),
+          "Cache-Control":
+            "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+        },
+      });
+    }
+
+    // 7. Delegate to Static Assets
     const response = await env.ASSETS.fetch(request);
 
     // 7. Immutable Cache-Control for Hashed Assets & Specific PDF Cache Rules

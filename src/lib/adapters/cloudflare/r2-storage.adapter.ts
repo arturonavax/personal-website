@@ -15,11 +15,14 @@ export class CloudflareR2StorageAdapter implements StoragePort {
     data: ReadableStream | Uint8Array;
     metadata: StorageItemMetadata;
   } | null> {
-    const cache = (caches as unknown as { default: Cache }).default;
+    const cache =
+      typeof caches !== "undefined"
+        ? (caches as unknown as { default?: Cache })?.default
+        : undefined;
     const cacheKey = new Request(
       `https://${this.publicDomain}/cdn-assets/${key}`,
     );
-    const cachedResponse = await cache.match(cacheKey);
+    const cachedResponse = cache ? await cache.match(cacheKey) : null;
 
     if (cachedResponse && cachedResponse.body) {
       return {
@@ -48,7 +51,7 @@ export class CloudflareR2StorageAdapter implements StoragePort {
       },
     });
 
-    if (this.executionCtx) {
+    if (cache && this.executionCtx) {
       this.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
     }
 

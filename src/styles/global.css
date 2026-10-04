@@ -7,12 +7,27 @@
 }
 
 @theme {
+  /* Dynamic Semantic Color Tokens (SPEC-004 Section 3.2.1) */
+  --color-surface-backdrop: var(--surface-backdrop);
+  --color-surface-card: var(--surface-card);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-border-hairline: var(--border-hairline);
+  --color-text-title: var(--text-title);
+  --color-text-body: var(--text-body);
+  --color-text-muted: var(--text-muted);
+  --color-action-primary: var(--action-primary);
+
+  /* Typography Scales */
   --font-sans:
-    "Geist Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
+    "Geist Variable", "Geist Sans", "Geist Fallback", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono:
-    "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    monospace;
+    "GeistMono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, monospace;
+
+  /* Elevation Spacers & Easing Primitives */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
 
   /* Paleta de Colores Ejecutiva y Alta Gama */
   --color-bg-primary: #3a0307;
@@ -35,12 +50,38 @@
   --color-btn-gold-text: #1e0103;
 }
 
+/* Font Face Metric Overrides for Zero Layout Shift (SPEC-004 Section 3.4.2) */
+@font-face {
+  font-family: "Geist Fallback";
+  src: local("Arial");
+  ascent-override: 84.38%;
+  descent-override: 21.88%;
+  line-gap-override: 0%;
+  size-adjust: 106.67%;
+}
+
+@font-face {
+  font-family: "Geist Variable";
+  src: url("/fonts/Geist-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+}
+
 @font-face {
   font-family: "Geist Sans";
   src: url("/fonts/Geist-Variable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
+}
+
+@font-face {
+  font-family: "GeistMono Variable";
+  src: url("/fonts/GeistMono-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
 }
 
 @font-face {
@@ -53,6 +94,16 @@
 
 :root {
   color-scheme: dark;
+  /* SPEC-004 Semantic Tokens (Dark Mode) */
+  --surface-backdrop: #09090b;
+  --surface-card: #141416;
+  --surface-overlay: #1c1c1f;
+  --border-hairline: #27272a;
+  --text-title: #f4f4f5;
+  --text-body: #d4d4d8;
+  --text-muted: #a1a1aa;
+  --action-primary: #38bdf8;
+
   --color-bg-primary: #3a0307;
   --color-surface-bg: #260205;
   --color-surface-card: #1e0103;
@@ -99,8 +150,29 @@
   --scrollbar-thumb-hover: #f3bf7a;
 }
 
+:root[class~="dark"] {
+  --surface-backdrop: #09090b;
+  --surface-card: #141416;
+  --surface-overlay: #1c1c1f;
+  --border-hairline: #27272a;
+  --text-title: #f4f4f5;
+  --text-body: #d4d4d8;
+  --text-muted: #a1a1aa;
+  --action-primary: #38bdf8;
+}
+
 html[data-theme="light"] {
   color-scheme: light;
+  /* SPEC-004 Semantic Tokens (Light Mode) */
+  --surface-backdrop: #fafafa;
+  --surface-card: #ffffff;
+  --surface-overlay: #f4f4f5;
+  --border-hairline: #e4e4e7;
+  --text-title: #09090b;
+  --text-body: #27272a;
+  --text-muted: #71717a;
+  --action-primary: #18181b;
+
   /* Fondo blanco estilizado plateado */
   --color-bg-primary: #e9ecef;
   --color-surface-bg: #f4f6f8;
@@ -502,7 +574,6 @@ header {
   -webkit-transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  will-change: transform;
 }
 
 /* Active Navigation Dot State Invariance */
@@ -545,7 +616,6 @@ html.theme-transitioning::view-transition-old(root) {
 html.theme-transitioning::view-transition-new(root) {
   z-index: 9999 !important;
   opacity: 1 !important;
-  will-change: clip-path !important;
 }
 
 /* ======================================================== */
@@ -589,7 +659,6 @@ html.lang-text-reacting #desktop-page-index span,
 html.lang-text-reacting footer p,
 html.lang-text-reacting footer span {
   animation: langTextReaction 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: opacity, transform;
 }
 
 @media (prefers-reduced-motion: reduce) {

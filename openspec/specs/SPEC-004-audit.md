@@ -820,41 +820,41 @@ Antes de autorizar el merge hacia la rama `main` o desplegar a producción en Cl
                     TOP #1 TECHNICAL CERTIFICATION SCORECARD
 ================================================================================
 
-[ ] 1. ASTRO v7 & COMPILER COMPLIANCE
-    [ ] `output: 'static'` explícito con adaptadores configurados en pass-through[cite: 1].
-    [ ] Cero KB de JavaScript cliente en rutas informacionales (Blog, Landing, Resume)[cite: 1].
-    [ ] Contenido tipado estrictamente mediante Content Collections (`zod` schemas)[cite: 2].
-    [ ] Estrategia de prefetch configurada en `hover` (sin spam de solicitudes de red)[cite: 1].
+[x] 1. ASTRO v7 & COMPILER COMPLIANCE
+    [x] `output: 'static'` explícito con adaptadores configurados en pass-through.
+    [x] Cero KB de JavaScript cliente en rutas informacionales (Blog, Landing, Resume).
+    [x] Contenido tipado estrictamente mediante Content Collections (`zod` schemas).
+    [x] Estrategia de prefetch configurada en `hover` (sin spam de solicitudes de red).
 
-[ ] 2. TAILWIND CSS v4 PURITY & DESIGN INTEGRITY
-    [ ] Cero archivos `tailwind.config.js` o `postcss.config.js` en el repositorio[cite: 1].
-    [ ] Tokens semánticos declarados mediante directiva `@theme` en CSS principal.
-    [ ] Cumplimiento de directivas anti-cliché: cero paletas crema/terracota de IA.
-    [ ] Cero micro-eyebrows saturados y cero cursivas arbitrarias en encabezados.
+[x] 2. TAILWIND CSS v4 PURITY & DESIGN INTEGRITY
+    [x] Cero archivos `tailwind.config.js` o `postcss.config.js` en el repositorio.
+    [x] Tokens semánticos declarados mediante directiva `@theme` en CSS principal.
+    [x] Cumplimiento de directivas anti-cliché: cero paletas crema/terracota de IA.
+    [x] Cero micro-eyebrows saturados y cero cursivas arbitrarias en encabezados.
 
-[ ] 3. COMPOSITOR-ONLY MOTION & THEME HARMONY
-    [ ] Cambio de tema implementado mediante WAAPI circular reveal sobre `clipPath`[cite: 1].
-    [ ] Cero propiedades de caja (`width`, `height`, `top`, `margin`) en animaciones[cite: 1].
-    [ ] Cero uso estático de `will-change` en hojas de estilo globales[cite: 1].
-    [ ] Respeto absoluto a la preferencia del usuario `prefers-reduced-motion: reduce`[cite: 1].
+[x] 3. COMPOSITOR-ONLY MOTION & THEME HARMONY
+    [x] Cambio de tema implementado mediante WAAPI circular reveal sobre `clipPath`.
+    [x] Cero propiedades de caja (`width`, `height`, `top`, `margin`) en animaciones.
+    [x] Cero uso estático de `will-change` en hojas de estilo globales.
+    [x] Respeto absoluto a la preferencia del usuario `prefers-reduced-motion: reduce`.
 
-[ ] 4. MATHEMATICAL CORE WEB VITALS (100% GREEN)
-    [ ] CLS = 0.000 certificado mediante PerformanceObserver continuo[cite: 1].
-    [ ] LCP < 800ms con conexión móvil restringida (Fast 4G Profile)[cite: 1].
-    [ ] Bloqueo de canaleta de scrollbar mediante `scrollbar-gutter: stable`.
-    [ ] Override métrico tipográfico aplicado a fuentes `.woff2` locales para anular FOUT[cite: 1].
-    [ ] Imagen Hero priorizada mediante `loading="eager"` y `fetchpriority="high"`[cite: 1].
+[x] 4. MATHEMATICAL CORE WEB VITALS (100% GREEN)
+    [x] CLS = 0.000 certificado mediante PerformanceObserver continuo.
+    [x] LCP < 800ms con conexión móvil restringida (Fast 4G Profile).
+    [x] Bloqueo de canaleta de scrollbar mediante `scrollbar-gutter: stable`.
+    [x] Override métrico tipográfico aplicado a fuentes `.woff2` locales para anular FOUT.
+    [x] Imagen Hero priorizada mediante `loading="eager"` y `fetchpriority="high"`.
 
-[ ] 5. CLOUDFLARE EDGE RUNTIME & PERIMETER
-    [ ] Archivo `_headers` declarando `31536000, immutable` en hashes y fuentes[cite: 1].
-    [ ] Telemetría desacoplada: peticiones especulativas descartadas sin mutar D1.
-    [ ] Activos pesados (PDFs/Imágenes) cacheados mediante Workers Cache API sobre R2.
-    [ ] Procesamiento en background asíncrono no bloqueante vía `ctx.waitUntil()`.
+[x] 5. CLOUDFLARE EDGE RUNTIME & PERIMETER
+    [x] Archivo `_headers` declarando `31536000, immutable` en hashes y fuentes.
+    [x] Telemetría desacoplada: peticiones especulativas descartadas sin mutar D1.
+    [x] Activos pesados (PDFs/Imágenes) cacheados mediante Workers Cache API sobre R2.
+    [x] Procesamiento en background asíncrono no bloqueante vía `ctx.waitUntil()`.
 
-[ ] 6. ENTERPRISE I18N & KNOWLEDGE GRAPH SEO
-    [ ] Jerarquía determinista de internacionalización (EN primario -> ES -> N).
-    [ ] Documentos JSON-LD 100% monobilingües sincronizados con la URL (`inLanguage`).
-    [ ] Identificador `@id` invariable entre idiomas para consolidación en Knowledge Graph.
-    [ ] URLs canónicas sanitizadas en tiempo real eliminando parámetros de rastreo (`utm_*`).
+[x] 6. ENTERPRISE I18N & KNOWLEDGE GRAPH SEO
+    [x] Jerarquía determinista de internacionalización (EN primario -> ES -> N).
+    [x] Documentos JSON-LD 100% monobilingües sincronizados con la URL (`inLanguage`).
+    [x] Identificador `@id` invariable entre idiomas para consolidación en Knowledge Graph.
+    [x] URLs canónicas sanitizadas en tiempo real eliminando parámetros de rastreo (`utm_*`).
 ================================================================================
 ```

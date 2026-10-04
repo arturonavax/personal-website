@@ -11,6 +11,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
+    "test": "bun test",
+    "audit": "bun scripts/audit-codebase.ts",
     "build:assets": "node scripts/generate-assets.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -31,6 +33,7 @@
   "devDependencies": {
     "@astrojs/check": "0.9.10",
     "@cloudflare/workers-types": "^5.20260927.1",
+    "@playwright/test": "^1.63.0",
     "esbuild": "^0.28.2",
     "only-allow": "^1.2.2",
     "prettier": "^3.9.9",
