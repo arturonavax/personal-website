@@ -1,0 +1,184 @@
+---
+interface Props {
+  currentLocale: "en" | "es";
+  counterpartUrl?: string | undefined;
+}
+
+const { currentLocale, counterpartUrl } = Astro.props;
+const targetLocale = currentLocale === "en" ? "es" : "en";
+---
+
+{counterpartUrl && (
+  <>
+    <aside
+      id="lang-suggestion-banner"
+      aria-label={
+        currentLocale === "en"
+          ? "Language recommendation"
+          : "Recomendación de idioma"
+      }
+      class="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-20 sm:bottom-5 z-40 hidden max-w-sm w-[calc(100vw-1.5rem)] sm:w-auto items-center gap-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/95 px-3.5 py-2.5 shadow-xl shadow-black/50 backdrop-blur-md transition-all duration-300 ease-out translate-y-3 opacity-0 text-xs font-mono"
+      data-current-locale={currentLocale}
+      data-target-locale={targetLocale}
+      data-target-url={counterpartUrl}
+    >
+      <div class="flex items-center gap-2 text-[var(--color-text-primary)] shrink-0 font-sans">
+        <span class="text-base select-none" aria-hidden="true">
+          🌐
+        </span>
+        <span class="text-xs font-normal">
+          {currentLocale === "en" ? (
+            <>
+              Contenido disponible en{" "}
+              <strong class="font-semibold text-[var(--color-accent-gold)]">
+                Español
+              </strong>
+            </>
+          ) : (
+            <>
+              Also available in{" "}
+              <strong class="font-semibold text-[var(--color-accent-gold)]">
+                English
+              </strong>
+            </>
+          )}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-1.5 shrink-0 ml-auto">
+        <a
+          href={counterpartUrl}
+          hreflang={targetLocale}
+          lang={targetLocale}
+          data-astro-prefetch="hover"
+          data-lang-switch={targetLocale}
+          id="lang-suggestion-accept"
+          class="inline-flex h-7 items-center justify-center rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2.5 text-[11px] font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+        >
+          {currentLocale === "en" ? "Cambiar" : "Switch"} &rarr;
+        </a>
+
+        <button
+          type="button"
+          id="lang-suggestion-dismiss"
+          aria-label={
+            currentLocale === "en"
+              ? "Dismiss language suggestion"
+              : "Descartar sugerencia de idioma"
+          }
+          class="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)]/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+        >
+          <svg
+            class="h-3.5 w-3.5 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <script is:inline>
+      (function () {
+        function initLangSuggestion() {
+          var banner = document.getElementById("lang-suggestion-banner");
+          if (!banner) return;
+
+          var currentLocale = banner.getAttribute("data-current-locale");
+          var targetLocale = banner.getAttribute("data-target-locale");
+
+          // 1. Verificar si el usuario ya descartó la sugerencia en esta sesión
+          try {
+            if (
+              sessionStorage.getItem("dismissed_lang_suggestion") === "true"
+            ) {
+              return;
+            }
+          } catch (_) {}
+
+          // 2. Verificar si el usuario tiene una preferencia guardada explícita que coincida con la página actual
+          try {
+            var preferred = localStorage.getItem("preferred_locale");
+            if (preferred && preferred === currentLocale) {
+              return;
+            }
+          } catch (_) {}
+
+          // 3. Detectar idiomas del dispositivo del usuario
+          var userLangs = (
+            navigator.languages || [navigator.language || ""]
+          ).map(function (l) {
+            return (l || "").toLowerCase().split("-")[0];
+          });
+
+          // 4. Determinar si el primer idioma soportado del usuario es el targetLocale
+          var prefersTarget = false;
+          var firstSupportedIndex = -1;
+          for (var i = 0; i < userLangs.length; i++) {
+            if (userLangs[i] === "en" || userLangs[i] === "es") {
+              firstSupportedIndex = i;
+              break;
+            }
+          }
+
+          if (
+            firstSupportedIndex !== -1 &&
+            userLangs[firstSupportedIndex] === targetLocale
+          ) {
+            prefersTarget = true;
+          }
+
+          // Si el usuario no prefiere el idioma alternativo (o habla otro idioma no soportado como FR, DE, JA), no mostrar banner
+          // Esto permite que el navegador haga su traducción estándar nativa sin estorbar
+          if (!prefersTarget) return;
+
+          // 5. Mostrar banner con animación fluida
+          banner.classList.remove("hidden");
+          banner.classList.add("flex");
+          void banner.offsetHeight; // Forzar reflow para animación CSS
+          banner.classList.remove("translate-y-3", "opacity-0");
+          banner.classList.add("translate-y-0", "opacity-100");
+
+          // 6. Manejo de descarte
+          var dismissBtn = document.getElementById("lang-suggestion-dismiss");
+          if (dismissBtn) {
+            dismissBtn.onclick = function () {
+              banner.classList.remove("translate-y-0", "opacity-100");
+              banner.classList.add("translate-y-3", "opacity-0");
+              setTimeout(function () {
+                banner.classList.remove("flex");
+                banner.classList.add("hidden");
+              }, 300);
+              try {
+                sessionStorage.setItem("dismissed_lang_suggestion", "true");
+              } catch (_) {}
+            };
+          }
+
+          // 7. Manejo de aceptación (guardar preferencia permanente en localStorage y cookie)
+          var acceptBtn = document.getElementById("lang-suggestion-accept");
+          if (acceptBtn) {
+            acceptBtn.addEventListener("click", function () {
+              try {
+                localStorage.setItem("preferred_locale", targetLocale);
+                document.cookie =
+                  "preferred_locale=" +
+                  targetLocale +
+                  "; path=/; max-age=31536000; SameSite=Lax";
+              } catch (_) {}
+            });
+          }
+        }
+
+        document.addEventListener("astro:page-load", initLangSuggestion);
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", initLangSuggestion);
+        } else {
+          initLangSuggestion();
+        }
+      })();
+    </script>
+  </>
+)}

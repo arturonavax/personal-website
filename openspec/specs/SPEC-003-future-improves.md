@@ -31,6 +31,7 @@ cross_references:
 Esta especificación arquitectónica establece la infraestructura perimetral avanzada, el desacoplamiento de infraestructura mediante el patrón Hexagonal (Ports & Adapters) y la estrategia de escalabilidad multi-idioma para el portal técnico `arturonavax.dev`.
 
 El diagnóstico del sistema previo reveló tres limitaciones fundamentales:
+
 1. **Acoplamiento Directo al Proveedor de Nube (Vendor Lock-In):** La integración de servicios en el Edge (almacenamiento, base de datos de telemetría, indexación) corría el riesgo de acoplar componentes de Astro a las APIs propietarias de Cloudflare Workers/Pages, impidiendo una migración ágil hacia infraestructuras basadas en Node.js, Bun, Docker, AWS S3 o VPS locales.
 2. **Consumo Ineficiente de Cuotas Gratuitas de Cloudflare:**
    - En **Cloudflare D1**, las consultas analíticas agregadas en tiempo real (`GROUP BY` masivos) amenazaban con superar el límite gratuito de 5 millones de filas leídas al día.
@@ -69,26 +70,26 @@ El diagnóstico del sistema previo reveló tres limitaciones fundamentales:
 
 ### 2.1. Requerimientos Funcionales y Técnicos (REQ-EDGE-*)
 
-| ID | Requerimiento Técnico | Componente / Capa Afectada | Criterio de Aceptación |
-| :--- | :--- | :--- | :--- |
-| **REQ-EDGE-01** | **Hexagonal Decoupling & Port Purity** | `src/lib/ports/`, `src/lib/adapters/` | 100% de la lógica de dominio y presentación interactúa exclusivamente con interfaces abstractas de TypeScript. Cero importaciones directas de Cloudflare en Astro. |
-| **REQ-EDGE-02** | **R2 Storage & Workers Cache API Absorption** | `CloudflareR2StorageAdapter` | Cacheado perimetral (`caches.default`) de binarios con `s-maxage=604800`. Cero lecturas Clase B en R2 tras el primer hit por PoP. |
-| **REQ-EDGE-03** | **Semantic Search & Zero-Lockin Fallback** | `VectorizeAiSearchAdapter`, `StaticMemorySearchAdapter` | Búsqueda semántica acelerada por `@cf/baai/bge-small-en-v1.5` con fallback transparente a motor en memoria estática si no hay Edge disponible. |
-| **REQ-EDGE-04** | **D1 Telemetry & Automated Rollups** | `cloudflare/d1/`, `cloudflare/cron-scheduler.ts` | Agregación diaria cronometrada a las 02:00 UTC. Cero `GROUP BY` masivos en tiempo real. Poda automática de eventos crudos a los 7 días. |
-| **REQ-EDGE-05** | **Serverless Corporate Email Ingestion** | `cloudflare/email-worker.ts` | Captura perimetral de correos entrantes, persistencia en D1 y notificación reactiva asíncrona a Discord vía Webhooks sin impactar el hilo de respuesta. |
-| **REQ-EDGE-06** | **Edge Perimeter Security & Zero Trust** | `wrangler.jsonc`, WAF L7, `_headers` | Bloqueo de scrapers de IA agresivos en `/api/*`, normalización de query params en el PoP y túnel de desarrollo seguro sin puertos públicos abiertos. |
-| **REQ-EDGE-07** | **Extensible Multi-Language Engine** | `src/i18n/locales.ts`, `content.config.ts` | Soporte tipado de idiomas con inglés primario (`en`), español secundario (`es`) y extensibilidad a $N$ idiomas mediante registro central único. |
-| **REQ-EDGE-08** | **Isolated JSON-LD Schema Integrity** | `src/lib/seo/schema-builder.ts` | Payloads JSON-LD 100% monobilingües sincronizados con la URL (`inLanguage`), conservando el `@id: "https://arturonavax.dev/#person"` invariable. |
+| ID              | Requerimiento Técnico                         | Componente / Capa Afectada                              | Criterio de Aceptación                                                                                                                                             |
+| :-------------- | :-------------------------------------------- | :------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **REQ-EDGE-01** | **Hexagonal Decoupling & Port Purity**        | `src/lib/ports/`, `src/lib/adapters/`                   | 100% de la lógica de dominio y presentación interactúa exclusivamente con interfaces abstractas de TypeScript. Cero importaciones directas de Cloudflare en Astro. |
+| **REQ-EDGE-02** | **R2 Storage & Workers Cache API Absorption** | `CloudflareR2StorageAdapter`                            | Cacheado perimetral (`caches.default`) de binarios con `s-maxage=604800`. Cero lecturas Clase B en R2 tras el primer hit por PoP.                                  |
+| **REQ-EDGE-03** | **Semantic Search & Zero-Lockin Fallback**    | `VectorizeAiSearchAdapter`, `StaticMemorySearchAdapter` | Búsqueda semántica acelerada por `@cf/baai/bge-small-en-v1.5` con fallback transparente a motor en memoria estática si no hay Edge disponible.                     |
+| **REQ-EDGE-04** | **D1 Telemetry & Automated Rollups**          | `cloudflare/d1/`, `cloudflare/cron-scheduler.ts`        | Agregación diaria cronometrada a las 02:00 UTC. Cero `GROUP BY` masivos en tiempo real. Poda automática de eventos crudos a los 7 días.                            |
+| **REQ-EDGE-05** | **Serverless Corporate Email Ingestion**      | `cloudflare/email-worker.ts`                            | Captura perimetral de correos entrantes, persistencia en D1 y notificación reactiva asíncrona a Discord vía Webhooks sin impactar el hilo de respuesta.            |
+| **REQ-EDGE-06** | **Edge Perimeter Security & Zero Trust**      | `wrangler.jsonc`, WAF L7, `_headers`                    | Bloqueo de scrapers de IA agresivos en `/api/*`, normalización de query params en el PoP y túnel de desarrollo seguro sin puertos públicos abiertos.               |
+| **REQ-EDGE-07** | **Extensible Multi-Language Engine**          | `src/i18n/locales.ts`, `content.config.ts`              | Soporte tipado de idiomas con inglés primario (`en`), español secundario (`es`) y extensibilidad a $N$ idiomas mediante registro central único.                    |
+| **REQ-EDGE-08** | **Isolated JSON-LD Schema Integrity**         | `src/lib/seo/schema-builder.ts`                         | Payloads JSON-LD 100% monobilingües sincronizados con la URL (`inLanguage`), conservando el `@id: "https://arturonavax.dev/#person"` invariable.                   |
 
 ### 2.2. Criterios de Aceptación Cuantitativos y Umbrales de Rendimiento
 
-| Métrica / Parámetro | Condición de Aprobación (PASS) | Condición de Fallo (FAIL) | Método de Medición |
-| :--- | :--- | :--- | :--- |
-| **Desacoplamiento de Proveedor** | 0 dependencias propietarias en `src/pages/` ni `src/components/` | Importación directa de `@cloudflare/workers-types` en UI | Auditoría estática AST en CI |
-| **TTFB en Activos Cacheados** | $\text{TTFB} < 25\text{ ms}$ en Edge PoP Cache Hit | $\text{TTFB} > 80\text{ ms}$ o invocación Clase B a R2 recurrente | Métricas de Cloudflare Analytics |
-| **Consumo Diario D1** | $< 100,000$ filas leídas/día para analíticas | Consultas agregadas no indexadas superando 5M filas | Monitorización de cuota en Cloudflare D1 |
-| **Tiempo de Migración (Exit)** | Migración a Docker/Node completada en $< 30\text{ min}$ | Modificación requerida en plantillas o rutas Astro | Simulación de despliegue con adaptadores Fallback |
-| **Integridad de Esquemas SEO** | 100% de páginas válidas en Google Rich Results Test | Inconsistencias de idioma o conflictos en `@id` | Suite de validación Playwright en CI |
+| Métrica / Parámetro              | Condición de Aprobación (PASS)                                   | Condición de Fallo (FAIL)                                         | Método de Medición                                |
+| :------------------------------- | :--------------------------------------------------------------- | :---------------------------------------------------------------- | :------------------------------------------------ |
+| **Desacoplamiento de Proveedor** | 0 dependencias propietarias en `src/pages/` ni `src/components/` | Importación directa de `@cloudflare/workers-types` en UI          | Auditoría estática AST en CI                      |
+| **TTFB en Activos Cacheados**    | $\text{TTFB} < 25\text{ ms}$ en Edge PoP Cache Hit               | $\text{TTFB} > 80\text{ ms}$ o invocación Clase B a R2 recurrente | Métricas de Cloudflare Analytics                  |
+| **Consumo Diario D1**            | $< 100,000$ filas leídas/día para analíticas                     | Consultas agregadas no indexadas superando 5M filas               | Monitorización de cuota en Cloudflare D1          |
+| **Tiempo de Migración (Exit)**   | Migración a Docker/Node completada en $< 30\text{ min}$          | Modificación requerida en plantillas o rutas Astro                | Simulación de despliegue con adaptadores Fallback |
+| **Integridad de Esquemas SEO**   | 100% de páginas válidas en Google Rich Results Test              | Inconsistencias de idioma o conflictos en `@id`                   | Suite de validación Playwright en CI              |
 
 ---
 
@@ -450,10 +451,9 @@ export class VectorizeAiSearchAdapter implements SearchEnginePort {
   ) {}
 
   async search(params: SearchQuery): Promise<SearchResultItem[]> {
-    const embeddingResponse = (await this.ai.run(
-      "@cf/baai/bge-small-en-v1.5",
-      { text: params.query },
-    )) as { data: number[][] };
+    const embeddingResponse = (await this.ai.run("@cf/baai/bge-small-en-v1.5", {
+      text: params.query,
+    })) as { data: number[][] };
 
     const vector = embeddingResponse.data[0];
     const results = await this.vectorize.query(vector, {
@@ -478,10 +478,9 @@ export class VectorizeAiSearchAdapter implements SearchEnginePort {
 
   async indexDocument(item: SearchResultItem, content: string): Promise<void> {
     const textToEmbed = `${item.title}\n${item.description}\n${content.slice(0, 2000)}`;
-    const embeddingResponse = (await this.ai.run(
-      "@cf/baai/bge-small-en-v1.5",
-      { text: textToEmbed },
-    )) as { data: number[][] };
+    const embeddingResponse = (await this.ai.run("@cf/baai/bge-small-en-v1.5", {
+      text: textToEmbed,
+    })) as { data: number[][] };
 
     await this.vectorize.insert([
       {
@@ -518,7 +517,8 @@ export class StaticMemorySearchAdapter implements SearchEnginePort {
     const matched = this.documents
       .filter((doc) => doc.locale === params.locale)
       .map((doc) => {
-        const text = `${doc.title} ${doc.description} ${doc.content}`.toLowerCase();
+        const text =
+          `${doc.title} ${doc.description} ${doc.content}`.toLowerCase();
         let hits = 0;
         for (const token of tokens) {
           if (text.includes(token)) hits++;
@@ -734,6 +734,7 @@ export async function processIncomingEmail(
 (http.user_agent contains "GPTBot") or
 (http.user_agent contains "Amazonbot")
 ```
+
 _Acción recomendada:_ **Block** o **Managed Challenge** en `/api/*`.
 
 #### 4.6.2. Reglas de Inmutabilidad y Seguridad (`public/_headers`)
@@ -762,15 +763,16 @@ _Acción recomendada:_ **Block** o **Managed Challenge** en `/api/*`.
 
 Si se decide migrar fuera del ecosistema Cloudflare (hacia VPS propio, Vercel, AWS o Docker):
 
-| Servicio Cloudflare | Sustituto Inmediato Desacoplado | Coste de Cambio en Código Astro |
-| :--- | :--- | :--- |
-| **Cloudflare D1** | SQLite embebido (`better-sqlite3`) o PostgreSQL en VPS. | **0 líneas** (implementar `SqliteTelemetryAdapter` respetando `TelemetryPort`). |
-| **Cloudflare R2** | MinIO, AWS S3 o DigitalOcean Spaces. | **0 líneas** (implementar `S3CompatibleStorageAdapter` respetando `StoragePort`). |
-| **Workers AI + Vectorize** | Ollama local / Transformers.js o Meilisearch en contenedor. | **0 líneas** (implementar `MeilisearchAdapter` respetando `SearchEnginePort`). |
-| **Cloudflare Turnstile** | Honeypot invisible + Altcha (Proof of Work self-hosted). | **0 líneas** (implementar `HoneypotCaptchaAdapter` respetando `CaptchaVerifierPort`). |
-| **Cache API / PoP** | Nginx Reverse Proxy / Caddy con caché de disco. | **0 líneas** (declarar cabeceras en configuración web estándar). |
+| Servicio Cloudflare        | Sustituto Inmediato Desacoplado                             | Coste de Cambio en Código Astro                                                       |
+| :------------------------- | :---------------------------------------------------------- | :------------------------------------------------------------------------------------ |
+| **Cloudflare D1**          | SQLite embebido (`better-sqlite3`) o PostgreSQL en VPS.     | **0 líneas** (implementar `SqliteTelemetryAdapter` respetando `TelemetryPort`).       |
+| **Cloudflare R2**          | MinIO, AWS S3 o DigitalOcean Spaces.                        | **0 líneas** (implementar `S3CompatibleStorageAdapter` respetando `StoragePort`).     |
+| **Workers AI + Vectorize** | Ollama local / Transformers.js o Meilisearch en contenedor. | **0 líneas** (implementar `MeilisearchAdapter` respetando `SearchEnginePort`).        |
+| **Cloudflare Turnstile**   | Honeypot invisible + Altcha (Proof of Work self-hosted).    | **0 líneas** (implementar `HoneypotCaptchaAdapter` respetando `CaptchaVerifierPort`). |
+| **Cache API / PoP**        | Nginx Reverse Proxy / Caddy con caché de disco.             | **0 líneas** (declarar cabeceras en configuración web estándar).                      |
 
 #### Procedimiento de Ejecución de Migración (<30 minutos):
+
 1. **Paso 1:** Instalar adaptadores de fallback en `src/lib/adapters/fallback/`.
 2. **Paso 2:** Configurar variables en `.env`:
    ```bash

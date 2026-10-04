@@ -81,38 +81,43 @@ Esta especificación actúa como el **cimiento estructural** de toda la platafor
 ### 2.1. Requerimientos Funcionales y Técnicos (REQ-*)
 
 #### REQ-01: Motor i18n con Cero Duplicación de Código
+
 - **R1.1:** Las rutas deben definirse mediante parámetros dinámicos unificados (`src/pages/[...lang]/...`), reduciendo las páginas físicas de 28 a 14.
 - **R1.2:** Toda ruta debe resolver canónicos absolutos y etiquetas `hreflang` bidireccionales en tiempo de compilación estática (SSG).
 - **R1.3:** La traducción de etiquetas UI debe ser estricta mediante TypeScript Generics con auto-completado y detección de claves faltantes en tiempo de compilación.
 
 #### REQ-02: Ciclo de Vida de Web Components Nativos (SPA-Safe)
+
 - **R2.1:** Prohibir scripts imperativos huérfanos en componentes de interfaz.
 - **R2.2:** Todos los componentes interactivos (`MatrixBackground`, `SystemTelemetryDemo`, modales) deben implementarse como Custom Elements (`HTMLElement`), aprovechando `connectedCallback` y `disconnectedCallback` para garantizar montaje y desmontaje seguro durante las transiciones de `ClientRouter`.
 - **R2.3:** El estado global del cliente debe gestionarse exclusivamente mediante Nano Stores (`@nanostores/core`) con un peso de bundle inferior a 1.5 KB.
 
 #### REQ-03: Restricciones de Cero FOUC y Core Web Vitals
+
 - **R3.1:** CLS = `0.000` estricto en todas las rutas y durante transiciones de vista.
 - **R3.2:** LCP < `0.8s` mediante pre-conexión de orígenes, tipografías locales con `font-display: swap` y metric overrides (`size-adjust`, `ascent-override`), y `<Image />` de Astro optimizado con `loading="eager"` y `fetchpriority="high"`.
 - **R3.3:** INP < `50ms` mediante la eliminación total de tareas bloqueantes en el main thread (>16ms).
 
 #### REQ-04: Abstracción de Proveedor de Almacenamiento (Local / R2 Ready)
+
 - **R4.1:** Crear una capa de abstracción `ContentRepository` desacoplada del pipeline de Astro.
 - **R4.2:** El Content Layer de Astro debe soportar carga híbrida: desarrollo local leyendo markdown de disco, y compilación remota o sincronizada leyendo blobs desde Cloudflare R2 vía API S3 / REST (expandido en [SPEC-003](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md)).
 
 #### REQ-05: Telemetría Edge Privada y Observabilidad Zero Trust
+
 - **R5.1:** Telemetría pública no bloqueante vía `navigator.sendBeacon` o `fetch` hacia endpoints de Cloudflare Workers con volcado asíncrono a Cloudflare D1.
 - **R5.2:** Panel administrativo de analíticas aislado del build público, protegido a nivel de red mediante Cloudflare Access / Cloudflare Tunnels (Zero Trust), sin añadir JavaScript ni CSS al usuario final.
 
 ### 2.2. Criterios de Aceptación Cuantitativos y Umbrales de Rendimiento
 
-| Métrica / Parámetro | Condición de Aprobación (PASS) | Condición de Fallo (FAIL) | Método de Medición |
-| :--- | :--- | :--- | :--- |
-| **Superficie de Páginas** | Reducción exacta del 50% (14 rutas paramétricas) | Existencia de duplicados en `src/pages/es/` | Inspección de AST y árbol de archivos |
-| **Presupuesto JS Cliente** | Exactamente 0 KB de framework JS en rutas estáticas | Inclusión de React/Vue/Svelte o scripts no scoped | Análisis de chunks de Vite en `dist/` |
-| **Cumulative Layout Shift** | **CLS = 0.000** continuo | CLS > 0.000 en cualquier transición | `PerformanceObserver` en navegación SPA |
-| **Largest Contentful Paint** | **LCP < 800ms** (Fast 4G, 1.6 Mbps / 150ms RTT) | LCP ≥ 800ms | Chrome DevTools Trace / Lighthouse |
-| **Interaction to Next Paint** | **INP < 50ms** | INP ≥ 50ms | Medición en clicks de filtros y búsqueda |
-| **Fugas de Memoria en SPA** | 0 nodos DOM desasociados tras 10 navegaciones | Retención de listeners o canvas en heap | Heap Snapshot en DevTools |
+| Métrica / Parámetro           | Condición de Aprobación (PASS)                      | Condición de Fallo (FAIL)                         | Método de Medición                       |
+| :---------------------------- | :-------------------------------------------------- | :------------------------------------------------ | :--------------------------------------- |
+| **Superficie de Páginas**     | Reducción exacta del 50% (14 rutas paramétricas)    | Existencia de duplicados en `src/pages/es/`       | Inspección de AST y árbol de archivos    |
+| **Presupuesto JS Cliente**    | Exactamente 0 KB de framework JS en rutas estáticas | Inclusión de React/Vue/Svelte o scripts no scoped | Análisis de chunks de Vite en `dist/`    |
+| **Cumulative Layout Shift**   | **CLS = 0.000** continuo                            | CLS > 0.000 en cualquier transición               | `PerformanceObserver` en navegación SPA  |
+| **Largest Contentful Paint**  | **LCP < 800ms** (Fast 4G, 1.6 Mbps / 150ms RTT)     | LCP ≥ 800ms                                       | Chrome DevTools Trace / Lighthouse       |
+| **Interaction to Next Paint** | **INP < 50ms**                                      | INP ≥ 50ms                                        | Medición en clicks de filtros y búsqueda |
+| **Fugas de Memoria en SPA**   | 0 nodos DOM desasociados tras 10 navegaciones       | Retención de listeners o canvas en heap           | Heap Snapshot en DevTools                |
 
 ---
 
@@ -350,7 +355,9 @@ class MatrixCanvasLayer extends HTMLElement {
     if (!this.canvas) return;
     const fontSize = 14;
     const columns = Math.floor(window.innerWidth / fontSize);
-    this.drops = new Array(columns).fill(1).map(() => Math.floor(Math.random() * 50));
+    this.drops = new Array(columns)
+      .fill(1)
+      .map(() => Math.floor(Math.random() * 50));
   }
 
   private startRainLoop() {
@@ -366,7 +373,9 @@ class MatrixCanvasLayer extends HTMLElement {
       this.ctx.font = `${fontSize}px monospace`;
 
       for (let i = 0; i < this.drops.length; i++) {
-        const text = characters.charAt(Math.floor(Math.random() * characters.length));
+        const text = characters.charAt(
+          Math.floor(Math.random() * characters.length),
+        );
         const x = i * fontSize;
         const y = this.drops[i] * fontSize;
         this.ctx.fillText(text, x, y);
@@ -401,11 +410,15 @@ export function toggleSearchModal(forceState?: boolean): void {
 }
 
 export function toggleShortcutsModal(forceState?: boolean): void {
-  isShortcutsOpen.set(forceState !== undefined ? forceState : !isShortcutsOpen.get());
+  isShortcutsOpen.set(
+    forceState !== undefined ? forceState : !isShortcutsOpen.get(),
+  );
 }
 
 export function toggleSponsorshipModal(forceState?: boolean): void {
-  isSponsorshipModalOpen.set(forceState !== undefined ? forceState : !isSponsorshipModalOpen.get());
+  isSponsorshipModalOpen.set(
+    forceState !== undefined ? forceState : !isSponsorshipModalOpen.get(),
+  );
 }
 ```
 
@@ -517,22 +530,22 @@ El comportamiento en tiempo de ejecución se valida mediante un ciclo continuo d
 
 ### 5.1. Matriz de Consolidación de Archivos (Reducción de 28 a 14)
 
-| Archivo Obsoleto Eliminado | Archivo Canónico Consolidado | Estado de Verificación |
-| :--- | :--- | :---: |
-| `src/pages/es/index.astro` | `src/pages/[...lang]/index.astro` | **VERIFICADO** |
-| `src/pages/es/resume.astro` | `src/pages/[...lang]/resume/index.astro` (refactorizado en [SPEC-002](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md)) | **VERIFICADO** |
-| `src/pages/es/links.astro` | `src/pages/[...lang]/links.astro` | **VERIFICADO** |
-| `src/pages/es/search.astro` | `src/pages/[...lang]/search.astro` | **VERIFICADO** |
-| `src/pages/es/blog/index.astro` | `src/pages/[...lang]/blog/index.astro` | **VERIFICADO** |
-| `src/pages/es/blog/[slug].astro` | `src/pages/[...lang]/blog/[slug].astro` | **VERIFICADO** |
-| `src/pages/es/projects/index.astro` | `src/pages/[...lang]/projects/index.astro` | **VERIFICADO** |
-| `src/pages/es/projects/[slug].astro` | `src/pages/[...lang]/projects/[slug].astro` | **VERIFICADO** |
-| `src/pages/es/experience/index.astro` | `src/pages/[...lang]/experience/index.astro` | **VERIFICADO** |
-| `src/pages/es/experience/[slug].astro` | `src/pages/[...lang]/experience/[slug].astro` | **VERIFICADO** |
-| `src/pages/es/services/index.astro` | `src/pages/[...lang]/services/index.astro` | **VERIFICADO** |
-| `src/pages/es/services/[slug].astro` | `src/pages/[...lang]/services/[slug].astro` | **VERIFICADO** |
-| `src/pages/es/case-studies/index.astro` | `src/pages/[...lang]/case-studies/index.astro` | **VERIFICADO** |
-| `src/pages/es/rss.xml.ts` | Consolidado en `src/pages/rss.xml.ts` bilingüe | **VERIFICADO** |
+| Archivo Obsoleto Eliminado              | Archivo Canónico Consolidado                                                                                                                                                            | Estado de Verificación |
+| :-------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------: |
+| `src/pages/es/index.astro`              | `src/pages/[...lang]/index.astro`                                                                                                                                                       |     **VERIFICADO**     |
+| `src/pages/es/resume.astro`             | `src/pages/[...lang]/resume/index.astro` (refactorizado en [SPEC-002](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md)) |     **VERIFICADO**     |
+| `src/pages/es/links.astro`              | `src/pages/[...lang]/links.astro`                                                                                                                                                       |     **VERIFICADO**     |
+| `src/pages/es/search.astro`             | `src/pages/[...lang]/search.astro`                                                                                                                                                      |     **VERIFICADO**     |
+| `src/pages/es/blog/index.astro`         | `src/pages/[...lang]/blog/index.astro`                                                                                                                                                  |     **VERIFICADO**     |
+| `src/pages/es/blog/[slug].astro`        | `src/pages/[...lang]/blog/[slug].astro`                                                                                                                                                 |     **VERIFICADO**     |
+| `src/pages/es/projects/index.astro`     | `src/pages/[...lang]/projects/index.astro`                                                                                                                                              |     **VERIFICADO**     |
+| `src/pages/es/projects/[slug].astro`    | `src/pages/[...lang]/projects/[slug].astro`                                                                                                                                             |     **VERIFICADO**     |
+| `src/pages/es/experience/index.astro`   | `src/pages/[...lang]/experience/index.astro`                                                                                                                                            |     **VERIFICADO**     |
+| `src/pages/es/experience/[slug].astro`  | `src/pages/[...lang]/experience/[slug].astro`                                                                                                                                           |     **VERIFICADO**     |
+| `src/pages/es/services/index.astro`     | `src/pages/[...lang]/services/index.astro`                                                                                                                                              |     **VERIFICADO**     |
+| `src/pages/es/services/[slug].astro`    | `src/pages/[...lang]/services/[slug].astro`                                                                                                                                             |     **VERIFICADO**     |
+| `src/pages/es/case-studies/index.astro` | `src/pages/[...lang]/case-studies/index.astro`                                                                                                                                          |     **VERIFICADO**     |
+| `src/pages/es/rss.xml.ts`               | Consolidado en `src/pages/rss.xml.ts` bilingüe                                                                                                                                          |     **VERIFICADO**     |
 
 ### 5.2. Mapeo Bidireccional de Referencias Cruzadas
 

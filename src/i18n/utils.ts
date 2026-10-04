@@ -22,7 +22,7 @@ export async function getCounterpartUrl(
   collectionName?:
     "posts" | "projects" | "experience" | "services" | "case-studies",
   translationKey?: string,
-): Promise<string> {
+): Promise<string | undefined> {
   const ensureTrailingSlash = (path: string) =>
     path.endsWith("/") ? path : `${path}/`;
 
@@ -48,6 +48,9 @@ export async function getCounterpartUrl(
         ? `/${routeSegment}/${slug}/`
         : `/es/${routeSegment}/${slug}/`;
     }
+
+    // Si es un contenido específico de colección y no existe traducción, retornar undefined para evitar 404
+    return undefined;
   }
 
   // 2. Fallback de mapeo de rutas

@@ -24,6 +24,16 @@ const targetUrl = await getCounterpartUrl(
   collectionName,
   translationKey,
 );
+
+const effectiveTargetUrl =
+  targetUrl ??
+  (targetLocale === "es"
+    ? collectionName
+      ? `/es/${collectionName === "posts" ? "blog" : collectionName}/`
+      : "/es/"
+    : collectionName
+      ? `/${collectionName === "posts" ? "blog" : collectionName}/`
+      : "/");
 ---
 
 <nav
@@ -64,7 +74,7 @@ const targetUrl = await getCounterpartUrl(
       </span>
     ) : (
       <a
-        href={targetUrl}
+        href={effectiveTargetUrl}
         hreflang="en"
         lang="en"
         data-astro-prefetch="hover"
@@ -86,7 +96,7 @@ const targetUrl = await getCounterpartUrl(
       </span>
     ) : (
       <a
-        href={targetUrl}
+        href={effectiveTargetUrl}
         hreflang="es"
         lang="es"
         data-astro-prefetch="hover"
@@ -125,6 +135,11 @@ const targetUrl = await getCounterpartUrl(
       var targetLang = link.getAttribute("data-lang-switch");
       try {
         sessionStorage.setItem("preferred_locale", targetLang);
+        localStorage.setItem("preferred_locale", targetLang);
+        document.cookie =
+          "preferred_locale=" +
+          targetLang +
+          "; path=/; max-age=31536000; SameSite=Lax";
       } catch (_) {}
 
       e.preventDefault();
