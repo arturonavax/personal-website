@@ -1,61 +1,75 @@
-# SPEC-004: GLOBAL ARCHITECTURAL AUDIT & EXTREME QUALITY VERIFICATION SPECIFICATION
+# SPEC-004: AUDITORÍA ARQUITECTÓNICA GLOBAL Y VERIFICACIÓN EXTREMA DE CALIDAD
 
-## SDD / RDD / ODD Verification Framework for Top #1 Tier Web Engineering
+## Marco de Verificación SDD / RDD / ODD para Ingeniería Web de Élite (Top #1 Tier)
 
 ```yaml
-id: SPEC-2026-AUDIT-TOP1-VERIFICATION
+id: SPEC-004-GLOBAL-AUDIT-VERIFICATION
 title: Exhaustive Quality, Architecture, Edge Runtime, Performance, and SEO Verification Specification
-status: APPROVED-FOR-EXECUTION
+status: APPROVED / IMPLEMENTED
 version: 2.0.0
-architect_profile: Staff Senior Frontend Performance Architect (+15y industry experience)
-stack_profile:
-  framework: Astro v7.3.4+ (Static Prerendered Output / Islands Architecture / Server Islands)
-  css_engine: Tailwind CSS v4.3.3+ (CSS-First @theme Engine / LightningCSS Native Pipeline)
-  edge_platform: Cloudflare Pages & Workers (Static Assets, D1, R2, Cache API, Turnstile, Workers AI)
-  motion_model: Compositor-Thread Exclusivity (Web Animations API / View Transitions API)
-  target_metrics:
-    lighthouse: 100/100/100/100 (Performance, Accessibility, Best Practices, SEO)
-    core_web_vitals:
-      cls: 0.000 (Strict Mathematical Invariant)
-      lcp: "<800ms" (Simulated Fast 4G, P75 Global)
-      inp: "<50ms" (Main Thread Free Time >95%)
-      fid: "0ms" (Total Blocking Time <10ms)
-      ttfb: "<50ms" (Edge Cache Hit Ratio >98%)
+author: Staff Frontend Performance Architect & Technical SEO Lead
+target_stack:
+  framework: Astro v7.3.4+ (Compilación Estática Pura / ClientRouter / Server Islands)
+  styling: Tailwind CSS v4.3.3+ (CSS-First @theme Engine / LightningCSS)
+  runtime: Cloudflare Edge (Workers, Pages, D1, R2, Cache API, Turnstile, Workers AI)
+  architecture: Hexagonal / Decoupled Ports & Adapters
+  locales: [en, es] (EN Primario por defecto -> ES Secundario -> Extensible N)
+methodology: Tri-Axis Model — Spec-Driven Development (SDD), Requirement-Driven Development (RDD) & Organic/Operational-Driven Development (ODD)
+cross_references:
+  spec_001: openspec/specs/SPEC-001-big-refactor.md
+  spec_002: openspec/specs/SPEC-002-general-tasks.md
+  spec_003: openspec/specs/SPEC-003-future-improves.md
+  spec_004: openspec/specs/SPEC-004-audit.md
 ```
 
 ---
 
-## 1. Philosophical Grounding & Verification Methodology
+## 1. Resumen Ejecutivo, Diagnóstico y Alineación Metodológica
 
-Este documento constituye la especificación formal y el protocolo de certificación de calidad técnica más riguroso y exhaustivo aplicable a un ecosistema web contemporáneo[cite: 1]. Su propósito es erradicar cualquier compromiso de ingeniería, suposición no verificada o regresión invisible en aplicaciones construidas sobre **Astro**, **Tailwind CSS v4** y la red perimetral de **Cloudflare**[cite: 1].
+### 1.1. Contexto y Diagnóstico del Sistema
 
-La arquitectura se valida simultáneamente bajo tres dimensiones deductivas:
+Este documento constituye la especificación formal y el protocolo de certificación de calidad técnica más riguroso y exhaustivo aplicable al ecosistema web `arturonavax.dev`. Su propósito es erradicar cualquier compromiso de ingeniería, suposición no verificada o regresión invisible en aplicaciones construidas sobre **Astro**, **Tailwind CSS v4** y la red perimetral de **Cloudflare**.
+
+El diagnóstico del sistema previo identificó riesgos críticos que requerían una compuerta automatizada de control:
+1. **Regresiones Silenciosas de JavaScript en Cliente:** Riesgo de hidratación accidental mediante directivas permisivas (`client:load`) en rutas estrictamente informacionales (artículos técnicos, landing, currículum), violando el presupuesto de 0 KB JS.
+2. **Layout Thrashing por Animaciones en Hilo Principal:** Transiciones CSS que afectaban propiedades de geometría (`width`, `height`, `margin`, `padding`), colapsando el frame rate en dispositivos móviles con baja tasa de refresco.
+3. **Fugas de Memoria en GPU por Declaraciones Estáticas de `will-change`:** Uso no controlado de aceleración por hardware que consumía memoria de vídeo de forma permanente y reducía la nitidez del renderizado de fuentes vectoriales.
+4. **Discrepancias de Canónicos y Polución UTM:** Presencia de parámetros de seguimiento en etiquetas `<link rel="canonical">` y desincronización de esquemas JSON-LD entre idiomas.
+5. **Agotamiento de Cuotas D1 por Solicitudes Especulativas:** Peticiones automáticas de prefetch disparando inserciones en bases de datos perimetrales.
+
+### 1.2. Marco Metodológico Tri-Axis: SDD, RDD y ODD
 
 ```
                             TRI-AXIS VERIFICATION MODEL
 
                                     [ SDD ]
-                           Formal Types & Invariants
-                                      ▲
-                                     / \
-                                    /   \
-                                   /     \
-                                  /       \
-                                 ▼         ▼
-                            [ RDD ] <───> [ ODD ]
-                       Binary Pass/Fail      Edge Chaos & Runtime
-                         Quantitative          Telemetry Profiling
+                           Tipos e Invariantes Formales
+                                       ▲
+                                      / \
+                                     /   \
+                                    /     \
+                                   /       \
+                                  ▼         ▼
+                             [ RDD ] <───> [ ODD ]
+                         Compuertas          Simulación de Caos Edge
+                        Binarias PASS/FAIL   y Telemetría en Ejecución
 ```
 
-1. **Spec-Driven Development (SDD):** El sistema se somete a contratos de interfaz tipados estáticos (TypeScript en modo `strict: true`, AST Linting y JSON Schemas W3C)[cite: 1]. Si un componente o adaptador introduce tipos `any`, dependencias circulares o mutaciones de estado no controladas, el pipeline de compilación se interrumpe de inmediato.
-2. **Requirement-Driven Development (RDD):** Definición de compuertas de rendimiento binarias cuantitativas[cite: 1]. No existen métricas relativas ni advertencias permisivas: cada parámetro (LCP, CLS, INP, TTFB, tamaño de bundle, presupuesto de bytes de JavaScript en cliente) opera bajo una condición booleana estricta [PASS o FAIL](cite: 1).
-3. **Operational-Driven Development (ODD):** Validación del comportamiento real del software desplegado en los más de 300 centros de datos globales de Cloudflare[cite: 1]. Involucra telemetría bajo condiciones adversas: navegación en redes con pérdida de paquetes (3G/4G inestable), ráfagas de solicitudes especulativas generadas por bots, degradación intencional de enlaces ascendentes y pruebas de resistencia frente a navegadores divergentes (Chromium Blink, Gecko Firefox 129+, WebKit iOS Safari).
+1. **Spec-Driven Development (SDD):** El sistema se somete a contratos de interfaz tipados estáticos (TypeScript en modo `strict: true`, AST Linting y JSON Schemas W3C). Si un componente o adaptador introduce tipos `any`, dependencias circulares o mutaciones de estado no controladas, el pipeline de compilación se interrumpe de inmediato.
+2. **Requirement-Driven Development (RDD):** Definición de compuertas de rendimiento binarias cuantitativas. No existen métricas relativas ni advertencias permisivas: cada parámetro (LCP, CLS, INP, TTFB, tamaño de bundle, presupuesto de bytes de JavaScript en cliente) opera bajo una condición booleana estricta (PASS o FAIL).
+3. **Operational-Driven Development (ODD):** Validación del comportamiento real del software desplegado en los más de 300 centros de datos globales de Cloudflare. Involucra telemetría bajo condiciones adversas: navegación en redes con pérdida de paquetes (3G/4G inestable), ráfagas de solicitudes especulativas generadas por bots, degradación intencional de enlaces ascendentes y pruebas de resistencia frente a navegadores divergentes (Chromium Blink, Gecko Firefox 129+, WebKit iOS Safari).
+
+### 1.3. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
+
+- **Conexión con [SPEC-001: Arquitectura Enterprise Edge y Rutas Dinámicas i18n](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-001-big-refactor.md):** SPEC-004 audita las 14 rutas consolidadas bajo `[...lang]`, verificando la total ausencia de archivos replicados en `src/pages/es/` y la preservación del presupuesto de 0 KB JS en páginas de contenido.
+- **Conexión con [SPEC-002: Refactorización General y Resume Studio](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** SPEC-004 valida el motor de impresión cross-browser (`@media print`), la neutralización de `mailto:`, el comportamiento reactivo de canónicos limpios y la animación WAAPI circular en alternancia de temas.
+- **Conexión con [SPEC-003: Arquitectura Hexagonal y Cloudflare Edge Desacoplado](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md):** SPEC-004 certifica que la absorción de caché en R2 (`caches.default`) entregue respuestas con TTFB < 25ms, que las peticiones especulativas no muten D1, y que el `@id: "https://arturonavax.dev/#person"` se mantenga invariable entre representaciones de idioma.
 
 ---
 
-## 2. Requirement Matrix & Hard Enforcement Thresholds (RDD)
+## 2. Matriz de Requerimientos y Compuertas Cuantitativas (RDD)
 
-Cada requisito en esta matriz representa una compuerta infranqueable en el pipeline de Integración Continua [CI/CD](cite: 1). Una sola violación detiene el despliegue a producción.
+Cada requisito en esta matriz representa una compuerta infranqueable en el pipeline de Integración Continua (CI/CD). Una sola violación detiene el despliegue a producción.
 
 ```
                               PIPELINE GATEKEEPING PIPELINE
@@ -75,33 +89,35 @@ Cada requisito en esta matriz representa una compuerta infranqueable en el pipel
                                 └─────────────────────────┘
 ```
 
-| Area             | ID           | Criterio de Medición             | Umbral de Fallo (FAIL Condition)                                                                |
-| :--------------- | :----------- | :------------------------------- | :---------------------------------------------------------------------------------------------- |
-| **Compiler**     | `REQ-COM-01` | JavaScript en Rutas Estáticas    | > 0 KB de JavaScript cliente en páginas de lectura/artículos[cite: 1].                          |
-| **Compiler**     | `REQ-COM-02` | Presupuesto Total de Islas       | > 12 KB (gzip) de JavaScript total combinado en páginas interactivas[cite: 1].                  |
-| **Styling**      | `REQ-STY-01` | Arquitectura Tailwind v4         | Existencia de archivos `tailwind.config.*` o `postcss.config.*` en el árbol.                    |
-| **Styling**      | `REQ-STY-02` | Contaminación CSS                | Reglas CSS globales no utilizadas superiores al 2% del bundle CSS.                              |
-| **Layout**       | `REQ-CWV-01` | Cumulative Layout Shift (CLS)    | **CLS > 0.000** en cualquier punto del ciclo de vida de la página[cite: 1].                     |
-| **Hydration**    | `REQ-CWV-02` | Flash of Unstyled Content (FOUC) | > 0ms de discrepancia de color o parpadeo durante cambios de tema[cite: 1].                     |
-| **Loading**      | `REQ-CWV-03` | Largest Contentful Paint (LCP)   | **LCP > 800ms** en perfil de conexión móvil simulado [Fast 4G, 1.6 Mbps/150ms RTT](cite: 1).    |
-| **Interaction**  | `REQ-CWV-04` | Interaction to Next Paint (INP)  | **INP > 50ms** en cualquier evento de teclado, clic o toque[cite: 1].                           |
-| **Compositor**   | `REQ-MOT-01` | Main-Thread Layout Thrashing     | Animaciones CSS o JS que muten `width`, `height`, `margin`, `padding`, `top`, `left`[cite: 1].  |
-| **Compositor**   | `REQ-MOT-02` | Ciclo de Vida de `will-change`   | Declaraciones estáticas permanentes de `will-change` en hojas de estilo[cite: 1].               |
-| **Edge Cache**   | `REQ-EDG-01` | Inmutabilidad de Chunks          | Chunks versionados (`/_astro/*`, `/fonts/*`) servidos sin `immutable` o `< 31536000s`[cite: 1]. |
-| **Edge Compute** | `REQ-EDG-02` | D1 Prefetch Protection           | Petición especulativa (`Purpose: prefetch`) que dispare escrituras en base de datos.            |
-| **Edge Storage** | `REQ-EDG-03` | R2 Class B Optimization          | Descargas directas de R2 sin pasar por capa de absorción de la Workers Cache API.               |
-| **SEO & i18n**   | `REQ-SEO-01` | Integridad de Esquemas JSON-LD   | Idioma del JSON-LD no coincide con la URL (`inLanguage`), o errores en Google Rich Results.     |
-| **SEO & i18n**   | `REQ-SEO-02` | Canonicidad Limpia               | Etiquetas canónicas que conserven parámetros de rastreo (`utm_*`, `ref`, `tag`).                |
+### 2.1. Requerimientos Técnicos y Umbrales de Rendimiento
+
+| Área | ID | Criterio de Medición | Umbral de Fallo (FAIL Condition) |
+| :--- | :--- | :--- | :--- |
+| **Compiler** | `REQ-COM-01` | JavaScript en Rutas Estáticas | > 0 KB de JavaScript cliente en páginas de lectura/artículos. |
+| **Compiler** | `REQ-COM-02` | Presupuesto Total de Islas | > 12 KB (gzip) de JavaScript total combinado en páginas interactivas. |
+| **Styling** | `REQ-STY-01` | Arquitectura Tailwind v4 | Existencia de archivos `tailwind.config.*` o `postcss.config.*` en el árbol. |
+| **Styling** | `REQ-STY-02` | Contaminación CSS | Reglas CSS globales no utilizadas superiores al 2% del bundle CSS. |
+| **Layout** | `REQ-CWV-01` | Cumulative Layout Shift (CLS) | **CLS > 0.000** en cualquier punto del ciclo de vida de la página. |
+| **Hydration** | `REQ-CWV-02` | Flash of Unstyled Content (FOUC) | > 0ms de discrepancia de color o parpadeo durante cambios de tema. |
+| **Loading** | `REQ-CWV-03` | Largest Contentful Paint (LCP) | **LCP > 800ms** en perfil móvil simulado (Fast 4G, 1.6 Mbps/150ms RTT). |
+| **Interaction** | `REQ-CWV-04` | Interaction to Next Paint (INP) | **INP > 50ms** en cualquier evento de teclado, clic o toque. |
+| **Compositor** | `REQ-MOT-01` | Main-Thread Layout Thrashing | Animaciones CSS o JS que muten `width`, `height`, `margin`, `padding`, `top`, `left`. |
+| **Compositor** | `REQ-MOT-02` | Ciclo de Vida de `will-change` | Declaraciones estáticas permanentes de `will-change` en hojas de estilo. |
+| **Edge Cache** | `REQ-EDG-01` | Inmutabilidad de Chunks | Chunks versionados (`/_astro/*`, `/fonts/*`) servidos sin `immutable` o `< 31536000s`. |
+| **Edge Compute** | `REQ-EDG-02` | D1 Prefetch Protection | Petición especulativa (`Purpose: prefetch`) que dispare escrituras en base de datos. |
+| **Edge Storage** | `REQ-EDG-03` | R2 Class B Optimization | Descargas directas de R2 sin pasar por capa de absorción de la Workers Cache API. |
+| **SEO & i18n** | `REQ-SEO-01` | Integridad de Esquemas JSON-LD | Idioma del JSON-LD no coincide con la URL (`inLanguage`), o errores en Google Rich Results. |
+| **SEO & i18n** | `REQ-SEO-02` | Canonicidad Limpia | Etiquetas canónicas que conserven parámetros de rastreo (`utm_*`, `ref`, `tag`). |
 
 ---
 
-## 3. Systematic Architecture & Technical Directives (SSD)
+## 3. Especificación del Sistema, Tipos e Invariantes Formales (SDD)
 
-### 3.1 Astro v7 Compiler, Islands & Server Islands Optimization
+### 3.1. Astro v7 Compiler, Islands & Server Islands Optimization
 
-#### 3.1.1 Configuración Inflexible del Compilador (`astro.config.mjs`)
+#### 3.1.1. Configuración Inflexible del Compilador (`astro.config.mjs`)
 
-Astro v7 debe configurarse para forzar compilación estática desacoplada[cite: 1]. Cuando se requiera inferencia dinámica en el edge (búsqueda semántica, analítica), se utilizará el adaptador oficial de Cloudflare con pre-renderizado universal explícito (`prerender = true`)[cite: 2].
+Astro se configura para forzar compilación estática desacoplada (`output: 'static'`). Cuando se requiera inferencia dinámica en el edge (búsqueda semántica, analítica), se utiliza el adaptador de Cloudflare con passthrough de imágenes para no consumir cuotas:
 
 ```javascript
 // astro.config.mjs
@@ -112,7 +128,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   output: "static",
   adapter: cloudflare({
-    imageService: "passthrough", // Previene el consumo de cuota de Cloudflare Images
+    imageService: "passthrough",
     platformProxy: {
       enabled: true,
     },
@@ -142,13 +158,13 @@ export default defineConfig({
 });
 ```
 
-#### 3.1.2 Disciplina en la Hidratación de Islas
+#### 3.1.2. Disciplina en la Hidratación de Islas
 
-1. **Regla de Cero JS en Contenido Informacional:** Todas las páginas de artículos de blog, estudios de caso, páginas de experiencia y landing pages estructurales deben emitir **exactamente 0 KB de JavaScript en el bundle inicial del cliente**[cite: 1].
-2. **Prohibición de `client:load`:** Queda prohibido el uso de la directiva `client:load` salvo para el orquestador global de temas si requiere ejecución síncrona. Toda interactividad debe demorarse mediante:
+1. **Regla de Cero JS en Contenido Informacional:** Todas las páginas de artículos de blog, estudios de caso, páginas de experiencia y landing pages estructurales emiten **exactamente 0 KB de JavaScript en el bundle inicial del cliente**.
+2. **Prohibición de `client:load`:** Toda interactividad debe demorarse mediante directivas no intrusivas:
    - `client:idle`: Para widgets de telemetría y escuchadores de atajos de teclado globales.
-   - `client:visible={{ rootMargin: '200px' }}`: Para modales diferidos, caruseles y componentes por debajo del pliegue.
-   - `client:media="(max-width: 768px)"`: Para navegaciones móviles que no tienen razón de existir en entornos de escritorio.
+   - `client:visible={{ rootMargin: '200px' }}`: Para modales diferidos y componentes por debajo del pliegue.
+   - `client:media="(max-width: 768px)"`: Para navegaciones móviles.
 3. **Server Islands (`server:defer`) para Componentes Dinámicos:** Cuando un componente dependa de cómputo en el Edge (ej. contador de lecturas en tiempo real desde D1), se utiliza Server Islands con esqueletos estáticos accesibles para evitar cualquier bloqueo del HTML principal:
 
 ```astro
@@ -169,11 +185,11 @@ const { contentId } = Astro.props;
 
 ---
 
-### 3.2 Tailwind CSS v4 CSS-First Architecture & Anti-Cliché Visual Directives
+### 3.2. Tailwind CSS v4 CSS-First Architecture & Anti-Cliché Visual Directives
 
-#### 3.2.1 Pipeline CSS-First Pura
+#### 3.2.1. Pipeline CSS-First Puro
 
-Se prohíbe terminantemente la presencia de configuraciones JavaScript (`tailwind.config.js`)[cite: 1]. Tailwind v4 procesa tokens nativamente en LightningCSS mediante la directiva `@theme`.
+Se prohíbe la presencia de configuraciones JavaScript (`tailwind.config.js`). Tailwind v4 procesa tokens nativamente en LightningCSS mediante la directiva `@theme`.
 
 ```css
 /* src/styles/global.css */
@@ -238,22 +254,22 @@ html {
 }
 ```
 
-#### 3.2.2 Criterios Visuales Anti-Cliché de Diseño
+#### 3.2.2. Criterios Visuales Anti-Cliché de Diseño
 
 Para erradicar la homogeneización estética producida por plantillas y modelos de IA, se audita el proyecto contra las siguientes restricciones estrictas:
 
-1. **Abolición de Paletas Genéricas:** Cero fondos crema vintage (`#F4F1EA`) con acentos terracota (`#D97757`). El sistema debe definir una jerarquía semántica monocromática y fría orientada a sistemas de misión crítica (Gris Pizarra / Blanco Puro / Acentos Cyber Ciel / Grafito Profundo).
-2. **Prohibición de Micro-Eyebrows Saturados:** Queda eliminado el patrón cliché de anteponer `// CATEGORY NAME` en mayúsculas diminutas con espaciado desmedido sobre cada título. La tipografía debe estructurarse mediante peso y contraste funcional.
+1. **Abolición de Paletas Genéricas:** Cero fondos crema vintage (`#F4F1EA`) con acentos terracota (`#D97757`). El sistema define una jerarquía semántica monocromática y fría orientada a sistemas de misión crítica (Gris Pizarra / Blanco Puro / Acentos Cyber Ciel / Grafito Profundo).
+2. **Prohibición de Micro-Eyebrows Saturados:** Queda eliminado el patrón cliché de anteponer `// CATEGORY NAME` en mayúsculas diminutas con espaciado desmedido sobre cada título. La tipografía se estructura mediante peso y contraste funcional.
 3. **Erradicación de Tarjetas Homogéneas:** No encapsular cada párrafo en cajas flotantes idénticas con esquinas excesivas (`rounded-3xl`) y bordes pálidos. Emplear divisiones estructurales basadas en líneas micrométricas (`1px hairline borders`), alternancia de fondos y contraste de espacios negativos.
 4. **Cero Adornos Tipográficos Falsos:** Se prohíbe cursivar palabras arbitrarias dentro de encabezados (`Building *scalable* systems`) sin que exista una justificación semántica o de cita textual.
 
 ---
 
-### 3.3 Zero-Reflow Motion Architecture (Compositor GPU Direct)
+### 3.3. Zero-Reflow Motion Architecture (Compositor GPU Direct)
 
-#### 3.3.1 Teorema de Exclusión del Hilo Principal
+#### 3.3.1. Teorema de Exclusión del Hilo Principal
 
-Toda animación o transición que altere la geometría de la caja provoca una recomputación del árbol de render (Layout Thrashing) que colapsa el frame rate en dispositivos de baja potencia[cite: 1].
+Toda animación o transición que altere la geometría de la caja provoca una recomputación del árbol de render (Layout Thrashing) que colapsa el frame rate en dispositivos de baja potencia.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -272,9 +288,9 @@ Toda animación o transición que altere la geometría de la caja provoca una re
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### 3.3.2 Ciclo de Vida Dinámico de `will-change`
+#### 3.3.2. Ciclo de Vida Dinámico de `will-change`
 
-El uso indiscriminado y estático de `will-change: transform` o `will-change: opacity` en CSS consume memoria VRAM de forma permanente y causa pérdida de nitidez en renderizado de fuentes vectoriales[cite: 1]. Se audita que `will-change` se gestione exclusivamente por software en el momento exacto de la interacción[cite: 1]:
+El uso indiscriminado y estático de `will-change: transform` o `will-change: opacity` en CSS consume memoria VRAM de forma permanente y causa pérdida de nitidez en renderizado de fuentes vectoriales. Se audita que `will-change` se gestione exclusivamente por software en el momento exacto de la interacción:
 
 ```typescript
 // src/utils/motion.ts
@@ -287,9 +303,9 @@ export function attachHardwareAcceleration(element: HTMLElement): () => void {
 }
 ```
 
-#### 3.3.3 WAAPI Circular Reveal Isolation Engine
+#### 3.3.3. WAAPI Circular Reveal Isolation Engine
 
-La transición de tema debe garantizar soporte sin degradación en navegadores modernos mediante aislamiento de pseudo-elementos[cite: 1]:
+La transición de tema garantiza soporte sin degradación en navegadores modernos mediante aislamiento de pseudo-elementos:
 
 ```typescript
 // src/utils/theme-reveal.ts
@@ -318,7 +334,6 @@ export async function triggerCircularThemeReveal(
 
   await transition.ready;
 
-  // Enforce explicit containment and compositor execution
   const animation = document.documentElement.animate(
     {
       clipPath: [
@@ -339,11 +354,11 @@ export async function triggerCircularThemeReveal(
 
 ---
 
-### 3.4 Zero Layout Shift (CLS = 0.000) & Sub-Pixel Font Metrics
+### 3.4. Zero Layout Shift (CLS = 0.000) & Sub-Pixel Font Metrics
 
-#### 3.4.1 Contención Geométrica y Reserva de Relación de Aspecto
+#### 3.4.1. Contención Geométrica y Reserva de Relación de Aspecto
 
-Queda prohibido el despliegue de cualquier recurso visual sin dimensiones asignadas en el momento del parseo del documento[cite: 1].
+Queda prohibido el despliegue de cualquier recurso visual sin dimensiones asignadas en el momento del parseo del documento:
 
 ```astro
 ---
@@ -365,32 +380,21 @@ const { source, altText, isHero = false } = Astro.props;
   style={`aspect-ratio: ${source.width} / ${source.height}`}
 >
   <Image
-    'async'
-    }
-    'auto'
-    }
-    'eager'
-    'high'
-    'lazy'
-    }
-    'sync'
-    :
-    ?
-    alt="{altText}"
+    src={source}
+    alt={altText}
+    width={source.width}
+    height={source.height}
+    loading={isHero ? "eager" : "lazy"}
+    decoding={isHero ? "sync" : "async"}
+    fetchpriority={isHero ? "high" : "auto"}
     class="w-full h-full object-cover transition-opacity duration-300"
-    decoding="{isHero"
-    fetchpriority="{isHero"
-    height="{source.height}"
-    loading="{isHero"
-    src="{source}"
-    width="{source.width}"
   />
 </div>
 ```
 
-#### 3.4.2 Eliminación de FOUT/FOIT mediante Font Metric Overrides
+#### 3.4.2. Eliminación de FOUT/FOIT mediante Font Metric Overrides
 
-Para evitar layout shifts al descargar tipografías web `.woff2`, se deben calcular y aplicar overrides exactos sobre las fuentes del sistema[cite: 1]:
+Para evitar layout shifts al descargar tipografías web `.woff2`, se aplican overrides exactos sobre las fuentes del sistema:
 
 ```css
 /* Font Face Metric Overrides for Zero Layout Shift */
@@ -412,9 +416,9 @@ Para evitar layout shifts al descargar tipografías web `.woff2`, se deben calcu
 }
 ```
 
-#### 3.4.3 Prevención Absoluta de FOUC en Cambio de Página
+#### 3.4.3. Prevención Absoluta de FOUC en Cambio de Página
 
-Para anular cualquier parpadeo de color entre transiciones de `ClientRouter`, el layout principal debe sincronizar el tema de forma atómica en el ciclo de vida `astro:after-swap`[cite: 1]:
+Para anular cualquier parpadeo de color entre transiciones de `ClientRouter`, el layout principal sincroniza el tema de forma atómica en el ciclo de vida `astro:after-swap`:
 
 ```astro
 <!-- Fragment inside BaseLayout.astro <head> -->
@@ -438,11 +442,7 @@ Para anular cualquier parpadeo de color entre transiciones de `ClientRouter`, el
 
 ---
 
-### 3.5 Cloudflare Edge Orchestration & Telemetry Protection
-
-#### 3.5.1 Edge Worker con Blindaje de Prefetch (`cloudflare/worker.ts`)
-
-Astro prefetching y Chromium speculative loading generan ráfagas de tráfico HTTP destinadas únicamente a calentar la caché del navegador[cite: 1]. Si estas peticiones invocan bases de datos D1, la cuota gratuita de 5 millones de filas escaneadas se agota en pocas horas.
+### 3.5. Cloudflare Edge Orchestration & Telemetry Protection
 
 ```typescript
 // cloudflare/worker.ts
@@ -472,7 +472,6 @@ export default {
         return new Response(null, { status: 204 });
       }
 
-      // Non-blocking asynchronous processing
       ctx.waitUntil(
         (async () => {
           try {
@@ -497,7 +496,7 @@ export default {
               )
               .run();
           } catch {
-            // Telemetry failures are silently swallowed to ensure zero impact on users
+            // Silently swallowed to ensure zero impact on users
           }
         })(),
       );
@@ -531,61 +530,36 @@ export default {
 
 ---
 
-### 3.6 Multi-Language (i18n) Engine & JSON-LD Knowledge Graph Separation
+### 3.6. Aislamiento de Esquemas Schema.org JSON-LD
 
-#### 3.6.1 Jerarquía Estricta de Idiomas
-
-El sistema define **English (`en`)** como el idioma primario absoluto y predeterminado, y **Spanish (`es`)** como el secundario, estructurado para extenderse a N idiomas mediante un registro desacoplado:
+Cada ruta inyecta un documento estrictamente monobilingüe que declara su atributo `"inLanguage"`, manteniendo invariable el identificador global `@id: "https://arturonavax.dev/#person"` para consolidar el Knowledge Graph:
 
 ```typescript
-// src/i18n/locales.ts
-export const SUPPORTED_LOCALES = ["en", "es"] as const;
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
-export const DEFAULT_LOCALE: Locale = "en";
-
-export interface LocaleDefinition {
-  code: Locale;
-  isoCode: string;
-  name: string;
-  dir: "ltr" | "rtl";
-}
-
-export const LOCALES: Record<Locale, LocaleDefinition> = {
-  en: { code: "en", isoCode: "en-US", name: "English", dir: "ltr" },
-  es: { code: "es", isoCode: "es-CO", name: "Español", dir: "ltr" },
-};
-```
-
-#### 3.6.2 Aislamiento de Esquemas Schema.org por Idioma
-
-Para evitar penalizaciones en Google Search Console y parseos erróneos en el validador de Rich Results, los esquemas JSON-LD nunca se mezclan ni se traducen en arrays bilingües sobre una misma URL. Cada ruta inyecta un documento estrictamente monobilingüe que declara su atributo `"inLanguage"`, manteniendo invariable el identificador global `@id` para consolidar el Knowledge Graph:
-
-```typescript
-// src/utils/seo.ts
-import type { Locale } from "../i18n/locales";
+// src/lib/seo/schema-builder.ts
+import type { Locale } from "../../i18n/locales";
 
 interface PersonSchemaOptions {
   locale: Locale;
   canonicalUrl: string;
-  headline: string;
-  bio: string;
+  jobTitle: string;
+  description: string;
 }
 
-export function generatePersonSchema(
+export function buildPersonJsonLd(
   options: PersonSchemaOptions,
 ): Record<string, unknown> {
   return {
-    "@context": "[https://schema.org](https://schema.org)",
+    "@context": "https://schema.org",
     "@type": "Person",
-    "@id": "[https://arturonavax.dev/#person](https://arturonavax.dev/#person)", // Stable global identity anchor
+    "@id": "https://arturonavax.dev/#person",
     inLanguage: options.locale,
     name: "Arturo Nava",
-    jobTitle: options.headline,
-    description: options.bio,
+    jobTitle: options.jobTitle,
+    description: options.description,
     url: options.canonicalUrl,
     sameAs: [
-      "[https://github.com/arturonavax](https://github.com/arturonavax)",
-      "[https://linkedin.com/in/arturonava](https://linkedin.com/in/arturonava)",
+      "https://github.com/arturonavax",
+      "https://linkedin.com/in/arturonava",
     ],
   };
 }
@@ -593,11 +567,9 @@ export function generatePersonSchema(
 
 ---
 
-## 4. Continuous Automated Audit & Test Engine (ODD)
+## 4. Verificación Operativa, Telemetría y Validación en Tiempo de Ejecución (ODD)
 
-### 4.1 Script de Auditoría de Compilador y Código Fuente (`scripts/audit-codebase.ts`)
-
-Este script se ejecuta antes de cualquier `pnpm build`. Si un desarrollador o agente introduce una etiqueta `<img>` nativa, importa librerías de más de 10 KB en cliente, o añade transiciones sobre propiedades de layout, el script termina con código de salida 1.
+### 4.1. Script de Auditoría de Compilador y Código Fuente (`scripts/audit-codebase.ts`)
 
 ```typescript
 // scripts/audit-codebase.ts
@@ -702,7 +674,7 @@ if (totalViolations > 0) {
 
 ---
 
-### 4.2 Suite de Pruebas Playwright Core Web Vitals & FOUC (`tests/audit.spec.ts`)
+### 4.2. Suite de Pruebas Playwright Core Web Vitals & FOUC (`tests/audit.spec.ts`)
 
 ```typescript
 // tests/audit.spec.ts
@@ -714,11 +686,11 @@ test.describe("Top #1 Tier Architectural and Performance Certification", () => {
   }) => {
     // 1. Inject PerformanceObserver to intercept layout shifts
     await page.addInitScript(() => {
-      window.__cumulativeLayoutShift = 0;
+      (window as unknown as { __cumulativeLayoutShift: number }).__cumulativeLayoutShift = 0;
       const observer = new PerformanceObserver((entryList) => {
         for (const entry of entryList.getEntries()) {
-          if (!(entry as any).hadRecentInput) {
-            window.__cumulativeLayoutShift += (entry as any).value;
+          if (!(entry as { hadRecentInput?: boolean }).hadRecentInput) {
+            (window as unknown as { __cumulativeLayoutShift: number }).__cumulativeLayoutShift += (entry as { value: number }).value;
           }
         }
       });
@@ -754,7 +726,9 @@ test.describe("Top #1 Tier Architectural and Performance Certification", () => {
     expect(lcpValue).toBeLessThan(800);
 
     // 4. Assert Cumulative Layout Shift
-    const finalCls = await page.evaluate(() => window.__cumulativeLayoutShift);
+    const finalCls = await page.evaluate(
+      () => (window as unknown as { __cumulativeLayoutShift: number }).__cumulativeLayoutShift,
+    );
     expect(finalCls).toBe(0.0);
 
     // 5. Assert Scrollbar Gutter Locking
@@ -811,50 +785,48 @@ test.describe("Top #1 Tier Architectural and Performance Certification", () => {
 
 ---
 
-## 5. Master Certification Matrix & Production Scorecard
-
-Antes de autorizar el merge hacia la rama `main` o desplegar a producción en Cloudflare Edge, el equipo técnico debe auditar y tildar el 100% de los siguientes puntos sin excepción[cite: 1]:
+## 5. Matriz de Certificación, Criterios de Aceptación y Estado de Implementación (DoD)
 
 ```
 ================================================================================
                     TOP #1 TECHNICAL CERTIFICATION SCORECARD
 ================================================================================
 
-[x] 1. ASTRO v7 & COMPILER COMPLIANCE
-    [x] `output: 'static'` explícito con adaptadores configurados en pass-through.
+[x] 1. COMPILADOR ASTRO v7 Y ARQUITECTURA ESTÁTICA
+    [x] output: 'static' explícito con adaptadores configurados en pass-through.
     [x] Cero KB de JavaScript cliente en rutas informacionales (Blog, Landing, Resume).
-    [x] Contenido tipado estrictamente mediante Content Collections (`zod` schemas).
-    [x] Estrategia de prefetch configurada en `hover` (sin spam de solicitudes de red).
+    [x] Contenido tipado estrictamente mediante Content Collections (zod schemas v4).
+    [x] Estrategia de prefetch configurada en hover (sin spam de solicitudes de red).
 
-[x] 2. TAILWIND CSS v4 PURITY & DESIGN INTEGRITY
-    [x] Cero archivos `tailwind.config.js` o `postcss.config.js` en el repositorio.
-    [x] Tokens semánticos declarados mediante directiva `@theme` en CSS principal.
+[x] 2. PUREZA DE TAILWIND CSS v4 E INTEGRIDAD DE DISEÑO
+    [x] Cero archivos tailwind.config.js o postcss.config.js en el repositorio.
+    [x] Tokens semánticos declarados mediante directiva @theme en CSS principal.
     [x] Cumplimiento de directivas anti-cliché: cero paletas crema/terracota de IA.
     [x] Cero micro-eyebrows saturados y cero cursivas arbitrarias en encabezados.
 
-[x] 3. COMPOSITOR-ONLY MOTION & THEME HARMONY
-    [x] Cambio de tema implementado mediante WAAPI circular reveal sobre `clipPath`.
-    [x] Cero propiedades de caja (`width`, `height`, `top`, `margin`) en animaciones.
-    [x] Cero uso estático de `will-change` en hojas de estilo globales.
-    [x] Respeto absoluto a la preferencia del usuario `prefers-reduced-motion: reduce`.
+[x] 3. ANIMACIONES EN COMPOSITOR Y ARMONÍA DE TEMA
+    [x] Cambio de tema implementado mediante WAAPI circular reveal sobre clipPath.
+    [x] Cero propiedades de caja (width, height, top, margin) en animaciones.
+    [x] Cero uso estático de will-change en hojas de estilo globales.
+    [x] Respeto absoluto a la preferencia del usuario prefers-reduced-motion: reduce.
 
-[x] 4. MATHEMATICAL CORE WEB VITALS (100% GREEN)
+[x] 4. CORE WEB VITALS MATEMÁTICOS (100% GREEN)
     [x] CLS = 0.000 certificado mediante PerformanceObserver continuo.
     [x] LCP < 800ms con conexión móvil restringida (Fast 4G Profile).
-    [x] Bloqueo de canaleta de scrollbar mediante `scrollbar-gutter: stable`.
-    [x] Override métrico tipográfico aplicado a fuentes `.woff2` locales para anular FOUT.
-    [x] Imagen Hero priorizada mediante `loading="eager"` y `fetchpriority="high"`.
+    [x] Bloqueo de canaleta de scrollbar mediante scrollbar-gutter: stable.
+    [x] Override métrico tipográfico aplicado a fuentes .woff2 locales para anular FOUT.
+    [x] Imagen Hero priorizada mediante loading="eager" y fetchpriority="high".
 
-[x] 5. CLOUDFLARE EDGE RUNTIME & PERIMETER
-    [x] Archivo `_headers` declarando `31536000, immutable` en hashes y fuentes.
+[x] 5. RUNTIME PERIMETRAL EN CLOUDFLARE EDGE
+    [x] Archivo _headers declarando 31536000, immutable en hashes y fuentes.
     [x] Telemetría desacoplada: peticiones especulativas descartadas sin mutar D1.
     [x] Activos pesados (PDFs/Imágenes) cacheados mediante Workers Cache API sobre R2.
-    [x] Procesamiento en background asíncrono no bloqueante vía `ctx.waitUntil()`.
+    [x] Procesamiento en background asíncrono no bloqueante vía ctx.waitUntil().
 
-[x] 6. ENTERPRISE I18N & KNOWLEDGE GRAPH SEO
+[x] 6. INTERNACIONALIZACIÓN ENTERPRISE Y SEO KNOWLEDGE GRAPH
     [x] Jerarquía determinista de internacionalización (EN primario -> ES -> N).
-    [x] Documentos JSON-LD 100% monobilingües sincronizados con la URL (`inLanguage`).
-    [x] Identificador `@id` invariable entre idiomas para consolidación en Knowledge Graph.
-    [x] URLs canónicas sanitizadas en tiempo real eliminando parámetros de rastreo (`utm_*`).
+    [x] Documentos JSON-LD 100% monobilingües sincronizados con la URL (inLanguage).
+    [x] Identificador @id: "https://arturonavax.dev/#person" invariable entre idiomas.
+    [x] URLs canónicas sanitizadas en tiempo real eliminando parámetros de rastreo (utm_*).
 ================================================================================
 ```

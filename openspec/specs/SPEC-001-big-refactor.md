@@ -1,74 +1,124 @@
-# OpenSpec: Architecture, Performance & Scalability Specification
+# SPEC-001: ARQUITECTURA ENTERPRISE EDGE, RUTAS DINÁMICAS i18n Y RENDIMIENTO SPA
+
+## Especificación Arquitectónica de Alto Rendimiento, Cero Duplicación de Código y Optimización Perimetral en Cloudflare
 
 ```yaml
-id: SPEC-2026-ARCH-001
+id: SPEC-001-ARCH-EDGE-I18N
 title: Enterprise Astro Edge Architecture, Zero-Duplication i18n & Cloudflare Infrastructure
-status: READY-FOR-EXECUTION
-author: Staff Frontend Performance Architect
-target_framework: Astro v7+ / Cloudflare Workers Static Assets & Pages
-methodology: Spec-Driven Development (SDD) / Requirement-Driven Architecture
+status: APPROVED / IMPLEMENTED
+version: 2.0.0
+author: Staff Frontend Performance Architect & Technical SEO Lead
+target_stack:
+  framework: Astro v7.3.4+ (Compilación Estática Pura / ClientRouter)
+  styling: Tailwind CSS v4.3.3+ (CSS-First @theme Engine / LightningCSS)
+  runtime: Cloudflare Edge (Workers Static Assets, Pages, D1 Database, Cache API)
+  architecture: Hexagonal / Decoupled Ports & Adapters
+  locales: [en, es] (EN Primario por defecto -> ES Secundario -> Extensible N)
+methodology: Tri-Axis Model — Spec-Driven Development (SDD), Requirement-Driven Development (RDD) & Organic/Operational-Driven Development (ODD)
+cross_references:
+  spec_001: openspec/specs/SPEC-001-big-refactor.md
+  spec_002: openspec/specs/SPEC-002-general-tasks.md
+  spec_003: openspec/specs/SPEC-003-future-improves.md
+  spec_004: openspec/specs/SPEC-004-audit.md
 ```
 
 ---
 
-## 1. Diagnóstico del Sistema y Oportunidades de Mejora
+## 1. Resumen Ejecutivo, Diagnóstico y Alineación Metodológica
 
-### 1.1. Deuda Técnica y Antipatrones Detectados
+### 1.1. Contexto y Diagnóstico del Sistema
+
+El ecosistema web de portafolio y consultoría técnica de alto nivel enfrentaba una serie de desafíos arquitectónicos que comprometían su escalabilidad, mantenibilidad y rendimiento en producción:
 
 1. **Duplicación Crítica en Capa de Rutas (`src/pages/` vs `src/pages/es/`):**
-   - El proyecto replica 14 archivos `.astro` completos entre la raíz y el subdirectorio `es/` (`index`, `blog/*`, `projects/*`, `experience/*`, `services/*`, `resume`, `links`, `search`, `case-studies`).
-   - Esta redundancia multiplica el costo de mantenimiento por $2\times$, induce divergencias de UI/SEO (atributos `aria-*`, micro-interacciones) y anula la escalabilidad cuando se agreguen nuevos idiomas (`pt`, `de`, `fr`).
-
+   - El proyecto replicaba 14 archivos `.astro` completos entre la raíz y el subdirectorio `es/` (`index`, `blog/*`, `projects/*`, `experience/*`, `services/*`, `resume`, `links`, `search`, `case-studies`).
+   - Dicha redundancia multiplicaba el costo de mantenimiento por $2\times$, inducía divergencias de UI/SEO (atributos `aria-*`, micro-interacciones) y anulaba la escalabilidad ante la incorporación de futuros idiomas (`pt`, `de`, `fr`).
 2. **Fugas de Memoria e Incompatibilidad con View Transitions (`ClientRouter`):**
-   - Múltiples componentes interactivos (`MatrixBackground.astro`, `SystemTelemetryDemo.astro`, `UniversalSearchModal.astro`, `ShortcutsModal.astro`, `BlogFilterBar.astro`) instancian scripts imperativos mediante listeners globales en `document` o bucles `requestAnimationFrame`/`setInterval`.
-   - En navegaciones SPA, los listeners globales no se limpian y los bucles de renderizado continúan ejecutándose en segundo plano, degradando el **INP (Interaction to Next Paint)** e incrementando el consumo de memoria heap en el cliente.
-
+   - Múltiples componentes interactivos (`MatrixBackground.astro`, `SystemTelemetryDemo.astro`, `UniversalSearchModal.astro`, `ShortcutsModal.astro`, `BlogFilterBar.astro`) instanciaban scripts imperativos huérfanos mediante listeners globales en `document` o bucles `requestAnimationFrame`/`setInterval`.
+   - En navegaciones SPA, los listeners no se liberaban y los bucles de renderizado continuaban ejecutándose en segundo plano, degradando el **INP (Interaction to Next Paint)** e incrementando el consumo de memoria heap en el cliente.
 3. **Acoplamiento Directo al Sistema de Archivos Local (`src/content/`):**
-   - `src/content.config.ts` utiliza cargadores `glob()` estrictamente atados a la estructura de carpetas física (`src/content/posts/en/*.md`).
-   - No existe una interfaz abstracta que permita bifurcar o migrar progresivamente las fuentes de datos hacia Cloudflare R2, CMS headless o bases de datos SQLite en el Edge (Cloudflare D1).
-
+   - El Content Layer utilizaba cargadores `glob()` estrictamente atados a la estructura de carpetas física (`src/content/posts/en/*.md`).
+   - Se requería una capa abstracta de repositorio que permitiera bifurcar o migrar progresivamente las fuentes de datos hacia Cloudflare R2, CMS headless o bases de datos SQLite en el Edge (Cloudflare D1).
 4. **Monolito de Scripting sin Aislamiento de Ciclo de Vida:**
-   - La lógica de filtrado de clientes en `/blog`, `/projects` y `/case-studies` re-renderiza manipulando el DOM de forma desincronizada con el estado de la aplicación.
-   - Falta de un gestor de micro-estado atómico reactivo (<1KB) como `@nanostores/core` para comunicar modales, estado de búsqueda y telemetría sin recargar ni romper el hilo principal.
-
+   - La lógica de filtrado manipulaba el DOM sin sincronización reactiva, careciendo de un gestor de micro-estado atómico ultraligero (<1.5KB) como `@nanostores/core` para comunicar modales, búsqueda y telemetría.
 5. **Optimización de Caché y Headers en el Edge de Cloudflare:**
-   - El archivo `public/_headers` actual carece de directivas estrictas de inmutabilidad (`public, max-age=31536000, immutable`) para bundles generados por Vite (`/_astro/*`) y activos multimedia, provocando revalidaciones innecesarias (`304 Not Modified`) que ralentizan la navegación edge-to-client.
+   - El archivo `public/_headers` carecía de directivas estrictas de inmutabilidad (`public, max-age=31536000, immutable`) para bundles generados por Vite (`/_astro/*`) y tipografías locales, provocando revalidaciones innecesarias (`304 Not Modified`).
+
+### 1.2. Marco Metodológico Tri-Axis: SDD, RDD y ODD
+
+Para garantizar una ingeniería de software con cero regresiones, esta especificación se rige bajo el modelo de tres ejes:
+
+```
+                            TRI-AXIS METHODOLOGY MODEL
+                                    [ SDD ]
+                           Contratos y Tipado Estricto
+                                       ▲
+                                      / \
+                                     /   \
+                                    /     \
+                                   ▼       ▼
+                              [ RDD ] <──> [ ODD ]
+                         Requerimientos   Validación Perimetral
+                           Cuantitativos    en Tiempo Real
+```
+
+- **Spec-Driven Development (SDD):** Modelado formal previo de tipos, contratos de rutas y abstracciones de interfaz en TypeScript estricto.
+- **Requirement-Driven Development (RDD):** Definición binaria de requerimientos funcionales (`REQ-01` a `REQ-05`) y compuertas cuantitativas de fallo.
+- **Organic/Operational-Driven Development (ODD):** Validación operativa continua en los más de 300 centros de datos de Cloudflare Edge, verificando comportamiento en frío, tiempos de respuesta sub-segundo y navegación fluida sin memory leaks.
+
+### 1.3. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
+
+Esta especificación actúa como el **cimiento estructural** de toda la plataforma web, conectándose bidireccionalmente con el resto de las especificaciones:
+
+- **Hacia [SPEC-002: Refactorización General y Resume Studio](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** SPEC-001 provee el sistema de rutas unificadas `[...lang]` sobre el cual SPEC-002 monta la división modular de `/resume/` y `/resume/maker/`, el protocolo de portapapeles accesible y la exclusión de peticiones especulativas de prefetch.
+- **Hacia [SPEC-003: Arquitectura Hexagonal y Cloudflare Edge Desacoplado](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md):** SPEC-001 define las interfaces iniciales de repositorio y telemetría que SPEC-003 formaliza integralmente en puertos de dominio puros (`StoragePort`, `TelemetryPort`, `SearchEnginePort`) y adaptadores perimetrales para R2, D1 y Vectorize.
+- **Hacia [SPEC-004: Auditoría Arquitectónica Global y Verificación Extrema](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md):** SPEC-004 somete los invariantes de SPEC-001 (presupuesto de 0 KB JS cliente, transiciones SPA sin layout shifts, headers inmutables) a compuertas de análisis estático automatizado (`scripts/audit-codebase.ts`) y pruebas Playwright.
 
 ---
 
-## 2. Requerimientos del Sistema (Requirements-Driven Specification)
+## 2. Matriz de Requerimientos y Compuertas Cuantitativas (RDD)
 
-### REQ-01: Zero-Duplication i18n Engine
+### 2.1. Requerimientos Funcionales y Técnicos (REQ-*)
 
-- **R1.1:** Las rutas deben definirse mediante parámetros dinámicos unificados (`src/pages/[...lang]/...`) o templates desacoplados, reduciendo las páginas físicas de 28 a 14.
+#### REQ-01: Motor i18n con Cero Duplicación de Código
+- **R1.1:** Las rutas deben definirse mediante parámetros dinámicos unificados (`src/pages/[...lang]/...`), reduciendo las páginas físicas de 28 a 14.
 - **R1.2:** Toda ruta debe resolver canónicos absolutos y etiquetas `hreflang` bidireccionales en tiempo de compilación estática (SSG).
-- **R1.3:** La traducción de etiquetas UI debe ser estricta mediante TypeScript Generics con auto-completado y detección de claves faltantes en build time.
+- **R1.3:** La traducción de etiquetas UI debe ser estricta mediante TypeScript Generics con auto-completado y detección de claves faltantes en tiempo de compilación.
 
-### REQ-02: Native Web Components Lifecycle (SPA-Safe Client Logic)
-
+#### REQ-02: Ciclo de Vida de Web Components Nativos (SPA-Safe)
 - **R2.1:** Prohibir scripts imperativos huérfanos en componentes de interfaz.
 - **R2.2:** Todos los componentes interactivos (`MatrixBackground`, `SystemTelemetryDemo`, modales) deben implementarse como Custom Elements (`HTMLElement`), aprovechando `connectedCallback` y `disconnectedCallback` para garantizar montaje y desmontaje seguro durante las transiciones de `ClientRouter`.
-- **R2.3:** Estado global cliente manejado exclusivamente mediante Nano Stores (`@nanostores/core`) con un peso bundle inferior a 1.5KB.
+- **R2.3:** El estado global del cliente debe gestionarse exclusivamente mediante Nano Stores (`@nanostores/core`) con un peso de bundle inferior a 1.5 KB.
 
-### REQ-03: Zero FOUC & Core Web Vitals Constraints
-
-- **R3.1:** CLS = `0.000` estricto en todas las rutas y en cambios de vista.
+#### REQ-03: Restricciones de Cero FOUC y Core Web Vitals
+- **R3.1:** CLS = `0.000` estricto en todas las rutas y durante transiciones de vista.
 - **R3.2:** LCP < `0.8s` mediante pre-conexión de orígenes, tipografías locales con `font-display: swap` y metric overrides (`size-adjust`, `ascent-override`), y `<Image />` de Astro optimizado con `loading="eager"` y `fetchpriority="high"`.
 - **R3.3:** INP < `50ms` mediante la eliminación total de tareas bloqueantes en el main thread (>16ms).
 
-### REQ-04: Storage Provider Abstraction (Local / R2 Ready)
-
+#### REQ-04: Abstracción de Proveedor de Almacenamiento (Local / R2 Ready)
 - **R4.1:** Crear una capa de abstracción `ContentRepository` desacoplada del pipeline de Astro.
-- **R4.2:** El Content Layer de Astro v7 (`src/content.config.ts`) debe soportar carga híbrida: desarrollo local leyendo markdown de disco, y compilación remota o sincronizada leyendo blobs desde Cloudflare R2 vía S3 API / REST API.
+- **R4.2:** El Content Layer de Astro debe soportar carga híbrida: desarrollo local leyendo markdown de disco, y compilación remota o sincronizada leyendo blobs desde Cloudflare R2 vía API S3 / REST (expandido en [SPEC-003](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md)).
 
-### REQ-05: Private Edge Analytics & Zero Trust Observability
-
-- **R5.1:** Telemetría pública no bloqueante vía `navigator.sendBeacon` hacia endpoints de Cloudflare Workers con volcado asíncrono a Cloudflare D1 / Analytics Engine.
+#### REQ-05: Telemetría Edge Privada y Observabilidad Zero Trust
+- **R5.1:** Telemetría pública no bloqueante vía `navigator.sendBeacon` o `fetch` hacia endpoints de Cloudflare Workers con volcado asíncrono a Cloudflare D1.
 - **R5.2:** Panel administrativo de analíticas aislado del build público, protegido a nivel de red mediante Cloudflare Access / Cloudflare Tunnels (Zero Trust), sin añadir JavaScript ni CSS al usuario final.
+
+### 2.2. Criterios de Aceptación Cuantitativos y Umbrales de Rendimiento
+
+| Métrica / Parámetro | Condición de Aprobación (PASS) | Condición de Fallo (FAIL) | Método de Medición |
+| :--- | :--- | :--- | :--- |
+| **Superficie de Páginas** | Reducción exacta del 50% (14 rutas paramétricas) | Existencia de duplicados en `src/pages/es/` | Inspección de AST y árbol de archivos |
+| **Presupuesto JS Cliente** | Exactamente 0 KB de framework JS en rutas estáticas | Inclusión de React/Vue/Svelte o scripts no scoped | Análisis de chunks de Vite en `dist/` |
+| **Cumulative Layout Shift** | **CLS = 0.000** continuo | CLS > 0.000 en cualquier transición | `PerformanceObserver` en navegación SPA |
+| **Largest Contentful Paint** | **LCP < 800ms** (Fast 4G, 1.6 Mbps / 150ms RTT) | LCP ≥ 800ms | Chrome DevTools Trace / Lighthouse |
+| **Interaction to Next Paint** | **INP < 50ms** | INP ≥ 50ms | Medición en clicks de filtros y búsqueda |
+| **Fugas de Memoria en SPA** | 0 nodos DOM desasociados tras 10 navegaciones | Retención de listeners o canvas en heap | Heap Snapshot en DevTools |
 
 ---
 
-## 3. Arquitectura del Sistema
+## 3. Especificación del Sistema, Tipos e Invariantes Formales (SDD)
+
+### 3.1. Arquitectura Global del Sistema
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -81,13 +131,13 @@ methodology: Spec-Driven Development (SDD) / Requirement-Driven Architecture
                │                        │                     │
                ▼                        ▼                     ▼
 ┌────────────────────────┐   ┌────────────────────┐   ┌──────────────────┐
-│  Private Admin Panel   │   │ Pre-rendered SSG   │   │ Cloudflare D1 /  │
-│  (Auth Required)       │   │ Static HTML/CSS/JS │   │ Analytics Engine │
+│  Panel Privado Admin   │   │ Pre-rendered SSG   │   │ Cloudflare D1 /  │
+│  (Auth Zero Trust)     │   │ Static HTML/CSS/JS │   │ Analytics Engine │
 └────────────────────────┘   └──────────┬─────────┘   └──────────────────┘
                                         │
                                         ▼
                      ┌──────────────────────────────────────┐
-                     │   Unified Client Application         │
+                     │     Aplicación Cliente Unificada     │
                      │  - ClientRouter (View Transitions)   │
                      │  - Custom Elements (Lifecycle Safe)  │
                      │  - Nano Stores (Shared Micro-state)  │
@@ -95,13 +145,7 @@ methodology: Spec-Driven Development (SDD) / Requirement-Driven Architecture
                      └──────────────────────────────────────┘
 ```
 
----
-
-## 4. Plan de Refactorización y Blueprint de Implementación
-
-### 4.1. Refactorización de i18n sin Duplicación de Código
-
-#### 4.1.1. Matriz de Idiomas y Tipado Estricto (`src/i18n/config.ts`)
+### 3.2. Matriz de Idiomas y Tipado Estricto (`src/i18n/config.ts`)
 
 ```typescript
 export const LOCALES = {
@@ -121,7 +165,7 @@ export function getLocalePaths() {
 }
 ```
 
-#### 4.1.2. Configuración de Rutas de Astro (`astro.config.mjs`)
+### 3.3. Configuración Canónica de Astro (`astro.config.mjs`)
 
 ```javascript
 import { defineConfig } from "astro/config";
@@ -129,8 +173,14 @@ import sitemap from "@astrojs/sitemap";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  site: "[https://arturonava.com](https://arturonava.com)",
+  site: "https://arturonavax.dev",
   output: "static",
+  trailingSlash: "always",
+  build: {
+    inlineStylesheets: "auto",
+    format: "directory",
+  },
+  compressHTML: true,
   prefetch: {
     prefetchAll: false,
     defaultStrategy: "hover",
@@ -146,32 +196,30 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     build: {
+      cssCodeSplit: true,
       cssMinify: "lightningcss",
     },
   },
   integrations: [
     sitemap({
+      filter: (page) => !page.includes("/search/"),
       i18n: {
         defaultLocale: "en",
-        locales: {
-          en: "en-US",
-          es: "es-ES",
-        },
+        locales: { en: "en", es: "es" },
       },
     }),
   ],
 });
 ```
 
-#### 4.1.3. Patrón de Rutas Paramétricas Catch-All
+### 3.4. Patrón de Rutas Paramétricas Catch-All (`src/pages/[...lang]/`)
 
-En lugar de mantener `src/pages/index.astro` y `src/pages/es/index.astro`, se unifica la estructura dentro de `src/pages/[...lang]/`:
+En lugar de duplicar templates en `src/pages/es/`, todas las páginas se unifican bajo `src/pages/[...lang]/`:
 
-```
+```text
 src/pages/
 ├── [...lang]/
 │   ├── index.astro
-│   ├── resume.astro
 │   ├── links.astro
 │   ├── search.astro
 │   ├── blog/
@@ -186,269 +234,160 @@ src/pages/
 │   ├── services/
 │   │   ├── index.astro
 │   │   └── [slug].astro
-│   └── case-studies/
-│       └── index.astro
+│   ├── case-studies/
+│   │   └── index.astro
+│   └── resume/
+│       ├── index.astro
+│       └── maker.astro
 ├── 404.astro
-├── robots.txt.ts
-├── llms.txt.ts
-└── search-index.json.ts
+├── rss.xml.ts
+├── search-index.json.ts
+└── llms-full.txt.ts
 ```
 
-#### 4.1.4. Ejemplo de Implementación Unificada (`src/pages/[...lang]/blog/[slug].astro`)
+Ejemplo de implementación unificada en `src/pages/[...lang]/blog/[slug].astro`:
 
 ```astro
 ---
-import { getCollection, render } from "astro:content";
+import { render } from "astro:content";
 import ArticleLayout from "@/layouts/ArticleLayout.astro";
-import { LOCALES, DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
-import { useTranslations } from "@/i18n/utils";
+import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
+import { getVisibleCollection } from "@/utils/visibility";
 
 export async function getStaticPaths() {
-  const posts = await getCollection("posts");
+  const posts = await getVisibleCollection("posts");
 
   return posts.map((post) => {
-    // Post ID format: "en/sub-50ms-fraud-engine-go" or "es/sub-50ms-fraud-engine-go"
-    const [localePart, slugPart] = post.id.split("/");
+    const [localePart, ...slugParts] = post.id
+      .replace(/\.(md|mdx)$/, "")
+      .split("/");
+    const slugPart = slugParts.join("/");
     const lang = localePart === DEFAULT_LOCALE ? undefined : localePart;
 
     return {
-      params: {
-        lang,
-        slug: slugPart,
-      },
-      props: {
-        post,
-        currentLocale: localePart as SupportedLocale,
-      },
+      params: { lang, slug: slugPart },
+      props: { post, currentLocale: localePart as SupportedLocale },
     };
   });
 }
 
 const { post, currentLocale } = Astro.props;
-const { Content, headings, remarkPluginFrontmatter } = await render(post);
-const t = useTranslations(currentLocale);
+const { Content } = await render(post);
+const isEs = currentLocale === "es";
 ---
 
 <ArticleLayout
-  description="{post.data.description}"
-  headings="{headings}"
-  locale="{currentLocale}"
-  publishDate="{post.data.publishDate}"
-  readingTime="{remarkPluginFrontmatter?.readingTime}"
-  slug="{Astro.params.slug!}"
-  title="{post.data.title}"
-  updatedDate="{post.data.updatedDate}"
+  title={post.data.title}
+  description={post.data.description}
+  locale={currentLocale}
+  pubDate={post.data.pubDate}
+  tags={post.data.tags}
+  translationKey={post.data.translationKey}
+  collectionName="posts"
+  backHref={isEs ? "/es/blog/" : "/blog/"}
+  backLabel={isEs ? "Volver a ensayos" : "Back to essays"}
 >
   <Content />
 </ArticleLayout>
 ```
 
----
+### 3.5. Ciclo de Vida de Custom Elements y Componentes SPA-Safe
 
-### 4.2. Integración de SPA de Alto Rendimiento en Cloudflare Edge
+Para evitar memory leaks y bloqueos en el main thread, los componentes interactivos se aíslan en Custom Elements:
 
-#### 4.2.1. Gestión de Transiciones y Anti-FOUC (`src/layouts/BaseLayout.astro`)
+```typescript
+// Component: src/components/ui/MatrixBackground.astro
+class MatrixCanvasLayer extends HTMLElement {
+  private canvas: HTMLCanvasElement | null = null;
+  private ctx: CanvasRenderingContext2D | null = null;
+  private animationFrameId: number | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
-```astro
----
-import { ClientRouter } from "astro:transitions";
-import SEOHead from "@/components/common/SEOHead.astro";
-import Header from "@/components/common/Header.astro";
-import Footer from "@/components/common/Footer.astro";
-import UniversalSearchModal from "@/components/ui/UniversalSearchModal.astro";
-import ShortcutsModal from "@/components/ui/ShortcutsModal.astro";
-import type { SupportedLocale } from "@/i18n/config";
+  connectedCallback() {
+    if (window.innerWidth < 768) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-interface Props {
-  title: string;
-  description: string;
-  locale: SupportedLocale;
-  image?: string;
-  articleDate?: Date;
-}
+    this.canvas = this.querySelector("canvas");
+    if (!this.canvas) return;
+    this.ctx = this.canvas.getContext("2d");
+    if (!this.ctx) return;
 
-const { title, description, locale, image, articleDate } = Astro.props;
----
+    this.initCanvasDimensions();
+    this.initRain();
+    this.startRainLoop();
 
-<!doctype html>
-<html lang={locale} class="scroll-smooth">
-  <head>
-    <SEOHead
-      articleDate="{articleDate}"
-      description="{description}"
-      image="{image}"
-      locale="{locale}"
-      title="{title}"
-    />
-    <ClientRouter />
-
-    <!-- Synchronous In-Head Theme Engine (Zero FOUC) -->
-    <script is:inline>
-      (function () {
-        const storedTheme = localStorage.getItem("theme");
-        const systemPrefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)",
-        ).matches;
-        const resolvedTheme =
-          storedTheme || (systemPrefersDark ? "dark" : "light");
-        if (resolvedTheme === "dark") {
-          document.documentElement.classList.add("dark");
-          document.documentElement.style.colorScheme = "dark";
-        } else {
-          document.documentElement.classList.remove("dark");
-          document.documentElement.style.colorScheme = "light";
-        }
-      })();
-
-      document.addEventListener("astro:after-swap", () => {
-        const storedTheme = localStorage.getItem("theme");
-        const systemPrefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)",
-        ).matches;
-        const resolvedTheme =
-          storedTheme || (systemPrefersDark ? "dark" : "light");
-        if (resolvedTheme === "dark") {
-          document.documentElement.classList.add("dark");
-          document.documentElement.style.colorScheme = "dark";
-        } else {
-          document.documentElement.classList.remove("dark");
-          document.documentElement.style.colorScheme = "light";
-        }
-      });
-    </script>
-  </head>
-  <body class="min-h-screen bg-neutral-50 text-neutral-900 antialiased selection:bg-neutral-900 selection:text-neutral-50 dark:bg-neutral-950 dark:text-neutral-100 dark:selection:bg-neutral-100 dark:selection:text-neutral-950">
-    <div class="flex min-h-screen flex-col">
-      <Header currentLocale="{locale}" />
-      <main id="main-content" class="flex-1">
-        <slot />
-      </main>
-      <Footer currentLocale="{locale}" />
-    </div>
-
-    <UniversalSearchModal currentLocale="{locale}" />
-    <ShortcutsModal currentLocale="{locale}" />
-  </body>
-</html>
-```
-
-#### 4.2.2. Migración a Custom Elements para Ciclo de Vida Limpio (`src/components/ui/MatrixBackground.astro`)
-
-```astro
----
-interface Props {
-  density?: number;
-  opacity?: number;
-}
-
-const { density = 0.08, opacity = 0.15 } = Astro.props;
----
-
-<matrix-canvas-layer
-  data-density={density}
-  data-opacity={opacity}
-  class="pointer-events-none fixed inset-0 -z-10 block overflow-hidden"
->
-  <canvas class="h-full w-full"></canvas>
-</matrix-canvas-layer>
-
-<script>
-  class MatrixCanvasLayer extends HTMLElement {
-    private canvas: HTMLCanvasElement | null = null;
-    private ctx: CanvasRenderingContext2D | null = null;
-    private animationFrameId: number | null = null;
-    private drops: number[] = [];
-    private resizeObserver: ResizeObserver | null = null;
-
-    connectedCallback() {
-      this.canvas = this.querySelector("canvas");
-      if (!this.canvas) return;
-      this.ctx = this.canvas.getContext("2d");
-      if (!this.ctx) return;
-
+    this.resizeObserver = new ResizeObserver(() => {
       this.initCanvasDimensions();
       this.initRain();
-      this.startRainLoop();
+    });
+    this.resizeObserver.observe(this);
+  }
 
-      this.resizeObserver = new ResizeObserver(() => {
-        this.initCanvasDimensions();
-        this.initRain();
-      });
-      this.resizeObserver.observe(this);
+  disconnectedCallback() {
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
     }
-
-    disconnectedCallback() {
-      if (this.animationFrameId !== null) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
-      }
-      if (this.resizeObserver) {
-        this.resizeObserver.disconnect();
-        this.resizeObserver = null;
-      }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
     }
+  }
 
-    private initCanvasDimensions() {
-      if (!this.canvas) return;
-      const dpr = window.devicePixelRatio || 1;
-      const rect = this.getBoundingClientRect();
-      this.canvas.width = rect.width * dpr;
-      this.canvas.height = rect.height * dpr;
-      if (this.ctx) {
-        this.ctx.scale(dpr, dpr);
-      }
+  private initCanvasDimensions() {
+    if (!this.canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.getBoundingClientRect();
+    this.canvas.width = rect.width * dpr;
+    this.canvas.height = rect.height * dpr;
+    if (this.ctx) {
+      this.ctx.resetTransform?.();
+      this.ctx.scale(dpr, dpr);
     }
+  }
 
-    private initRain() {
-      if (!this.canvas) return;
-      const fontSize = 16;
-      const columns = Math.floor(this.canvas.width / fontSize);
-      this.drops = new Array(columns).fill(1);
-    }
+  private initRain() {
+    if (!this.canvas) return;
+    const fontSize = 14;
+    const columns = Math.floor(window.innerWidth / fontSize);
+    this.drops = new Array(columns).fill(1).map(() => Math.floor(Math.random() * 50));
+  }
 
-    private startRainLoop() {
-      const fontSize = 16;
-      const characters = "0123456789ABCDEF<>/{};:_$#@!*&";
-      const opacity = parseFloat(this.dataset.opacity || "0.15");
+  private startRainLoop() {
+    const fontSize = 14;
+    const characters = "0123456789ABCDEF<>/{};:_$#@!*&";
+    const opacity = parseFloat(this.dataset.opacity || "0.15");
 
-      const render = () => {
-        if (!this.ctx || !this.canvas) return;
+    const render = () => {
+      if (!this.ctx || !this.canvas) return;
+      this.ctx.fillStyle = "rgba(10, 10, 10, 0.08)";
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.fillStyle = `rgba(217, 119, 6, ${opacity})`;
+      this.ctx.font = `${fontSize}px monospace`;
 
-        this.ctx.fillStyle = "rgba(10, 10, 10, 0.08)";
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.ctx.fillStyle = `rgba(34, 197, 94, ${opacity})`;
-        this.ctx.font = `${fontSize}px monospace`;
-
-        for (let i = 0; i < this.drops.length; i++) {
-          const text = characters.charAt(
-            Math.floor(Math.random() * characters.length),
-          );
-          const x = i * fontSize;
-          const y = this.drops[i] * fontSize;
-
-          this.ctx.fillText(text, x, y);
-
-          if (y > this.canvas.height && Math.random() > 0.975) {
-            this.drops[i] = 0;
-          }
-          this.drops[i]++;
+      for (let i = 0; i < this.drops.length; i++) {
+        const text = characters.charAt(Math.floor(Math.random() * characters.length));
+        const x = i * fontSize;
+        const y = this.drops[i] * fontSize;
+        this.ctx.fillText(text, x, y);
+        if (y > this.canvas.height && Math.random() > 0.975) {
+          this.drops[i] = 0;
         }
-
-        this.animationFrameId = requestAnimationFrame(render);
-      };
-
+        this.drops[i]++;
+      }
       this.animationFrameId = requestAnimationFrame(render);
-    }
-  }
+    };
 
-  if (!customElements.get("matrix-canvas-layer")) {
-    customElements.define("matrix-canvas-layer", MatrixCanvasLayer);
+    this.animationFrameId = requestAnimationFrame(render);
   }
-</script>
+}
+
+if (!customElements.get("matrix-canvas-layer")) {
+  customElements.define("matrix-canvas-layer", MatrixCanvasLayer);
+}
 ```
 
-#### 4.2.3. Estado Compartido Ultraligero con Nano Stores (`src/stores/uiState.ts`)
+### 3.6. Micro-Estado Atómico Reactivo con Nano Stores (`src/stores/uiState.ts`)
 
 ```typescript
 import { atom } from "nanostores";
@@ -457,248 +396,65 @@ export const isSearchOpen = atom<boolean>(false);
 export const isShortcutsOpen = atom<boolean>(false);
 export const isSponsorshipModalOpen = atom<boolean>(false);
 
-export function toggleSearchModal(forceState?: boolean) {
+export function toggleSearchModal(forceState?: boolean): void {
   isSearchOpen.set(forceState !== undefined ? forceState : !isSearchOpen.get());
 }
 
-export function toggleShortcutsModal(forceState?: boolean) {
-  isShortcutsOpen.set(
-    forceState !== undefined ? forceState : !isShortcutsOpen.get(),
-  );
+export function toggleShortcutsModal(forceState?: boolean): void {
+  isShortcutsOpen.set(forceState !== undefined ? forceState : !isShortcutsOpen.get());
 }
 
-export function toggleSponsorshipModal(forceState?: boolean) {
-  isSponsorshipModalOpen.set(
-    forceState !== undefined ? forceState : !isSponsorshipModalOpen.get(),
-  );
+export function toggleSponsorshipModal(forceState?: boolean): void {
+  isSponsorshipModalOpen.set(forceState !== undefined ? forceState : !isSponsorshipModalOpen.get());
 }
 ```
 
----
-
-### 4.3. Pipeline de Almacenamiento Desacoplado (Local Markdown + Cloudflare R2 Migration Ready)
-
-#### 4.3.1. Interfaz de Repositorio de Contenido (`src/lib/content/repository.ts`)
+### 3.7. Contratos de Almacenamiento Desacoplado (`src/lib/content/repository.ts`)
 
 ```typescript
-import type { CollectionEntry } from 'astro:content';
-
 export interface PostEntity {
-  id: string;
-  slug: string;
-  locale: string;
-  title: string;
-  description: string;
-  publishDate: Date;
-  updatedDate?: Date;
-  tags: string[];
-  content: string;
+  readonly id: string;
+  readonly slug: string;
+  readonly locale: string;
+  readonly title: string;
+  readonly description: string;
+  readonly publishDate: Date;
+  readonly updatedDate?: Date;
+  readonly tags: readonly string[];
+  readonly content: string;
 }
 
 export interface IContentSourceProvider {
   fetchPosts(locale?: string): Promise<PostEntity[]>;
-  fetchPostBySlug(slug: string, locale: string): Promise<PostEntity null |>;
-}
-```
-
-#### 4.3.2. Adaptador Local y Adaptador Cloudflare R2 (`src/lib/content/providers.ts`)
-
-```typescript
-import type { IContentSourceProvider, PostEntity } from './repository';
-import { getCollection } from 'astro:content';
-
-export class LocalFilesystemProvider implements IContentSourceProvider {
-  async fetchPosts(locale?: string): Promise<PostEntity[]> {
-    const rawPosts = await getCollection('posts');
-    return rawPosts
-      .filter((post) => {
-        const [postLocale] = post.id.split('/');
-        return locale ? postLocale === locale : true;
-      })
-      .map((post) => {
-        const [postLocale, slug] = post.id.split('/');
-        return {
-          id: post.id,
-          slug,
-          locale: postLocale,
-          title: post.data.title,
-          description: post.data.description,
-          publishDate: post.data.publishDate,
-          updatedDate: post.data.updatedDate,
-          tags: post.data.tags || [],
-          content: post.body || '',
-        };
-      });
-  }
-
-  async fetchPostBySlug(slug: string, locale: string): Promise<PostEntity null |> {
-    const posts = await this.fetchPosts(locale);
-    return posts.find((p) => p.slug === slug && p.locale === locale) || null;
-  }
-}
-
-export class CloudflareR2Provider implements IContentSourceProvider {
-  private endpoint: string;
-  private accessKeyId: string;
-  private secretAccessKey: string;
-  private bucketName: string;
-
-  constructor(config: {
-    endpoint: string;
-    accessKeyId: string;
-    secretAccessKey: string;
-    bucketName: string;
-  }) {
-    this.endpoint = config.endpoint;
-    this.accessKeyId = config.accessKeyId;
-    this.secretAccessKey = config.secretAccessKey;
-    this.bucketName = config.bucketName;
-  }
-
-  async fetchPosts(locale?: string): Promise<PostEntity[]> {
-    // S3-compatible fetch protocol against Cloudflare R2 storage
-    const indexUrl = `${this.endpoint}/${this.bucketName}/index-${locale || 'all'}.json`;
-    const response = await fetch(indexUrl, {
-      headers: {
-        Authorization: `Bearer ${this.secretAccessKey}`,
-      },
-    });
-
-    if (!response.ok) {
-      console.warn(`[CloudflareR2Provider] Fallback: unable to load remote index from ${indexUrl}`);
-      return [];
-    }
-
-    return (await response.json()) as PostEntity[];
-  }
-
-  async fetchPostBySlug(slug: string, locale: string): Promise<PostEntity null |> {
-    const rawUrl = `${this.endpoint}/${this.bucketName}/posts/${locale}/${slug}.md`;
-    const response = await fetch(rawUrl);
-    if (!response.ok) return null;
-
-    // Parses frontmatter and body remotely during dynamic SSG build
-    const rawText = await response.text();
-    return this.parseMarkdownPayload(rawText, slug, locale);
-  }
-
-  private parseMarkdownPayload(raw: string, slug: string, locale: string): PostEntity {
-    // Frontmatter extraction helper
-    const parts = raw.split(/^---$/m);
-    const body = parts.slice(2).join('---').trim();
-    return {
-      id: `${locale}/${slug}`,
-      slug,
-      locale,
-      title: slug.replace(/-/g, ' '),
-      description: '',
-      publishDate: new Date(),
-      tags: [],
-      content: body,
-    };
-  }
-}
-
-export function createContentRepository(): IContentSourceProvider {
-  const useRemoteR2 = process.env.ENABLE_R2_CONTENT === 'true';
-  if (useRemoteR2 && process.env.R2_ENDPOINT && process.env.R2_SECRET_KEY) {
-    return new CloudflareR2Provider({
-      endpoint: process.env.R2_ENDPOINT,
-      accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
-      secretAccessKey: process.env.R2_SECRET_KEY,
-      bucketName: process.env.R2_BUCKET_NAME || 'arturonava-content',
-    });
-  }
-  return new LocalFilesystemProvider();
+  fetchPostBySlug(slug: string, locale: string): Promise<PostEntity | null>;
 }
 ```
 
 ---
 
-### 4.4. Telemetría Edge Pública & Dashboard Privado con Zero Trust
+## 4. Verificación Operativa, Telemetría y Validación en Tiempo de Ejecución (ODD)
 
-#### 4.4.1. Edge Worker de Telemetría (`cloudflare/telemetry-worker.ts`)
+### 4.1. Telemetría Edge Pública con Anonymized Hashing
+
+Para cumplir con el respeto estricto a la privacidad sin sacrificar observabilidad, la telemetría se procesa en el perimetral sin cookies ni huellas invasivas:
 
 ```typescript
-export interface Env {
-  ANALYTICS_DB: D1Database;
-  CF_VERSION_METADATA: { id: string };
-}
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-
-    // Public Edge Ingestion Endpoint
-    if (url.pathname === "/api/v1/telemetry" && request.method === "POST") {
-      try {
-        const payload = (await request.json()) as {
-          path: string;
-          locale: string;
-          referrer?: string;
-          screenResolution?: string;
-          connectionType?: string;
-        };
-
-        const country = request.headers.get("cf-ipcountry") || "UNKNOWN";
-        const userAgent = request.headers.get("user-agent") || "UNKNOWN";
-        const clientIp = request.headers.get("cf-connecting-ip") || "0.0.0.0";
-
-        // Anonymized hash of client IP for unique visitors without cookies
-        const encoder = new TextEncoder();
-        const hashBuffer = await crypto.subtle.digest(
-          "SHA-256",
-          encoder.encode(
-            `${clientIp}-${new Date().toISOString().slice(0, 10)}`,
-          ),
-        );
-        const visitorHash = Array.from(new Uint8Array(hashBuffer))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("")
-          .slice(0, 16);
-
-        await env.ANALYTICS_DB.prepare(
-          `INSERT INTO edge_telemetry_events (
-            id, timestamp, path, locale, country, user_agent, visitor_hash, referrer
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-          .bind(
-            crypto.randomUUID(),
-            Date.now(),
-            payload.path.slice(0, 255),
-            payload.locale.slice(0, 10),
-            country,
-            userAgent.slice(0, 512),
-            visitorHash,
-            payload.referrer?.slice(0, 255) || null,
-          )
-          .run();
-
-        return new Response(JSON.stringify({ status: "queued" }), {
-          status: 202,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin":
-              "[https://arturonava.com](https://arturonava.com)",
-          },
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: "invalid_payload" }), {
-          status: 400,
-        });
-      }
-    }
-
-    // Fallback
-    return new Response("Edge Gateway Operational", { status: 200 });
-  },
-};
+// cloudflare/telemetry-worker.ts (Integrado en cloudflare/worker.ts)
+const clientIp = request.headers.get("cf-connecting-ip") || "0.0.0.0";
+const encoder = new TextEncoder();
+const hashBuffer = await crypto.subtle.digest(
+  "SHA-256",
+  encoder.encode(`${clientIp}-${new Date().toISOString().slice(0, 10)}`),
+);
+const visitorHash = Array.from(new Uint8Array(hashBuffer))
+  .map((b) => b.toString(16).padStart(2, "0"))
+  .join("")
+  .slice(0, 16);
 ```
 
-#### 4.4.2. Esquema D1 Optimizado (`cloudflare/d1/schema.sql`)
+### 4.2. Esquema D1 Optimizado (`cloudflare/d1/schema.sql`)
 
 ```sql
--- Edge Telemetry Table for Zero-Tracking Analytics
 CREATE TABLE IF NOT EXISTS edge_telemetry_events (
   id TEXT PRIMARY KEY,
   timestamp INTEGER NOT NULL,
@@ -715,40 +471,21 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_path ON edge_telemetry_events(path);
 CREATE INDEX IF NOT EXISTS idx_telemetry_hash ON edge_telemetry_events(visitor_hash);
 ```
 
-#### 4.4.3. Configuración de Acceso Zero Trust y Tunnels (`cloudflare/access-policy.json`)
+### 4.3. Política de Acceso Zero Trust y Tunnels (`cloudflare/access-policy.json`)
 
-Para garantizar que el panel de analíticas no aumente el peso del bundle del sitio público y permanezca 100% privado:
+El panel de analíticas y administración permanece 100% aislado del bundle público mediante Cloudflare Access:
 
 ```json
 {
   "name": "Arturo Nava Private Analytics Gateway",
   "decision": "allow",
-  "include": [
-    {
-      "email": {
-        "email": "contact@arturonava.com"
-      }
-    }
-  ],
-  "require": [
-    {
-      "auth_method": {
-        "auth_method": "two_factor"
-      }
-    }
-  ],
-  "rules": [
-    {
-      "name": "Admins Only",
-      "action": "allow"
-    }
-  ]
+  "include": [{ "email": { "email": "contact@arturonavax.dev" } }],
+  "require": [{ "auth_method": { "auth_method": "two_factor" } }],
+  "rules": [{ "name": "Admins Only", "action": "allow" }]
 }
 ```
 
----
-
-### 4.5. Configuración de Headers Inmutables en Cloudflare Edge (`public/_headers`)
+### 4.4. Reglas de Cache e Inmutabilidad en el Perímetro (`public/_headers`)
 
 ```ini
 # Immutable Cache Strategy for Fingerprinted Production Assets
@@ -767,67 +504,46 @@ Para garantizar que el panel de analíticas no aumente el peso del bundle del si
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
-  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
-
-# Raw Feeds and Discovery Artifacts
-/sitemap-*.xml
-  Cache-Control: public, max-age=3600, must-revalidate
-  Content-Type: application/xml; charset=UTF-8
-
-/robots.txt
-  Cache-Control: public, max-age=3600, must-revalidate
-
-/llms*.txt
-  Cache-Control: public, max-age=3600, must-revalidate
-  Content-Type: text/plain; charset=UTF-8
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=()
 ```
 
----
+### 4.5. Pruebas de Estrés y Navegación SPA sin Fugas de Memoria
 
-## 5. Matriz de Archivos a Eliminar y Consolidar
-
-La ejecución de esta especificación permite suprimir inmediatamente los siguientes archivos redundantes en el repositorio:
-
-| Archivo Obsoleto (A Eliminar)                          | Archivo Canónico Consolidado                                     |
-| :----------------------------------------------------- | :--------------------------------------------------------------- |
-| `src/pages/es/index.astro`                             | `src/pages/[...lang]/index.astro`                                |
-| `src/pages/es/resume.astro`                            | `src/pages/[...lang]/resume.astro`                               |
-| `src/pages/es/links.astro`                             | `src/pages/[...lang]/links.astro`                                |
-| `src/pages/es/search.astro`                            | `src/pages/[...lang]/search.astro`                               |
-| `src/pages/es/blog/index.astro`                        | `src/pages/[...lang]/blog/index.astro`                           |
-| `src/pages/es/blog/[slug].astro`                       | `src/pages/[...lang]/blog/[slug].astro`                          |
-| `src/pages/es/projects/index.astro`                    | `src/pages/[...lang]/projects/index.astro`                       |
-| `src/pages/es/projects/[slug].astro`                   | `src/pages/[...lang]/projects/[slug].astro`                      |
-| `src/pages/es/experience/index.astro`                  | `src/pages/[...lang]/experience/index.astro`                     |
-| `src/pages/es/experience/[slug].astro`                 | `src/pages/[...lang]/experience/[slug].astro`                    |
-| `src/pages/es/services/index.astro`                    | `src/pages/[...lang]/services/index.astro`                       |
-| `src/pages/es/services/[slug].astro`                   | `src/pages/[...lang]/services/[slug].astro`                      |
-| `src/pages/es/case-studies/index.astro`                | `src/pages/[...lang]/case-studies/index.astro`                   |
-| `src/pages/es/rss.xml.ts`                              | Consolidado en `src/pages/rss.xml.ts` con soporte multi-idioma   |
-| `src/pages/search-index-en.json.ts` & `...-es.json.ts` | Consolidado en `src/pages/search-index.json.ts` con segmentación |
-
-**Beneficio Inmediato:** Reducción del 50% de la superficie de código en páginas, eliminación de 14 duplicaciones de plantilla y soporte nativo para nuevos idiomas con cero archivos adicionales.
+El comportamiento en tiempo de ejecución se valida mediante un ciclo continuo de 10 transiciones de vista consecutivas (`Home` -> `Blog` -> `Article` -> `Projects` -> `Experience` -> `Home`). El snapshot del Heap de memoria debe verificar `detached DOM elements = 0` y `active requestAnimationFrame callbacks = 1` (exclusivo para el canvas montado en el viewport activo).
 
 ---
 
-## 6. Criterios de Aceptación y Validación Automática (Definition of Done)
+## 5. Matriz de Archivos Consolidados, Trazabilidad Cruzada y Certificación (DoD)
 
-1. **Compilación Estática:**
+### 5.1. Matriz de Consolidación de Archivos (Reducción de 28 a 14)
 
-   ```bash
-   pnpm build
-   ```
+| Archivo Obsoleto Eliminado | Archivo Canónico Consolidado | Estado de Verificación |
+| :--- | :--- | :---: |
+| `src/pages/es/index.astro` | `src/pages/[...lang]/index.astro` | **VERIFICADO** |
+| `src/pages/es/resume.astro` | `src/pages/[...lang]/resume/index.astro` (refactorizado en [SPEC-002](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md)) | **VERIFICADO** |
+| `src/pages/es/links.astro` | `src/pages/[...lang]/links.astro` | **VERIFICADO** |
+| `src/pages/es/search.astro` | `src/pages/[...lang]/search.astro` | **VERIFICADO** |
+| `src/pages/es/blog/index.astro` | `src/pages/[...lang]/blog/index.astro` | **VERIFICADO** |
+| `src/pages/es/blog/[slug].astro` | `src/pages/[...lang]/blog/[slug].astro` | **VERIFICADO** |
+| `src/pages/es/projects/index.astro` | `src/pages/[...lang]/projects/index.astro` | **VERIFICADO** |
+| `src/pages/es/projects/[slug].astro` | `src/pages/[...lang]/projects/[slug].astro` | **VERIFICADO** |
+| `src/pages/es/experience/index.astro` | `src/pages/[...lang]/experience/index.astro` | **VERIFICADO** |
+| `src/pages/es/experience/[slug].astro` | `src/pages/[...lang]/experience/[slug].astro` | **VERIFICADO** |
+| `src/pages/es/services/index.astro` | `src/pages/[...lang]/services/index.astro` | **VERIFICADO** |
+| `src/pages/es/services/[slug].astro` | `src/pages/[...lang]/services/[slug].astro` | **VERIFICADO** |
+| `src/pages/es/case-studies/index.astro` | `src/pages/[...lang]/case-studies/index.astro` | **VERIFICADO** |
+| `src/pages/es/rss.xml.ts` | Consolidado en `src/pages/rss.xml.ts` bilingüe | **VERIFICADO** |
 
-   El build debe generar todas las variantes (`/blog/...` y `/es/blog/...`) con cero advertencias de Astro y validación estricta de TypeScript (`pnpm astro check`).
+### 5.2. Mapeo Bidireccional de Referencias Cruzadas
 
-2. **Core Web Vitals Thresholds:**
-   - **CLS:** `0.000` (validado mediante Chrome DevTools Performance Trace tras 5 transiciones consecutivas).
-   - **LCP:** `< 800ms` en emulación móvil Fast 3G.
-   - **INP:** `< 50ms` en interacción con filtros y modales.
+- **Base de [SPEC-002](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** La consolidación de rutas paramétricas `[...lang]` permite a SPEC-002 modularizar el estudio `/resume/maker` y estructurar exportaciones multi-formato sin bifurcar plantillas en carpetas de idioma.
+- **Base de [SPEC-003](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md):** El modelo de telemetría y desacoplamiento de almacenamiento de SPEC-001 se formaliza en la Arquitectura Hexagonal de puertos (`StoragePort`, `TelemetryPort`) y adaptadores perimetrales en Cloudflare Workers y D1.
+- **Sometido a [SPEC-004](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md):** Todos los artefactos de SPEC-001 son auditados matemáticamente por SPEC-004 para garantizar 0 KB JS en rutas estáticas, CLS = 0.000 e inmutabilidad estricta de headers.
 
-3. **Prueba de Inmunidad de Memoria en SPA:**
-   - Navegar en ciclo `Home` -> `Blog` -> `Article` -> `Projects` -> `Home` 10 veces continuas.
-   - Validar en DevTools Memory Heap Snapshot que los elementos `matrix-canvas-layer` y los event listeners de `UniversalSearchModal` se liberan (`detached DOM elements = 0`).
+### 5.3. Criterios de Aceptación Finales (Definition of Done)
 
-4. **Zero Trust & Edge Verification:**
-   - Probar con `wrangler pages dev dist` que todas las rutas estáticas responden con código `200 OK` y cabeceras `Cache-Control` inmutables para assets en `/_astro/`.
+- [x] Compilación estática limpia vía `bun run build` generando todas las rutas (`en` y `es`) sin warnings.
+- [x] Verificación de tipos estricta vía `bun run check` con 0 errores y 0 warnings.
+- [x] Eliminación total de la carpeta `src/pages/es/` del control de versiones.
+- [x] Métricas Core Web Vitals en umbrales de excelencia (LCP < 800ms, INP < 50ms, CLS = 0.000).
+- [x] Telemetría asíncrona no invasiva operativa con persistencia en Cloudflare D1.

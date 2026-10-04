@@ -28,6 +28,22 @@ Every operational command, architectural proposal, and code modification must ac
 
 ---
 
+## OPENSPEC SPECIFICATIONS & TRI-AXIS ARCHITECTURE (`openspec/specs/`)
+
+The engineering roadmap, architecture, and verification invariants are rigorously specified across four interconnected specifications in [`openspec/specs/`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/), all structured under the unified Tri-Axis Model:
+- **Spec-Driven Development (SDD):** Strict TypeScript contracts, Zod v4 validation, and formal domain ports.
+- **Requirement-Driven Development (RDD):** Quantitative PASS/FAIL gates and acceptance criteria (REQ-*).
+- **Organic/Operational-Driven Development (ODD):** Edge runtime telemetry, chaos testing, cross-browser print, and automated static gatekeeping.
+
+| Specification | Document ID | Title | Key Architectural Directives |
+| :--- | :--- | :--- | :--- |
+| [`SPEC-001`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-001-big-refactor.md) | `SPEC-001-ARCH-EDGE-I18N` | Enterprise Astro Edge Architecture & Zero-Duplication i18n | - Dynamic parameterized `src/pages/[...lang]/` routes (50% page surface reduction).<br>- Native Web Component lifecycle (`connectedCallback`/`disconnectedCallback`) for SPA-safe transitions.<br>- Atomic Nano Stores state management (<1.5 KB). |
+| [`SPEC-002`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md) | `SPEC-002-REFACTOR-FEATURE` | System Refactoring, Edge Hardening & Resume Maker Studio | - Asset pruning and `mailto:` clipboard protocol.<br>- Prefetch telemetry shielding (HTTP 204 bypass on `Purpose: prefetch`).<br>- Modular `/resume/` & `/resume/maker/` with multi-format serializers (Schema.org JSON, TOML, XML) with dynamic UTM injection.<br>- Cross-browser `@media print` normalization with dynamic title synchronization. |
+| [`SPEC-003`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md) | `SPEC-003-CF-EDGE-DECOUPLED-I18N` | Decoupled Cloudflare Edge Architecture & Scalability | - Hexagonal Architecture (`src/lib/ports/` and `src/lib/adapters/`) with 100% vendor decoupling.<br>- Cloudflare R2 + Workers Cache API (`caches.default`) absorption for 0 Class B reads.<br>- Vectorize + Workers AI search with static in-memory fallback.<br>- D1 daily analytics rollups cron trigger (`0002_analytics_rollups.sql`).<br>- Serverless corporate email routing ingestion (`email-worker.ts`).<br>- Extensible multi-language engine (`src/i18n/locales.ts`). |
+| [`SPEC-004`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md) | `SPEC-004-GLOBAL-AUDIT-VERIFICATION` | Global Architectural Audit & Extreme Quality Verification | - Automated gatekeeper `scripts/audit-codebase.ts` (0 layout animations, 0 static `will-change`, 0 unmanaged `<img>`).<br>- Strict Core Web Vitals (CLS = 0.000, LCP < 800ms, INP < 50ms).<br>- WAAPI circular theme reveal with compositor containment.<br>- Isolated monobilingual JSON-LD with permanent anchor `@id: "https://arturonavax.dev/#person"`.<br>- 100% certified Master Scorecard. |
+
+---
+
 ## 1. PERFORMANCE ENGINEERING (LOAD & RUNTIME)
 
 ### Zero-JS & Island Isolation Principles
@@ -189,7 +205,7 @@ const posts = defineCollection({
       tags: z.array(z.string()).min(1),
       coverImage: image().optional(),
       coverAlt: z.string().optional(),
-      canonicalUrl: z.string().url().optional(),
+      canonicalUrl: z.url().optional(),
       searchKeywords: z.array(z.string()).optional(),
       author: z.string().default("Arturo Nava"),
       readingTimeMinutes: z.number().int().positive().optional(),
@@ -214,8 +230,8 @@ const projects = defineCollection({
       metrics: z
         .array(z.object({ label: z.string(), value: z.string() }))
         .optional(),
-      repoUrl: z.string().url().optional(),
-      liveUrl: z.string().url().optional(),
+      repoUrl: z.url().optional(),
+      liveUrl: z.url().optional(),
       thumbnail: image().optional(),
       searchKeywords: z.array(z.string()).optional(),
     }),
@@ -228,7 +244,7 @@ const experience = defineCollection({
   }),
   schema: localizedBaseSchema.extend({
     company: z.string(),
-    companyUrl: z.string().url().optional(),
+    companyUrl: z.url().optional(),
     companyDomain: z.string().optional(),
     companyIndustry: z.string().optional(),
     companyDescription: z.string().optional(),
@@ -283,10 +299,10 @@ const resume = defineCollection({
     updatedDate: z.coerce.date(),
     skills: z.record(z.string(), z.array(z.string())),
     contact: z.object({
-      email: z.string().email(),
-      github: z.string().url(),
-      linkedin: z.string().url(),
-      website: z.string().url(),
+      email: z.email(),
+      github: z.url(),
+      linkedin: z.url(),
+      website: z.url(),
     }),
   }),
 });
@@ -355,3 +371,6 @@ When delivering code or architecture decisions:
 - [2026-10] Cloudflare Edge platform operationalization: R2 + Cache API (`caches.default`), Workers AI + Vectorize semantic search with static memory fallback, D1 daily rollups cron trigger, serverless corporate email routing ingestion, and WAF L7 bot protection.
 - [2026-10] Strict TypeScript with `exactOptionalPropertyTypes: true` across all domain contracts and adapters.
 - [2026-10] SPEC-004 Global Architectural Audit and Extreme Quality Verification integrated: automated gatekeeper `scripts/audit-codebase.ts`, zero static `will-change` in stylesheets, dynamic compositor acceleration lifecycle `src/utils/motion.ts`, circular WAAPI theme reveal `src/utils/theme-reveal.ts`, geometric containment `OptimizedVisual.astro`, Server Island `EdgeViewCounter.astro`, monobilingual isolated JSON-LD with invariant `@id`, R2 Cache API absorption in `cloudflare/worker.ts`, and 100% certification across all SDD, RDD, and ODD gates.
+- [2026-10] OpenSpec specifications suite (`SPEC-001`, `SPEC-002`, `SPEC-003`, `SPEC-004`) standardized under the unified Tri-Axis Model (SDD, RDD, ODD) in Spanish with 100% reciprocal cross-references and Definition of Done (DoD) certification matrices.
+- [2026-10] Migrated Astro Content Layer schemas to Zod v4 first-class constructors `z.url()` and `z.email()`, completely resolving `ts(6385)` deprecation warnings.
+- [2026-10] Permanent Knowledge Graph anchor `@id: "https://arturonavax.dev/#person"` harmonized across all layouts, dynamic route schemas, and multi-format resume export serializers.

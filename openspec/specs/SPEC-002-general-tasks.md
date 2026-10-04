@@ -1,78 +1,138 @@
-# OpenSpec: Technical Implementation & Architectural Refactoring Specification
+# SPEC-002: REFACTORIZACIÓN GENERAL, HARDENING DE EDGE Y ESTUDIO RESUME MAKER
+
+## Refactorización del Sistema, Blindaje Perimetral en Cloudflare Edge, Motor de Impresión Cross-Browser y Estudio Interactivo de Currículum
 
 ```yaml
-id: SPEC-2026-REFACTOR-FEATURE-002
+id: SPEC-002-REFACTOR-FEATURE
 title: System Refactoring, Cloudflare Edge Hardening, Cross-Browser Print Engine & Interactive Resume Maker Studio
-status: APPROVED-FOR-IMPLEMENTATION
+status: APPROVED / IMPLEMENTED
 version: 2.0.0
+author: Staff Frontend Performance Architect & Technical SEO Lead
 target_stack:
-  framework: Astro v7.3.4+ (Static Output / ClientRouter)
-  styling: Tailwind CSS v4.3.3+ (CSS-First @theme Engine)
+  framework: Astro v7.3.4+ (Compilación Estática Pura / ClientRouter)
+  styling: Tailwind CSS v4.3.3+ (CSS-First @theme Engine / LightningCSS)
   runtime: Cloudflare Edge (Workers, D1, R2, Vectorize, Cache API)
   architecture: Hexagonal / Decoupled Ports & Adapters
-  locales: [en, es] (EN Primary Default -> ES Secondary -> Extensible N)
-methodology: Spec-Driven Development (SDD) & Requirement-Driven Development (RDD)
+  locales: [en, es] (EN Primario por defecto -> ES Secundario -> Extensible N)
+methodology: Tri-Axis Model — Spec-Driven Development (SDD), Requirement-Driven Development (RDD) & Organic/Operational-Driven Development (ODD)
+cross_references:
+  spec_001: openspec/specs/SPEC-001-big-refactor.md
+  spec_002: openspec/specs/SPEC-002-general-tasks.md
+  spec_003: openspec/specs/SPEC-003-future-improves.md
+  spec_004: openspec/specs/SPEC-004-audit.md
 ```
 
 ---
 
-## 1. Executive Summary & Architectural Alignment
+## 1. Resumen Ejecutivo, Diagnóstico y Alineación Metodológica
 
-Esta especificación técnica consolida y actualiza integralmente el alcance de `SPEC-2026-REFACTOR-FEATURE-002`, adaptándolo al estado actual del repositorio y a la arquitectura hexagonal desacoplada definida para Cloudflare Edge.
+### 1.1. Contexto y Diagnóstico del Sistema
 
-El objetivo central es eliminar la deuda técnica acumulada en activos no utilizados, blindar el Edge Worker contra solicitudes especulativas de prefetch, normalizar la experiencia de impresión tipográfica y navegación SPA entre navegadores (Firefox, Safari, Chromium y WebViews móviles), y migrar la nomenclatura de dominio heredada `cv` hacia `resume`. Asimismo, se formaliza la arquitectura del nuevo estudio interactivo **Resume Maker** en `/resume/maker/` y `/es/resume/maker/`, junto con un motor de exportación multi-formato (Markdown, JSON-LD/Schema.org, TOML y XML) con inyección reactiva de parámetros UTM.
+Esta especificación técnica consolida la refactorización integral, la higiene de activos y las mejoras de interacción en el cliente y perimetrales del proyecto `personal-website`. Aborda las siguientes deficiencias detectadas:
 
-### Tareas Fuera de Alcance (Out of Scope)
+1. **Polución de Activos Obsoletos en `public/`:** Existencia de múltiples variantes de banners pre-renderizados (`public/banner-*`) no consumidos por ningún componente, generando sobrecarga en el repositorio y en el empaquetado de producción.
+2. **Fricción de Experiencia de Usuario con Enlaces `mailto:`:** El uso directo de hipervínculos con esquema `mailto:` provocaba aperturas accidentales y bloqueantes de clientes nativos de correo no deseados por el usuario. Se requería un protocolo seguro de portapapeles asíncrono con confirmación accesible (`aria-live="polite"`).
+3. **Contaminación de Parámetros UTM en Canónicos:** Enlaces entrantes con parámetros de campañas (`utm_source`, `ref`, etc.) contaminaban la URL canónica evaluada dinámicamente en navegaciones SPA mediante `ClientRouter`.
+4. **Degradación de Cuotas Edge por Prefetching Especulativo:** Las solicitudes especulativas de Astro y motores Chromium (`Purpose: prefetch` / `Sec-Purpose: prefetch`) impactaban los endpoints de telemetría, disparando escrituras innecesarias en Cloudflare D1.
+5. **Inconsistencias en el Motor de Impresión (@media print):** Discrepancias visuales y saltos de página inapropiados en Safari, Firefox y Chrome al generar el PDF del currículum, sumado a títulos de documento no sincronizados con el idioma activo.
+6. **Deuda de Nomenclatura de Dominio (`cv` vs `resume`):** Desalineación conceptual en esquemas de datos, nombres de carpetas (`src/content/cv` vs estándar internacional `resume`) y componentes asociados.
+7. **Ausencia de un Estudio Monospace de Personalización:** Carencia de un entorno en vivo (`/resume/maker`) que permita modificar Markdown en tiempo real, alternar selectores de teléfono para ofertas internacionales y serializar exportaciones a JSON-LD, TOML y XML estructurado con atribución UTM.
 
-- Verificación manual externa de números telefónicos o identidad corporativa.
-- Servicios upstream de terceros con fallas 503 ajenas a la infraestructura del proyecto.
-- Tareas ya integradas en commits previos (remoción de enlaces pre-print y botones móviles obsoletos).
+### 1.2. Marco Metodológico Tri-Axis: SDD, RDD y ODD
+
+```
+                            TRI-AXIS METHODOLOGY MODEL
+                                    [ SDD ]
+                           Tipado Estricto e Invariantes
+                                       ▲
+                                      / \
+                                     /   \
+                                    /     \
+                                   ▼       ▼
+                              [ RDD ] <──> [ ODD ]
+                         Requerimientos    Verificación Operativa
+                           Binarios           en Navegador y Edge
+```
+
+- **Spec-Driven Development (SDD):** Modelado formal de esquemas Zod en `src/content.config.ts`, tipado TypeScript en modo estricto para datasets de currículum y contratos del puerto de telemetría (`TelemetryPort`).
+- **Requirement-Driven Development (RDD):** Especificación determinista de 12 requerimientos técnicos (`REQ-01` a `REQ-12`) evaluados mediante compuertas booleanas cuantitativas (PASS/FAIL).
+- **Organic/Operational-Driven Development (ODD):** Validación en tiempo de ejecución bajo condiciones reales de red perimetral Cloudflare, verificación cross-browser de capas de impresión y micro-benchmarks de renderizado tipográfico.
+
+### 1.3. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
+
+- **Conexión con [SPEC-001: Arquitectura Enterprise Edge y Rutas Dinámicas i18n](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-001-big-refactor.md):** SPEC-002 consume la infraestructura de rutas dinámicas `src/pages/[...lang]/` establecida por SPEC-001 para estructurar modularmente `/resume/index.astro` y `/resume/maker.astro` sin duplicar plantillas entre idiomas.
+- **Conexión con [SPEC-003: Arquitectura Hexagonal y Cloudflare Edge Desacoplado](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md):** SPEC-002 implementa el blindaje perimetral contra prefetch especulativo que protege las cuotas del adaptador `D1TelemetryAdapter` formalizado en SPEC-003, y alinea los exportadores de datos con los puertos de serialización.
+- **Conexión con [SPEC-004: Auditoría Arquitectónica Global y Verificación Extrema](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md):** SPEC-004 audita las compuertas de rendimiento introducidas en SPEC-002 (CLS = 0.000 durante la impresión, canónicos sanitizados sin polución UTM, y aislamiento de animaciones WAAPI).
 
 ---
 
-## 2. Requirements Matrix (RDD)
+## 2. Matriz de Requerimientos y Compuertas Cuantitativas (RDD)
 
-| ID         | Requerimiento Técnico                  | Componente / Capa Afectada                     | Criterio de Aceptación                                                                                                                         |
-| :--------- | :------------------------------------- | :--------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
-| **REQ-01** | **Asset Pruning & Hygiene**            | `public/banner-*`                              | Eliminación de los 9 archivos PNG obsoletos (`16x9`, `3x1`, `4x1`). Bundle limpio en producción.                                               |
-| **REQ-02** | **Clipboard Protocol (Anti-Mailto)**   | `src/components/ui/EmailCopyButton.astro`      | Cero activaciones accidentales del cliente de correo (`mailto:` eliminado). Copia asíncrona con toast accesible (`aria-live="polite"`).        |
-| **REQ-03** | **Dynamic Canonical URL Integrity**    | `src/components/common/SEOHead.astro`          | Eliminación estricta de query params (`utm_*`, `tag`, `company`). Actualización reactiva tras transiciones de `ClientRouter`.                  |
-| **REQ-04** | **Prefetch Telemetry Shielding**       | `cloudflare/worker.ts`                         | Detección de cabeceras `Purpose: prefetch` y `Sec-Purpose: prefetch`. Bypass de mutaciones D1 y ejecución no bloqueante vía `ctx.waitUntil()`. |
-| **REQ-05** | **Single-Select Filter Bar**           | `src/components/ui/ExperienceFilterBar.astro`  | Selección mutuamente excluyente de empresas con alternancia a "All" al hacer clic en el filtro activo.                                         |
-| **REQ-06** | **Search Modal SPA Routing**           | `src/components/ui/UniversalSearchModal.astro` | Navegación por teclado (`Enter`) acoplada a la API `navigate()` de `astro:transitions/client`. Cero full page reloads.                         |
-| **REQ-07** | **Domain Migration: `cv` -> `resume`** | `src/content/`, `src/data/`, `src/types/`      | Migración de esquemas en `content.config.ts`, renombrado de archivos, colecciones y componentes de exportación.                                |
-| **REQ-08** | **Cross-Browser Print Engine**         | `src/styles/global.css`, `resume/index.astro`  | Reglas `@page` y `@media print` normalizadas. Título dinámico `ArturoNava-CV-{lang}.pdf` sincronizado mediante `beforeprint`/`afterprint`.     |
-| **REQ-09** | **Scroll-Margin Offset Normalization** | `src/styles/global.css`, `PageIndexNav.astro`  | Anclas y encabezados con `scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem)`. Cero oclusiones con sticky header.                    |
-| **REQ-10** | **WAAPI Circular Reveal Hardening**    | `src/components/common/ThemeToggle.astro`      | Aislamiento en `::view-transition-group(root)` con contención explícita. Cero parpadeos en Firefox 129+ y Safari iOS.                          |
-| **REQ-11** | **Multi-Format Serializers**           | `src/utils/resumeExporters.ts`                 | Serialización reactiva a Markdown puro, JSON tipado, TOML y XML estructurado con inyección dinámica de UTM.                                    |
-| **REQ-12** | **Resume Maker Studio Route**          | `src/pages/[...lang]/resume/maker.astro`       | Editor monospace en tiempo real, selector de teléfono, sanitización de enlaces y vista previa idéntica a `/resume`.                            |
+### 2.1. Requerimientos Funcionales y Técnicos (REQ-*)
+
+| ID | Requerimiento Técnico | Componente / Capa Afectada | Criterio de Aceptación |
+| :--- | :--- | :--- | :--- |
+| **REQ-01** | **Asset Pruning & Hygiene** | `public/banner-*` | Eliminación de los 9 archivos PNG obsoletos (`16x9`, `3x1`, `4x1`). Bundle limpio en producción. |
+| **REQ-02** | **Clipboard Protocol (Anti-Mailto)** | `src/components/ui/EmailCopyButton.astro` | Cero activaciones accidentales del cliente de correo (`mailto:` eliminado). Copia asíncrona con toast accesible (`aria-live="polite"`). |
+| **REQ-03** | **Dynamic Canonical URL Integrity** | `src/components/common/SEOHead.astro` | Eliminación estricta de query params (`utm_*`, `tag`, `company`). Actualización reactiva tras transiciones de `ClientRouter`. |
+| **REQ-04** | **Prefetch Telemetry Shielding** | `cloudflare/worker.ts` | Detección de cabeceras `Purpose: prefetch` y `Sec-Purpose: prefetch`. Bypass de mutaciones D1 y ejecución no bloqueante vía `ctx.waitUntil()`. |
+| **REQ-05** | **Single-Select Filter Bar** | `src/components/ui/ExperienceFilterBar.astro` | Selección mutuamente excluyente de empresas con alternancia a "All" al hacer clic en el filtro activo. |
+| **REQ-06** | **Search Modal SPA Routing** | `src/components/ui/UniversalSearchModal.astro` | Navegación por teclado (`Enter`) acoplada a la API `navigate()` de `astro:transitions/client`. Cero full page reloads. |
+| **REQ-07** | **Domain Migration: `cv` -> `resume`** | `src/content/`, `src/data/`, `src/types/` | Migración de esquemas en `content.config.ts`, renombrado de archivos, colecciones y componentes de exportación. |
+| **REQ-08** | **Cross-Browser Print Engine** | `src/styles/global.css`, `resume/index.astro` | Reglas `@page` y `@media print` normalizadas. Título dinámico `ArturoNava-CV-{lang}.pdf` sincronizado mediante `beforeprint`/`afterprint`. |
+| **REQ-09** | **Scroll-Margin Offset Normalization** | `src/styles/global.css`, `PageIndexNav.astro` | Anclas y encabezados con `scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem)`. Cero oclusiones con sticky header. |
+| **REQ-10** | **WAAPI Circular Reveal Hardening** | `src/components/common/ThemeToggle.astro` | Aislamiento en `::view-transition-group(root)` con contención explícita. Cero parpadeos en Firefox 129+ y Safari iOS. |
+| **REQ-11** | **Multi-Format Serializers** | `src/utils/resumeExporters.ts` | Serialización reactiva a Markdown puro, JSON tipado (Schema.org), TOML y XML estructurado con inyección dinámica de UTM. |
+| **REQ-12** | **Resume Maker Studio Route** | `src/pages/[...lang]/resume/maker.astro` | Editor monospace en tiempo real, selector de teléfono, sanitización de enlaces y vista previa idéntica a `/resume`. |
+
+### 2.2. Criterios de Aceptación Cuantitativos y Umbrales de Rendimiento
+
+| Métrica / Parámetro | Condición de Aprobación (PASS) | Condición de Fallo (FAIL) | Método de Medición |
+| :--- | :--- | :--- | :--- |
+| **Higiene de `public/`** | 0 archivos `banner-*` en `public/` | $\ge 1$ archivo huérfano detectado | `find public/ -name "banner*"` |
+| **Invocación de Correo** | 0 aperturas de cliente nativo (`mailto:`) | Cualquier apertura forzada del SO | Pruebas de interacción automatizadas |
+| **Canónicos Limpios** | URL canónica idéntica a `origin + pathname` | Parámetros UTM o filtros presentes en `link[rel=canonical]` | Inspección DOM en carga y tras navegación SPA |
+| **Protección D1** | 0 mutaciones en base de datos en peticiones prefetch | Inserción en D1 con cabecera `Purpose: prefetch` | Simulación HTTP curl a `/api/v1/telemetry` |
+| **Rendimiento de Impresión** | 0 cortes de bloques tipográficos entre páginas | Corte huérfano en cabeceras o items de experiencia | Renderizado de prueba PDF en Chromium y Gecko |
+| **Presupuesto de Estudio Maker** | Latencia de parseo Markdown $< 16\text{ ms}$ (60 FPS) | Bloqueo de hilo principal $> 50\text{ ms}$ en escritura | Profiling de CPU en DevTools |
 
 ---
 
-## 3. System Specification Document (SSD)
+## 3. Especificación del Sistema, Tipos e Invariantes Formales (SDD)
 
-### 3.1 Domain Model & Collection Re-Architecture
+### 3.1. Reestructuración del Modelo de Dominio y Colecciones
 
-Se reestructura la ruta de `src/pages/[...lang]/resume.astro` hacia una estructura de directorio modular:
-
-- `src/pages/[...lang]/resume/index.astro` (Vista principal del currículum).
+Se reestructura la ruta `src/pages/[...lang]/resume.astro` hacia un subdirectorio modular:
+- `src/pages/[...lang]/resume/index.astro` (Vista principal del currículum para lectura e impresión).
 - `src/pages/[...lang]/resume/maker.astro` (Estudio de personalización y edición interactiva).
 
-#### Content Collection Schema (`src/content.config.ts`)
+#### Esquema de Colección de Contenido (`src/content.config.ts`)
+
+Conforme a la actualización de Zod v4, las validaciones de cadenas formateadas (`url`, `email`) emplean constructores de primer nivel:
 
 ```typescript
 import { defineCollection, z } from "astro:content";
 import { glob } from "astro/loaders";
 import { SUPPORTED_LOCALES } from "./i18n/locales";
 
+export const localizedBaseSchema = z.object({
+  canonicalId: z
+    .string()
+    .describe("Stable entity identifier shared across all language variants")
+    .optional(),
+  translationKey: z.string().optional(),
+  locale: z.enum(SUPPORTED_LOCALES),
+  draft: z.boolean().default(false),
+  visible: z.boolean().default(true),
+});
+
 const resumeCollection = defineCollection({
   loader: glob({
     pattern: "ArturoNava-Resume-*.md",
     base: "./src/content/resume",
   }),
-  schema: z.object({
+  schema: localizedBaseSchema.extend({
     canonicalId: z.string().default("arturo-nava-resume"),
-    locale: z.enum(SUPPORTED_LOCALES),
     title: z.string().min(1),
     name: z.string().min(1),
     role: z.string().min(1),
@@ -81,23 +141,22 @@ const resumeCollection = defineCollection({
     updatedDate: z.coerce.date(),
     skills: z.record(z.string(), z.array(z.string())),
     contact: z.object({
-      email: z.string().email(),
-      github: z.string().url(),
-      linkedin: z.string().url(),
-      website: z.string().url(),
+      email: z.email(),
+      github: z.url(),
+      linkedin: z.url(),
+      website: z.url(),
     }),
   }),
 });
 
 export const collections = {
   resume: resumeCollection,
-  // ... rest of existing collections
 };
 ```
 
 ---
 
-### 3.2 Dynamic Telemetry Contract & Port (`src/lib/ports/telemetry.port.ts`)
+### 3.2. Contrato de Telemetría Dinámica en el Edge (`src/lib/ports/telemetry.port.ts`)
 
 ```typescript
 export interface EdgeTelemetryPayload {
@@ -115,18 +174,54 @@ export interface TelemetryIngestResult {
   readonly bypassed: boolean;
   readonly reason?: "prefetch" | "bot" | "invalid_payload";
 }
+
+export interface TelemetryPort {
+  recordPageview(payload: EdgeTelemetryPayload): Promise<TelemetryIngestResult>;
+}
 ```
 
 ---
 
-## 4. Requirement-Driven Design & Implementation (RDD)
+### 3.3. Contrato de Serialización Multi-Formato (`src/utils/resumeExporters.ts`)
 
-### 4.1 Asset Pruning Automation (REQ-01)
+```typescript
+export interface ResumeDataset {
+  name: string;
+  role: string;
+  location: string;
+  summary: string;
+  skills: Record<string, string[]>;
+  contact: {
+    email: string;
+    github: string;
+    linkedin: string;
+    website: string;
+  };
+}
 
-Comando determinista de eliminación de banners obsoletos:
+export function injectUtmParams(url: string, utmContent: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("utm_source", "resume");
+    parsed.searchParams.set("utm_medium", "document");
+    parsed.searchParams.set("utm_content", utmContent);
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+```
+
+---
+
+## 4. Verificación Operativa, Telemetría y Validación en Tiempo de Ejecución (ODD)
+
+### 4.1. Higiene Automatizada de Activos (REQ-01)
+
+Comando determinista de eliminación de banners obsoletos en la raíz del proyecto:
 
 ```bash
-# Execute in repository root
+# Ejecutar en la raíz del repositorio
 rm -f \
   public/banner-16x9-center.png \
   public/banner-16x9-left.png \
@@ -141,9 +236,9 @@ rm -f \
 
 ---
 
-### 4.2 Accessible Clipboard Protocol Component (`src/components/ui/EmailCopyButton.astro`) (REQ-02)
+### 4.2. Componente de Portapapeles Accesible (`src/components/ui/EmailCopyButton.astro`) (REQ-02)
 
-Reemplaza todos los hipervínculos `href="mailto:..."` evitando la invocación de clientes de correo nativos.
+Neutraliza enlaces `href="mailto:..."`, implementando copia asíncrona mediante la Clipboard API y feedback visual/sonoro accesible:
 
 ```astro
 ---
@@ -167,7 +262,7 @@ const { email, label, class: className = "" } = Astro.props;
   >
     <span>{label || email}</span>
     <svg
-      xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)"
+      xmlns="http://www.w3.org/2000/svg"
       class="h-3.5 w-3.5 opacity-60 transition-transform group-hover:scale-110 group-active:scale-95"
       viewBox="0 0 24 24"
       fill="none"
@@ -237,7 +332,7 @@ const { email, label, class: className = "" } = Astro.props;
 
 ---
 
-### 4.3 Pristine Canonical URLs & SPA Transitions (`src/components/common/SEOHead.astro`) (REQ-03)
+### 4.3. Sanitización Canónica y Sincronización SPA (`src/components/common/SEOHead.astro`) (REQ-03)
 
 ```astro
 ---
@@ -253,10 +348,10 @@ interface Props {
 
 const { title, description, locale, image } = Astro.props;
 
-// Strip all search query parameters from canonical URL
+// Normalización canónica absoluta sin query parameters
 const siteOrigin = Astro.site
   ? Astro.site.origin
-  : "[https://arturonavax.dev](https://arturonavax.dev)";
+  : "https://arturonavax.dev";
 const canonicalURL = new URL(Astro.url.pathname, siteOrigin);
 ---
 
@@ -267,7 +362,7 @@ const canonicalURL = new URL(Astro.url.pathname, siteOrigin);
   <meta name="description" content={description} />
   <link rel="canonical" href={canonicalURL.href} />
 
-  <!-- Dynamic Canonical Synchronization across ClientRouter Transitions -->
+  <!-- Sincronización canónica reactiva en transiciones ClientRouter -->
   <script is:inline>
     document.addEventListener("astro:page-load", () => {
       const canonicalLink = document.querySelector('link[rel="canonical"]');
@@ -283,9 +378,9 @@ const canonicalURL = new URL(Astro.url.pathname, siteOrigin);
 
 ---
 
-### 4.4 Cloudflare Edge Worker Prefetch Shielding (`cloudflare/worker.ts`) (REQ-04)
+### 4.4. Blindaje contra Prefetch en Cloudflare Worker (`cloudflare/worker.ts`) (REQ-04)
 
-Intercepta prefetchings especulativos de Astro y navegadores Chromium para proteger la cuota de lectura y escritura en Cloudflare D1.
+Descarta peticiones especulativas sin afectar la cuota de operaciones D1:
 
 ```typescript
 export interface Env {
@@ -301,16 +396,16 @@ export default {
   ): Promise<Response> {
     const url = new URL(request.url);
 
-    // 1. Identify Speculative Prefetch Requests
+    // 1. Identificar peticiones especulativas de prefetch
     const isPrefetch =
       request.headers.get("Purpose") === "prefetch" ||
       request.headers.get("Sec-Purpose") === "prefetch" ||
       request.headers.get("X-Astro-Prefetch") !== null;
 
-    // 2. Telemetry Ingestion Endpoint
+    // 2. Endpoint de ingestión de telemetría
     if (url.pathname === "/api/v1/telemetry" && request.method === "POST") {
       if (isPrefetch) {
-        // Discard prefetch requests immediately without hitting D1
+        // Descartar prefetch inmediatamente con 204 No Content
         return new Response(null, { status: 204 });
       }
 
@@ -338,7 +433,7 @@ export default {
               )
               .run();
           } catch {
-            // Edge telemetry errors are discarded to prevent client disruptions
+            // Failsafe silencioso para no degradar al cliente
           }
         })(),
       );
@@ -349,10 +444,10 @@ export default {
       });
     }
 
-    // 3. Delegate to Static Assets
+    // 3. Delegación a activos estáticos
     const response = await env.ASSETS.fetch(request);
 
-    // 4. Immutable Cache-Control for Hashed Assets
+    // 4. Inmutabilidad en activos con hash
     if (
       url.pathname.startsWith("/_astro/") ||
       url.pathname.startsWith("/fonts/")
@@ -369,9 +464,7 @@ export default {
 
 ---
 
-### 4.5 Experience Single-Select Filter (`src/components/ui/ExperienceFilterBar.astro`) (REQ-05)
-
-Reemplaza la lógica multi-filtro por un mecanismo mutuamente excluyente.
+### 4.5. Filtro Mutuamente Excluyente (`src/components/ui/ExperienceFilterBar.astro`) (REQ-05)
 
 ```astro
 ---
@@ -456,10 +549,9 @@ const { companies } = Astro.props;
 
 ---
 
-### 4.6 Search Modal ClientRouter Integration (`src/components/ui/UniversalSearchModal.astro`) (REQ-06)
+### 4.6. Enrutamiento SPA en Modal de Búsqueda (`UniversalSearchModal.astro`) (REQ-06)
 
 ```typescript
-// Script section inside UniversalSearchModal.astro
 import { navigate } from "astro:transitions/client";
 
 function executeNavigation(targetUrl: string): void {
@@ -470,7 +562,6 @@ function executeNavigation(targetUrl: string): void {
   navigate(targetUrl);
 }
 
-// Intercept selection event
 document.addEventListener("keydown", (event: KeyboardEvent) => {
   if (event.key === "Enter") {
     const activeResult = document.querySelector<HTMLAnchorElement>(
@@ -486,12 +577,12 @@ document.addEventListener("keydown", (event: KeyboardEvent) => {
 
 ---
 
-### 4.7 Domain Migration & Content Renaming (REQ-07)
+### 4.7. Migración de Dominio y Limpieza de Nomenclatura (REQ-07)
 
-1. **Reestructuración de Directorios y Archivos:**
+Comandos ejecutados para normalizar el dominio `cv` hacia `resume`:
 
 ```bash
-# Migration commands
+# Migración de colecciones y archivos de datos
 mkdir -p src/content/resume
 mv src/content/cv/ArturoNava-CV-en.md src/content/resume/ArturoNava-Resume-en.md
 mv src/content/cv/ArturoNava-CV-es.md src/content/resume/ArturoNava-Resume-es.md
@@ -501,22 +592,22 @@ mv src/data/cv.ts src/data/resume.ts
 mv src/components/ui/CvExportBar.astro src/components/ui/ResumeExportBar.astro
 mv src/components/ui/CvAttributionBar.astro src/components/ui/ResumeAttributionBar.astro
 
-# Restructure resume page into directory
+# Estructurar directorio modular para resume
 mkdir -p src/pages/[...lang]/resume
 mv src/pages/[...lang]/resume.astro src/pages/[...lang]/resume/index.astro
 ```
 
 ---
 
-### 4.8 Cross-Browser Print Normalization (`src/styles/global.css`) (REQ-08, REQ-09)
+### 4.8. Normalización de Impresión y Margen de Desplazamiento (`global.css`) (REQ-08, REQ-09)
 
 ```css
-/* Scroll margin alignment against sticky navbar */
+/* Scroll-margin alineado contra el encabezado sticky */
 [id] {
   scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem);
 }
 
-/* Print Styles Normalization (Firefox, Safari, Chromium) */
+/* Normalización de impresión universal (@media print) */
 @media print {
   @page {
     margin: 1.2cm 1cm 1.2cm 1cm;
@@ -534,7 +625,7 @@ mv src/pages/[...lang]/resume.astro src/pages/[...lang]/resume/index.astro
     padding: 0 !important;
   }
 
-  /* Structural UI suppression */
+  /* Supresión de interfaz estructural */
   header,
   footer,
   nav,
@@ -545,7 +636,7 @@ mv src/pages/[...lang]/resume.astro src/pages/[...lang]/resume/index.astro
     display: none !important;
   }
 
-  /* Clean print boundaries */
+  /* Prevención estricta de saltos de página dentro de bloques de contenido */
   article,
   section,
   .resume-entry-block {
@@ -555,7 +646,7 @@ mv src/pages/[...lang]/resume.astro src/pages/[...lang]/resume/index.astro
 }
 ```
 
-#### Dynamic Print Title Injection (`src/pages/[...lang]/resume/index.astro`)
+#### Inyección Dinámica del Título de Impresión (`src/pages/[...lang]/resume/index.astro`)
 
 ```astro
 <script is:inline>
@@ -575,10 +666,9 @@ mv src/pages/[...lang]/resume.astro src/pages/[...lang]/resume/index.astro
 
 ---
 
-### 4.9 WAAPI Circular Reveal Hardening (`src/components/common/ThemeToggle.astro`) (REQ-10)
+### 4.9. Aislamiento de Animación WAAPI en Alternador de Tema (`ThemeToggle.astro`) (REQ-10)
 
 ```typescript
-// Inside ThemeToggle circular wave controller
 async function executeThemeToggle(event: MouseEvent): Promise<void> {
   const isDark = document.documentElement.classList.contains("dark");
   const targetTheme = isDark ? "light" : "dark";
@@ -604,12 +694,12 @@ async function executeThemeToggle(event: MouseEvent): Promise<void> {
 
   await transition.ready;
 
-  // Enforce isolation in Firefox 129+
+  // Aislamiento explícito de pseudo-elemento para Firefox 129+ y WebKit
   document.documentElement.animate(
     {
       clipPath: [
-        `circle(0px at ${originX}px${originY}px)`,
-        `circle(${maxHypotRadius}px at ${originX}px${originY}px)`,
+        `circle(0px at ${originX}px ${originY}px)`,
+        `circle(${maxHypotRadius}px at ${originX}px ${originY}px)`,
       ],
     },
     {
@@ -623,42 +713,19 @@ async function executeThemeToggle(event: MouseEvent): Promise<void> {
 
 ---
 
-### 4.10 Multi-Format Resume Serialization Engine (`src/utils/resumeExporters.ts`) (REQ-11)
+### 4.10. Motores de Serialización Multi-Formato (`src/utils/resumeExporters.ts`) (REQ-11)
+
+Generación de exportaciones estructuradas con `@id` invariable (`https://arturonavax.dev/#person`) e inyección UTM:
 
 ```typescript
-export interface ResumeDataset {
-  name: string;
-  role: string;
-  location: string;
-  summary: string;
-  skills: Record<string, string[]>;
-  contact: {
-    email: string;
-    github: string;
-    linkedin: string;
-    website: string;
-  };
-}
-
-export function injectUtmParams(url: string, utmContent: string): string {
-  try {
-    const parsed = new URL(url);
-    parsed.searchParams.set("utm_source", "resume");
-    parsed.searchParams.set("utm_medium", "document");
-    parsed.searchParams.set("utm_content", utmContent);
-    return parsed.toString();
-  } catch {
-    return url;
-  }
-}
-
 export function serializeResumeToJSON(
   data: ResumeDataset,
   utmTag: string,
 ): string {
   const enriched = {
-    "@context": "[https://schema.org](https://schema.org)",
+    "@context": "https://schema.org",
     "@type": "Person",
+    "@id": "https://arturonavax.dev/#person",
     name: data.name,
     jobTitle: data.role,
     address: data.location,
@@ -705,7 +772,9 @@ export function serializeResumeToXML(
 
 ---
 
-### 4.11 Resume Maker Studio (`src/pages/[...lang]/resume/maker.astro`) (REQ-12)
+### 4.11. Estudio Monospace Resume Maker (`src/pages/[...lang]/resume/maker.astro`) (REQ-12)
+
+Ruta interactiva que combina edición en tiempo real de Markdown, selector de prefijo telefónico y botones de sanitización/impresión directa:
 
 ```astro
 ---
@@ -733,16 +802,9 @@ const initialBody = activeEntry?.body || "";
 ---
 
 <BaseLayout
-  $
-  {activeEntry.data.name}
-  `
-  }
-  Maker
-  Studio
+  title={`Resume Maker Studio — ${activeEntry.data.name}`}
   description="Interactive developer markdown resume generator with real-time preview and export tools."
-  locale="{locale}"
-  title="{`Resume"
-  —
+  locale={locale}
 >
   <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     <header class="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-neutral-200 pb-4 dark:border-neutral-800">
@@ -813,7 +875,7 @@ const initialBody = activeEntry?.body || "";
     </div>
 
     <div class="mt-8 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-      <ResumeExportBar currentLocale="{locale}" />
+      <ResumeExportBar currentLocale={locale} />
     </div>
   </main>
 </BaseLayout>
@@ -856,15 +918,39 @@ const initialBody = activeEntry?.body || "";
 
 ---
 
-## 5. Operational Verification & Testing Matrix (ODD)
+### 4.12. Matriz de Validación Operativa (VAL-*)
 
-| Check ID   | Verification Target   | Test Procedure                                          | Acceptance Threshold                                                                                   |
-| :--------- | :-------------------- | :------------------------------------------------------ | :----------------------------------------------------------------------------------------------------- |
-| **VAL-01** | Asset Footprint       | Ejecutar `find public/ -name "banner*"`                 | 0 archivos encontrados. Bundle estático sin imágenes huérfanas.                                        |
-| **VAL-02** | Mailto Neutralization | Clic en cualquier botón de email                        | Portapapeles actualizado; toast visible; cero ventanas del SO abiertas.                                |
-| **VAL-03** | Canonical Cleansing   | Acceder a `/resume?utm_source=test&ref=github`          | `<link rel="canonical">` refleja estrictamente `https://arturonavax.dev/resume`.                       |
-| **VAL-04** | Prefetch Shield       | `curl -H "Purpose: prefetch" -X POST /api/v1/telemetry` | HTTP 204 No Content; 0 escrituras en base de datos D1.                                                 |
-| **VAL-05** | Filter Exclusivity    | Clic alternado entre empresas en Timeline               | Máximo 1 empresa activa; retorno a "All" al presionar botón activo.                                    |
-| **VAL-06** | Search SPA Router     | Seleccionar resultado en modal y presionar `Enter`      | Cambio de ruta instantáneo mediante `ClientRouter` sin flash de recarga.                               |
-| **VAL-07** | Print Boundary        | `window.print()` en Chrome, Firefox y Safari            | Nombre `ArturoNava-CV-{lang}.pdf`, cero elementos UI visibles, sin saltos de página dentro de bloques. |
-| **VAL-08** | Studio Parity         | Edición de markdown en `/resume/maker`                  | Renderizado sub-16 ms en DOM preview; estilos tipográficos 1:1 con `/resume`.                          |
+| ID | Objetivo de Verificación | Procedimiento Operativo de Prueba | Umbral de Aceptación |
+| :--- | :--- | :--- | :--- |
+| **VAL-01** | Huella de Activos | Ejecutar `find public/ -name "banner*"` | 0 archivos encontrados. Bundle estático sin imágenes huérfanas. |
+| **VAL-02** | Neutralización Mailto | Clic en cualquier botón de email | Portapapeles actualizado; toast visible; cero ventanas del SO abiertas. |
+| **VAL-03** | Sanitización Canónica | Acceder a `/resume?utm_source=test&ref=github` | `<link rel="canonical">` refleja estrictamente `https://arturonavax.dev/resume`. |
+| **VAL-04** | Blindaje Prefetch | `curl -H "Purpose: prefetch" -X POST /api/v1/telemetry` | HTTP 204 No Content; 0 escrituras en base de datos D1. |
+| **VAL-05** | Filtro Exclusivo | Clic alternado entre empresas en Timeline | Máximo 1 empresa activa; retorno a "All" al presionar botón activo. |
+| **VAL-06** | Router SPA en Búsqueda | Seleccionar resultado en modal y presionar `Enter` | Cambio de ruta instantáneo mediante `ClientRouter` sin flash de recarga. |
+| **VAL-07** | Límites de Impresión | `window.print()` en Chrome, Firefox y Safari | Nombre `ArturoNava-CV-{lang}.pdf`, cero elementos UI visibles, sin saltos de página en bloques. |
+| **VAL-08** | Paridad de Estudio Maker | Edición de markdown en `/resume/maker` | Renderizado sub-16 ms en DOM preview; estilos tipográficos 1:1 con `/resume`. |
+
+---
+
+## 5. Matriz de Certificación, Criterios de Aceptación y Estado de Implementación (DoD)
+
+```
+================================================================================
+          SPEC-002: CERTIFICACIÓN DE IMPLEMENTACIÓN (DEFINITION OF DONE)
+================================================================================
+
+[x] REQ-01 / VAL-01: 9 variantes de banners obsoletos eliminadas de public/.
+[x] REQ-02 / VAL-02: EmailCopyButton.astro desplegado; mailto: completamente neutralizado.
+[x] REQ-03 / VAL-03: SEOHead.astro sanitiza parámetros de consulta en el enlace canónico.
+[x] REQ-04 / VAL-04: cloudflare/worker.ts intercepta prefetch especulativo con HTTP 204.
+[x] REQ-05 / VAL-05: ExperienceFilterBar.astro opera con filtro de selección única con alternancia.
+[x] REQ-06 / VAL-06: UniversalSearchModal.astro ejecuta navigate() de ClientRouter sin full reload.
+[x] REQ-07: Dominio cv completamente migrado a resume en schemas, colecciones y rutas.
+[x] REQ-08 / VAL-07: Reglas @page y @media print garantizan PDF limpio y título sincronizado.
+[x] REQ-09: scroll-margin-top configurado con offset del header en todas las anclas con ID.
+[x] REQ-10: WAAPI Circular Reveal contenido y validado en Firefox 129+, Chromium y Safari.
+[x] REQ-11: resumeExporters.ts serializa JSON-LD (@id unificado), TOML y XML con UTM.
+[x] REQ-12 / VAL-08: /resume/maker y /es/resume/maker completamente operativos y verificados.
+================================================================================
+```
