@@ -8,6 +8,7 @@ import { getCounterpartUrl } from "@/i18n/utils";
 import LanguageSwitcher from "./LanguageSwitcher.astro";
 import ThemeToggle from "./ThemeToggle.astro";
 import { getVisibleCollection } from "@/utils/visibility";
+import { resolveHeaderNavState } from "@/lib/navigation/nav-state";
 
 interface Props {
   locale: Locale;
@@ -78,16 +79,15 @@ const isProjectsActive = pathWithSlash.includes("/projects/");
 const isExperienceActive = pathWithSlash.includes("/experience/");
 const isCaseStudiesActive = pathWithSlash.includes("/case-studies/");
 const isBlogActive = pathWithSlash.includes("/blog/");
-const isServicesActive = pathWithSlash.includes("/services/");
 const isResumeActive = pathWithSlash.includes("/resume/");
 
-const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
+// SPEC-007 REQ-4: "Services" is first-level; /services/* must never light "More".
+const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
 ---
 
 <header
   id="site-header"
   class="sticky top-0 z-50 w-full border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 backdrop-blur-md"
-  style="transform: translate3d(0, 0, 0); -webkit-transform: translate3d(0, 0, 0); will-change: transform; backface-visibility: hidden; -webkit-backface-visibility: hidden; contain: layout style;"
 >
   <div class="mx-auto flex h-14 max-w-[1700px] items-center px-4 sm:px-6 lg:px-8">
     <!-- Left: Brand & Status -->
@@ -972,18 +972,17 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
           }
         });
 
-        // Cascada estricta: 'Más' se enciende si la sección activa está replegada dentro del desplegable
+        // Cascada estricta: 'Más' se enciende si la sección activa está replegada dentro del desplegable.
+        // SPEC-007 REQ-4: 'services' queda excluida; solo se resalta su propio enlace.
         var width = window.innerWidth;
         var isProjectsInMore = width < 1000;
         var isCaseStudiesInMore = width < 1160;
-        var isServicesInMore = width < 1280;
         var isContactInMore = width < 1380;
 
         var isMoreActive =
           currentSection === "blog" ||
           (currentSection === "projects" && isProjectsInMore) ||
           (currentSection === "case-studies" && isCaseStudiesInMore) ||
-          (currentSection === "services" && isServicesInMore) ||
           (currentSection === "contact" && isContactInMore);
 
         var moreSummary = document.getElementById("header-more-summary");

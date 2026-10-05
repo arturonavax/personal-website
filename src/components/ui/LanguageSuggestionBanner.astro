@@ -107,19 +107,26 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
             return;
           }
 
-          // 1. Session dismissal check: scoped to current path so other pages can still suggest languages
-          var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+          // 1. Render guard (SPEC-007 REQ-3): session-scoped keys only, nothing persisted across sessions.
+          //    Suppressed after an explicit dismissal or a manual language switch.
+          var isDismissed = false;
+          var isManualOverride = false;
           try {
-            if (
-              sessionStorage.getItem("dismissed_lang_suggestion") ===
-                currentPath ||
-              sessionStorage.getItem(
-                "dismissed_lang_suggestion_" + currentPath,
-              ) === "true"
-            ) {
-              return;
-            }
+            isDismissed =
+              sessionStorage.getItem("lang_banner_dismissed") === "true";
+            isManualOverride =
+              sessionStorage.getItem("lang_manual_override") === "true";
           } catch (_) {}
+
+          if (isDismissed || isManualOverride) {
+            banner.classList.remove("flex", "translate-y-0", "opacity-100");
+            banner.classList.add("hidden", "translate-y-3", "opacity-0");
+            banner.hidden = true;
+            banner.style.display = "none";
+            return;
+          }
+
+          var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
 
           // 2. Page-level manual override check: if user switched on this specific page
           try {
@@ -170,14 +177,7 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
                 banner.classList.add("hidden");
               }, 300);
               try {
-                sessionStorage.setItem(
-                  "dismissed_lang_suggestion",
-                  currentPath,
-                );
-                sessionStorage.setItem(
-                  "dismissed_lang_suggestion_" + currentPath,
-                  "true",
-                );
+                sessionStorage.setItem("lang_banner_dismissed", "true");
               } catch (_) {}
             };
           }
@@ -189,7 +189,7 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
               banner.classList.remove("flex", "translate-y-0", "opacity-100");
               banner.classList.add("hidden", "translate-y-3", "opacity-0");
               try {
-                sessionStorage.setItem("dismissed_lang_suggestion", "true");
+                sessionStorage.setItem("lang_banner_dismissed", "true");
                 var targetUrl = banner.getAttribute("data-target-url");
                 if (targetUrl) {
                   sessionStorage.setItem(
