@@ -423,6 +423,8 @@ const jobDetailUrl = isEs
       });
     }
 
+    window.__initSimulationCards = initSimulationCards;
+
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", initSimulationCards);
     } else {

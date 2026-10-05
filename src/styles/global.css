@@ -588,18 +588,22 @@ html[data-timeline-incoming="past"] #experience-article {
   .resume-document a[href*="tel:"],
   .resume-document a[href*="linkedin.com"],
   .resume-document a[href*="github.com"],
+  .resume-document a[href*="arturonavax.dev"],
   .cv-document a[href*="mailto:"],
   .cv-document a[href*="tel:"],
   .cv-document a[href*="linkedin.com"],
   .cv-document a[href*="github.com"],
+  .cv-document a[href*="arturonavax.dev"],
   #cv-document-sheet a[href*="mailto:"],
   #cv-document-sheet a[href*="tel:"],
   #cv-document-sheet a[href*="linkedin.com"],
   #cv-document-sheet a[href*="github.com"],
+  #cv-document-sheet a[href*="arturonavax.dev"],
   #resume-live-preview a[href*="mailto:"],
   #resume-live-preview a[href*="tel:"],
   #resume-live-preview a[href*="linkedin.com"],
-  #resume-live-preview a[href*="github.com"] {
+  #resume-live-preview a[href*="github.com"],
+  #resume-live-preview a[href*="arturonavax.dev"] {
     text-decoration: none !important;
     color: inherit !important;
     pointer-events: auto !important;
@@ -612,15 +616,15 @@ html[data-timeline-incoming="past"] #experience-article {
   contain-intrinsic-size: auto 600px;
 }
 
-/* Header Sticky Positioning Stability (Zero flickering / tearing on fast scroll) */
+/* GPU Compositor Layer Isolation for Header (Zero flickering / tearing on fast scroll) */
 header#site-header,
 header {
-  transform: none;
-  -webkit-transform: none;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   isolation: isolate;
-  background-color: var(--color-surface-card) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background-color: var(--color-surface-card);
 }
 
 /* Active Navigation Dot State Invariance (Zero layout shifts when toggling active state) */

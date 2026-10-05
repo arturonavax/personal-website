@@ -1012,6 +1012,8 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
       }
     }
 
+    window.__setupPageIndex = setupPageIndex;
+
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", setupPageIndex);
     } else {

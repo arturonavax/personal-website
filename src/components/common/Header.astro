@@ -871,7 +871,20 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
               } else if (!link.hash || link.hash === "#about") {
                 e.preventDefault();
                 setActiveSection("about");
+                window.__isProgrammaticNav = true;
                 window.scrollTo({ top: 0, behavior: "smooth" });
+                var clearAboutScroll = function () {
+                  window.__isProgrammaticNav = false;
+                  window.removeEventListener("scrollend", clearAboutScroll);
+                };
+                if ("onscrollend" in window) {
+                  window.addEventListener("scrollend", clearAboutScroll, {
+                    once: true,
+                  });
+                }
+                setTimeout(function () {
+                  window.__isProgrammaticNav = false;
+                }, 900);
                 if (history.pushState) {
                   history.pushState(
                     null,
@@ -883,6 +896,8 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
                 e.preventDefault();
                 var contactSec = document.getElementById("contact");
                 if (contactSec) {
+                  setActiveSection("contact");
+                  window.__isProgrammaticNav = true;
                   var siteHeader = document.getElementById("site-header");
                   var headerOffset =
                     (siteHeader ? siteHeader.offsetHeight : 56) + 16;
@@ -893,6 +908,18 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
                       headerOffset,
                   );
                   window.scrollTo({ top: targetY, behavior: "smooth" });
+                  var clearContactScroll = function () {
+                    window.__isProgrammaticNav = false;
+                    window.removeEventListener("scrollend", clearContactScroll);
+                  };
+                  if ("onscrollend" in window) {
+                    window.addEventListener("scrollend", clearContactScroll, {
+                      once: true,
+                    });
+                  }
+                  setTimeout(function () {
+                    window.__isProgrammaticNav = false;
+                  }, 900);
                   if (history.pushState) {
                     history.pushState(null, "", "#contact");
                   }
@@ -912,7 +939,7 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
 
           if (isCurrent) {
             a.setAttribute("aria-current", "page");
-            a.classList.add("text-[var(--color-accent-gold)]", "font-semibold");
+            a.classList.add("text-[var(--color-accent-gold)]");
             if (a.classList.contains("border-b-2")) {
               a.classList.add("border-b-[var(--color-accent-gold)]");
               a.classList.remove("border-transparent");
@@ -926,7 +953,6 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
             a.removeAttribute("aria-current");
             a.classList.remove(
               "text-[var(--color-accent-gold)]",
-              "font-semibold",
               "border-b-[var(--color-accent-gold)]",
             );
             if (a.classList.contains("border-b-2")) {
@@ -960,7 +986,6 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
           if (isMoreActive) {
             moreSummary.classList.add(
               "text-[var(--color-accent-gold)]",
-              "font-semibold",
               "border-b-[var(--color-accent-gold)]",
             );
             moreSummary.classList.remove("border-transparent");
@@ -971,7 +996,6 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
           } else {
             moreSummary.classList.remove(
               "text-[var(--color-accent-gold)]",
-              "font-semibold",
               "border-b-[var(--color-accent-gold)]",
             );
             moreSummary.classList.add("border-transparent");
@@ -1032,6 +1056,7 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
           }
           var contactObserver = new IntersectionObserver(
             function (entries) {
+              if (window.__isProgrammaticNav) return;
               var entry = entries[0];
               if (!entry) return;
               var isContactInView = entry.isIntersecting;
@@ -1043,6 +1068,7 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
               var isHome = path === "/" || path === "/es/";
 
               window.requestAnimationFrame(function () {
+                if (window.__isProgrammaticNav) return;
                 if (isContactInView) {
                   setActiveSection("contact");
                 } else {

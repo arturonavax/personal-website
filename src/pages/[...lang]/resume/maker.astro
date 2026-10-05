@@ -516,7 +516,8 @@ const isEs = locale === "es";
         : currentHref.startsWith("mailto:") ||
           currentHref.startsWith("tel:") ||
           currentHref.includes("linkedin.com") ||
-          currentHref.includes("github.com");
+          currentHref.includes("github.com") ||
+          currentHref.includes("arturonavax.dev");
 
       if (isHeaderContact) {
         return;

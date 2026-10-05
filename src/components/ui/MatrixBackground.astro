@@ -222,17 +222,24 @@ const {
       const characters =
         "01010123456789ABCDEFλ§µsGoRustSIMDAVX2ptrchnsync".split("");
 
-      const render = () => {
+      let lastRenderTime = 0;
+      const FRAME_INTERVAL = 60;
+
+      const render = (now: number) => {
+        state.animationFrameId = requestAnimationFrame(render);
+
+        if (document.hidden || window.innerWidth < 768) {
+          return;
+        }
+
+        if (now - lastRenderTime < FRAME_INTERVAL) {
+          return;
+        }
+        lastRenderTime = now;
+
         const currentCanvas = state.canvas || this.canvas;
         const currentCtx = state.ctx || this.ctx;
         if (!currentCtx || !currentCanvas) return;
-
-        if (document.hidden || window.innerWidth < 768) {
-          state.timeoutId = window.setTimeout(() => {
-            state.animationFrameId = requestAnimationFrame(render);
-          }, 200);
-          return;
-        }
 
         const isLight =
           document.documentElement.getAttribute("data-theme") === "light";
@@ -263,13 +270,9 @@ const {
           }
         }
         (window as any).__matrixDrops = drops;
-
-        state.timeoutId = window.setTimeout(() => {
-          state.animationFrameId = requestAnimationFrame(render);
-        }, 75);
       };
 
-      state.renderFn = render;
+      state.renderFn = render as any;
       state.animationFrameId = requestAnimationFrame(render);
     }
   }
