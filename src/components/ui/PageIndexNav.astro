@@ -748,6 +748,15 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
 
       var isProgrammaticScroll = false;
       var scrollLockTimeout = null;
+      var navTargetIdx = -1;
+
+      function getHeaderOffset() {
+        var headerEl =
+          document.getElementById("site-header") ||
+          document.querySelector("header");
+        var h = headerEl ? headerEl.offsetHeight : 56;
+        return h + 24;
+      }
 
       function highlightActive(activeId) {
         desktopLinks.forEach(function (dl) {
@@ -782,24 +791,32 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         });
       }
 
-      function scrollToTarget(targetId) {
+      function scrollToTarget(targetId, explicitIdx) {
         var targetEl = document.getElementById(targetId);
         if (!targetEl) return;
 
         highlightActive(targetId);
         isProgrammaticScroll = true;
-        clearTimeout(scrollLockTimeout);
-        scrollLockTimeout = setTimeout(function () {
-          isProgrammaticScroll = false;
-        }, 800);
-
-        function getHeaderOffset() {
-          var headerEl =
-            document.getElementById("site-header") ||
-            document.querySelector("header");
-          var h = headerEl ? headerEl.offsetHeight : 56;
-          return h + 24;
+        if (typeof explicitIdx === "number") {
+          navTargetIdx = explicitIdx;
+        } else {
+          navTargetIdx = sectionIds.indexOf(targetId);
         }
+
+        clearTimeout(scrollLockTimeout);
+
+        function onScrollFinish() {
+          isProgrammaticScroll = false;
+          window.removeEventListener("scrollend", onScrollFinish);
+          if (navTargetIdx >= 0 && navTargetIdx < sectionIds.length) {
+            highlightActive(sectionIds[navTargetIdx]);
+          }
+        }
+
+        if ("onscrollend" in window) {
+          window.addEventListener("scrollend", onScrollFinish, { once: true });
+        }
+        scrollLockTimeout = setTimeout(onScrollFinish, 600);
 
         var headerOffset = getHeaderOffset();
         var elementPosition =
@@ -823,25 +840,31 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         if (!sectionIds || sectionIds.length === 0) return false;
 
         var now = Date.now();
-        if (now - lastStepTime < 260) return true;
+        if (now - lastStepTime < 240) return true;
         lastStepTime = now;
 
-        var headerEl =
-          document.getElementById("site-header") ||
-          document.querySelector("header");
-        var headerOffset = (headerEl ? headerEl.offsetHeight : 56) + 24;
+        var headerOffset = getHeaderOffset();
         var threshold = headerOffset + 18;
         var documentHeight = document.documentElement.scrollHeight || 3000;
 
         var currentIdx = -1;
-        for (var i = 0; i < sectionIds.length; i++) {
-          var el = document.getElementById(sectionIds[i]);
-          if (!el) continue;
-          var rect = el.getBoundingClientRect();
-          if (rect.top <= threshold) {
-            currentIdx = i;
-          } else {
-            break;
+        // Avoid recalculating currentIdx from unstable bounding rects while in programmatic scroll
+        if (
+          isProgrammaticScroll &&
+          navTargetIdx >= 0 &&
+          navTargetIdx < sectionIds.length
+        ) {
+          currentIdx = navTargetIdx;
+        } else {
+          for (var i = 0; i < sectionIds.length; i++) {
+            var el = document.getElementById(sectionIds[i]);
+            if (!el) continue;
+            var rect = el.getBoundingClientRect();
+            if (rect.top <= threshold) {
+              currentIdx = i;
+            } else {
+              break;
+            }
           }
         }
 
@@ -854,29 +877,42 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           }
 
           if (targetIdx >= sectionIds.length) {
+            isProgrammaticScroll = true;
+            navTargetIdx = sectionIds.length - 1;
             window.scrollTo({
               top: documentHeight,
               behavior: "smooth",
             });
             highlightActive(sectionIds[sectionIds.length - 1]);
+            clearTimeout(scrollLockTimeout);
+            scrollLockTimeout = setTimeout(function () {
+              isProgrammaticScroll = false;
+            }, 600);
             return true;
           }
         } else {
           if (currentIdx <= 0) {
+            isProgrammaticScroll = true;
+            navTargetIdx = 0;
             window.scrollTo({
               top: 0,
               behavior: "smooth",
             });
             if (sectionIds.length > 0) highlightActive(sectionIds[0]);
+            clearTimeout(scrollLockTimeout);
+            scrollLockTimeout = setTimeout(function () {
+              isProgrammaticScroll = false;
+            }, 600);
             return true;
           }
 
           targetIdx = currentIdx - 1;
         }
 
+        navTargetIdx = targetIdx;
         var targetId = sectionIds[targetIdx];
         if (targetId) {
-          scrollToTarget(targetId);
+          scrollToTarget(targetId, targetIdx);
         }
         return true;
       };
@@ -929,7 +965,7 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
             return;
           }
 
-          var readingLine = 100;
+          var readingLine = getHeaderOffset() + 14;
           var currentActiveId = sectionEls[0].id;
 
           for (var i = 0; i < sectionEls.length; i++) {

@@ -86,65 +86,82 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
           var banner = document.getElementById("lang-suggestion-banner");
           if (!banner) return;
 
-          var currentLocale = banner.getAttribute("data-current-locale");
-          var targetLocale = banner.getAttribute("data-target-locale");
+          var docLang = (
+            document.documentElement.getAttribute("lang") ||
+            (window.location.pathname.indexOf("/es/") === 0 ||
+            window.location.pathname === "/es"
+              ? "es"
+              : "en")
+          )
+            .toLowerCase()
+            .split("-")[0];
 
-          // 1. Verificar si el usuario ya descartó la sugerencia
+          var currentLocale =
+            docLang || banner.getAttribute("data-current-locale") || "en";
+          var targetLocale = currentLocale === "en" ? "es" : "en";
+
+          // Guard against stale banner: never offer Spanish if already on Spanish page
+          if (
+            currentLocale === "es" &&
+            banner.getAttribute("data-target-locale") === "es"
+          ) {
+            banner.classList.remove("flex", "translate-y-0", "opacity-100");
+            banner.classList.add("hidden", "translate-y-3", "opacity-0");
+            return;
+          }
+
+          // 1. Session dismissal check: only suppress if explicitly dismissed in the current session
           try {
             if (
-              localStorage.getItem("dismissed_lang_suggestion") === "true" ||
               sessionStorage.getItem("dismissed_lang_suggestion") === "true"
             ) {
               return;
             }
           } catch (_) {}
 
-          // 2. Verificar si el usuario tiene una preferencia guardada explícita (suprimir permanentemente)
+          // 2. Page-level manual override check: if user switched on this specific page
           try {
-            var preferred =
-              localStorage.getItem("preferred_locale") ||
-              localStorage.getItem("manual_lang_override");
-            if (preferred) {
+            var pageOverride =
+              sessionStorage.getItem(
+                "page_lang_override_" + window.location.pathname,
+              ) ||
+              sessionStorage.getItem(
+                "page_lang_override_" +
+                  window.location.pathname.replace(/\/+$/, ""),
+              );
+            if (pageOverride === currentLocale) {
               return;
             }
           } catch (_) {}
 
-          // 3. Detectar idiomas del dispositivo del usuario
+          // 3. Detect device/browser language
           var userLangs = (
             navigator.languages || [navigator.language || ""]
           ).map(function (l) {
             return (l || "").toLowerCase().split("-")[0];
           });
 
-          // 4. Determinar si el primer idioma soportado del usuario es el targetLocale
-          var prefersTarget = false;
-          var firstSupportedIndex = -1;
+          var deviceLang = null;
           for (var i = 0; i < userLangs.length; i++) {
             if (userLangs[i] === "en" || userLangs[i] === "es") {
-              firstSupportedIndex = i;
+              deviceLang = userLangs[i];
               break;
             }
           }
 
-          if (
-            firstSupportedIndex !== -1 &&
-            userLangs[firstSupportedIndex] === targetLocale
-          ) {
-            prefersTarget = true;
+          // Ensure banner appears whenever device/browser language does not match the page language
+          if (!deviceLang || currentLocale === deviceLang) {
+            return;
           }
 
-          // Si el usuario no prefiere el idioma alternativo (o habla otro idioma no soportado como FR, DE, JA), no mostrar banner
-          // Esto permite que el navegador haga su traducción estándar nativa sin estorbar
-          if (!prefersTarget) return;
-
-          // 5. Mostrar banner con animación fluida
+          // 4. Mostrar banner con animación fluida
           banner.classList.remove("hidden");
           banner.classList.add("flex");
           void banner.offsetHeight; // Forzar reflow para animación CSS
           banner.classList.remove("translate-y-3", "opacity-0");
           banner.classList.add("translate-y-0", "opacity-100");
 
-          // 6. Manejo de descarte
+          // 5. Manejo de descarte (solo en la sesión actual)
           var dismissBtn = document.getElementById("lang-suggestion-dismiss");
           if (dismissBtn) {
             dismissBtn.onclick = function () {
@@ -155,22 +172,31 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
                 banner.classList.add("hidden");
               }, 300);
               try {
-                localStorage.setItem("dismissed_lang_suggestion", "true");
                 sessionStorage.setItem("dismissed_lang_suggestion", "true");
               } catch (_) {}
             };
           }
 
-          // 7. Manejo de aceptación (guardar preferencia permanente en localStorage y cookie)
+          // 6. Manejo de aceptación (desaparece inmediatamente al pulsar Cambiar)
           var acceptBtn = document.getElementById("lang-suggestion-accept");
           if (acceptBtn) {
             acceptBtn.addEventListener("click", function () {
+              banner.classList.remove("flex", "translate-y-0", "opacity-100");
+              banner.classList.add("hidden", "translate-y-3", "opacity-0");
               try {
-                localStorage.setItem("preferred_locale", targetLocale);
-                document.cookie =
-                  "preferred_locale=" +
-                  targetLocale +
-                  "; path=/; max-age=31536000; SameSite=Lax";
+                sessionStorage.setItem("dismissed_lang_suggestion", "true");
+                var targetUrl = banner.getAttribute("data-target-url");
+                if (targetUrl) {
+                  sessionStorage.setItem(
+                    "page_lang_override_" + targetUrl,
+                    targetLocale,
+                  );
+                  sessionStorage.setItem(
+                    "page_lang_override_" + targetUrl.replace(/\/+$/, ""),
+                    targetLocale,
+                  );
+                }
+                sessionStorage.setItem("preferred_locale", targetLocale);
               } catch (_) {}
             });
           }

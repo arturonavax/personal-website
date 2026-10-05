@@ -28,13 +28,41 @@ const {
 )}
 
 <script>
+  interface MatrixSingleton {
+    drops: number[];
+    animationFrameId: number | null;
+    timeoutId: number | null;
+    disconnectTimer: number | null;
+    lastWidth: number;
+    lastHeight: number;
+    canvas: HTMLCanvasElement | null;
+    ctx: CanvasRenderingContext2D | null;
+    renderFn: (() => void) | null;
+  }
+
   class MatrixCanvasLayer extends HTMLElement {
     private canvas: HTMLCanvasElement | null = null;
     private ctx: CanvasRenderingContext2D | null = null;
-    private animationFrameId: number | null = null;
-    private timeoutId: number | null = null;
-    private drops: number[] = [];
     private resizeObserver: ResizeObserver | null = null;
+    private lastWidth = 0;
+    private lastHeight = 0;
+
+    private getGlobalState(): MatrixSingleton {
+      if (!(window as any).__matrixState) {
+        (window as any).__matrixState = {
+          drops: (window as any).__matrixDrops || [],
+          animationFrameId: null,
+          timeoutId: null,
+          disconnectTimer: null,
+          lastWidth: 0,
+          lastHeight: 0,
+          canvas: null,
+          ctx: null,
+          renderFn: null,
+        };
+      }
+      return (window as any).__matrixState as MatrixSingleton;
+    }
 
     connectedCallback() {
       if (window.innerWidth < 768) return;
@@ -44,35 +72,102 @@ const {
       )
         return;
 
-      this.canvas = this.querySelector("canvas");
+      const state = this.getGlobalState();
+      if (state.disconnectTimer !== null) {
+        window.clearTimeout(state.disconnectTimer);
+        state.disconnectTimer = null;
+      }
+
+      // Check if a global canvas singleton is already running
+      const existingCanvas = (window as any)
+        .__matrixCanvas as HTMLCanvasElement | null;
+      const currentCanvas = this.querySelector("canvas");
+
+      if (existingCanvas && state.animationFrameId !== null) {
+        // A canvas is already created, sized, and actively running!
+        if (currentCanvas && currentCanvas !== existingCanvas) {
+          currentCanvas.remove();
+        }
+        if (!this.contains(existingCanvas)) {
+          this.appendChild(existingCanvas);
+        }
+        this.canvas = existingCanvas;
+        this.ctx = existingCanvas.getContext("2d");
+        state.canvas = existingCanvas;
+        state.ctx = this.ctx;
+        return;
+      }
+
+      this.canvas = currentCanvas;
       if (!this.canvas) return;
       this.ctx = this.canvas.getContext("2d");
       if (!this.ctx) return;
 
-      this.initCanvasDimensions();
-      this.initRain();
-      this.startRainLoop();
+      (window as any).__matrixCanvas = this.canvas;
+      state.canvas = this.canvas;
+      state.ctx = this.ctx;
 
-      this.resizeObserver = new ResizeObserver(() => {
-        this.initCanvasDimensions();
-        this.initRain();
+      this.lastWidth = window.innerWidth;
+      this.lastHeight = window.innerHeight;
+      state.lastWidth = this.lastWidth;
+      state.lastHeight = this.lastHeight;
+
+      this.initCanvasDimensions();
+
+      if (!state.drops || state.drops.length === 0) {
+        this.initRain(false);
+      }
+
+      if (state.animationFrameId === null) {
+        this.startRainLoop();
+      }
+
+      this.resizeObserver = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        const currentWidth = entry.contentRect.width || window.innerWidth;
+        const currentHeight = entry.contentRect.height || window.innerHeight;
+        // Only re-init if canvas dimensions actually changed by more than 50px
+        if (
+          Math.abs(currentWidth - this.lastWidth) > 50 ||
+          Math.abs(currentHeight - this.lastHeight) > 50
+        ) {
+          this.lastWidth = currentWidth;
+          this.lastHeight = currentHeight;
+          state.lastWidth = currentWidth;
+          state.lastHeight = currentHeight;
+          this.initCanvasDimensions();
+          this.initRain(false);
+        }
       });
       this.resizeObserver.observe(this);
     }
 
     disconnectedCallback() {
-      if (this.animationFrameId !== null) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
+      const state = this.getGlobalState();
+      if (state.disconnectTimer !== null) {
+        window.clearTimeout(state.disconnectTimer);
       }
-      if (this.timeoutId !== null) {
-        window.clearTimeout(this.timeoutId);
-        this.timeoutId = null;
-      }
-      if (this.resizeObserver) {
-        this.resizeObserver.disconnect();
-        this.resizeObserver = null;
-      }
+
+      // Defer cancellation: during Astro transitions or DOM swaps, element is re-parented within ms
+      state.disconnectTimer = window.setTimeout(() => {
+        if (!document.querySelector("matrix-canvas-layer")) {
+          if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+          }
+          if (state.animationFrameId !== null) {
+            cancelAnimationFrame(state.animationFrameId);
+            state.animationFrameId = null;
+          }
+          if (state.timeoutId !== null) {
+            window.clearTimeout(state.timeoutId);
+            state.timeoutId = null;
+          }
+          (window as any).__matrixCanvas = null;
+        }
+        state.disconnectTimer = null;
+      }, 800);
     }
 
     private initCanvasDimensions() {
@@ -81,71 +176,101 @@ const {
       const rect = this.getBoundingClientRect();
       const width = rect.width || window.innerWidth;
       const height = rect.height || window.innerHeight;
-      this.canvas.width = width * dpr;
-      this.canvas.height = height * dpr;
-      if (this.ctx) {
-        this.ctx.resetTransform?.();
-        this.ctx.scale(dpr, dpr);
+      const targetW = Math.round(width * dpr);
+      const targetH = Math.round(height * dpr);
+
+      // CRITICAL: Setting canvas.width clears the entire bitmap buffer.
+      // NEVER re-assign if dimensions already match!
+      if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+        this.canvas.width = targetW;
+        this.canvas.height = targetH;
+        if (this.ctx) {
+          this.ctx.resetTransform?.();
+          this.ctx.scale(dpr, dpr);
+        }
       }
     }
 
-    private initRain() {
+    private initRain(forceReset = false) {
       if (!this.canvas) return;
+      const state = this.getGlobalState();
       const fontSize = 14;
       const columns = Math.floor(window.innerWidth / fontSize);
-      this.drops = new Array(columns)
-        .fill(1)
-        .map(() => Math.floor(Math.random() * 50));
+      const existing = (state.drops && state.drops.length > 0)
+        ? state.drops
+        : ((window as any).__matrixDrops as number[] | undefined);
+
+      if (!forceReset && existing && existing.length > 0) {
+        state.drops = new Array(columns);
+        for (let i = 0; i < columns; i++) {
+          state.drops[i] =
+            i < existing.length ? existing[i]! : Math.floor(Math.random() * 50);
+        }
+      } else {
+        state.drops = new Array(columns)
+          .fill(1)
+          .map(() => Math.floor(Math.random() * 50));
+      }
+      (window as any).__matrixDrops = state.drops;
     }
 
     private startRainLoop() {
+      const state = this.getGlobalState();
+      if (state.animationFrameId !== null) return;
+
       const fontSize = 14;
       const characters =
         "01010123456789ABCDEFλ§µsGoRustSIMDAVX2ptrchnsync".split("");
 
       const render = () => {
-        if (!this.ctx || !this.canvas || !this.isConnected) return;
+        const currentCanvas = state.canvas || this.canvas;
+        const currentCtx = state.ctx || this.ctx;
+        if (!currentCtx || !currentCanvas) return;
+
         if (document.hidden || window.innerWidth < 768) {
-          this.timeoutId = window.setTimeout(() => {
-            this.animationFrameId = requestAnimationFrame(render);
+          state.timeoutId = window.setTimeout(() => {
+            state.animationFrameId = requestAnimationFrame(render);
           }, 200);
           return;
         }
 
         const isLight =
           document.documentElement.getAttribute("data-theme") === "light";
-        this.ctx.fillStyle = isLight
+        currentCtx.fillStyle = isLight
           ? "rgba(244, 246, 248, 0.16)"
           : "rgba(26, 2, 5, 0.12)";
-        this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+        currentCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-        this.ctx.fillStyle = isLight ? "#7A1C16" : "#D48B38";
-        this.ctx.font = `${fontSize}px ui-monospace, monospace`;
+        currentCtx.fillStyle = isLight ? "#7A1C16" : "#D48B38";
+        currentCtx.font = `${fontSize}px ui-monospace, monospace`;
 
-        for (let i = 0; i < this.drops.length; i++) {
-          const dropY = this.drops[i] ?? 0;
+        const drops = state.drops;
+        for (let i = 0; i < drops.length; i++) {
+          const dropY = drops[i] ?? 0;
           const char =
             characters[Math.floor(Math.random() * characters.length)] || "0";
           const x = i * fontSize;
           const y = dropY * fontSize;
 
           if (dropY > 0) {
-            this.ctx.fillText(char, x, y);
+            currentCtx.fillText(char, x, y);
           }
 
           if (y > window.innerHeight && Math.random() > 0.985) {
-            this.drops[i] = 0;
+            drops[i] = 0;
           } else {
-            this.drops[i] = dropY + 1;
+            drops[i] = dropY + 1;
           }
         }
+        (window as any).__matrixDrops = drops;
 
-        this.timeoutId = window.setTimeout(() => {
-          this.animationFrameId = requestAnimationFrame(render);
+        state.timeoutId = window.setTimeout(() => {
+          state.animationFrameId = requestAnimationFrame(render);
         }, 75);
       };
 
-      this.animationFrameId = requestAnimationFrame(render);
+      state.renderFn = render;
+      state.animationFrameId = requestAnimationFrame(render);
     }
   }
 

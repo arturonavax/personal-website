@@ -69,24 +69,16 @@ const isEs = locale === "es";
           <div id="phone-inputs-container" class="hidden items-center gap-1.5">
             <input
               type="text"
-              id="phone-code-input"
-              placeholder="+57"
-              value="+57"
-              aria-label={isEs ? "Código de país" : "Country code"}
-              class="w-14 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-1 font-mono text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
-            />
-            <input
-              type="text"
-              id="phone-number-input"
-              placeholder="300 000 0000"
-              value="300 000 0000"
+              id="phone-input"
+              placeholder="+57 300 000 0000"
+              value="+57 300 000 0000"
               aria-label={isEs ? "Número de teléfono" : "Phone number"}
-              class="w-32 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-1 font-mono text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
+              class="w-44 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 font-mono text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
             />
           </div>
         </div>
 
-        <!-- Reversible Strip Links Toggle (REQ-UXE-15) -->
+        <!-- Reversible Strip Links Toggle (REQ-UXE-15 & REQ-UXE-29) -->
         <button
           id="strip-links-toggle"
           type="button"
@@ -122,30 +114,86 @@ const isEs = locale === "es";
     </header>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <div class="flex flex-col no-print">
-        <label
-          for="markdown-raw-input"
-          class="mb-2 font-mono text-xs text-[var(--color-text-muted)]"
-        >
-          {isEs ? "Fuente del Documento Markdown" : "Markdown Document Source"}
-        </label>
+      <div class="flex flex-col no-print" id="editor-pane-container">
+        <div class="mb-2 flex items-center justify-between">
+          <label
+            for="markdown-raw-input"
+            class="font-mono text-xs text-[var(--color-text-muted)]"
+          >
+            {isEs
+              ? "Fuente del Documento Markdown"
+              : "Markdown Document Source"}
+          </label>
+          <button
+            type="button"
+            id="toggle-editor-collapse-btn"
+            aria-label={
+              isEs ? "Alternar tamaño del editor" : "Toggle editor height"
+            }
+            title={isEs ? "Alternar tamaño del editor" : "Toggle editor height"}
+            class="inline-flex items-center justify-center p-1 rounded hover:bg-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
+          >
+            <svg
+              id="editor-collapse-icon"
+              class="h-4 w-4 transition-transform duration-200"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+          </button>
+        </div>
         <textarea
           id="markdown-raw-input"
           data-initial-markdown={initialBody}
-          class="h-[760px] w-full resize-none rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 font-mono text-xs leading-relaxed text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none"
+          class="h-[760px] w-full resize-none rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 font-mono text-xs leading-relaxed text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none transition-[height] duration-200"
           spellcheck="false"
         >{initialBody}</textarea>
       </div>
 
-      <div class="flex flex-col">
-        <span class="mb-2 font-mono text-xs text-[var(--color-text-muted)] no-print">
-          {isEs
-            ? "Previsualización Tipográfica en Vivo"
-            : "Live Typography Preview"}
-        </span>
+      <div class="flex flex-col" id="preview-pane-container">
+        <div class="mb-2 flex items-center justify-between no-print">
+          <span class="font-mono text-xs text-[var(--color-text-muted)]">
+            {isEs
+              ? "Previsualización Tipográfica en Vivo"
+              : "Live Typography Preview"}
+          </span>
+          <button
+            type="button"
+            id="toggle-preview-collapse-btn"
+            aria-label={
+              isEs
+                ? "Alternar tamaño de previsualización"
+                : "Toggle preview height"
+            }
+            title={
+              isEs
+                ? "Alternar tamaño de previsualización"
+                : "Toggle preview height"
+            }
+            class="inline-flex items-center justify-center p-1 rounded hover:bg-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
+          >
+            <svg
+              id="preview-collapse-icon"
+              class="h-4 w-4 transition-transform duration-200"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+          </button>
+        </div>
         <div
           id="resume-live-preview"
-          class="cv-document resume-document h-[760px] overflow-y-auto rounded-lg border border-[var(--color-surface-border)] bg-white p-6 sm:p-8 md:p-10 shadow-sm text-[#1e293b]"
+          class="cv-document resume-document h-[760px] overflow-y-auto rounded-lg border border-[var(--color-surface-border)] bg-white p-6 sm:p-8 md:p-10 shadow-sm text-[#1e293b] transition-[height] duration-200"
         ></div>
       </div>
     </div>
@@ -205,12 +253,22 @@ const isEs = locale === "es";
   const phoneContainer = document.getElementById(
     "phone-inputs-container",
   ) as HTMLDivElement | null;
-  const phoneCodeInput = document.getElementById(
-    "phone-code-input",
+  const phoneInput = document.getElementById(
+    "phone-input",
   ) as HTMLInputElement | null;
-  const phoneNumberInput = document.getElementById(
-    "phone-number-input",
-  ) as HTMLInputElement | null;
+
+  const toggleEditorBtn = document.getElementById(
+    "toggle-editor-collapse-btn",
+  ) as HTMLButtonElement | null;
+  const editorCollapseIcon = document.getElementById(
+    "editor-collapse-icon",
+  ) as SVGElement | null;
+  const togglePreviewBtn = document.getElementById(
+    "toggle-preview-collapse-btn",
+  ) as HTMLButtonElement | null;
+  const previewCollapseIcon = document.getElementById(
+    "preview-collapse-icon",
+  ) as SVGElement | null;
 
   const isEs = document.documentElement.lang === "es";
   const initialContent = editor ? editor.value : "";
@@ -221,13 +279,13 @@ const isEs = locale === "es";
     preview.innerHTML = marked.parse(editor.value) as string;
   }
 
+  // Single Phone Input Synchronization (REQ-UXE-22)
   function syncPhoneInEditor(): void {
     if (!editor) return;
     const isEnabled = Boolean(phoneToggle?.checked);
-    const code = phoneCodeInput?.value.trim() || "+57";
-    const num = phoneNumberInput?.value.trim() || "";
-    const cleanNum = (code + " " + num).trim();
-    const telHref = "tel:" + (code + num).replace(/[\s-]/g, "");
+    const rawVal = phoneInput?.value.trim() || "";
+    const cleanNum = rawVal;
+    const telHref = "tel:" + rawVal.replace(/\s+/g, "");
 
     // Current lines
     const lines = editor.value.split("\n");
@@ -248,8 +306,8 @@ const isEs = locale === "es";
           .replace(/(?:\s*[•|]\s*)?\[[^\]]+\]\(tel:[^)]+\)/g, "")
           .trim();
 
-        if (isEnabled && num.length > 0) {
-          // Append phone with delimiter
+        if (isEnabled && rawVal.length > 0) {
+          // Append phone with delimiter: keep spaces in label, strip in tel:
           cleanLine = cleanLine + ` • [${cleanNum}](${telHref})`;
         }
         lines[i] = cleanLine;
@@ -273,14 +331,36 @@ const isEs = locale === "es";
   });
   updateLivePreview();
 
-  // Reversible Strip Links Toggle (REQ-UXE-15)
+  // Reversible Strip Links Toggle (REQ-UXE-15 & REQ-UXE-29)
   stripToggle?.addEventListener("click", () => {
     if (!editor) return;
     const isStripped = stripToggle.dataset.stripped === "true";
 
     if (!isStripped) {
       unstrippedContent = editor.value;
-      editor.value = editor.value.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+      // Strip markdown links in body sections, strictly preserving header contact links before first ##
+      const firstSectionIdx = editor.value.search(/\n(?=##\s)/);
+      if (firstSectionIdx !== -1) {
+        const headerPart = editor.value.slice(0, firstSectionIdx);
+        const bodyPart = editor.value.slice(firstSectionIdx);
+        const strippedBody = bodyPart.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+        editor.value = headerPart + strippedBody;
+      } else {
+        editor.value = editor.value.replace(
+          /\[([^\]]+)\]\(([^)]+)\)/g,
+          (match, text, url) => {
+            if (
+              url.includes("mailto:") ||
+              url.includes("tel:") ||
+              url.includes("linkedin.com") ||
+              url.includes("github.com")
+            ) {
+              return match;
+            }
+            return text;
+          },
+        );
+      }
       stripToggle.dataset.stripped = "true";
       stripToggle.classList.add(
         "border-[var(--color-accent-gold)]",
@@ -305,7 +385,7 @@ const isEs = locale === "es";
     updateLivePreview();
   });
 
-  // Phone toggle & inputs
+  // Phone toggle & inputs (REQ-UXE-22)
   phoneToggle?.addEventListener("change", () => {
     if (phoneContainer) {
       phoneContainer.classList.toggle("hidden", !phoneToggle.checked);
@@ -314,10 +394,80 @@ const isEs = locale === "es";
     syncPhoneInEditor();
   });
 
-  phoneCodeInput?.addEventListener("input", syncPhoneInEditor);
-  phoneNumberInput?.addEventListener("input", syncPhoneInEditor);
+  phoneInput?.addEventListener("input", syncPhoneInEditor);
 
-  // Reset to Default Action (REQ-UXE-15)
+  // Synchronized Bidirectional Scrolling (REQ-UXE-23)
+  let isScrollingEditor = false;
+  let isScrollingPreview = false;
+
+  editor?.addEventListener(
+    "scroll",
+    () => {
+      if (isScrollingEditor || !preview) return;
+      isScrollingPreview = true;
+      const editorMax = editor.scrollHeight - editor.clientHeight;
+      if (editorMax > 0) {
+        const ratio = editor.scrollTop / editorMax;
+        preview.scrollTop =
+          ratio * (preview.scrollHeight - preview.clientHeight);
+      }
+      requestAnimationFrame(() => {
+        isScrollingPreview = false;
+      });
+    },
+    { passive: true },
+  );
+
+  preview?.addEventListener(
+    "scroll",
+    () => {
+      if (isScrollingPreview || !editor) return;
+      isScrollingEditor = true;
+      const previewMax = preview.scrollHeight - preview.clientHeight;
+      if (previewMax > 0) {
+        const ratio = preview.scrollTop / previewMax;
+        editor.scrollTop = ratio * (editor.scrollHeight - editor.clientHeight);
+      }
+      requestAnimationFrame(() => {
+        isScrollingEditor = false;
+      });
+    },
+    { passive: true },
+  );
+
+  // Vertical Pane Collapse/Compact Toggles (REQ-UXE-23)
+  let isEditorCompacted = false;
+  let isPreviewCompacted = false;
+
+  toggleEditorBtn?.addEventListener("click", () => {
+    if (!editor) return;
+    isEditorCompacted = !isEditorCompacted;
+    if (isEditorCompacted) {
+      editor.classList.remove("h-[760px]");
+      editor.classList.add("h-[280px]");
+      editorCollapseIcon?.classList.add("rotate-180");
+    } else {
+      editor.classList.remove("h-[280px]");
+      editor.classList.add("h-[760px]");
+      editorCollapseIcon?.classList.remove("rotate-180");
+    }
+  });
+
+  togglePreviewBtn?.addEventListener("click", () => {
+    if (!preview) return;
+    isPreviewCompacted = !isPreviewCompacted;
+    if (isPreviewCompacted) {
+      preview.classList.remove("h-[760px]");
+      preview.classList.add("h-[280px]");
+      previewCollapseIcon?.classList.add("rotate-180");
+    } else {
+      preview.classList.remove("h-[280px]");
+      preview.classList.add("h-[760px]");
+      previewCollapseIcon?.classList.remove("rotate-180");
+    }
+  });
+
+  // Reset to Default Action (REQ-UXE-15 & REQ-UXE-22)
   resetBtn?.addEventListener("click", () => {
     if (!editor) return;
     editor.value = initialContent;
@@ -330,8 +480,7 @@ const isEs = locale === "es";
       phoneContainer.classList.add("hidden");
       phoneContainer.classList.remove("flex");
     }
-    if (phoneCodeInput) phoneCodeInput.value = "+57";
-    if (phoneNumberInput) phoneNumberInput.value = "300 000 0000";
+    if (phoneInput) phoneInput.value = "+57 300 000 0000";
 
     if (stripToggle) {
       stripToggle.dataset.stripped = "false";
@@ -352,15 +501,54 @@ const isEs = locale === "es";
     window.print();
   });
 
+  function prepareMakerPrintLinks() {
+    const previewEl = document.getElementById("resume-live-preview");
+    if (!previewEl) return;
+    const firstH2 = previewEl.querySelector("h2");
+    const links = previewEl.querySelectorAll<HTMLAnchorElement>("a[href]");
+    links.forEach((link) => {
+      const currentHref = link.getAttribute("href") || "";
+      const isHeaderContact = firstH2
+        ? Boolean(
+            firstH2.compareDocumentPosition(link) &
+              Node.DOCUMENT_POSITION_PRECEDING,
+          )
+        : currentHref.startsWith("mailto:") ||
+          currentHref.startsWith("tel:") ||
+          currentHref.includes("linkedin.com") ||
+          currentHref.includes("github.com");
+
+      if (isHeaderContact) {
+        return;
+      }
+      link.setAttribute("data-print-href", currentHref);
+      link.removeAttribute("href");
+    });
+  }
+
+  function restoreMakerPrintLinks() {
+    const previewEl = document.getElementById("resume-live-preview");
+    if (!previewEl) return;
+    const strippedLinks =
+      previewEl.querySelectorAll<HTMLAnchorElement>("a[data-print-href]");
+    strippedLinks.forEach((link) => {
+      const orig = link.getAttribute("data-print-href");
+      if (orig) link.setAttribute("href", orig);
+      link.removeAttribute("data-print-href");
+    });
+  }
+
   window.addEventListener("beforeprint", () => {
     (window as any).__priorDocTitle = document.title;
     const currentLang = document.documentElement.lang || "en";
     document.title = `ArturoNava-CV-${currentLang}`;
+    prepareMakerPrintLinks();
   });
 
   window.addEventListener("afterprint", () => {
     if ((window as any).__priorDocTitle) {
       document.title = (window as any).__priorDocTitle;
     }
+    restoreMakerPrintLinks();
   });
 </script>

@@ -195,7 +195,9 @@ const hasSponsorships =
                 id="coffee-dialog-title"
                 class="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-primary)]"
               >
-                {isEs ? "Apoyo y Patrocinio" : "Support & Sponsorship"}
+                {isEs
+                  ? "Apoyo a Investigación Independiente"
+                  : "Support Independent Research"}
               </h3>
               <p class="text-xs text-[var(--color-text-muted)] font-mono">
                 {isEs
@@ -207,9 +209,7 @@ const hasSponsorships =
           <button
             id="close-coffee-dialog-btn"
             type="button"
-            aria-label={
-              isEs ? "Cerrar ventana de patrocinio" : "Close sponsorship dialog"
-            }
+            aria-label={isEs ? "Cerrar ventana" : "Close modal"}
             class="min-h-[44px] min-w-[44px] flex items-center justify-center rounded p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
           >
             <svg
@@ -227,221 +227,267 @@ const hasSponsorships =
           </button>
         </div>
 
-        <!-- Scrollable Dialog Body (Task 2: Permanent Custom Scrollbar) -->
-        <div
-          class="overflow-y-auto p-5 sm:p-6 space-y-6 text-sm"
-          data-scrollable
-        >
-          <!-- Intro description -->
-          <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
-            {isEs
-              ? "Si mis proyectos de código abierto, benchmarks de baja latencia o arquitecturas distribuidas te han aportado valor, puedes respaldar este trabajo mediante transferencias cripto directas o plataformas de pago."
-              : "If my open-source projects, low-latency benchmarks, or distributed systems blueprints have provided value, you can support future research via direct crypto transfers or payment platforms."}
-          </p>
+        <!-- Scrollable Dialog Body Wrapper (REQ-UXE-31) -->
+        <div class="relative flex-1 min-h-0">
+          <div
+            id="coffee-dialog-scroll"
+            class="overflow-y-auto p-5 sm:p-6 space-y-6 text-sm max-h-[calc(90vh-8.5rem)]"
+            data-scrollable
+          >
+            <!-- Intro description -->
+            <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
+              {isEs
+                ? "Si mis proyectos de código abierto, benchmarks de baja latencia o arquitecturas distribuidas te han aportado valor, puedes respaldar este trabajo mediante transferencias cripto directas o plataformas de pago."
+                : "If my open-source projects, low-latency benchmarks, or distributed systems blueprints have provided value, you can support future research via direct crypto transfers or payment platforms."}
+            </p>
 
-          <!-- Section: Direct Platforms (PayPal, GitHub) -->
-          <div class="space-y-3">
-            <h4 class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between">
-              <span>{isEs ? "Plataformas Directas" : "Direct Platforms"}</span>
-              <span class="text-[10px] text-[var(--color-text-muted)] lowercase font-normal">
-                fiat / card
-              </span>
-            </h4>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {platforms.map((p) => (
-                <a
-                  href={p.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="group flex flex-col justify-between rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/50 p-3 hover:border-[var(--color-accent-gold)] transition-colors"
-                >
-                  <div class="flex items-center justify-between mb-1.5">
-                    <span class="font-bold text-xs text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-gold)] transition-colors flex items-center gap-1.5">
-                      {p.name}
-                      <svg
-                        class="h-3 w-3 stroke-current fill-none opacity-60 group-hover:opacity-100 transition-opacity"
-                        viewBox="0 0 24 24"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <line x1="7" y1="17" x2="17" y2="7"></line>
-                        <polyline points="7 7 17 7 17 17"></polyline>
-                      </svg>
-                    </span>
-                    <span class="rounded bg-[var(--color-accent-gold)]/10 px-1.5 py-0.5 text-[10px] font-mono text-[var(--color-accent-gold)]">
-                      {isEs ? p.badgeEs : p.badge}
-                    </span>
-                  </div>
-                  <p class="text-[11px] text-[var(--color-text-muted)] leading-snug">
-                    {isEs ? p.descriptionEs : p.description}
-                  </p>
-                </a>
-              ))}
-            </div>
-          </div>
-
-          <!-- Section: Crypto Direct Transfer -->
-          <div class="space-y-3">
-            <h4 class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between">
-              <span>
-                {isEs ? "Direcciones Crypto" : "Direct Crypto Addresses"}
-              </span>
-              <span class="text-[10px] text-[var(--color-text-muted)] lowercase font-normal">
-                non-custodial
-              </span>
-            </h4>
-
-            <div class="space-y-2.5">
-              {crypto.map((c) => (
-                <div class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/50 p-3 font-mono">
-                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 text-xs mb-2">
-                    <div class="font-bold text-[var(--color-text-primary)] flex items-center gap-2 flex-wrap min-w-0">
-                      <span class="rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] px-1.5 py-0.5 text-[10px] text-[var(--color-accent-gold)] shrink-0 font-mono">
-                        {c.symbol}
+            <!-- Section: Direct Platforms (PayPal, GitHub) -->
+            <div class="space-y-3">
+              <h4 class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between">
+                <span>
+                  {isEs ? "Plataformas Directas" : "Direct Platforms"}
+                </span>
+                <span class="text-[10px] text-[var(--color-text-muted)] lowercase font-normal">
+                  fiat / card
+                </span>
+              </h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {platforms.map((p) => (
+                  <a
+                    href={p.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="group flex flex-col justify-between rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/50 p-3 hover:border-[var(--color-accent-gold)] transition-colors"
+                  >
+                    <div class="flex items-center justify-between mb-1.5">
+                      <span class="font-bold text-xs text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-gold)] transition-colors flex items-center gap-1.5">
+                        {p.name}
+                        <svg
+                          class="h-3 w-3 stroke-current fill-none opacity-60 group-hover:opacity-100 transition-opacity"
+                          viewBox="0 0 24 24"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <line x1="7" y1="17" x2="17" y2="7"></line>
+                          <polyline points="7 7 17 7 17 17"></polyline>
+                        </svg>
                       </span>
-                      <span class="truncate">{c.name}</span>
-                    </div>
-                    <span class="text-[10px] text-[var(--color-text-muted)] font-mono sm:text-right break-words leading-tight">
-                      {isEs ? c.networkEs : c.network}
-                    </span>
-                  </div>
-
-                  <div class="flex items-center gap-2 mt-2">
-                    <code
-                      class="text-[11px] sm:text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-card)] px-2 py-1.5 rounded border border-[var(--color-surface-border-subtle)] flex-1 min-w-0 overflow-x-auto select-all break-all"
-                      data-crypto-address={c.address}
-                    >
-                      {c.address}
-                    </code>
-                    <button
-                      type="button"
-                      data-copy-crypto-btn
-                      data-address={c.address}
-                      class="shrink-0 inline-flex items-center justify-center gap-1 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
-                      title={isEs ? "Copiar dirección" : "Copy address"}
-                      aria-label={`${isEs ? "Copiar dirección de" : "Copy address for"} ${c.name}`}
-                    >
-                      <svg
-                        class="h-3.5 w-3.5 copy-icon"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <rect
-                          x="9"
-                          y="9"
-                          width="13"
-                          height="13"
-                          rx="2"
-                          ry="2"
-                        ></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                      <span class="copy-status text-[11px] font-mono">
-                        {isEs ? "Copiar" : "Copy"}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <!-- Section: Future Integrations & Prototypes -->
-          <div class="space-y-3 pt-2 border-t border-[var(--color-surface-border-subtle)]">
-            <h4 class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between">
-              <span>
-                {isEs
-                  ? "Integraciones Futuras & Web3"
-                  : "Future Integrations & Web3"}
-              </span>
-              <span class="text-[10px] text-[var(--color-text-muted)] lowercase font-normal">
-                zero-overhead stubs
-              </span>
-            </h4>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {futureIntegrations.map((item) => (
-                <div class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/30 p-3 flex flex-col justify-between">
-                  <div>
-                    <div class="flex items-center justify-between mb-1">
-                      <span class="font-bold text-xs text-[var(--color-text-primary)]">
-                        {item.name}
-                      </span>
-                      <span class="rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/10 px-1.5 py-0.5 text-[9px] font-mono text-[var(--color-accent-gold)]">
-                        {isEs ? item.badgeEs : item.badge}
+                      <span class="rounded bg-[var(--color-accent-gold)]/10 px-1.5 py-0.5 text-[10px] font-mono text-[var(--color-accent-gold)]">
+                        {isEs ? p.badgeEs : p.badge}
                       </span>
                     </div>
-                    <p class="text-[11px] text-[var(--color-text-muted)] leading-relaxed mb-3">
-                      {isEs ? item.descriptionEs : item.description}
+                    <p class="text-[11px] text-[var(--color-text-muted)] leading-snug">
+                      {isEs ? p.descriptionEs : p.description}
                     </p>
-                  </div>
-
-                  {item.type === "stripe" ? (
-                    <button
-                      type="button"
-                      data-future-action="stripe"
-                      class="w-full inline-flex items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
-                    >
-                      <svg
-                        class="h-3 w-3 text-[var(--color-accent-gold)]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <rect
-                          x="1"
-                          y="4"
-                          width="22"
-                          height="16"
-                          rx="2"
-                          ry="2"
-                        ></rect>
-                        <line x1="1" y1="10" x2="23" y2="10"></line>
-                      </svg>
-                      <span>{isEs ? "Próximamente" : "Coming Soon"}</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      data-future-action="web3"
-                      class="w-full inline-flex items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
-                    >
-                      <svg
-                        class="h-3 w-3 text-[var(--color-accent-gold)]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                        <polyline points="2 17 12 22 22 17"></polyline>
-                        <polyline points="2 12 12 17 22 12"></polyline>
-                      </svg>
-                      <span>
-                        {isEs
-                          ? "Detectar Billetera Web3"
-                          : "Detect Web3 Wallet"}
-                      </span>
-                    </button>
-                  )}
-                </div>
-              ))}
+                  </a>
+                ))}
+              </div>
             </div>
 
-            <!-- Feedback alert box for simulated integrations -->
-            <div
-              id="integration-feedback-box"
-              class="hidden rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 text-xs font-mono text-[var(--color-text-secondary)] transition-all"
-            >
-              <p id="integration-feedback-msg" class="leading-relaxed"></p>
+            <!-- Section: Crypto Direct Transfer -->
+            <div class="space-y-3">
+              <h4 class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between">
+                <span>
+                  {isEs ? "Direcciones Crypto" : "Direct Crypto Addresses"}
+                </span>
+                <span class="text-[10px] text-[var(--color-text-muted)] lowercase font-normal">
+                  non-custodial
+                </span>
+              </h4>
+
+              <div class="space-y-2.5">
+                {crypto.map((c) => (
+                  <div class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/50 p-3 font-mono">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 text-xs mb-2">
+                      <div class="font-bold text-[var(--color-text-primary)] flex items-center gap-2 flex-wrap min-w-0">
+                        <span class="rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] px-1.5 py-0.5 text-[10px] text-[var(--color-accent-gold)] shrink-0 font-mono">
+                          {c.symbol}
+                        </span>
+                        <span class="truncate">{c.name}</span>
+                      </div>
+                      <span class="text-[10px] text-[var(--color-text-muted)] font-mono sm:text-right break-words leading-tight">
+                        {isEs ? c.networkEs : c.network}
+                      </span>
+                    </div>
+
+                    <div class="flex items-center gap-2 mt-2">
+                      <code
+                        class="text-[11px] sm:text-xs text-[var(--color-text-secondary)] bg-[var(--color-surface-card)] px-2 py-1.5 rounded border border-[var(--color-surface-border-subtle)] flex-1 min-w-0 overflow-x-auto select-all break-all"
+                        data-crypto-address={c.address}
+                      >
+                        {c.address}
+                      </code>
+                      <button
+                        type="button"
+                        data-copy-crypto-btn
+                        data-address={c.address}
+                        class="shrink-0 inline-flex items-center justify-center gap-1 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
+                        title={isEs ? "Copiar dirección" : "Copy address"}
+                        aria-label={`${isEs ? "Copiar dirección de" : "Copy address for"} ${c.name}`}
+                      >
+                        <svg
+                          class="h-3.5 w-3.5 copy-icon"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <rect
+                            x="9"
+                            y="9"
+                            width="13"
+                            height="13"
+                            rx="2"
+                            ry="2"
+                          ></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span class="copy-status text-[11px] font-mono">
+                          {isEs ? "Copiar" : "Copy"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <!-- Section: Future Integrations & Prototypes -->
+            <div class="space-y-3 pt-2 border-t border-[var(--color-surface-border-subtle)]">
+              <h4 class="text-xs font-mono font-semibold uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between">
+                <span>
+                  {isEs
+                    ? "Integraciones Futuras & Web3"
+                    : "Future Integrations & Web3"}
+                </span>
+                <span class="text-[10px] text-[var(--color-text-muted)] lowercase font-normal">
+                  zero-overhead stubs
+                </span>
+              </h4>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {futureIntegrations.map((item) => (
+                  <div class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/30 p-3 flex flex-col justify-between">
+                    <div>
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="font-bold text-xs text-[var(--color-text-primary)]">
+                          {item.name}
+                        </span>
+                        <span class="rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold)]/10 px-1.5 py-0.5 text-[9px] font-mono text-[var(--color-accent-gold)]">
+                          {isEs ? item.badgeEs : item.badge}
+                        </span>
+                      </div>
+                      <p class="text-[11px] text-[var(--color-text-muted)] leading-relaxed mb-3">
+                        {isEs ? item.descriptionEs : item.description}
+                      </p>
+                    </div>
+
+                    {item.type === "stripe" ? (
+                      <button
+                        type="button"
+                        data-future-action="stripe"
+                        class="w-full inline-flex items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
+                      >
+                        <svg
+                          class="h-3 w-3 text-[var(--color-accent-gold)]"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <rect
+                            x="1"
+                            y="4"
+                            width="22"
+                            height="16"
+                            rx="2"
+                            ry="2"
+                          ></rect>
+                          <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                        <span>{isEs ? "Próximamente" : "Coming Soon"}</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        data-future-action="web3"
+                        class="w-full inline-flex items-center justify-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] transition-colors cursor-pointer"
+                      >
+                        <svg
+                          class="h-3 w-3 text-[var(--color-accent-gold)]"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                          <polyline points="2 17 12 22 22 17"></polyline>
+                          <polyline points="2 12 12 17 22 12"></polyline>
+                        </svg>
+                        <span>
+                          {isEs
+                            ? "Detectar Billetera Web3"
+                            : "Detect Web3 Wallet"}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <!-- Feedback alert box for simulated integrations -->
+              <div
+                id="integration-feedback-box"
+                class="hidden rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 text-xs font-mono text-[var(--color-text-secondary)] transition-all"
+              >
+                <p id="integration-feedback-msg" class="leading-relaxed"></p>
+              </div>
             </div>
           </div>
+
+          <!-- Bottom subtle gradient indicator (REQ-UXE-31) -->
+          <div
+            id="coffee-scroll-hint"
+            class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/90 to-transparent flex items-end justify-center pb-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] tracking-wide opacity-0 transition-opacity duration-200 select-none z-10"
+            aria-hidden="true"
+          >
+            <span class="flex items-center gap-1.5 opacity-90 drop-shadow-sm font-medium">
+              <svg
+                class="h-3 w-3 animate-bounce shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+              <span>
+                {isEs ? "Más opciones abajo" : "Scroll for more channels"}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Footer with Esc Keycap (REQ-UXE-31) -->
+        <div class="flex items-center justify-between border-t border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/80 px-4 py-2.5 sm:px-6 font-mono text-xs text-[var(--color-text-muted)] shrink-0">
+          <span class="inline-flex items-center gap-2">
+            <kbd class="inline-flex h-5 min-w-[2rem] items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 text-[10px] font-semibold text-[var(--color-text-secondary)] shadow-xs leading-none">
+              Esc
+            </kbd>
+            <span class="leading-none text-[11px]">
+              {isEs ? "cerrar" : "close"}
+            </span>
+          </span>
+          <span class="text-[var(--color-accent-gold)] font-semibold text-[11px]">
+            {isEs
+              ? "Contribución técnica & café"
+              : "Technical support & coffee"}
+          </span>
         </div>
       </div>
     </dialog>
@@ -457,6 +503,30 @@ const hasSponsorships =
         function setupCoffeeSponsorshipModal() {
           var dialog = document.getElementById("coffee-sponsorship-dialog");
           if (!dialog) return;
+
+          var scrollBody = document.getElementById("coffee-dialog-scroll");
+          var scrollHint = document.getElementById("coffee-scroll-hint");
+
+          function updateCoffeeScrollHint() {
+            if (!scrollBody || !scrollHint) return;
+            var hasMore =
+              scrollBody.scrollHeight >
+              scrollBody.clientHeight + scrollBody.scrollTop + 14;
+            if (hasMore) {
+              scrollHint.classList.remove("opacity-0");
+              scrollHint.classList.add("opacity-100");
+            } else {
+              scrollHint.classList.remove("opacity-100");
+              scrollHint.classList.add("opacity-0");
+            }
+          }
+
+          if (scrollBody && !boundElements.has(scrollBody)) {
+            boundElements.add(scrollBody);
+            scrollBody.addEventListener("scroll", updateCoffeeScrollHint, {
+              passive: true,
+            });
+          }
 
           if (!boundElements.has(dialog)) {
             boundElements.add(dialog);
@@ -494,6 +564,7 @@ const hasSponsorships =
                 if (d) {
                   if (typeof d.showModal === "function") d.showModal();
                   else d.setAttribute("open", "");
+                  requestAnimationFrame(updateCoffeeScrollHint);
                 }
                 return;
               }

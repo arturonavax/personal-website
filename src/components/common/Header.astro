@@ -86,8 +86,7 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
 
 <header
   id="site-header"
-  class="sticky top-0 z-50 w-full border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 backdrop-blur-md"
-  style="transform: translate3d(0, 0, 0); -webkit-transform: translate3d(0, 0, 0); will-change: transform; backface-visibility: hidden; -webkit-backface-visibility: hidden; contain: layout style;"
+  class="sticky top-0 z-50 w-full border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)]"
 >
   <div class="mx-auto flex h-14 max-w-[1700px] items-center px-4 sm:px-6 lg:px-8">
     <!-- Left: Brand & Status -->
@@ -871,6 +870,7 @@ const isMoreActive = isBlogActive || (hasStaticMoreItems && isServicesActive);
                 }
               } else if (!link.hash || link.hash === "#about") {
                 e.preventDefault();
+                setActiveSection("about");
                 window.scrollTo({ top: 0, behavior: "smooth" });
                 if (history.pushState) {
                   history.pushState(

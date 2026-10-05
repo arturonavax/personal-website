@@ -648,7 +648,9 @@ const jobIndexItems: IndexItem[] = [
               return;
             }
 
-            document.title = doc.title;
+            if (doc.title && document.title !== doc.title) {
+              document.title = doc.title;
+            }
             if (!isPop) {
               history.pushState({ url: url }, "", url);
             }
