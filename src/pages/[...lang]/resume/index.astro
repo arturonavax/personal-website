@@ -162,7 +162,7 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
         var isHeaderContact = firstH2
           ? Boolean(
               firstH2.compareDocumentPosition(link) &
-                Node.DOCUMENT_POSITION_PRECEDING,
+              Node.DOCUMENT_POSITION_PRECEDING,
             )
           : (headerP && headerP.contains(link)) ||
             currentHref.indexOf("mailto:") === 0 ||
@@ -249,11 +249,6 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
         },
         { once: true },
       );
-
-      setTimeout(function () {
-        restoreOriginalTitle();
-        restorePrintLinks();
-      }, 3500);
 
       setTimeout(function () {
         window.print();

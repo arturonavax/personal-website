@@ -353,7 +353,8 @@ const isEs = locale === "es";
               url.includes("mailto:") ||
               url.includes("tel:") ||
               url.includes("linkedin.com") ||
-              url.includes("github.com")
+              url.includes("github.com") ||
+              url.includes("arturonavax.dev")
             ) {
               return match;
             }
@@ -497,8 +498,30 @@ const isEs = locale === "es";
     updateLivePreview();
   });
 
-  printBtn?.addEventListener("click", () => {
+  (window as any).printCleanCV = function () {
+    (window as any).__priorDocTitle = document.title;
+    const currentLang = document.documentElement.lang || "en";
+    document.title = `ArturoNava-CV-${currentLang}`;
+    prepareMakerPrintLinks();
+    window.addEventListener(
+      "afterprint",
+      () => {
+        if ((window as any).__priorDocTitle) {
+          document.title = (window as any).__priorDocTitle;
+        }
+        restoreMakerPrintLinks();
+      },
+      { once: true },
+    );
     window.print();
+  };
+
+  printBtn?.addEventListener("click", () => {
+    if (typeof (window as any).printCleanCV === "function") {
+      (window as any).printCleanCV();
+    } else {
+      window.print();
+    }
   });
 
   function prepareMakerPrintLinks() {
@@ -511,7 +534,7 @@ const isEs = locale === "es";
       const isHeaderContact = firstH2
         ? Boolean(
             firstH2.compareDocumentPosition(link) &
-              Node.DOCUMENT_POSITION_PRECEDING,
+            Node.DOCUMENT_POSITION_PRECEDING,
           )
         : currentHref.startsWith("mailto:") ||
           currentHref.startsWith("tel:") ||

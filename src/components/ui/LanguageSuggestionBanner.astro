@@ -101,18 +101,21 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
           var targetLocale = currentLocale === "en" ? "es" : "en";
 
           // Guard against stale banner: never offer language if already on that language page
-          if (
-            currentLocale === banner.getAttribute("data-target-locale")
-          ) {
+          if (currentLocale === banner.getAttribute("data-target-locale")) {
             banner.classList.remove("flex", "translate-y-0", "opacity-100");
             banner.classList.add("hidden", "translate-y-3", "opacity-0");
             return;
           }
 
-          // 1. Session dismissal check: only suppress if explicitly dismissed in the current session
+          // 1. Session dismissal check: scoped to current path so other pages can still suggest languages
+          var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
           try {
             if (
-              sessionStorage.getItem("dismissed_lang_suggestion") === "true"
+              sessionStorage.getItem("dismissed_lang_suggestion") ===
+                currentPath ||
+              sessionStorage.getItem(
+                "dismissed_lang_suggestion_" + currentPath,
+              ) === "true"
             ) {
               return;
             }
@@ -123,11 +126,7 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
             var pageOverride =
               sessionStorage.getItem(
                 "page_lang_override_" + window.location.pathname,
-              ) ||
-              sessionStorage.getItem(
-                "page_lang_override_" +
-                  window.location.pathname.replace(/\/+$/, ""),
-              );
+              ) || sessionStorage.getItem("page_lang_override_" + currentPath);
             if (pageOverride === currentLocale) {
               return;
             }
@@ -171,7 +170,14 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
                 banner.classList.add("hidden");
               }, 300);
               try {
-                sessionStorage.setItem("dismissed_lang_suggestion", "true");
+                sessionStorage.setItem(
+                  "dismissed_lang_suggestion",
+                  currentPath,
+                );
+                sessionStorage.setItem(
+                  "dismissed_lang_suggestion_" + currentPath,
+                  "true",
+                );
               } catch (_) {}
             };
           }
