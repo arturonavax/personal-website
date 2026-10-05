@@ -604,8 +604,9 @@ html[data-timeline-incoming="past"] #experience-article {
   #resume-live-preview a[href*="linkedin.com"],
   #resume-live-preview a[href*="github.com"],
   #resume-live-preview a[href*="arturonavax.dev"] {
-    text-decoration: none !important;
-    color: inherit !important;
+    text-decoration: underline !important;
+    text-decoration-color: #0369a1 !important;
+    color: #0369a1 !important;
     pointer-events: auto !important;
   }
 }
@@ -623,8 +624,7 @@ header {
   -webkit-transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  isolation: isolate;
-  background-color: var(--color-surface-card);
+  contain: layout style;
 }
 
 /* Active Navigation Dot State Invariance (Zero layout shifts when toggling active state) */
@@ -707,7 +707,9 @@ html.lang-text-reacting main h4,
 html.lang-text-reacting main p,
 html.lang-text-reacting main li,
 html.lang-text-reacting main blockquote,
-html.lang-text-reacting main span:not([aria-hidden="true"]):not(.no-lang-react):not(.copy-feedback),
+html.lang-text-reacting
+  main
+  span:not([aria-hidden="true"]):not(.no-lang-react):not(.copy-feedback),
 html.lang-text-reacting header nav a span,
 html.lang-text-reacting header nav summary span,
 html.lang-text-reacting header nav details summary span,
@@ -715,7 +717,9 @@ html.lang-text-reacting header nav details a span,
 html.lang-text-reacting header nav details button span,
 html.lang-text-reacting #desktop-page-index span,
 html.lang-text-reacting footer p,
-html.lang-text-reacting footer span:not([aria-hidden="true"]):not(.no-lang-react):not(.copy-feedback) {
+html.lang-text-reacting
+  footer
+  span:not([aria-hidden="true"]):not(.no-lang-react):not(.copy-feedback) {
   animation: langTextReaction 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 

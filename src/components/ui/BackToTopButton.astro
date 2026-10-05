@@ -33,10 +33,15 @@ const isEs = locale === "es";
       if (!btn || btn.dataset.bound) return;
       btn.dataset.bound = "true";
 
+      var isVisible = false;
       function onScroll() {
         var scrollY =
           window.pageYOffset || document.documentElement.scrollTop || 0;
-        if (scrollY > 400) {
+        var shouldShow = scrollY > 400;
+        if (shouldShow === isVisible) return;
+        isVisible = shouldShow;
+
+        if (shouldShow) {
           btn.classList.remove(
             "pointer-events-none",
             "opacity-0",

@@ -196,9 +196,10 @@ const {
       const state = this.getGlobalState();
       const fontSize = 14;
       const columns = Math.floor(window.innerWidth / fontSize);
-      const existing = (state.drops && state.drops.length > 0)
-        ? state.drops
-        : ((window as any).__matrixDrops as number[] | undefined);
+      const existing =
+        state.drops && state.drops.length > 0
+          ? state.drops
+          : ((window as any).__matrixDrops as number[] | undefined);
 
       if (!forceReset && existing && existing.length > 0) {
         state.drops = new Array(columns);
