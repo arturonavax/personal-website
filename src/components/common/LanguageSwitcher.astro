@@ -152,9 +152,6 @@ const effectiveTargetUrl =
         activeBanner.classList.remove("flex", "translate-y-0", "opacity-100");
         activeBanner.classList.add("hidden", "translate-y-3", "opacity-0");
       }
-      try {
-        sessionStorage.setItem("dismissed_lang_suggestion", "true");
-      } catch (_) {}
 
       e.preventDefault();
       if (window.__isLangSwitching) return;

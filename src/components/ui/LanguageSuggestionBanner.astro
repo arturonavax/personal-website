@@ -100,10 +100,9 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
             docLang || banner.getAttribute("data-current-locale") || "en";
           var targetLocale = currentLocale === "en" ? "es" : "en";
 
-          // Guard against stale banner: never offer Spanish if already on Spanish page
+          // Guard against stale banner: never offer language if already on that language page
           if (
-            currentLocale === "es" &&
-            banner.getAttribute("data-target-locale") === "es"
+            currentLocale === banner.getAttribute("data-target-locale")
           ) {
             banner.classList.remove("flex", "translate-y-0", "opacity-100");
             banner.classList.add("hidden", "translate-y-3", "opacity-0");

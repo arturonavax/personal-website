@@ -62,7 +62,18 @@ const isEs = locale === "es";
       }
 
       btn.addEventListener("click", function () {
+        window.__isProgrammaticNav = true;
         window.scrollTo({ top: 0, behavior: "smooth" });
+        var clearNav = function () {
+          window.__isProgrammaticNav = false;
+          window.removeEventListener("scrollend", clearNav);
+        };
+        if ("onscrollend" in window) {
+          window.addEventListener("scrollend", clearNav, { once: true });
+        }
+        setTimeout(function () {
+          window.__isProgrammaticNav = false;
+        }, 900);
       });
 
       window.addEventListener("scroll", onScroll, { passive: true });

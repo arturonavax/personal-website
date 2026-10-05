@@ -370,7 +370,18 @@ const email = "arturo@arturonavax.dev";
         window.pageYOffset || document.documentElement.scrollTop || 0;
       var targetY = Math.max(0, currentY + secRect.top - headerHeight - 16);
 
+      window.__isProgrammaticNav = true;
       window.scrollTo({ top: targetY, behavior: "smooth" });
+      var clearNav = function () {
+        window.__isProgrammaticNav = false;
+        window.removeEventListener("scrollend", clearNav);
+      };
+      if ("onscrollend" in window) {
+        window.addEventListener("scrollend", clearNav, { once: true });
+      }
+      setTimeout(function () {
+        window.__isProgrammaticNav = false;
+      }, 900);
 
       if (window.location.hash !== "#contact") {
         try {

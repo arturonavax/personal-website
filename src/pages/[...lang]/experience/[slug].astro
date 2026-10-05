@@ -165,6 +165,7 @@ const jobIndexItems: IndexItem[] = [
   description={pageDescription}
   locale={currentLocale}
   type="article"
+  translationKey={experience.data.translationKey}
   collectionName="experience"
   jsonLd={jsonLd}
 >
@@ -182,7 +183,7 @@ const jobIndexItems: IndexItem[] = [
     class="fixed top-14 inset-x-0 z-30 pointer-events-none opacity-0 -translate-y-2 transition-all duration-300 border-b border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/90 backdrop-blur-md py-2 px-4 shadow-sm"
     aria-hidden="true"
   >
-    <div class="mx-auto max-w-4xl flex items-center justify-between gap-4 font-mono text-xs">
+    <div class="mx-auto max-w-5xl px-2 min-[360px]:px-3 sm:px-6 flex items-center justify-between gap-4 font-mono text-xs">
       <div class="flex items-center gap-2 truncate">
         <span class="font-bold text-[var(--color-text-primary)] truncate">
           {role}
@@ -201,7 +202,7 @@ const jobIndexItems: IndexItem[] = [
   </div>
 
   <!-- Top Milestone Bar (Decoupled, never slides, REQ-UXE-08) -->
-  <div class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5">
+  <div class="mx-auto max-w-5xl px-2 min-[360px]:px-3 sm:px-6 pt-1.5 sm:pt-4 lg:pt-6">
     <div
       id="experience-milestone-bar"
       class="flex items-center justify-between gap-x-4 min-h-[1.75rem] h-[1.75rem] text-xs font-mono"
@@ -228,7 +229,7 @@ const jobIndexItems: IndexItem[] = [
 
   <article
     id="experience-article"
-    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pb-8 sm:pb-12"
+    class="mx-auto max-w-5xl px-2 min-[360px]:px-3 sm:px-6 pb-12 sm:pb-16"
   >
     <div
       id="experience-article-content"
@@ -721,7 +722,13 @@ const jobIndexItems: IndexItem[] = [
             }, 230);
 
             updateStickyHeader();
-            document.dispatchEvent(new Event("astro:page-load"));
+            setupTimelineNav();
+            if (typeof window.__initSimulationCards === "function") {
+              window.__initSimulationCards();
+            }
+            if (typeof window.__setupPageIndex === "function") {
+              window.__setupPageIndex();
+            }
           })
           .catch(function () {
             window.location.href = url;
