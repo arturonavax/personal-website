@@ -582,6 +582,28 @@ html[data-timeline-incoming="past"] #experience-article {
     display: none !important;
     content: none !important;
   }
+
+  /* Contact Header Links Retention (REQ-UXE-29): Retain clickable links in print header without altering styling */
+  .resume-document a[href*="mailto:"],
+  .resume-document a[href*="tel:"],
+  .resume-document a[href*="linkedin.com"],
+  .resume-document a[href*="github.com"],
+  .cv-document a[href*="mailto:"],
+  .cv-document a[href*="tel:"],
+  .cv-document a[href*="linkedin.com"],
+  .cv-document a[href*="github.com"],
+  #cv-document-sheet a[href*="mailto:"],
+  #cv-document-sheet a[href*="tel:"],
+  #cv-document-sheet a[href*="linkedin.com"],
+  #cv-document-sheet a[href*="github.com"],
+  #resume-live-preview a[href*="mailto:"],
+  #resume-live-preview a[href*="tel:"],
+  #resume-live-preview a[href*="linkedin.com"],
+  #resume-live-preview a[href*="github.com"] {
+    text-decoration: none !important;
+    color: inherit !important;
+    pointer-events: auto !important;
+  }
 }
 
 /* Content-Visibility Optimization: Bypasses offscreen layout/rendering during initial paint */
@@ -590,21 +612,30 @@ html[data-timeline-incoming="past"] #experience-article {
   contain-intrinsic-size: auto 600px;
 }
 
-/* GPU Compositor Layer Isolation for Header (Eliminates fast-scroll tearing & flickering) */
+/* Header Sticky Positioning Stability (Zero flickering / tearing on fast scroll) */
 header#site-header,
 header {
-  transform: translate3d(0, 0, 0);
-  -webkit-transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  transform: none;
+  -webkit-transform: none;
+  isolation: isolate;
+  background-color: var(--color-surface-card) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-/* Active Navigation Dot State Invariance */
+/* Active Navigation Dot State Invariance (Zero layout shifts when toggling active state) */
+.active-dot {
+  display: inline-block !important;
+  transition: opacity 0.15s ease;
+}
 .active-dot.hidden {
-  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 .active-dot:not(.hidden) {
-  display: inline-block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Circular Wave Theme Transition - Compositor-Accelerated Wave (REQ-10 Hardened) */
@@ -672,7 +703,7 @@ html.lang-text-reacting main h4,
 html.lang-text-reacting main p,
 html.lang-text-reacting main li,
 html.lang-text-reacting main blockquote,
-html.lang-text-reacting main span:not([aria-hidden="true"]):not(.no-lang-react),
+html.lang-text-reacting main span:not([aria-hidden="true"]):not(.no-lang-react):not(.copy-feedback),
 html.lang-text-reacting header nav a span,
 html.lang-text-reacting header nav summary span,
 html.lang-text-reacting header nav details summary span,
@@ -680,8 +711,20 @@ html.lang-text-reacting header nav details a span,
 html.lang-text-reacting header nav details button span,
 html.lang-text-reacting #desktop-page-index span,
 html.lang-text-reacting footer p,
-html.lang-text-reacting footer span {
+html.lang-text-reacting footer span:not([aria-hidden="true"]):not(.no-lang-react):not(.copy-feedback) {
   animation: langTextReaction 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+html.lang-text-reacting .copy-feedback,
+.copy-feedback.hidden,
+.copy-feedback {
+  animation: none !important;
+}
+
+.copy-feedback.hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

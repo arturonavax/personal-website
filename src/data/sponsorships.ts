@@ -97,7 +97,7 @@ export const rawSponsorshipData: SponsorshipData = {
       name: "GitHub Sponsors",
       description: "Support open-source research and engineering pipelines.",
       descriptionEs:
-        "Patrocina herramientas de código abierto e investigación.",
+        "Apoya herramientas de código abierto e investigación independiente.",
       url: "https://github.com/sponsors/arturonavax",
       badge: "Verified",
       badgeEs: "Verificado",

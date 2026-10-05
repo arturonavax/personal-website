@@ -191,7 +191,9 @@ const jsonLd = getHomepageJsonLd(locale);
           </a>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div
+          class={`grid gap-6 ${featuredProjects.length === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"}`}
+        >
           {featuredProjects.map((project) => (
             <ProjectCard project={project} locale={locale} />
           ))}
@@ -202,13 +204,18 @@ const jsonLd = getHomepageJsonLd(locale);
             <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
             <span>
               {isEs
-                ? `Mostrando ${featuredProjects.length} de ${allProjectsList.length} sistemas • `
-                : `Showing ${featuredProjects.length} of ${allProjectsList.length} systems • `}
-              <strong class="text-[var(--color-accent-gold)]">
-                +{allProjectsList.length - featuredProjects.length}{" "}
-                {isEs ? "más" : "more"}
-              </strong>{" "}
-              {isEs ? "en catálogo" : "in catalog"}
+                ? `Mostrando ${featuredProjects.length} de ${allProjectsList.length} sistemas`
+                : `Showing ${featuredProjects.length} of ${allProjectsList.length} systems`}
+              {allProjectsList.length > featuredProjects.length && (
+                <>
+                  {" • "}
+                  <strong class="text-[var(--color-accent-gold)]">
+                    +{allProjectsList.length - featuredProjects.length}{" "}
+                    {isEs ? "más" : "more"}
+                  </strong>{" "}
+                  {isEs ? "en catálogo" : "in catalog"}
+                </>
+              )}
             </span>
           </div>
           <a
@@ -245,7 +252,9 @@ const jsonLd = getHomepageJsonLd(locale);
           </a>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div
+          class={`grid gap-6 ${recentPosts.length === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"}`}
+        >
           {recentPosts.map((post) => (
             <PostCard post={post} locale={locale} />
           ))}
@@ -256,12 +265,18 @@ const jsonLd = getHomepageJsonLd(locale);
             <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
             <span>
               {isEs
-                ? `Mostrando ${recentPosts.length} de ${allPosts.length} publicaciones • `
-                : `Showing ${recentPosts.length} of ${allPosts.length} posts • `}
-              <strong class="text-[var(--color-accent-gold)]">
-                +{allPosts.length - recentPosts.length} {isEs ? "más" : "more"}
-              </strong>{" "}
-              {isEs ? "en el archivo" : "in blog archive"}
+                ? `Mostrando ${recentPosts.length} de ${allPosts.length} publicaciones`
+                : `Showing ${recentPosts.length} of ${allPosts.length} posts`}
+              {allPosts.length > recentPosts.length && (
+                <>
+                  {" • "}
+                  <strong class="text-[var(--color-accent-gold)]">
+                    +{allPosts.length - recentPosts.length}{" "}
+                    {isEs ? "más" : "more"}
+                  </strong>{" "}
+                  {isEs ? "en el archivo" : "in blog archive"}
+                </>
+              )}
             </span>
           </div>
           <a

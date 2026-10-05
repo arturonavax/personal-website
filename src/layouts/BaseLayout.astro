@@ -266,32 +266,8 @@ const hasShortcuts = Boolean(shortcuts?.length);
       class="fixed bottom-5 right-5 z-40 flex flex-col-reverse items-end gap-2.5 pointer-events-none select-none"
       aria-label="Floating Actions"
     >
-      <BackToTopButton locale={locale} />
       {hasShortcuts && <ShortcutsModal locale={locale} />}
-      <div
-        id="global-vim-hint"
-        class="hidden sm:inline-flex items-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/90 backdrop-blur-md px-3.5 py-1.5 font-mono text-xs text-[var(--color-text-muted)] shadow-card pointer-events-none select-none transition-all duration-300 order-3"
-        aria-hidden="true"
-        style="display: none;"
-      >
-        <span class="text-[11px] font-medium text-[var(--color-text-secondary)]">
-          {locale === "es" ? "Desplazamiento" : "Scroll"}
-        </span>
-        <span class="flex items-center gap-1 font-semibold">
-          <kbd
-            data-vim-key="j"
-            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
-          >
-            j
-          </kbd>
-          <kbd
-            data-vim-key="k"
-            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
-          >
-            k
-          </kbd>
-        </span>
-      </div>
+      <BackToTopButton locale={locale} />
     </aside>
 
     <main class="relative z-10 flex-1">
@@ -442,6 +418,12 @@ const hasShortcuts = Boolean(shortcuts?.length);
             return;
 
           if (anchor.origin === window.location.origin) {
+            if (
+              anchor.hasAttribute("data-timeline-nav") ||
+              anchor.closest("[data-timeline-nav]")
+            ) {
+              return;
+            }
             const currentPath =
               window.location.pathname.replace(/\/+$/, "") || "/";
             const destPath = anchor.pathname.replace(/\/+$/, "") || "/";
@@ -454,46 +436,11 @@ const hasShortcuts = Boolean(shortcuts?.length);
       );
 
       // 3. Vim Navigation System
-      let vimObserver: IntersectionObserver | null = null;
       let isContinuousScrolling = false;
       let scrollVelocity = 0;
       let scrollDirection = 0;
       let rafId: number | null = null;
       let lastKeyRepeatTime = 0;
-
-      function updateVimHint() {
-        const hint = document.getElementById("global-vim-hint");
-        if (!hint) return;
-        const hasPageIndex = Boolean(
-          document.getElementById("desktop-page-index") ||
-          document.getElementById("mobile-page-index-root"),
-        );
-        hint.style.display = hasPageIndex ? "none" : "";
-      }
-
-      function setupVimObserver() {
-        const footer = document.querySelector("footer");
-        const hint = document.getElementById("global-vim-hint");
-        if (vimObserver) vimObserver.disconnect();
-
-        if (footer && hint && "IntersectionObserver" in window) {
-          vimObserver = new IntersectionObserver(
-            (entries) => {
-              entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                  hint.style.opacity = "0";
-                  hint.style.transform = "translateY(8px)";
-                } else {
-                  hint.style.opacity = "1";
-                  hint.style.transform = "translateY(0)";
-                }
-              });
-            },
-            { threshold: 0.08 },
-          );
-          vimObserver.observe(footer);
-        }
-      }
 
       function setVimKeyActive(key: "j" | "k", active: boolean) {
         document.querySelectorAll(`[data-vim-key="${key}"]`).forEach((el) => {
@@ -530,11 +477,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
           rafId = requestAnimationFrame(kineticScrollLoop);
         }
       }
-
-      document.addEventListener("astro:page-load", () => {
-        updateVimHint();
-        setupVimObserver();
-      });
 
       // Infallible Hierarchical Esc State Machine (REQ-UXE-07) & Vim Navigation (REQ-UXE-09)
       window.addEventListener("keydown", (e: KeyboardEvent) => {

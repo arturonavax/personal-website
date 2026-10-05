@@ -154,15 +154,30 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
       isPrintPrepared = true;
 
       var headerP = cvSheet.querySelector("h1 + p");
+      var firstH2 = cvSheet.querySelector("h2");
       var links = cvSheet.querySelectorAll("a[href]");
 
       links.forEach(function (link) {
-        if (headerP && headerP.contains(link)) {
-          var currentHref = link.getAttribute("href");
-          if (currentHref) {
-            if (!link.getAttribute("data-screen-href")) {
-              link.setAttribute("data-screen-href", currentHref);
-            }
+        var currentHref = link.getAttribute("href") || "";
+        var isHeaderContact = firstH2
+          ? Boolean(
+              firstH2.compareDocumentPosition(link) &
+                Node.DOCUMENT_POSITION_PRECEDING,
+            )
+          : (headerP && headerP.contains(link)) ||
+            currentHref.indexOf("mailto:") === 0 ||
+            currentHref.indexOf("tel:") === 0 ||
+            currentHref.indexOf("linkedin.com") !== -1 ||
+            currentHref.indexOf("github.com") !== -1;
+
+        if (isHeaderContact) {
+          if (!link.getAttribute("data-screen-href")) {
+            link.setAttribute("data-screen-href", currentHref);
+          }
+          if (
+            currentHref.indexOf("mailto:") !== 0 &&
+            currentHref.indexOf("tel:") !== 0
+          ) {
             try {
               var url = new URL(currentHref, window.location.origin);
               url.searchParams.set("utm_medium", "pdf");
@@ -176,7 +191,7 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
           }
           return;
         }
-        link.setAttribute("data-print-href", link.getAttribute("href"));
+        link.setAttribute("data-print-href", currentHref);
         link.removeAttribute("href");
       });
     }

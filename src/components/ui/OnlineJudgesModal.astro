@@ -187,11 +187,13 @@ const hasJudges = judgeProfiles && judgeProfiles.length > 0;
 
       {/* Footer */}
       <div class="flex items-center justify-between border-t border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/80 px-4 py-2.5 sm:px-6 font-mono text-xs text-[var(--color-text-muted)]">
-        <span>
-          <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.5 text-xs font-semibold">
+        <span class="inline-flex items-center gap-2">
+          <kbd class="inline-flex h-5 min-w-[2rem] items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 text-[10px] font-semibold text-[var(--color-text-secondary)] shadow-xs leading-none">
             Esc
-          </kbd>{" "}
-          {isEs ? "cerrar" : "close"}
+          </kbd>
+          <span class="leading-none text-[11px]">
+            {isEs ? "cerrar" : "close"}
+          </span>
         </span>
         <span class="text-[var(--color-accent-gold)] font-semibold">
           {judgeProfiles.length}{" "}

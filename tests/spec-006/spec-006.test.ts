@@ -374,7 +374,7 @@ describe("SPEC-006 REQ-UXE-09: Deterministic J/K Navigation Hysteresis Suppressi
 });
 
 describe("SPEC-006 REQ-UXE-10: Centered Language Suggestion Banner & Floating Isolation", () => {
-  it("centers banner horizontally and persists user dismissal in localStorage", () => {
+  it("centers banner horizontally and manages session dismissal and overrides", () => {
     const bannerPath = path.join(
       ROOT_DIR,
       "src/components/ui/LanguageSuggestionBanner.astro",
@@ -382,8 +382,8 @@ describe("SPEC-006 REQ-UXE-10: Centered Language Suggestion Banner & Floating Is
     const content = fs.readFileSync(bannerPath, "utf-8");
 
     expect(content).toContain("left-1/2 -translate-x-1/2");
-    expect(content).toContain("preferred_locale");
-    expect(content).toContain("manual_lang_override");
+    expect(content).toContain("dismissed_lang_suggestion");
+    expect(content).toContain("page_lang_override_");
     expect(content).toContain("lang-suggestion-dismiss");
   });
 });
@@ -483,7 +483,7 @@ describe("SPEC-006 REQ-UXE-15: Functional Evolution of Resume Maker Studio", () 
 
     expect(content).toContain("reset-default-action");
     expect(content).toContain("phone-toggle");
-    expect(content).toContain("phone-number-input");
+    expect(content).toContain("phone-input");
     expect(content).toContain("strip-links-toggle");
     expect(content).toContain("ResumeAttributionBar");
   });
@@ -540,5 +540,265 @@ describe("SPEC-006 REQ-UXE-18: Content Security Policy Remediation", () => {
 
     expect(content).toMatch(/script-src\s+[^;]*data:/);
     expect(content).toMatch(/script-src-elem\s+[^;]*data:/);
+  });
+});
+
+describe("SPEC-006 REQ-UXE-19: PageIndexNav J/K Section Accuracy & Jitter Elimination", () => {
+  it("maintains explicit navTargetIdx and avoids unstable rect recalculations during programmatic scroll", () => {
+    const navPath = path.join(ROOT_DIR, "src/components/ui/PageIndexNav.astro");
+    const content = fs.readFileSync(navPath, "utf-8");
+
+    expect(content).toContain("var navTargetIdx = -1;");
+    expect(content).toContain("isProgrammaticScroll &&");
+    expect(content).toContain("navTargetIdx >= 0");
+    expect(content).toContain("currentIdx = navTargetIdx;");
+    expect(content).toContain("scrollend");
+    expect(content).toContain("var readingLine = getHeaderOffset() + 14;");
+  });
+});
+
+describe("SPEC-006 REQ-UXE-20: Language Suggestion Banner Display Reliability", () => {
+  it("evaluates deviceLang vs currentLocale and does not permanently suppress via localStorage", () => {
+    const bannerPath = path.join(
+      ROOT_DIR,
+      "src/components/ui/LanguageSuggestionBanner.astro",
+    );
+    const content = fs.readFileSync(bannerPath, "utf-8");
+
+    expect(content).toContain(
+      'sessionStorage.getItem("dismissed_lang_suggestion")',
+    );
+    expect(content).not.toContain(
+      'localStorage.getItem("dismissed_lang_suggestion")',
+    );
+    expect(content).toContain("page_lang_override_");
+    expect(content).toContain("!deviceLang || currentLocale === deviceLang");
+  });
+});
+
+describe("SPEC-006 REQ-UXE-21: Remove Solitary Floating 'Scroll j k'", () => {
+  it("removes global-vim-hint and associated observer logic from BaseLayout.astro", () => {
+    const layoutPath = path.join(ROOT_DIR, "src/layouts/BaseLayout.astro");
+    const content = fs.readFileSync(layoutPath, "utf-8");
+
+    expect(content).not.toContain('id="global-vim-hint"');
+    expect(content).not.toContain("updateVimHint");
+    expect(content).not.toContain("setupVimObserver");
+  });
+});
+
+describe("SPEC-006 REQ-UXE-22: Resume Maker Single Phone Input", () => {
+  it("uses single phone-input preserving spaces in markdown label and stripping them in tel: URL", () => {
+    const makerPath = path.join(
+      ROOT_DIR,
+      "src/pages/[...lang]/resume/maker.astro",
+    );
+    const content = fs.readFileSync(makerPath, "utf-8");
+
+    expect(content).toContain('id="phone-input"');
+    expect(content).not.toContain('id="phone-code-input"');
+    expect(content).not.toContain('id="phone-number-input"');
+    expect(content).toMatch(
+      /telHref\s*=\s*["']tel:["']\s*\+\s*rawVal\.replace\(/,
+    );
+    expect(content).toContain("[${cleanNum}](${telHref})");
+  });
+});
+
+describe("SPEC-006 REQ-UXE-23: Resume Maker Synchronized Scroll & Vertical Toggle", () => {
+  it("implements bidirectional synchronized scroll between editor and preview", () => {
+    const makerPath = path.join(
+      ROOT_DIR,
+      "src/pages/[...lang]/resume/maker.astro",
+    );
+    const content = fs.readFileSync(makerPath, "utf-8");
+
+    expect(content).toContain("isScrollingEditor");
+    expect(content).toContain("isScrollingPreview");
+    expect(content).toContain("editor.scrollHeight - editor.clientHeight");
+    expect(content).toContain("preview.scrollHeight - preview.clientHeight");
+  });
+
+  it("provides collapse/compact toggle buttons for both editor and preview panes", () => {
+    const makerPath = path.join(
+      ROOT_DIR,
+      "src/pages/[...lang]/resume/maker.astro",
+    );
+    const content = fs.readFileSync(makerPath, "utf-8");
+
+    expect(content).toContain('id="toggle-editor-collapse-btn"');
+    expect(content).toContain('id="toggle-preview-collapse-btn"');
+    expect(content).toContain("editorCollapseIcon");
+    expect(content).toContain("previewCollapseIcon");
+  });
+});
+
+describe("SPEC-006 REQ-UXE-24: Matrix Background Continuous Stream & Title Flicker Fix", () => {
+  it("MatrixBackground prevents drops reset unless dimensions change by > 50px and preserves singleton state", () => {
+    const matrixPath = path.join(
+      ROOT_DIR,
+      "src/components/ui/MatrixBackground.astro",
+    );
+    const content = fs.readFileSync(matrixPath, "utf-8");
+
+    expect(content).toContain("Math.abs(currentWidth - this.lastWidth) > 50");
+    expect(content).toContain("Math.abs(currentHeight - this.lastHeight) > 50");
+    expect(content).toContain("__matrixDrops");
+  });
+
+  it("experience/[slug].astro updates document.title cleanly without unnecessary mutations", () => {
+    const slugPath = path.join(
+      ROOT_DIR,
+      "src/pages/[...lang]/experience/[slug].astro",
+    );
+    const content = fs.readFileSync(slugPath, "utf-8");
+
+    expect(content).toMatch(
+      /if\s*\(doc\.title\s*&&\s*document\.title\s*!==\s*doc\.title\)\s*\{\s*document\.title\s*=\s*doc\.title/,
+    );
+  });
+});
+
+describe("SPEC-006 REQ-UXE-25: Adaptable Featured Systems Grid", () => {
+  it("adapts grid columns in index.astro for 2 items vs 3+ items", () => {
+    const indexPath = path.join(ROOT_DIR, "src/pages/[...lang]/index.astro");
+    const content = fs.readFileSync(indexPath, "utf-8");
+
+    expect(content).toContain(
+      'featuredProjects.length === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"',
+    );
+    expect(content).toContain(
+      'recentPosts.length === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"',
+    );
+  });
+});
+
+describe("SPEC-006 REQ-UXE-26: Suppress '+0 more in' Indicator", () => {
+  it("suppresses +0 more badge when remaining count is 0 in index.astro", () => {
+    const indexPath = path.join(ROOT_DIR, "src/pages/[...lang]/index.astro");
+    const content = fs.readFileSync(indexPath, "utf-8");
+
+    expect(content).toContain(
+      "allProjectsList.length > featuredProjects.length",
+    );
+    expect(content).toContain("allPosts.length > recentPosts.length");
+  });
+});
+
+describe("SPEC-006 REQ-UXE-27: Strict Floating Actions Stack Ordering", () => {
+  it("enforces strict ordering: Shortcuts (order-1) -> Index (order-2) -> BackToTop (order-3)", () => {
+    const layoutContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/layouts/BaseLayout.astro"),
+      "utf-8",
+    );
+    const btnContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/components/ui/BackToTopButton.astro"),
+      "utf-8",
+    );
+    const navContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/components/ui/PageIndexNav.astro"),
+      "utf-8",
+    );
+    const shortcutsContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/components/ui/ShortcutsModal.astro"),
+      "utf-8",
+    );
+
+    expect(shortcutsContent).toContain("order-1");
+    expect(navContent).toContain("order-2");
+    expect(btnContent).toContain("order-3");
+    expect(layoutContent).toContain(
+      'class="fixed bottom-5 right-5 z-40 flex flex-col-reverse items-end gap-2.5 pointer-events-none select-none"',
+    );
+  });
+});
+
+describe("SPEC-006 REQ-UXE-28: Centered 'Start a Conversation' Copy Toast", () => {
+  it("EmailCopyButton centers feedback toast and provides localized copy", () => {
+    const btnPath = path.join(
+      ROOT_DIR,
+      "src/components/ui/EmailCopyButton.astro",
+    );
+    const content = fs.readFileSync(btnPath, "utf-8");
+
+    expect(content).toContain(
+      "fixed bottom-8 left-1/2 -translate-x-1/2 z-[70]",
+    );
+    expect(content).toContain("Copiado al portapapeles");
+    expect(content).toContain("Copied to clipboard");
+  });
+});
+
+describe("SPEC-006 REQ-UXE-29: Preserve Contact Header Links in Resume Print and Strip Links", () => {
+  it("global.css explicitly preserves text styling of contact header links in @media print", () => {
+    const cssContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/styles/global.css"),
+      "utf-8",
+    );
+
+    expect(cssContent).toContain('.resume-document a[href*="mailto:"]');
+    expect(cssContent).toContain('.resume-document a[href*="tel:"]');
+    expect(cssContent).toContain('.resume-document a[href*="linkedin.com"]');
+    expect(cssContent).toContain('.resume-document a[href*="github.com"]');
+  });
+
+  it("maker.astro strip links toggle preserves contact header links", () => {
+    const makerContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/pages/[...lang]/resume/maker.astro"),
+      "utf-8",
+    );
+
+    expect(makerContent).toContain('url.includes("mailto:")');
+    expect(makerContent).toContain('url.includes("tel:")');
+    expect(makerContent).toContain('url.includes("linkedin.com")');
+    expect(makerContent).toContain('url.includes("github.com")');
+  });
+});
+
+describe("SPEC-006 REQ-UXE-30: Geometric Centering of Esc Keycap in Online Judges Modal", () => {
+  it("OnlineJudgesModal footer uses geometrically centered kbd styling with generous spacing", () => {
+    const judgesContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/components/ui/OnlineJudgesModal.astro"),
+      "utf-8",
+    );
+
+    expect(judgesContent).toContain(
+      "inline-flex h-5 min-w-[2rem] items-center justify-center",
+    );
+    expect(judgesContent).toContain("leading-none text-[11px]");
+    expect(judgesContent).toContain('{isEs ? "cerrar" : "close"}');
+  });
+});
+
+describe("SPEC-006 REQ-UXE-31: Coffee Modal Scroll Indicator, Esc Close & Legal Term Sanitization", () => {
+  it("CoffeeSponsorshipModal provides scroll indicator and centered Esc footer", () => {
+    const coffeeContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/components/ui/CoffeeSponsorshipModal.astro"),
+      "utf-8",
+    );
+
+    expect(coffeeContent).toContain('id="coffee-scroll-hint"');
+    expect(coffeeContent).toContain("updateCoffeeScrollHint");
+    expect(coffeeContent).toContain(
+      "inline-flex h-5 min-w-[2rem] items-center justify-center",
+    );
+    expect(coffeeContent).toContain("leading-none text-[11px]");
+    expect(coffeeContent).toContain('{isEs ? "cerrar" : "close"}');
+  });
+
+  it("strictly avoids blacklisted terms in UI labels and copy", () => {
+    const coffeeContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/components/ui/CoffeeSponsorshipModal.astro"),
+      "utf-8",
+    );
+    const sponsorshipsDataContent = fs.readFileSync(
+      path.join(ROOT_DIR, "src/data/sponsorships.ts"),
+      "utf-8",
+    );
+
+    expect(coffeeContent).not.toContain("Apoyo y Patrocinio");
+    expect(coffeeContent).not.toContain("Support & Sponsorship");
+    expect(coffeeContent).not.toContain("ventana de patrocinio");
+    expect(sponsorshipsDataContent).not.toContain("Patrocina herramientas");
   });
 });

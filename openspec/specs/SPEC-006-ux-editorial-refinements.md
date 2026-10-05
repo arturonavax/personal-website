@@ -129,26 +129,39 @@ Tras la consolidación de la infraestructura perimetral de alto rendimiento en C
 
 ### 2.1. Requerimientos Funcionales y Técnicos (REQ-UXE-*)
 
-| ID             | Requerimiento Técnico                                        | Componente / Capa Afectada                              | Criterio de Aceptación (PASS)                                                                                                                                                   |
-| :------------- | :----------------------------------------------------------- | :------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **REQ-UXE-01** | **Abolición de "Technical Essays" y Taxonomía /blog/**       | `src/content.config.ts`, `src/i18n/`, `src/pages/`      | Se eliminan todas las referencias a "Technical Essays". El blog se denomina "Blog / Posts & Notes". Se habilita filtro por tipo (`technical`, `opinion`, `notes`, `general`).   |
-| **REQ-UXE-02** | **Homologación de Casos de Estudio (`/case-studies/`)**      | `SimulationCard.astro`, `case-studies/index.astro`      | Cada tarjeta incluye enlace directo al hito en `/experience/[slug]/` y el badge `@empresa` incorpora tooltip interactivo con idéntico comportamiento a la home.                 |
-| **REQ-UXE-03** | **Paginación Universal en Catálogos**                        | `PaginationController.astro`, `pages/[...lang]/`        | `/case-studies/`, `/blog/`, `/projects/` y `/services/` cuentan con paginación determinista cuando items $> N$. `/experience/` se mantiene con scroll infinito.                 |
-| **REQ-UXE-04** | **Filtro Exclusivo (Single-Select) en /projects/**           | `ProjectsFilterBar.astro`                               | El selector de Organización / Contexto conmuta entre proyectos de una única empresa a la vez (comportamiento radio toggle) sin selecciones múltiples.                           |
-| **REQ-UXE-05** | **Geometría y Centrado de Atajos en Búsqueda**               | `UniversalSearchModal.astro`                            | Los keycaps `Esc` y `↑↓` se renderizan perfectamente centrados en sus cajas (`kbd`). Espaciado horizontal generoso hacia los textos "close" y "navigate".                       |
-| **REQ-UXE-06** | **Descarte de Índice (TOC) con Esc**                         | `PageIndexNav.astro`                                    | Al presionar `Esc` con el índice lateral abierto, el panel se cierra inmediatamente y devuelve el foco al botón de apertura.                                                    |
-| **REQ-UXE-07** | **Máquina de Estados de Tecla Esc y Navegación**             | `BaseLayout.astro`, `src/scripts/`                      | `Esc` ejecuta scroll progresivo al tope si `scrollY > 30px`. Si `scrollY <= 30px`, retrocede en la jerarquía de rutas; en la home en el tope, abre el modal de atajos.          |
-| **REQ-UXE-08** | **Desacoplamiento de Cabecera en Hitos de Experiencia**      | `src/pages/[...lang]/experience/[slug].astro`           | La animación de navegación entre hitos no desplaza la barra superior ("Timeline milestone..." y botón "Back"). La barra permanece estática y solo actualiza sus datos.          |
-| **REQ-UXE-09** | **Sincronización Determinista J/K sin Jitter**               | `PageIndexNav.astro`, `BaseLayout.astro`                | Navegar con `J`/`K` resalta inmediatamente el destino en el TOC. Se bloquea el recálculo espurio durante la cinemática de scroll para evitar saltos y titubeos.                 |
-| **REQ-UXE-10** | **Banner de Idioma Centrado y Aislado de Botones Flotantes** | `LanguageSuggestionBanner.astro`                        | Banner centrado horizontalmente en la parte inferior (`left-1/2 -translate-x-1/2`). Cero solapamiento con botones flotantes. Botón 'X' funcional. Respeta preferencia guardada. |
-| **REQ-UXE-11** | **Cinemática Fluida para Contact y About**                   | `Header.astro`, `ContactSection.astro`                  | Clics en "Contact" navegan con scroll suave garantizado tras esperar el renderizado de página. Clic en "About" en la home realiza scroll suave elegante al tope.                |
-| **REQ-UXE-12** | **Motor de Relevancia y Puntuación en Búsqueda**             | `searchIndex.ts`, `UniversalSearchModal.astro`          | Sistema de ponderación por prioridad (`searchPriority`, peso de entidad). Empates léxicos se resuelven deterministamente según relevancia asignada.                             |
-| **REQ-UXE-13** | **Blindaje de Traducción Automática (`translate="no"`)**     | `TechTerm.astro`, componentes UI                        | Componente o utilidad para términos técnicos que inyecta `translate="no"` con soporte conmutable de tipografía `font-mono` o `font-sans`.                                       |
-| **REQ-UXE-14** | **Normalización de Impresión Firefox para CV**               | `global.css`, `resume/index.astro`, `maker.astro`       | `@page { margin: 0; }` suprime cabeceras y pies de página nativos de Firefox. El documento replica fielmente la limpieza visual de Chromium.                                    |
-| **REQ-UXE-15** | **Evolución Funcional de Resume Maker Studio**               | `src/pages/[...lang]/resume/maker.astro`, `index.astro` | Botón refresh original, switch checkbox de teléfono inteligente con 2 inputs, toggle reversible de strip links, barra de reclutador UTM, y botón de acceso en `/resume/`.       |
-| **REQ-UXE-16** | **Cabecera Sticky Contextual en `/experience/*`**            | `src/pages/[...lang]/experience/[slug].astro`           | Cada ficha de detalle posee barra sticky sobria con empresa y cargo al hacer scroll, manteniendo legibilidad sin saturar la pantalla.                                           |
-| **REQ-UXE-17** | **Botón Flotante Global "Back to Top"**                      | `BaseLayout.astro`, `src/components/ui/`                | Botón accesible que aparece suavemente al superar umbral de scroll en todas las páginas y conduce al tope con scroll fluido.                                                    |
-| **REQ-UXE-18** | **Remediación de Content Security Policy (`script-src`)**    | `public/_headers`                                       | Se incluye `data:` en `script-src` / `script-src-elem`. Cero errores de violación CSP en consola al navegar con `ClientRouter`.                                                 |
+| ID             | Requerimiento Técnico                                           | Componente / Capa Afectada                              | Criterio de Aceptación (PASS)                                                                                                                                                   |
+| :------------- | :-------------------------------------------------------------- | :------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **REQ-UXE-01** | **Abolición de "Technical Essays" y Taxonomía /blog/**          | `src/content.config.ts`, `src/i18n/`, `src/pages/`      | Se eliminan todas las referencias a "Technical Essays". El blog se denomina "Blog / Posts & Notes". Se habilita filtro por tipo (`technical`, `opinion`, `notes`, `general`).   |
+| **REQ-UXE-02** | **Homologación de Casos de Estudio (`/case-studies/`)**         | `SimulationCard.astro`, `case-studies/index.astro`      | Cada tarjeta incluye enlace directo al hito en `/experience/[slug]/` y el badge `@empresa` incorpora tooltip interactivo con idéntico comportamiento a la home.                 |
+| **REQ-UXE-03** | **Paginación Universal en Catálogos**                           | `PaginationController.astro`, `pages/[...lang]/`        | `/case-studies/`, `/blog/`, `/projects/` y `/services/` cuentan con paginación determinista cuando items $> N$. `/experience/` se mantiene con scroll infinito.                 |
+| **REQ-UXE-04** | **Filtro Exclusivo (Single-Select) en /projects/**              | `ProjectsFilterBar.astro`                               | El selector de Organización / Contexto conmuta entre proyectos de una única empresa a la vez (comportamiento radio toggle) sin selecciones múltiples.                           |
+| **REQ-UXE-05** | **Geometría y Centrado de Atajos en Búsqueda**                  | `UniversalSearchModal.astro`                            | Los keycaps `Esc` y `↑↓` se renderizan perfectamente centrados en sus cajas (`kbd`). Espaciado horizontal generoso hacia los textos "close" y "navigate".                       |
+| **REQ-UXE-06** | **Descarte de Índice (TOC) con Esc**                            | `PageIndexNav.astro`                                    | Al presionar `Esc` con el índice lateral abierto, el panel se cierra inmediatamente y devuelve el foco al botón de apertura.                                                    |
+| **REQ-UXE-07** | **Máquina de Estados de Tecla Esc y Navegación**                | `BaseLayout.astro`, `src/scripts/`                      | `Esc` ejecuta scroll progresivo al tope si `scrollY > 30px`. Si `scrollY <= 30px`, retrocede en la jerarquía de rutas; en la home en el tope, abre el modal de atajos.          |
+| **REQ-UXE-08** | **Desacoplamiento de Cabecera en Hitos de Experiencia**         | `src/pages/[...lang]/experience/[slug].astro`           | La animación de navegación entre hitos no desplaza la barra superior ("Timeline milestone..." y botón "Back"). La barra permanece estática y solo actualiza sus datos.          |
+| **REQ-UXE-09** | **Sincronización Determinista J/K sin Jitter**                  | `PageIndexNav.astro`, `BaseLayout.astro`                | Navegar con `J`/`K` resalta inmediatamente el destino en el TOC. Se bloquea el recálculo espurio durante la cinemática de scroll para evitar saltos y titubeos.                 |
+| **REQ-UXE-10** | **Banner de Idioma Centrado y Aislado de Botones Flotantes**    | `LanguageSuggestionBanner.astro`                        | Banner centrado horizontalmente en la parte inferior (`left-1/2 -translate-x-1/2`). Cero solapamiento con botones flotantes. Botón 'X' funcional. Respeta preferencia guardada. |
+| **REQ-UXE-11** | **Cinemática Fluida para Contact y About**                      | `Header.astro`, `ContactSection.astro`                  | Clics en "Contact" navegan con scroll suave garantizado tras esperar el renderizado de página. Clic en "About" en la home realiza scroll suave elegante al tope.                |
+| **REQ-UXE-12** | **Motor de Relevancia y Puntuación en Búsqueda**                | `searchIndex.ts`, `UniversalSearchModal.astro`          | Sistema de ponderación por prioridad (`searchPriority`, peso de entidad). Empates léxicos se resuelven deterministamente según relevancia asignada.                             |
+| **REQ-UXE-13** | **Blindaje de Traducción Automática (`translate="no"`)**        | `TechTerm.astro`, componentes UI                        | Componente o utilidad para términos técnicos que inyecta `translate="no"` con soporte conmutable de tipografía `font-mono` o `font-sans`.                                       |
+| **REQ-UXE-14** | **Normalización de Impresión Firefox para CV**                  | `global.css`, `resume/index.astro`, `maker.astro`       | `@page { margin: 0; }` suprime cabeceras y pies de página nativos de Firefox. El documento replica fielmente la limpieza visual de Chromium.                                    |
+| **REQ-UXE-15** | **Evolución Funcional de Resume Maker Studio**                  | `src/pages/[...lang]/resume/maker.astro`, `index.astro` | Botón refresh original, switch checkbox de teléfono inteligente con 2 inputs, toggle reversible de strip links, barra de reclutador UTM, y botón de acceso en `/resume/`.       |
+| **REQ-UXE-16** | **Cabecera Sticky Contextual en `/experience/*`**               | `src/pages/[...lang]/experience/[slug].astro`           | Cada ficha de detalle posee barra sticky sobria con empresa y cargo al hacer scroll, manteniendo legibilidad sin saturar la pantalla.                                           |
+| **REQ-UXE-17** | **Botón Flotante Global "Back to Top"**                         | `BaseLayout.astro`, `src/components/ui/`                | Botón accesible que aparece suavemente al superar umbral de scroll en todas las páginas y conduce al tope con scroll fluido.                                                    |
+| **REQ-UXE-18** | **Remediación de Content Security Policy (`script-src`)**       | `public/_headers`                                       | Se incluye `data:` en `script-src` / `script-src-elem`. Cero errores de violación CSP en consola al navegar con `ClientRouter`.                                                 |
+| **REQ-UXE-19** | **Precisión de Navegación J/K y Supresión de Jitter en TOC**    | `src/components/ui/PageIndexNav.astro`                  | Mantiene `navTargetIdx` explícito; evita recálculo inestable de `currentIdx` durante scroll; evento `scrollend` reafirma sección destino; umbral coordinado con offset.         |
+| **REQ-UXE-20** | **Confiabilidad del Banner de Sugerencia de Idioma**            | `src/components/ui/LanguageSuggestionBanner.astro`      | Despliegue garantizado cuando idioma del dispositivo difiere de la página; descarte restringido a `sessionStorage`; respeta override manual por página sin bloqueo permanente.  |
+| **REQ-UXE-21** | **Erradicación del Indicador Flotante Solitario "Scroll j k"**  | `src/layouts/BaseLayout.astro`                          | Eliminación de `#global-vim-hint`, `updateVimHint` y `setupVimObserver`. Los atajos residen exclusivamente en `PageIndexNav.astro`.                                             |
+| **REQ-UXE-22** | **Entrada Telefónica Unificada en Resume Maker**                | `src/pages/[...lang]/resume/maker.astro`                | Sustitución de inputs dobles por campo único `phone-input`. Conserva espacios en markdown y purga espacios en la URI `tel:`.                                                    |
+| **REQ-UXE-23** | **Scroll Sincronizado y Compactación Vertical en Resume Maker** | `src/pages/[...lang]/resume/maker.astro`                | Desplazamiento sincronizado bidireccional entre editor y preview. Botones toggle con chevrons para compactar/expandir verticalmente ambos paneles.                              |
+| **REQ-UXE-24** | **Corriente Continua Matrix y Supresión de Flicker de Título**  | `MatrixBackground.astro`, `experience/[slug].astro`     | `ResizeObserver` no resetea gotas si delta $\le 50\text{px}$. Estado duradero en singleton `__matrixDrops`. Actualización no destructiva de `document.title` en `navigateTo()`. |
+| **REQ-UXE-25** | **Rejilla Adaptable de Sistemas Destacados (Grid Layout)**      | `src/pages/[...lang]/index.astro`                       | Si hay 2 elementos destacados, se utiliza `grid-cols-1 md:grid-cols-2` ocupando todo el ancho. Para 3+ elementos se utiliza `lg:grid-cols-3`.                                   |
+| **REQ-UXE-26** | **Supresión de Indicador "+0 más" en Catálogos**                | `src/pages/[...lang]/index.astro`                       | La insignia `+{remaining} más en catálogo / archivo` se renderiza condicionalmente solo cuando `remaining > 0`. Cero renderizado de "+0 más".                                   |
+| **REQ-UXE-27** | **Ordenamiento Estricto de Acciones Flotantes (Stack FABs)**    | `BaseLayout.astro`, `PageIndexNav.astro`                | Disposición de abajo hacia arriba: Atajos (bottom, ~130px, order-1) $\to$ Índice (middle, ~95px, order-2) $\to$ Subir scroll (top, 44px, order-3).                              |
+| **REQ-UXE-28** | **Toast Centrado de Copiado en "Start a Conversation"**         | `src/components/ui/EmailCopyButton.astro`               | Notificación `.copy-feedback` posicionada en `fixed bottom-8 left-1/2 -translate-x-1/2 z-[70]`. Textos localizados en inglés y español.                                         |
+| **REQ-UXE-29** | **Preservación de Enlaces de Contacto en Impresión y Strip**    | `global.css`, `maker.astro`                             | En `@media print`, los enlaces `mailto:`, `tel:`, `linkedin.com`, `github.com` retienen estilo. La acción Strip Links nunca elimina enlaces de contacto.                        |
+| **REQ-UXE-30** | **Centrado Geométrico de Keycap Esc en Jueces Online**          | `src/components/ui/OnlineJudgesModal.astro`             | Keycap `<kbd>` con `inline-flex h-5 min-w-[2rem] items-center justify-center` y espaciado generoso hacia la etiqueta descriptiva ("close" / "cerrar").                          |
+| **REQ-UXE-31** | **Indicador de Desplazamiento y Sanitización Legal en Café**    | `src/components/ui/CoffeeSponsorshipModal.astro`        | Gradiente sutil y chevron animado indicando más opciones al fondo. Pie de modal con `Esc`. Cero términos de lista negra ("patrocinio", "caridad", "donación").                  |
 
 ---
 
@@ -636,6 +649,109 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' d
 
 ---
 
+### 3.16. Supresión de Jitter y Precisión J/K en PageIndexNav (REQ-UXE-19)
+
+1. **Gestión Determinista de Foco:** Se mantiene un índice de destino explícito (`navTargetIdx`) durante las transiciones iniciadas mediante `window.__pageIndexStep(dir)`.
+2. **Aislamiento de Cinemática:** Mientras `isProgrammaticScroll` permanece activo, se suspende el recálculo reactivo de `currentIdx` a partir de `getBoundingClientRect()` inestables.
+3. **Reafirmación en Evento `scrollend`:** Al concluir el scroll suave (detectado vía listener nativo `scrollend` con fallback de temporizador de 600ms), se revalida y resalta con exactitud la sección de destino asignada en `navTargetIdx`.
+4. **Coordinación de Umbrales:** La línea de lectura del Scroll Spy (`readingLine = getHeaderOffset() + 14`) se sincroniza deterministamente con el offset de cabecera (`getHeaderOffset() = headerEl.offsetHeight + 24`), garantizando cero titubeos o saltos a secciones adyacentes al aterrizar.
+
+---
+
+### 3.17. Fiabilidad de Banner de Idioma y Descarte Sesional (REQ-UXE-20)
+
+1. **Evaluación de Lenguaje de Navegador vs Página:** Despliegue garantizado si `currentLocale !== deviceLang` y la URL alternativa está disponible en `counterpartUrl`.
+2. **Aislamiento en `sessionStorage`:** El descarte explícito mediante botón 'X' almacena únicamente `sessionStorage.setItem("dismissed_lang_suggestion", "true")`, eliminando la supresión perpetua indebida a través de `localStorage` entre sesiones.
+3. **Respeto a Conmutación Manual:** Si el usuario alteró voluntariamente el idioma en la página en curso vía `LanguageSwitcher`, se registra `page_lang_override_{path}` en `sessionStorage` para no interrumpir su flujo.
+
+---
+
+### 3.18. Erradicación de Hint Flotante Solitario 'Scroll j k' (REQ-UXE-21)
+
+Se suprime el elemento `#global-vim-hint` y todas sus rutinas auxiliares (`updateVimHint`, `setupVimObserver`) en `BaseLayout.astro`. Los indicadores de atajos de teclado residen con exclusiva coherencia dentro del componente `PageIndexNav.astro`.
+
+---
+
+### 3.19. Entrada Telefónica Unificada en Resume Maker (REQ-UXE-22)
+
+1. **Campo Único:** Reemplazo de los inputs fraccionados de código de país y número local por un campo unificado `phone-input` (placeholder `+57 300 000 0000`).
+2. **Formato Dual:**
+   - En la etiqueta visual Markdown, se conservan los espacios originales tipeados por el usuario (`[+57 300 000 0000](tel:+573000000000)`).
+   - En el hipervínculo de marcación `tel:`, se eliminan todos los espacios en blanco mediante `replace(/\s+/g, "")`.
+
+---
+
+### 3.20. Scroll Sincronizado Bidireccional y Alternadores de Panel en Resume Maker (REQ-UXE-23)
+
+1. **Sincronización Cinemática:** Event listeners de scroll bidireccionales vinculan `#markdown-raw-input` y `#resume-live-preview` computando ratios relativos (`scrollTop / (scrollHeight - clientHeight)`) con banderas de exclusión mutua para evitar ciclos infinitos o tirones.
+2. **Botones de Compactación Vertical:** Cada panel incluye en su barra de herramientas un botón toggle con icono chevron (`toggle-editor-collapse-btn` y `toggle-preview-collapse-btn`) que conmuta fluidamente entre modo expandido (`h-[760px]`) y modo compacto (`h-[280px]`).
+
+---
+
+### 3.21. Persistencia de Matrix Canvas Layer y Desacoplamiento de Título (REQ-UXE-24)
+
+1. **Umbral de Cambio de Dimensiones:** `ResizeObserver` en `MatrixCanvasLayer` solo reinicia dimensiones si el ancho o alto cambia en más de 50px, suprimiendo reinicios espurios causados por barras de desplazamiento o micro-redimensionamientos.
+2. **Singleton de Gotas:** El vector de posiciones de lluvia se persiste en `(window as any).__matrixDrops`, permitiendo que transiciones de navegación mantengan la corriente ininterrumpida sin reiniciar las gotas desde el tope.
+3. **Inmutabilidad Controlada de Título:** En `experience/[slug].astro`, `navigateTo()` actualiza `document.title` únicamente si el valor difiere del actual, evitando parpadeos de pestaña o recalculación forzada de estilos.
+
+---
+
+### 3.22. Cuadrícula Adaptativa de Sistemas y Artículos (REQ-UXE-25)
+
+En `src/pages/[...lang]/index.astro`, la distribución de columnas se ajusta de acuerdo a la cardinalidad de la colección:
+
+- Cuando la longitud es igual a 2: `grid-cols-1 md:grid-cols-2`, aprovechando el 100% del ancho del viewport sin dejar una columna huérfana vacía a la derecha.
+- Cuando la longitud es $\ge 3$: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`.
+
+---
+
+### 3.23. Supresión de Badges Vacíos '+0 más' (REQ-UXE-26)
+
+En `src/pages/[...lang]/index.astro`, la insignia `+{remaining} más en catálogo / archivo` se evalúa mediante condicional estricto: solo se renderiza si `totalItems > displayedItems`. Se erradica por completo la emisión de insignias superfluas "+0 more".
+
+---
+
+### 3.24. Jerarquía Estricta de Stack Flotante (REQ-UXE-27)
+
+El contenedor `#floating-actions-stack` (`flex flex-col-reverse items-end`) organiza las acciones flotantes de forma estrictamente determinista según su ancho físico (de abajo hacia arriba, del más ancho al más angosto):
+
+1. **Fondo (Ancho, ~130px):** Modal de atajos (`ShortcutsModal`, `order-1`).
+2. **Medio (Mediano, ~95px):** Índice de contenidos flotante (`PageIndexNav`, `order-2`).
+3. **Tope (Angosto, 44px circular):** Botón de subir al tope (`BackToTopButton`, `order-3`).
+   Bajo ninguna circunstancia el botón de subir scroll puede quedar posicionado por debajo del botón de atajos o del índice.
+
+---
+
+### 3.25. Toast Centrado de Copiado en Canales de Contacto (REQ-UXE-28)
+
+En `src/components/ui/EmailCopyButton.astro`, la notificación de feedback se ubica en el centro horizontal inferior de la pantalla:
+`fixed bottom-8 left-1/2 -translate-x-1/2 z-[70] ...`
+Aislada visualmente del stack flotante inferior derecho y del banner de idiomas, con soporte de localización dinámica ("Copiado al portapapeles" / "Copied to clipboard").
+
+---
+
+### 3.26. Preservación Estricta de Enlaces de Cabecera en CV (REQ-UXE-29)
+
+1. **Reglas de Impresión en `global.css`:** En `@media print`, selectores de atributos garantizan que enlaces de cabecera (`mailto:`, `tel:`, `linkedin.com`, `github.com`, `arturonavax.dev`) en `.resume-document`, `#cv-document-sheet` y `#resume-live-preview` preserven su visibilidad, subrayado y color sin ser ocultados.
+2. **Acción Strip Links en Resume Maker:** La conmutación de supresión de enlaces mediante expresión regular discrimina y preserva indefectiblemente los hipervínculos pertenecientes a la fila de contacto.
+
+---
+
+### 3.27. Centrado Geométrico en Footer de Modal de Jueces (REQ-UXE-30)
+
+En `src/components/ui/OnlineJudgesModal.astro`, el keycap del pie de modal replica la ergonomía métrica de `UniversalSearchModal.astro`:
+`<span class="inline-flex items-center gap-2"><kbd class="inline-flex h-5 min-w-[2rem] items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 text-[10px] font-semibold text-[var(--color-text-secondary)] shadow-xs leading-none">Esc</kbd><span class="leading-none text-[11px]">{isEs ? "cerrar" : "close"}</span></span>`
+
+---
+
+### 3.28. Indicador de Desbordamiento y Blindaje Terminológico Legal (REQ-UXE-31)
+
+1. **Indicador Visual de Desplazamiento:** El diálogo de café (`CoffeeSponsorshipModal.astro`) incorpora un degradado sutil con chevron rebotante en la parte inferior del cuerpo escroleable (`#coffee-scroll-hint`), el cual se desvanece suavemente cuando el usuario alcanza el final del scroll.
+2. **Pie de Diálogo Accesible:** Se añade un pie de diálogo formal con el atajo centrado `<kbd>Esc</kbd>`.
+3. **Blindaje de Términos Legales:** Se purgan todas las designaciones de riesgo ("patrocinio", "patrocinador", "caridad", "donación", "charity", "donation", "sponsorship") en textos de UI, sustituyéndose por términos neutros de apoyo técnico ("Invítame un café", "Apoyo a investigación independiente", "Contribución técnica").
+
+---
+
 ## 4. Verificación Operativa, Telemetría y Validación en Tiempo de Ejecución (ODD)
 
 ### 4.1. Suite Automatizada de Pruebas de Ergonomía (`tests/spec-006/`)
@@ -698,6 +814,26 @@ Se desarrollará una suite con Bun y Playwright cubriendo:
 [x] 6. BLINDAJE DE SEGURIDAD
     [x] Directiva script-src en CSP actualizada con data: URI.
     [x] Cero errores de script-src-elem en consola de producción.
+
+[x] 7. ERGONOMÍA DE NAVEGACIÓN Y TECLADO AVANZADA (REQ-UXE-19 A REQ-UXE-21)
+    [x] REQ-UXE-19: navTargetIdx explícito, scrollend y umbral matching en PageIndexNav.
+    [x] REQ-UXE-20: Banner de sugerencia de idioma con persistencia sesional limpia.
+    [x] REQ-UXE-21: Erradicado hint flotante solitario "Scroll j k" de BaseLayout.
+    [x] REQ-UXE-27: Stack flotante estrictamente ordenado (Shortcuts -> Index -> Top).
+    [x] REQ-UXE-30: Centrado geométrico de keycap Esc en modal de jueces online.
+    [x] REQ-UXE-31: Modal de café con indicador de scroll y atajo Esc close.
+
+[x] 8. RESUME STUDIO & NORMALIZACIÓN DE DOCUMENTO (REQ-UXE-22, REQ-UXE-23, REQ-UXE-29)
+    [x] REQ-UXE-22: Entrada única de teléfono phone-input con sanitización tel:.
+    [x] REQ-UXE-23: Scroll sincronizado bidireccional y toggles de compactación vertical.
+    [x] REQ-UXE-29: Enlaces de contacto preservados en impresión y strip links.
+
+[x] 9. ADAPTABILIDAD VISUAL Y CINEMÁTICA CONTINUA (REQ-UXE-24 A REQ-UXE-28)
+    [x] REQ-UXE-24: Stream ininterrumpido MatrixBackground y título no destructivo.
+    [x] REQ-UXE-25: Rejilla adaptativa de 2 vs 3 columnas en proyectos y notas.
+    [x] REQ-UXE-26: Supresión de badges superfluos "+0 more".
+    [x] REQ-UXE-28: Toast de copiado de contacto centrado inferiormente en pantalla.
+    [x] REQ-UXE-31: Sanitización estricta de términos legales sensibles.
 ================================================================================
 ```
 

@@ -4,6 +4,7 @@ interface Props {
   label?: string;
   class?: string;
   buttonClass?: string;
+  locale?: "en" | "es" | undefined;
 }
 
 const {
@@ -11,11 +12,17 @@ const {
   label,
   class: className = "",
   buttonClass = "group inline-flex items-center gap-1.5 font-mono text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-accent-gold)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent-gold)] cursor-pointer",
+  locale,
 } = Astro.props;
+
+const isEs = locale === "es";
+const copiedText = isEs ? "Copiado al portapapeles" : "Copied to clipboard";
 ---
 
 <email-copy-trigger
   data-email={email}
+  data-copied-en="Copied to clipboard"
+  data-copied-es="Copiado al portapapeles"
   class={`inline-flex items-center gap-1.5 ${className}`}
 >
   <button
@@ -41,11 +48,12 @@ const {
   </button>
 
   <span
-    class="copy-feedback pointer-events-none fixed bottom-6 right-6 z-50 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 font-mono text-xs text-[var(--color-text-primary)] opacity-0 shadow-lg transition-opacity duration-200"
+    class="copy-feedback hidden no-lang-react pointer-events-none fixed bottom-8 left-1/2 -translate-x-1/2 z-[70] rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-4 py-2 font-mono text-xs text-[var(--color-text-primary)] opacity-0 shadow-2xl backdrop-blur-md transition-opacity duration-200 whitespace-nowrap"
     role="status"
     aria-live="polite"
+    aria-hidden="true"
   >
-    Copied to clipboard
+    {copiedText}
   </span>
 </email-copy-trigger>
 
@@ -75,12 +83,22 @@ const {
       try {
         await navigator.clipboard.writeText(email);
         if (this.feedback) {
-          this.feedback.classList.remove("opacity-0");
+          const isDocEs = document.documentElement.lang === "es";
+          const dynamicText = isDocEs
+            ? this.dataset.copiedEs || "Copiado al portapapeles"
+            : this.dataset.copiedEn || "Copied to clipboard";
+          this.feedback.textContent = dynamicText;
+          this.feedback.setAttribute("aria-hidden", "false");
+          this.feedback.classList.remove("hidden", "opacity-0");
           this.feedback.classList.add("opacity-100");
           if (this.timeoutId) clearTimeout(this.timeoutId);
           this.timeoutId = setTimeout(() => {
             this.feedback?.classList.remove("opacity-100");
             this.feedback?.classList.add("opacity-0");
+            this.feedback?.setAttribute("aria-hidden", "true");
+            setTimeout(() => {
+              this.feedback?.classList.add("hidden");
+            }, 200);
           }, 2000);
         }
       } catch (err) {

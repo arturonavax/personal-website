@@ -135,11 +135,25 @@ const effectiveTargetUrl =
       var targetLang = link.getAttribute("data-lang-switch");
       try {
         sessionStorage.setItem("preferred_locale", targetLang);
+        sessionStorage.setItem("page_lang_override_" + dest, targetLang);
+        sessionStorage.setItem(
+          "page_lang_override_" + dest.replace(/\/+$/, ""),
+          targetLang,
+        );
         localStorage.setItem("preferred_locale", targetLang);
         document.cookie =
           "preferred_locale=" +
           targetLang +
           "; path=/; max-age=31536000; SameSite=Lax";
+      } catch (_) {}
+
+      var activeBanner = document.getElementById("lang-suggestion-banner");
+      if (activeBanner) {
+        activeBanner.classList.remove("flex", "translate-y-0", "opacity-100");
+        activeBanner.classList.add("hidden", "translate-y-3", "opacity-0");
+      }
+      try {
+        sessionStorage.setItem("dismissed_lang_suggestion", "true");
       } catch (_) {}
 
       e.preventDefault();
@@ -254,6 +268,15 @@ const effectiveTargetUrl =
             var newJudges = newDoc.getElementById("judges-dialog");
             if (oldJudges && newJudges) {
               oldJudges.innerHTML = newJudges.innerHTML;
+            }
+
+            // 9.5 Language suggestion banner swap
+            var oldBanner = document.getElementById("lang-suggestion-banner");
+            var newBanner = newDoc.getElementById("lang-suggestion-banner");
+            if (oldBanner && newBanner) {
+              oldBanner.replaceWith(newBanner);
+            } else if (oldBanner) {
+              oldBanner.remove();
             }
 
             // 10. Update browser URL history without reload
