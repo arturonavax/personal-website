@@ -113,7 +113,10 @@ const isEs = locale === "es";
       </div>
     </header>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div
+      id="resume-maker-workspace"
+      class="grid grid-cols-1 gap-6 lg:grid-cols-2"
+    >
       <div class="flex flex-col no-print" id="editor-pane-container">
         <div class="mb-2 flex items-center justify-between">
           <label
@@ -193,7 +196,7 @@ const isEs = locale === "es";
         </div>
         <div
           id="resume-live-preview"
-          class="cv-document resume-document h-[760px] overflow-y-auto rounded-lg border border-[var(--color-surface-border)] bg-white p-6 sm:p-8 md:p-10 shadow-sm text-[#1e293b] transition-[height] duration-200"
+          class="cv-document resume-document h-[760px] overflow-y-auto rounded-none border border-[var(--color-surface-border)] bg-white p-3.5 min-[360px]:p-5 sm:p-9 md:p-12 shadow-sm text-[#1e293b] transition-[height] duration-200"
         ></div>
       </div>
     </div>
@@ -212,14 +215,22 @@ const isEs = locale === "es";
     .no-print {
       display: none !important;
     }
+    main,
+    #resume-maker-workspace,
+    #preview-pane-container {
+      display: block !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
     #resume-live-preview {
       border: none !important;
       box-shadow: none !important;
-      padding: 0 !important;
-      margin: 0 !important;
+      margin: 0 auto !important;
       height: auto !important;
       overflow: visible !important;
-      max-width: 100% !important;
+      max-width: 210mm !important;
       width: 100% !important;
     }
   }
@@ -274,9 +285,15 @@ const isEs = locale === "es";
   const initialContent = editor ? editor.value : "";
   let unstrippedContent = initialContent;
 
+  let hasRevealedPreview = false;
+
   function updateLivePreview(): void {
     if (!editor || !preview) return;
     preview.innerHTML = marked.parse(editor.value) as string;
+    if (!hasRevealedPreview) {
+      hasRevealedPreview = true;
+      preview.classList.add("progressive-reveal");
+    }
   }
 
   // Single Phone Input Synchronization (REQ-UXE-22)

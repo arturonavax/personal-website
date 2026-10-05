@@ -382,7 +382,7 @@ describe("SPEC-006 REQ-UXE-10: Centered Language Suggestion Banner & Floating Is
     const content = fs.readFileSync(bannerPath, "utf-8");
 
     expect(content).toContain("left-1/2 -translate-x-1/2");
-    expect(content).toContain("dismissed_lang_suggestion");
+    expect(content).toContain("lang_banner_dismissed"); // SPEC-007 REQ-3 (was dismissed_lang_suggestion)
     expect(content).toContain("page_lang_override_");
     expect(content).toContain("lang-suggestion-dismiss");
   });
@@ -565,12 +565,11 @@ describe("SPEC-006 REQ-UXE-20: Language Suggestion Banner Display Reliability", 
     );
     const content = fs.readFileSync(bannerPath, "utf-8");
 
+    // SPEC-007 REQ-3: dismissal key is now `lang_banner_dismissed` (sessionStorage only).
     expect(content).toContain(
-      'sessionStorage.getItem("dismissed_lang_suggestion")',
+      'sessionStorage.getItem("lang_banner_dismissed")',
     );
-    expect(content).not.toContain(
-      'localStorage.getItem("dismissed_lang_suggestion")',
-    );
+    expect(content).not.toContain("localStorage");
     expect(content).toContain("page_lang_override_");
     expect(content).toContain("!deviceLang || currentLocale === deviceLang");
   });

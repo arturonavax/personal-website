@@ -135,6 +135,7 @@ const effectiveTargetUrl =
       var targetLang = link.getAttribute("data-lang-switch");
       try {
         sessionStorage.setItem("preferred_locale", targetLang);
+        sessionStorage.setItem("lang_manual_override", "true");
         sessionStorage.setItem("page_lang_override_" + dest, targetLang);
         sessionStorage.setItem(
           "page_lang_override_" + dest.replace(/\/+$/, ""),
