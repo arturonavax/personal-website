@@ -205,6 +205,19 @@ const isMoreActive =
 
 ---
 
+### Component 7: Print CV Fidelity — Selectable Text, Header-Only Underlined Links, Parity (`src/styles/resume.css`)
+
+**Invariantes (REQ-PRINT-1..6), válidos para `/resume/` y `/resume/maker/` en Chromium y Firefox:**
+
+1. **Texto 100% seleccionable (REQ-PRINT-1):** el CV usa EXCLUSIVAMENTE las familias estáticas `Geist Static` / `Geist Mono Static` (`Geist-{Regular,Medium,SemiBold,Bold}.woff2`, `GeistMono-{Regular,Medium,Bold}.woff2`). Las fuentes variables (`*-Variable.woff2`) están PROHIBIDAS dentro de `.cv-document`/`.resume-document`: Firefox exporta su texto a PDF como contornos (no seleccionable: h1–h4, negritas, cursivas, `code`). Ligaduras desactivadas (`font-variant-ligatures: none`) y `user-select: text` en impresión.
+2. **Paridad de estilos (REQ-PRINT-2):** ambas rutas comparten `resume.css`; bloque `@media print` fija `font-size`, `line-height`, `letter-spacing`, `word-spacing`, `text-rendering: geometricPrecision`, `text-size-adjust: none`.
+3. **Encabezado idéntico (REQ-PRINT-3):** subtítulo y contacto forman UN solo `<p>` con `<br>` (el parser `parseMarkdownResume` fusiona líneas consecutivas como CommonMark; hard break con 2 espacios finales). Prohibido emitir `<p>` separados para ambas líneas.
+4. **Enlaces (REQ-PRINT-4):** los únicos clickeables son los del encabezado (`h1 + p a[href]`) y SIEMPRE subrayados (pantalla, previsualización e impresión). Enlaces del cuerpo pierden `href` al imprimir y no se subrayan. Los scripts `beforeprint` NO deben forzar `text-decoration: none` sobre enlaces con `href`.
+5. **Toast sobre banners (REQ-PRINT-5):** "Copiado al portapapeles" usa `popover="manual"` (top layer) en `EmailCopyButton.astro`, siempre sobre `LanguageSuggestionBanner`.
+6. **Matrix primera carga (REQ-PRINT-6):** en la primera inicialización las columnas arrancan en filas `<= 0` (caen desde arriba), nunca a mitad de pantalla.
+
+> Lección: no diagnosticar "texto no seleccionable" con `user-select`/ligaduras; la causa raíz fue la fuente variable en el motor de impresión de Firefox.
+
 ## 3. Low-Cost Local Testing Suite
 
 Comando de ejecución rápida (<500ms):
@@ -307,6 +320,8 @@ describe("SPEC-007: Frontend Glitches & UX Verification", () => {
 - [x] **Márgenes de Impresión Idénticos**: La vista de impresión en `/resume/` y `/resume/maker/` comparte márgenes `@page` exactos y elimina espaciados residuales de contenedor.
 - [x] **Tests Verificados**: `pnpm test tests/spec-007/spec-007.test.ts` pasa en verde.
 
-- [] El Print PDF CV de /resume/maker/ debe arreglar su problema de "resolucion", debe mostrarse con la misma calidad que el Print PDF CV que en /resume/maker/
-- [] En el Print PDF CV lo clickeable no debe tener subrayado al menos que se haya especificado con algo aparte de el link.
-- [] Todo el texto dentro del Print PDF CV debe ser seleccionable de forma normal, no texto virtual ni nada raro.
+- [x] **Print PDF idéntico en `/resume/` y `/resume/maker/`** (REQ-PRINT-2/3): mismas métricas y encabezado de un solo párrafo.
+- [x] **Solo enlaces del encabezado, subrayados** en pantalla, previsualización y PDF (REQ-PRINT-4).
+- [x] **Todo el texto del PDF seleccionable en Firefox y Chromium** mediante fuentes estáticas (REQ-PRINT-1).
+- [x] **Toast de copiado sobre el banner de idioma** (REQ-PRINT-5) y **Matrix cae desde arriba al primer render** (REQ-PRINT-6).
+- [x] **Tests:** `bun test tests/spec-007` incluye guardas de regresión REQ-PRINT-*.

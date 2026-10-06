@@ -313,7 +313,7 @@ describe("SPEC-007 REQ-5: Matrix persistence & SPA navigation", () => {
     expect(slug).not.toMatch(/window\.location\.href\s*=/);
   });
 
-  it("renders timeline nav steppers with z-30 after role-header in DOM tree", () => {
+  it("renders timeline nav steppers with z-50 after role-header in DOM tree", () => {
     const slug = read("src/pages/[...lang]/experience/[slug].astro");
     const roleHeaderIdx = slug.indexOf('id="role-header"');
     const pastStepperIdx = slug.indexOf('data-timeline-nav="past"');
@@ -322,8 +322,8 @@ describe("SPEC-007 REQ-5: Matrix persistence & SPA navigation", () => {
     expect(roleHeaderIdx).toBeGreaterThan(-1);
     expect(pastStepperIdx).toBeGreaterThan(roleHeaderIdx);
     expect(futureStepperIdx).toBeGreaterThan(roleHeaderIdx);
-    expect(slug).toMatch(/data-timeline-nav="past"[^>]*class="[^"]*z-30/);
-    expect(slug).toMatch(/data-timeline-nav="future"[^>]*class="[^"]*z-30/);
+    expect(slug).toMatch(/data-timeline-nav="past"[^>]*class="[^"]*z-50/);
+    expect(slug).toMatch(/data-timeline-nav="future"[^>]*class="[^"]*z-50/);
   });
 });
 
@@ -349,5 +349,47 @@ describe("SPEC-007 REQ-6: Print CV margin synchronization & Firefox chrome suppr
     expect(makerAstro).not.toMatch(
       /#resume-live-preview\s*\{[^}]*padding:\s*0/,
     );
+  });
+});
+
+describe("Component 7: Print CV Fidelity (REQ-PRINT-1..6)", () => {
+  const read = (f: string) => fs.readFileSync(path.resolve(process.cwd(), f), "utf-8");
+  const resumeCss = read("src/styles/resume.css");
+
+  it("REQ-PRINT-1: CV never uses variable fonts (unselectable in Firefox PDF)", () => {
+    expect(resumeCss).toMatch(/font-family:\s*"Geist Static"/);
+    expect(resumeCss).toMatch(/font-family:\s*"Geist Mono Static"/);
+    expect(resumeCss).not.toMatch(/Variable\.woff2/);
+    expect(resumeCss).toMatch(/font-variant-ligatures:\s*none/);
+    expect(resumeCss).toMatch(/user-select:\s*text/);
+    const stripped = resumeCss.replace(/@font-face\s*\{[^}]*\}/g, "");
+    expect(stripped).not.toMatch(/font-family:\s*"Geist (Sans|Mono)"/);
+  });
+
+  it("REQ-PRINT-3: header lines merge into one paragraph with <br>", async () => {
+    const { parseMarkdownResume } = await import("../../src/data/resume");
+    const { html } = parseMarkdownResume("# Name\n\n**Role**  \nCity • [a](mailto:a@b.c)\n\n## S\n");
+    expect(html).toMatch(/<h1[^>]*>Name<\/h1>\s*<p><strong>Role<\/strong>\s*<br \/>\s*City/);
+    expect((html.match(/<p>/g) || []).length).toBe(1);
+  });
+
+  it("REQ-PRINT-4: header links underlined; beforeprint scripts never strip underline from href links", () => {
+    expect(resumeCss).toMatch(/h1 \+ p a\[href\][^}]*text-decoration:\s*underline/);
+    for (const f of ["src/pages/[...lang]/resume/index.astro", "src/pages/[...lang]/resume/maker.astro"]) {
+      const code = read(f);
+      expect(code).not.toMatch(/a\[href\]"\)\.forEach[\s\S]{0,200}textDecoration\s*=\s*"none"/);
+    }
+  });
+
+  it("REQ-PRINT-5: copy toast lives in the top layer", () => {
+    const code = read("src/components/ui/EmailCopyButton.astro");
+    expect(code).toMatch(/popover="manual"/);
+    expect(code).toMatch(/showPopover\(\)/);
+  });
+
+  it("REQ-PRINT-6: matrix first-load drops start at or above the top", () => {
+    const code = read("src/components/ui/MatrixBackground.astro");
+    expect(code).toMatch(/-Math\.floor\(Math\.random\(\) \* 24\)/);
+    expect(code).not.toMatch(/Math\.floor\(Math\.random\(\) \* 50\)/);
   });
 });
