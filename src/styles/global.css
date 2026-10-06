@@ -559,12 +559,14 @@ html[data-timeline-incoming="past"] #experience-article {
   }
 
   /* Multi-page document sheets: Margins and bleeding match the HTML preview exactly (md:p-12 / 48px) */
+  /* High-resolution print rendering: full vector quality, no rasterization artifacts */
   #cv-document-sheet,
   #resume-live-preview,
   article.cv-document,
   article.resume-document,
   .cv-document,
   .resume-document {
+    user-select: text !important;
     page-break-inside: auto !important;
     break-inside: auto !important;
     box-sizing: border-box !important;
@@ -576,6 +578,12 @@ html[data-timeline-incoming="past"] #experience-article {
     max-width: 210mm !important;
     width: 100% !important;
     background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    image-rendering: auto !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
   }
 
   /* Strip underlines and external link arrows from body links while keeping header contact row */
@@ -586,15 +594,33 @@ html[data-timeline-incoming="past"] #experience-article {
   .resume-document section a,
   .cv-document section a,
   #cv-document-sheet section a,
-  #resume-live-preview section a {
+  #resume-live-preview section a,
+  #resume-live-preview a,
+  .resume-document a,
+  .cv-document a,
+  #cv-document-sheet a,
+  #resume-live-preview a,
+  .resume-document a[href],
+  .cv-document a[href],
+  #cv-document-sheet a[href],
+  #resume-live-preview a[href] {
     text-decoration: none !important;
     border-bottom: none !important;
     color: inherit !important;
+    user-select: text !important;
   }
   .resume-document main a::after,
   .cv-document main a::after,
   #cv-document-sheet main a::after,
-  #resume-live-preview main a::after {
+  #resume-live-preview main a::after,
+  .resume-document a::after,
+  .cv-document a::after,
+  #cv-document-sheet a::after,
+  #resume-live-preview a::after,
+  .resume-document a[href]::after,
+  .cv-document a[href]::after,
+  #cv-document-sheet a[href]::after,
+  #resume-live-preview a[href]::after {
     display: none !important;
     content: none !important;
   }
@@ -659,6 +685,17 @@ header {
 .progressive-reveal {
   animation: progressiveContentFade 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+  @media print {
+    .progressive-reveal,
+    #resume-live-preview.progressive-reveal,
+    .resume-document.progressive-reveal,
+    .cv-document.progressive-reveal {
+      animation: none !important;
+      filter: none !important;
+      transform: none !important;
+      opacity: 1 !important;
+    }
+  }
 
 @media (prefers-reduced-motion: reduce) {
   .progressive-reveal {

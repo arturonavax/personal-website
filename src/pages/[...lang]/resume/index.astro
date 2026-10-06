@@ -261,6 +261,28 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
     window.addEventListener("beforeprint", function () {
       applyPrintTitle();
       preparePrintLinks();
+      // Force inline reset for Firefox print engine (no underline, selectable text)
+      var cvSheet = document.getElementById("cv-document-sheet");
+      if (cvSheet) {
+        cvSheet.style.animation = "none";
+        cvSheet.style.filter = "none";
+        cvSheet.style.transform = "none";
+        cvSheet.style.opacity = "1";
+        cvSheet.style.userSelect = "text";
+        cvSheet.querySelectorAll("a").forEach(function (link) {
+          link.style.textDecoration = "none";
+          link.style.borderBottom = "none";
+          link.style.color = "inherit";
+          link.style.userSelect = "text";
+        });
+      }
+      var docEls = document.querySelectorAll(".resume-document, .cv-document, #cv-document-sheet, article");
+      docEls.forEach(function (el) {
+        el.style.userSelect = "text";
+        el.style.animation = "none";
+        el.style.filter = "none";
+        el.style.transform = "none";
+      });
     });
 
     window.addEventListener("afterprint", function () {
