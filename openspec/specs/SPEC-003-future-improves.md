@@ -14,7 +14,7 @@ target_stack:
   runtime: Cloudflare Edge (Workers, D1, R2, Vectorize, Cache API, Turnstile)
   architecture: Hexagonal / Decoupled Ports & Adapters
   locales: [en, es] (EN Primario por defecto -> ES Secundario -> Extensible N)
-methodology: Tri-Axis Model — Spec-Driven Development (SDD), Requirement-Driven Development (RDD) & Organic/Operational-Driven Development (ODD)
+methodology: Organic/Operational-Driven Development (ODD)
 cross_references:
   spec_001: openspec/specs/SPEC-001-big-refactor.md
   spec_002: openspec/specs/SPEC-002-general-tasks.md
@@ -38,25 +38,15 @@ El diagnóstico del sistema previo reveló tres limitaciones fundamentales:
    - En **Cloudflare R2**, las solicitudes continuas de activos pesados y documentos PDF consumían operaciones de lectura Clase B sin aprovechamiento de la memoria caché de los puntos de presencia (PoPs).
 3. **Escalabilidad Multi-Idioma Limitada y Dispersión de Metadatos:** El esquema de internacionalización requería un soporte formal extensible de primer nivel donde **English (`en`)** es el idioma primario absoluto y **Spanish (`es`)** es el secundario, estructurado para admitir $N$ idiomas futuros sin duplicar código ni alterar los esquemas de validación Zod, asegurando además que los esquemas JSON-LD conservaran un identificador de entidad `@id` invariable.
 
-### 1.2. Marco Metodológico Tri-Axis: SDD, RDD y ODD
+### 1.2. Metodología ODD (Organic/Operational-Driven Development)
 
-```
-                            TRI-AXIS METHODOLOGY MODEL
-                                    [ SDD ]
-                          Contratos Hexagonales de Puerto
-                                       ▲
-                                      / \
-                                     /   \
-                                    /     \
-                                   ▼       ▼
-                              [ RDD ] <──> [ ODD ]
-                         Requerimientos    Rendimiento Perimetral
-                           Cuantitativos     y Resistencia Edge
-```
+Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Classify → Track (before first write, create `odd/tasks/<feature>.md`) → Implement (test-first when deterministic) → Check → Close.
 
-- **Spec-Driven Development (SDD):** Declaración formal de interfaces de puertos en `src/lib/ports/` (`StoragePort`, `SearchEnginePort`, `TelemetryPort`, `CaptchaVerifierPort`), registro tipado de internacionalización en `src/i18n/locales.ts` y esquemas base Zod en `src/content.config.ts`.
-- **Requirement-Driven Development (RDD):** Definición binaria de requerimientos técnicos (`REQ-EDGE-01` a `REQ-EDGE-08`) evaluados mediante compuertas cuantitativas estrictas (costos Clase B, filas escaneadas en D1, TTFB en caché).
-- **Organic/Operational-Driven Development (ODD):** Operacionalización de adaptadores en Cloudflare Edge, rollups automáticos de telemetría mediante Cron Triggers, absorción de lectura con la Workers Cache API, enrutamiento seguro de correo corporativo y protocolo de salida (Vendor Exit Strategy) ejecutable en menos de 30 minutos.
+- **Explore:** Según `AGENTS.md`, usar `codegraph` antes de cualquier refactor (sect. 6); los 7 specs se exploraron previamente (`SPEC-001` a `SPEC-007`).
+- **Classify:** Trabajo sustancial (7 archivos, estructura `odd/`, multi-file edit); se creó `odd/convert-specs/tasks.md` con 9 sub-tareas antes de cualquier modificación.
+- **Track:** Este archivo (`SPEC-003`) se actualiza por tareas con commits de unidad de trabajo (`feat(spec): standardize methodology to ODD`).
+- **Implement / Check:** Todo cambio preserva los invariantes técnicos (`REQ-*`, `VAL-*`) y pasa `bun run check`; la verificación ODD incluye `CLS = 0.000`, `LCP < 800ms`, `INP < 50ms`.
+- **Close:** Resultado verificado; memoria guardada (esta decisión) si es clave.
 
 ### 1.3. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
 

@@ -14,7 +14,7 @@ target_stack:
   runtime: Cloudflare Edge (Workers, D1, Vectorize, Cache API)
   architecture: Hexagonal / Decoupled Ports & Adapters / Event-Driven Micro-Interactions
   locales: [en, es] (EN Primario por defecto -> ES Secundario -> Extensible N)
-methodology: Tri-Axis Model — Spec-Driven Development (SDD), Requirement-Driven Development (RDD) & Organic/Operational-Driven Development (ODD)
+methodology: Organic/Operational-Driven Development (ODD)
 cross_references:
   spec_001: openspec/specs/SPEC-001-big-refactor.md
   spec_002: openspec/specs/SPEC-002-general-tasks.md
@@ -92,27 +92,15 @@ Tras la consolidación de la infraestructura perimetral de alto rendimiento en C
 
 ---
 
-### 1.3. Marco Metodológico Tri-Axis: SDD, RDD y ODD
+### 1.3. Metodología ODD (Organic/Operational-Driven Development)
 
-```
-                             TRI-AXIS METHODOLOGY MODEL
-                                      [ SDD ]
-                           Tipos de Datos de Relevancia,
-                           Contratos de Paginación y CSP
-                                        ▲
-                                       / \
-                                      /   \
-                                     /     \
-                                    ▼       ▼
-                               [ RDD ] <──> [ ODD ]
-                          Compuertas        Validación Cross-Browser
-                          Cuantitativas de  (Firefox Print, Scroll Lock,
-                          Interacción y UX   Playwright E2E Suites)
-```
+Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Classify → Track (before first write, create `odd/tasks/<feature>.md`) → Implement (test-first when deterministic) → Check → Close.
 
-- **Spec-Driven Development (SDD):** Definición de contratos formales TypeScript para la máquina de estados de `Esc`, modelos de datos de ponderación en búsqueda, esquemas de colección y directivas CSP RFC 6797.
-- **Requirement-Driven Development (RDD):** 18 requerimientos exhaustivos (`REQ-UXE-01` a `REQ-UXE-18`) con criterios de evaluación binaria (PASS/FAIL).
-- **Organic/Operational-Driven Development (ODD):** Pruebas en tiempo de ejecución en Chromium, Firefox y Safari, auditorías de consola libres de violaciones CSP, y verificación visual del motor de impresión a PDF.
+- **Explore:** Según `AGENTS.md`, usar `codegraph` antes de cualquier refactor (sect. 6); los 7 specs se exploraron previamente (`SPEC-001` a `SPEC-007`).
+- **Classify:** Trabajo sustancial (7 archivos, estructura `odd/`, multi-file edit); se creó `odd/convert-specs/tasks.md` con 9 sub-tareas antes de cualquier modificación.
+- **Track:** Este archivo (`SPEC-006`) se actualiza por tareas con commits de unidad de trabajo (`feat(spec): standardize methodology to ODD`).
+- **Implement / Check:** Todo cambio preserva los invariantes técnicos (`REQ-*`, `VAL-*`) y pasa `bun run check`; la verificación ODD incluye `CLS = 0.000`, `LCP < 800ms`, `INP < 50ms`.
+- **Close:** Resultado verificado; memoria guardada (esta decisión) si es clave.
 
 ---
 

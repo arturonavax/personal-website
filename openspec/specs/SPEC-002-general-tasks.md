@@ -14,7 +14,7 @@ target_stack:
   runtime: Cloudflare Edge (Workers, D1, R2, Vectorize, Cache API)
   architecture: Hexagonal / Decoupled Ports & Adapters
   locales: [en, es] (EN Primario por defecto -> ES Secundario -> Extensible N)
-methodology: Tri-Axis Model — Spec-Driven Development (SDD), Requirement-Driven Development (RDD) & Organic/Operational-Driven Development (ODD)
+methodology: Organic/Operational-Driven Development (ODD)
 cross_references:
   spec_001: openspec/specs/SPEC-001-big-refactor.md
   spec_002: openspec/specs/SPEC-002-general-tasks.md
@@ -38,25 +38,15 @@ Esta especificación técnica consolida la refactorización integral, la higiene
 6. **Deuda de Nomenclatura de Dominio (`cv` vs `resume`):** Desalineación conceptual en esquemas de datos, nombres de carpetas (`src/content/cv` vs estándar internacional `resume`) y componentes asociados.
 7. **Ausencia de un Estudio Monospace de Personalización:** Carencia de un entorno en vivo (`/resume/maker`) que permita modificar Markdown en tiempo real, alternar selectores de teléfono para ofertas internacionales y serializar exportaciones a JSON-LD, TOML y XML estructurado con atribución UTM.
 
-### 1.2. Marco Metodológico Tri-Axis: SDD, RDD y ODD
+### 1.2. Metodología ODD (Organic/Operational-Driven Development)
 
-```
-                            TRI-AXIS METHODOLOGY MODEL
-                                    [ SDD ]
-                           Tipado Estricto e Invariantes
-                                       ▲
-                                      / \
-                                     /   \
-                                    /     \
-                                   ▼       ▼
-                              [ RDD ] <──> [ ODD ]
-                         Requerimientos    Verificación Operativa
-                           Binarios           en Navegador y Edge
-```
+Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Classify → Track (before first write, create `odd/tasks/<feature>.md`) → Implement (test-first when deterministic) → Check → Close.
 
-- **Spec-Driven Development (SDD):** Modelado formal de esquemas Zod en `src/content.config.ts`, tipado TypeScript en modo estricto para datasets de currículum y contratos del puerto de telemetría (`TelemetryPort`).
-- **Requirement-Driven Development (RDD):** Especificación determinista de 12 requerimientos técnicos (`REQ-01` a `REQ-12`) evaluados mediante compuertas booleanas cuantitativas (PASS/FAIL).
-- **Organic/Operational-Driven Development (ODD):** Validación en tiempo de ejecución bajo condiciones reales de red perimetral Cloudflare, verificación cross-browser de capas de impresión y micro-benchmarks de renderizado tipográfico.
+- **Explore:** Según `AGENTS.md`, usar `codegraph` antes de cualquier refactor (sect. 6); los 7 specs se exploraron previamente (`SPEC-001` a `SPEC-007`).
+- **Classify:** Trabajo sustancial (7 archivos, estructura `odd/`, multi-file edit); se creó `odd/convert-specs/tasks.md` con 9 sub-tareas antes de cualquier modificación.
+- **Track:** Este archivo (`SPEC-002`) se actualiza por tareas con commits de unidad de trabajo (`feat(spec): standardize methodology to ODD`).
+- **Implement / Check:** Todo cambio preserva los invariantes técnicos (`REQ-*`, `VAL-*`) y pasa `bun run check`; la verificación ODD incluye `CLS = 0.000`, `LCP < 800ms`, `INP < 50ms`.
+- **Close:** Resultado verificado; memoria guardada (esta decisión) si es clave.
 
 ### 1.3. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
 

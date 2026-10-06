@@ -14,7 +14,7 @@ target_stack:
   runtime: Cloudflare Edge (Workers Static Assets, Pages, D1 Database, Cache API)
   architecture: Hexagonal / Decoupled Ports & Adapters
   locales: [en, es] (EN Primario por defecto -> ES Secundario -> Extensible N)
-methodology: Tri-Axis Model — Spec-Driven Development (SDD), Requirement-Driven Development (RDD) & Organic/Operational-Driven Development (ODD)
+methodology: Organic/Operational-Driven Development (ODD)
 cross_references:
   spec_001: openspec/specs/SPEC-001-big-refactor.md
   spec_002: openspec/specs/SPEC-002-general-tasks.md
@@ -44,27 +44,15 @@ El ecosistema web de portafolio y consultoría técnica de alto nivel enfrentaba
 5. **Optimización de Caché y Headers en el Edge de Cloudflare:**
    - El archivo `public/_headers` carecía de directivas estrictas de inmutabilidad (`public, max-age=31536000, immutable`) para bundles generados por Vite (`/_astro/*`) y tipografías locales, provocando revalidaciones innecesarias (`304 Not Modified`).
 
-### 1.2. Marco Metodológico Tri-Axis: SDD, RDD y ODD
+### 1.2. Metodología ODD (Organic/Operational-Driven Development)
 
-Para garantizar una ingeniería de software con cero regresiones, esta especificación se rige bajo el modelo de tres ejes:
+Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Classify → Track (before first write, create `odd/tasks/<feature>.md`) → Implement (test-first when deterministic) → Check → Close.
 
-```
-                            TRI-AXIS METHODOLOGY MODEL
-                                    [ SDD ]
-                           Contratos y Tipado Estricto
-                                       ▲
-                                      / \
-                                     /   \
-                                    /     \
-                                   ▼       ▼
-                              [ RDD ] <──> [ ODD ]
-                         Requerimientos   Validación Perimetral
-                           Cuantitativos    en Tiempo Real
-```
-
-- **Spec-Driven Development (SDD):** Modelado formal previo de tipos, contratos de rutas y abstracciones de interfaz en TypeScript estricto.
-- **Requirement-Driven Development (RDD):** Definición binaria de requerimientos funcionales (`REQ-01` a `REQ-05`) y compuertas cuantitativas de fallo.
-- **Organic/Operational-Driven Development (ODD):** Validación operativa continua en los más de 300 centros de datos de Cloudflare Edge, verificando comportamiento en frío, tiempos de respuesta sub-segundo y navegación fluida sin memory leaks.
+- **Explore:** Según `AGENTS.md`, usar `codegraph` antes de cualquier refactor (sect. 6); los 7 specs se exploraron previamente (`SPEC-001` a `SPEC-007`).
+- **Classify:** Trabajo sustancial (7 archivos, estructura `odd/`, multi-file edit); se creó `odd/convert-specs/tasks.md` con 9 sub-tareas antes de cualquier modificación.
+- **Track:** Este archivo (`SPEC-001`) se actualiza por tareas con commits de unidad de trabajo (`feat(spec): standardize methodology to ODD`).
+- **Implement / Check:** Todo cambio preserva los invariantes técnicos (`REQ-*`, `VAL-*`) y pasa `bun run check`; la verificación ODD incluye `CLS = 0.000`, `LCP < 800ms`, `INP < 50ms`.
+- **Close:** Resultado verificado; memoria guardada (esta decisión) si es clave.
 
 ### 1.3. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
 
