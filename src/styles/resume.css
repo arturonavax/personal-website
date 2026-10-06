@@ -250,3 +250,87 @@
 .resume-document h3 + p > strong a:hover {
   text-decoration: underline;
 }
+
+/* Header contact links are the only clickable objects in the CV: always underlined (screen + print) */
+.cv-document h1 + p a[href],
+.resume-document h1 + p a[href] {
+  text-decoration: underline;
+  text-decoration-color: #0369a1;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.cv-document h1 + p,
+.resume-document h1 + p {
+  margin: 0 0 4px 0;
+  line-height: 1.38;
+}
+
+/* Cross-engine print normalization (Chromium + Firefox): identical metrics for /resume/ and /resume/maker/,
+   and plain selectable text (no ligature/contextual glyph substitution that Firefox exports as non-selectable). */
+@media print {
+  .cv-document,
+  .resume-document,
+  .cv-document *,
+  .resume-document * {
+    -webkit-text-size-adjust: none !important;
+    text-size-adjust: none !important;
+    text-rendering: geometricPrecision !important;
+    font-kerning: normal !important;
+    font-optical-sizing: none !important;
+    font-synthesis: none !important;
+    font-variant-ligatures: none !important;
+    font-feature-settings: "liga" 0, "clig" 0, "calt" 0 !important;
+    word-spacing: 0 !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+  }
+
+  .cv-document,
+  .resume-document {
+    font-size: 11.5pt !important;
+    line-height: 1.38 !important;
+    letter-spacing: normal !important;
+  }
+
+  .cv-document p,
+  .cv-document li,
+  .cv-document a,
+  .cv-document strong,
+  .cv-document em,
+  .resume-document p,
+  .resume-document li,
+  .resume-document a,
+  .resume-document strong,
+  .resume-document em {
+    letter-spacing: normal !important;
+  }
+
+  .cv-document h1 + p,
+  .resume-document h1 + p {
+    margin: 0 0 4px 0 !important;
+    padding: 0 !important;
+    line-height: 1.38 !important;
+  }
+
+  .cv-document h1 + p > strong:first-child,
+  .resume-document h1 + p > strong:first-child {
+    display: inline !important;
+    margin: 0 !important;
+  }
+
+  .cv-document code,
+  .resume-document code {
+    display: inline !important;
+    border-radius: 0 !important;
+    white-space: normal !important;
+    letter-spacing: normal !important;
+  }
+
+  .cv-document a:not([href]),
+  .resume-document a:not([href]) {
+    display: inline !important;
+    text-decoration: none !important;
+  }
+}

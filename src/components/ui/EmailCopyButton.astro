@@ -48,7 +48,8 @@ const copiedText = isEs ? "Copiado al portapapeles" : "Copied to clipboard";
   </button>
 
   <span
-    class="copy-feedback hidden no-lang-react pointer-events-none fixed bottom-8 left-1/2 -translate-x-1/2 z-[70] rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-4 py-2 font-mono text-xs text-[var(--color-text-primary)] opacity-0 shadow-2xl backdrop-blur-md transition-opacity duration-200 whitespace-nowrap"
+    class="copy-feedback hidden no-lang-react pointer-events-none fixed top-auto m-0 overflow-visible bottom-8 left-1/2 -translate-x-1/2 z-[70] rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-4 py-2 font-mono text-xs text-[var(--color-text-primary)] opacity-0 shadow-2xl backdrop-blur-md transition-opacity duration-200 whitespace-nowrap"
+    popover="manual"
     role="status"
     aria-live="polite"
     aria-hidden="true"
@@ -91,6 +92,12 @@ const copiedText = isEs ? "Copiado al portapapeles" : "Copied to clipboard";
           this.feedback.setAttribute("aria-hidden", "false");
           this.feedback.classList.remove("hidden", "opacity-0");
           this.feedback.classList.add("opacity-100");
+          // Top layer: always above any other fixed banner/toast regardless of stacking contexts
+          try {
+            if (!this.feedback.matches(":popover-open")) this.feedback.showPopover();
+          } catch {
+            /* popover unsupported: z-index fallback */
+          }
           if (this.timeoutId) clearTimeout(this.timeoutId);
           this.timeoutId = setTimeout(() => {
             this.feedback?.classList.remove("opacity-100");
@@ -98,6 +105,11 @@ const copiedText = isEs ? "Copiado al portapapeles" : "Copied to clipboard";
             this.feedback?.setAttribute("aria-hidden", "true");
             setTimeout(() => {
               this.feedback?.classList.add("hidden");
+              try {
+                this.feedback?.hidePopover();
+              } catch {
+                /* noop */
+              }
             }, 200);
           }, 2000);
         }

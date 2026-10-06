@@ -205,12 +205,13 @@ const {
         state.drops = new Array(columns);
         for (let i = 0; i < columns; i++) {
           state.drops[i] =
-            i < existing.length ? existing[i]! : Math.floor(Math.random() * 50);
+            i < existing.length ? existing[i]! : -Math.floor(Math.random() * 24);
         }
       } else {
         state.drops = new Array(columns)
           .fill(1)
-          .map(() => Math.floor(Math.random() * 50));
+          // First load: every stream enters from the top edge (staggered start above the viewport)
+          .map(() => -Math.floor(Math.random() * 24));
       }
       (window as any).__matrixDrops = state.drops;
     }
