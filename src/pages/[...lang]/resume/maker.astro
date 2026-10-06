@@ -232,6 +232,12 @@ const isEs = locale === "es";
       overflow: visible !important;
       max-width: 210mm !important;
       width: 100% !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      image-rendering: auto !important;
+      text-rendering: optimizeLegibility !important;
+      -webkit-font-smoothing: antialiased !important;
+      -moz-osx-font-smoothing: grayscale !important;
     }
   }
 </style>
@@ -519,7 +525,23 @@ const isEs = locale === "es";
     (window as any).__priorDocTitle = document.title;
     const currentLang = document.documentElement.lang || "en";
     document.title = `ArturoNava-CV-${currentLang}`;
+    // Remove progressive reveal class to prevent rasterization in PDF
+    const previewEl = document.getElementById("resume-live-preview");
+    if (previewEl) {
+      previewEl.classList.remove("progressive-reveal");
+    }
     prepareMakerPrintLinks();
+
+    // Temporarily expand preview to full height and disable overflow to ensure full-resolution print
+    let savedHeight = "";
+    let savedOverflow = "";
+    if (previewEl) {
+      savedHeight = previewEl.style.height || "";
+      savedOverflow = previewEl.style.overflow || "";
+      previewEl.style.height = "auto";
+      previewEl.style.overflow = "visible";
+    }
+
     window.addEventListener(
       "afterprint",
       () => {
@@ -527,10 +549,24 @@ const isEs = locale === "es";
           document.title = (window as any).__priorDocTitle;
         }
         restoreMakerPrintLinks();
+        // Restore progressive reveal after print
+        const restoredPreview = document.getElementById("resume-live-preview");
+        if (restoredPreview) {
+          restoredPreview.classList.add("progressive-reveal");
+        }
+        // Restore original preview dimensions
+        if (previewEl) {
+          previewEl.style.height = savedHeight;
+          previewEl.style.overflow = savedOverflow;
+        }
       },
       { once: true },
     );
-    window.print();
+
+    // Delayed print to allow the browser to fully render the expanded content at high DPI
+    setTimeout(function () {
+      window.print();
+    }, 70);
   };
 
   printBtn?.addEventListener("click", () => {
@@ -583,6 +619,32 @@ const isEs = locale === "es";
     (window as any).__priorDocTitle = document.title;
     const currentLang = document.documentElement.lang || "en";
     document.title = `ArturoNava-CV-${currentLang}`;
+    // Remove progressive reveal class + force inline reset for Firefox print engine
+    const previewEl = document.getElementById("resume-live-preview");
+    if (previewEl) {
+      previewEl.classList.remove("progressive-reveal");
+      previewEl.style.animation = "none";
+      previewEl.style.filter = "none";
+      previewEl.style.transform = "none";
+      previewEl.style.opacity = "1";
+      previewEl.style.height = "auto";
+      previewEl.style.overflow = "visible";
+      // Force all links inside preview to have no underline for Firefox
+      previewEl.querySelectorAll("a[href]").forEach((link) => {
+        (link as HTMLElement).style.textDecoration = "none";
+        (link as HTMLElement).style.borderBottom = "none";
+        (link as HTMLElement).style.color = "inherit";
+        (link as HTMLElement).style.userSelect = "text";
+      });
+    }
+    // Force document-level text selection for all content inside preview
+    const docEls = document.querySelectorAll(".resume-document, .cv-document, #resume-live-preview, #cv-document-sheet, article");
+    docEls.forEach((el) => {
+      (el as HTMLElement).style.userSelect = "text";
+      (el as HTMLElement).style.animation = "none";
+      (el as HTMLElement).style.filter = "none";
+      (el as HTMLElement).style.transform = "none";
+    });
     prepareMakerPrintLinks();
   });
 
