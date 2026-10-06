@@ -270,10 +270,11 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
         cvSheet.style.opacity = "1";
         cvSheet.style.userSelect = "text";
         cvSheet.querySelectorAll("a").forEach(function (link) {
-          link.style.textDecoration = "none";
-          link.style.borderBottom = "none";
-          link.style.color = "inherit";
           link.style.userSelect = "text";
+          if (!link.hasAttribute("href")) {
+            link.style.textDecoration = "none";
+            link.style.color = "inherit";
+          }
         });
       }
       var docEls = document.querySelectorAll(".resume-document, .cv-document, #cv-document-sheet, article");

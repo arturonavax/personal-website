@@ -115,10 +115,18 @@ export function parseMarkdownResume(md: string): ResumeData {
   let currentParent: IndexItem | null = null;
   const htmlParts: string[] = [];
   let inList = false;
+  // Open paragraph state: consecutive text lines merge like CommonMark (hard break on trailing 2 spaces)
+  let openParaIdx = -1;
+  let openParaRaw = "";
+  let openParaHardBreak = false;
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i] ?? "";
     const trimmed = rawLine.trim();
+
+    if (openParaIdx !== -1 && (!trimmed || /^(#{1,4} |- |---$)/.test(trimmed))) {
+      openParaIdx = -1;
+    }
 
     if (!trimmed) {
       if (inList) {
@@ -226,7 +234,15 @@ export function parseMarkdownResume(md: string): ResumeData {
       inList = false;
     }
 
-    htmlParts.push(`<p>${inlineFormat(trimmed)}</p>`);
+    if (openParaIdx !== -1) {
+      openParaRaw += (openParaHardBreak ? "\n<br />\n" : " ") + trimmed;
+      htmlParts[openParaIdx] = `<p>${inlineFormat(openParaRaw)}</p>`;
+    } else {
+      openParaRaw = trimmed;
+      htmlParts.push(`<p>${inlineFormat(trimmed)}</p>`);
+      openParaIdx = htmlParts.length - 1;
+    }
+    openParaHardBreak = / {2,}$/.test(rawLine);
   }
 
   if (inList) {

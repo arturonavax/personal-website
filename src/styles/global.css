@@ -581,7 +581,7 @@ html[data-timeline-incoming="past"] #experience-article {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     image-rendering: auto !important;
-    text-rendering: optimizeLegibility !important;
+    text-rendering: geometricPrecision !important;
     -webkit-font-smoothing: antialiased !important;
     -moz-osx-font-smoothing: grayscale !important;
   }
@@ -623,6 +623,15 @@ html[data-timeline-incoming="past"] #experience-article {
   #resume-live-preview a[href]::after {
     display: none !important;
     content: none !important;
+  }
+
+  .cv-document h1 + p a[href],
+  .resume-document h1 + p a[href],
+  #cv-document-sheet h1 + p a[href],
+  #resume-live-preview h1 + p a[href] {
+    text-decoration: underline !important;
+    text-decoration-color: #0369a1 !important;
+    color: #0369a1 !important;
   }
 
   /* Contact Header Links Retention (REQ-UXE-29): Retain clickable links in print header without altering styling */

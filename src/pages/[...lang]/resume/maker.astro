@@ -235,7 +235,7 @@ const isEs = locale === "es";
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
       image-rendering: auto !important;
-      text-rendering: optimizeLegibility !important;
+      text-rendering: geometricPrecision !important;
       -webkit-font-smoothing: antialiased !important;
       -moz-osx-font-smoothing: grayscale !important;
     }
@@ -630,10 +630,7 @@ const isEs = locale === "es";
       previewEl.style.height = "auto";
       previewEl.style.overflow = "visible";
       // Force all links inside preview to have no underline for Firefox
-      previewEl.querySelectorAll("a[href]").forEach((link) => {
-        (link as HTMLElement).style.textDecoration = "none";
-        (link as HTMLElement).style.borderBottom = "none";
-        (link as HTMLElement).style.color = "inherit";
+      previewEl.querySelectorAll("a").forEach((link) => {
         (link as HTMLElement).style.userSelect = "text";
       });
     }
