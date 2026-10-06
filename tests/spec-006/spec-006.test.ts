@@ -720,9 +720,9 @@ describe("SPEC-006 REQ-UXE-28: Centered 'Start a Conversation' Copy Toast", () =
     );
     const content = fs.readFileSync(btnPath, "utf-8");
 
-    expect(content).toContain(
-      "fixed bottom-8 left-1/2 -translate-x-1/2 z-[70]",
-    );
+    expect(content).toContain("fixed top-auto m-0 overflow-visible bottom-8");
+    expect(content).toContain("left-1/2 -translate-x-1/2 z-[70]");
+    expect(content).toContain('popover="manual"');
     expect(content).toContain("Copiado al portapapeles");
     expect(content).toContain("Copied to clipboard");
   });
