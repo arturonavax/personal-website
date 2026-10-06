@@ -1,3 +1,62 @@
+/* Static (non-variable) Geist instances: Firefox exports variable-font text in PDF as outlines (unselectable).
+   Static faces keep every glyph as real, selectable text in all print engines. */
+@font-face {
+  font-family: "Geist Static";
+  src: url("/fonts/Geist-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Static";
+  src: url("/fonts/Geist-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Static";
+  src: url("/fonts/Geist-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Static";
+  src: url("/fonts/Geist-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono Static";
+  src: url("/fonts/GeistMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono Static";
+  src: url("/fonts/GeistMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono Static";
+  src: url("/fonts/GeistMono-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono Static";
+  src: url("/fonts/GeistMono-Bold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ==========================================================================
    SCOPED RESUME TYPOGRAPHY & DOCUMENT STYLING
    Used identically across /resume and /resume/maker
@@ -5,6 +64,7 @@
 .cv-document,
 .resume-document {
   font-family:
+    "Geist Static",
     "Geist Sans",
     var(--font-sans),
     system-ui,
@@ -21,7 +81,7 @@
 
 .cv-document h1,
 .resume-document h1 {
-  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-family: "Geist Static", "Geist Sans", var(--font-sans), sans-serif;
   font-size: 21pt;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -31,7 +91,7 @@
 
 .cv-document h2,
 .resume-document h2 {
-  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-family: "Geist Static", "Geist Sans", var(--font-sans), sans-serif;
   font-size: 12pt;
   font-weight: 700;
   text-transform: uppercase;
@@ -47,7 +107,7 @@
 
 .cv-document h3,
 .resume-document h3 {
-  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-family: "Geist Static", "Geist Sans", var(--font-sans), sans-serif;
   font-size: 11.5pt;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -60,7 +120,7 @@
 
 .cv-document h4,
 .resume-document h4 {
-  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-family: "Geist Static", "Geist Sans", var(--font-sans), sans-serif;
   font-size: 10.5pt;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -73,7 +133,7 @@
 
 .cv-document h1 + p > strong:first-child,
 .resume-document h1 + p > strong:first-child {
-  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-family: "Geist Static", "Geist Sans", var(--font-sans), sans-serif;
   font-size: 11.5pt;
   font-weight: 600;
   color: #7a1c16 !important;
@@ -92,14 +152,14 @@
 
 .cv-document h3 + p > strong,
 .resume-document h3 + p > strong {
-  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-family: "Geist Static", "Geist Sans", var(--font-sans), sans-serif;
   color: #7a1c16 !important;
   font-weight: 600;
 }
 
 .cv-document h3 + p > em,
 .resume-document h3 + p > em {
-  font-family: "Geist Mono", var(--font-mono), monospace;
+  font-family: "Geist Mono Static", "Geist Mono", var(--font-mono), monospace;
   font-style: normal;
   font-variant-numeric: tabular-nums;
   font-size: 9.5pt;
@@ -130,7 +190,7 @@
 
 .cv-document strong,
 .resume-document strong {
-  font-family: "Geist Sans", var(--font-sans), sans-serif;
+  font-family: "Geist Static", "Geist Sans", var(--font-sans), sans-serif;
   font-weight: 600;
   color: #0f172a;
 }
@@ -143,7 +203,7 @@
 
 .cv-document code,
 .resume-document code {
-  font-family: "Geist Mono", var(--font-mono), monospace;
+  font-family: "Geist Mono Static", "Geist Mono", var(--font-mono), monospace;
   font-size: 0.88em !important;
   font-weight: 500;
   background-color: #faf5f5 !important;
@@ -162,7 +222,7 @@
 .cv-document p em,
 .resume-document li em,
 .resume-document p em {
-  font-family: "Geist Mono", var(--font-mono), monospace;
+  font-family: "Geist Mono Static", "Geist Mono", var(--font-mono), monospace;
   color: #7a1c16 !important;
   font-style: normal;
   font-weight: 600;
