@@ -14,7 +14,7 @@ target_stack:
   runtime: Cloudflare Edge (Workers, Pages, D1, R2, Cache API, Turnstile, Workers AI)
   architecture: Hexagonal / Decoupled Ports & Adapters
   locales: [en, es] (EN Primario por defecto -> ES Secundario -> Extensible N)
-methodology: Tri-Axis Model — Spec-Driven Development (SDD), Requirement-Driven Development (RDD) & Organic/Operational-Driven Development (ODD)
+methodology: Organic/Operational-Driven Development (ODD)
 cross_references:
   spec_001: openspec/specs/SPEC-001-big-refactor.md
   spec_002: openspec/specs/SPEC-002-general-tasks.md
@@ -38,27 +38,15 @@ El diagnóstico del sistema previo identificó riesgos críticos que requerían 
 4. **Discrepancias de Canónicos y Polución UTM:** Presencia de parámetros de seguimiento en etiquetas `<link rel="canonical">` y desincronización de esquemas JSON-LD entre idiomas.
 5. **Agotamiento de Cuotas D1 por Solicitudes Especulativas:** Peticiones automáticas de prefetch disparando inserciones en bases de datos perimetrales.
 
-### 1.2. Marco Metodológico Tri-Axis: SDD, RDD y ODD
+### 1.2. Metodología ODD (Organic/Operational-Driven Development)
 
-```
-                            TRI-AXIS VERIFICATION MODEL
+Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Classify → Track (before first write, create `odd/tasks/<feature>.md`) → Implement (test-first when deterministic) → Check → Close.
 
-                                    [ SDD ]
-                           Tipos e Invariantes Formales
-                                       ▲
-                                      / \
-                                     /   \
-                                    /     \
-                                   /       \
-                                  ▼         ▼
-                             [ RDD ] <───> [ ODD ]
-                         Compuertas          Simulación de Caos Edge
-                        Binarias PASS/FAIL   y Telemetría en Ejecución
-```
-
-1. **Spec-Driven Development (SDD):** El sistema se somete a contratos de interfaz tipados estáticos (TypeScript en modo `strict: true`, AST Linting y JSON Schemas W3C). Si un componente o adaptador introduce tipos `any`, dependencias circulares o mutaciones de estado no controladas, el pipeline de compilación se interrumpe de inmediato.
-2. **Requirement-Driven Development (RDD):** Definición de compuertas de rendimiento binarias cuantitativas. No existen métricas relativas ni advertencias permisivas: cada parámetro (LCP, CLS, INP, TTFB, tamaño de bundle, presupuesto de bytes de JavaScript en cliente) opera bajo una condición booleana estricta (PASS o FAIL).
-3. **Operational-Driven Development (ODD):** Validación del comportamiento real del software desplegado en los más de 300 centros de datos globales de Cloudflare. Involucra telemetría bajo condiciones adversas: navegación en redes con pérdida de paquetes (3G/4G inestable), ráfagas de solicitudes especulativas generadas por bots, degradación intencional de enlaces ascendentes y pruebas de resistencia frente a navegadores divergentes (Chromium Blink, Gecko Firefox 129+, WebKit iOS Safari).
+- **Explore:** Según `AGENTS.md`, usar `codegraph` antes de cualquier refactor (sect. 6); los 7 specs se exploraron previamente (`SPEC-001` a `SPEC-007`).
+- **Classify:** Trabajo sustancial (7 archivos, estructura `odd/`, multi-file edit); se creó `odd/convert-specs/tasks.md` con 9 sub-tareas antes de cualquier modificación.
+- **Track:** Este archivo (`SPEC-004`) se actualiza por tareas con commits de unidad de trabajo (`feat(spec): standardize methodology to ODD`).
+- **Implement / Check:** Todo cambio preserva los invariantes técnicos (`REQ-*`, `VAL-*`) y pasa `bun run check`; la verificación ODD incluye `CLS = 0.000`, `LCP < 800ms`, `INP < 50ms`.
+- **Close:** Resultado verificado; memoria guardada (esta decisión) si es clave.
 
 ### 1.3. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
 

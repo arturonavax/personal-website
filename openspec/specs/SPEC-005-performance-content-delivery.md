@@ -14,7 +14,7 @@ target_stack:
   runtime: Cloudflare Edge (Workers, Workers Static Assets, D1, R2, Vectorize, Cache API, Cloudflare Access)
   architecture: Hexagonal / Decoupled Ports & Adapters / Fail-Open Isolation
   locales: [en, es] (EN Primario -> ES Secundario -> Extensible N)
-methodology: Tri-Axis Model — Spec-Driven Development (SDD), Requirement-Driven Development (RDD) & Organic/Operational-Driven Development (ODD)
+methodology: Organic/Operational-Driven Development (ODD)
 cross_references:
   spec_001: openspec/specs/SPEC-001-big-refactor.md
   spec_002: openspec/specs/SPEC-002-general-tasks.md
@@ -65,27 +65,15 @@ Bajo este principio:
 
 ---
 
-### 1.3. Marco Metodológico Tri-Axis: SDD, RDD y ODD
+### 1.3. Metodología ODD (Organic/Operational-Driven Development)
 
-```
-                             TRI-AXIS METHODOLOGY MODEL
-                                      [ SDD ]
-                           Contratos de Enrutamiento Edge
-                           y Arquitectura Fail-Open Pura
-                                        ▲
-                                       / \
-                                      /   \
-                                     /     \
-                                    ▼       ▼
-                               [ RDD ] <──> [ ODD ]
-                          Compuertas        Telemetría Zero-Overhead,
-                          Cuantitativas de  Simulación de Caos Edge
-                          TTFB y Rendimiento y Benchmarks de Concurrencia
-```
+Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Classify → Track (before first write, create `odd/tasks/<feature>.md`) → Implement (test-first when deterministic) → Check → Close.
 
-- **Spec-Driven Development (SDD):** Modelado formal en TypeScript estricto de las interfaces de enrutador perimetral (`EdgeContentDeliveryPort`, `EdgeRoutingPolicy`, `SubdomainRedirectRule`), contratos de aislamiento de telemetría y directivas de cabeceras RFC 9111.
-- **Requirement-Driven Development (RDD):** Definición binaria e inexcusable de compuertas cuantitativas (`REQ-PCD-01` a `REQ-PCD-08`), evaluadas mediante límites numéricos estrictos (TTFB < 20ms en caché Edge, 0ms de bloqueo de hilo en navegación, 0 KB JS cliente).
-- **Organic/Operational-Driven Development (ODD):** Validación operativa bajo condiciones perimetrales adversas en los más de 300 centros de datos de Cloudflare: inyección de fallas en D1/Vectorize, verificación de aislamiento de Access y benchmarking global de latencia.
+- **Explore:** Según `AGENTS.md`, usar `codegraph` antes de cualquier refactor (sect. 6); los 7 specs se exploraron previamente (`SPEC-001` a `SPEC-007`).
+- **Classify:** Trabajo sustancial (7 archivos, estructura `odd/`, multi-file edit); se creó `odd/convert-specs/tasks.md` con 9 sub-tareas antes de cualquier modificación.
+- **Track:** Este archivo (`SPEC-005`) se actualiza por tareas con commits de unidad de trabajo (`feat(spec): standardize methodology to ODD`).
+- **Implement / Check:** Todo cambio preserva los invariantes técnicos (`REQ-*`, `VAL-*`) y pasa `bun run check`; la verificación ODD incluye `CLS = 0.000`, `LCP < 800ms`, `INP < 50ms`.
+- **Close:** Resultado verificado; memoria guardada (esta decisión) si es clave.
 
 ---
 

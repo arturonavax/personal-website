@@ -19,6 +19,16 @@
 
 ---
 
+## 1.1 Methodology — ODD (Organic/Operational-Driven Development)
+
+Flujo estándar ODD: Authorize → Explore (CodeGraph + skills) → Resolve Uncertainty → Classify (track in `odd/convert-specs/tasks.md`) → Implement → Check (`bun run check`, audit gates, CWV) → Close (verified outcome, memory if key).
+
+- **Classify:** Substantial work → `odd/convert-specs/tasks.md` created before first edit.
+- **Explore:** `codegraph` used before any `src/components/` or `src/styles/` edit.
+- **Check:** All changes must preserve `CLS = 0.000`, `LCP < 800ms`, `INP < 50ms`; build passes `bun run build` / `bun run check`.
+
+---
+
 ## 1. Problem Statement & Root Cause Analysis
 
 1. **Header Scroll Glitch / Flickering on Wide Delta Scrolls**:
