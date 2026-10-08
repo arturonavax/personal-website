@@ -1,6 +1,7 @@
 # ODD Flow Standardization — Specs 001–007
 
 ## Standard Methodology (ODD Only)
+
 Every spec follows the single Organic/Operational-Driven Development pipeline:
 
 1. Authorize (scope / constraints / decision)
@@ -15,6 +16,7 @@ Every spec follows the single Organic/Operational-Driven Development pipeline:
 No SDD (Spec-Driven) or RDD (Requirement-Driven) hybrid layer remains in method sections.
 
 ## Token-Saving Rules
+
 - Preserve all `REQ-*`, `VAL-*`, `DoD`, code blocks, schema definitions exactly.
 - Only replace the methodology paragraph + diagram references (Tri-Axis) with ODD phase ordering.
 - Do not duplicate technical content — reference existing spec content by file, not inline.

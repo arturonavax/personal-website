@@ -635,7 +635,9 @@ const isEs = locale === "es";
       });
     }
     // Force document-level text selection for all content inside preview
-    const docEls = document.querySelectorAll(".resume-document, .cv-document, #resume-live-preview, #cv-document-sheet, article");
+    const docEls = document.querySelectorAll(
+      ".resume-document, .cv-document, #resume-live-preview, #cv-document-sheet, article",
+    );
     docEls.forEach((el) => {
       (el as HTMLElement).style.userSelect = "text";
       (el as HTMLElement).style.animation = "none";

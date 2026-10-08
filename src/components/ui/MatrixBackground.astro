@@ -1,5 +1,5 @@
 ---
-// Subtle Matrix / Hexadecimal Code Stream Background (Zero-Dependency Custom Element)
+// Subtle Matrix / Hexadecimal Code Stream Background (Zero-Dependency Offscreen Canvas Worker + Fallback)
 export const ENABLE_MATRIX_BACKGROUND = true;
 
 interface Props {
@@ -29,12 +29,14 @@ const {
 
 <script>
   interface MatrixSingleton {
+    worker: Worker | null;
     drops: number[];
     animationFrameId: number | null;
     timeoutId: number | null;
     disconnectTimer: number | null;
     lastWidth: number;
     lastHeight: number;
+    lastDpr: number;
     canvas: HTMLCanvasElement | null;
     ctx: CanvasRenderingContext2D | null;
     renderFn: (() => void) | null;
@@ -44,18 +46,23 @@ const {
     private canvas: HTMLCanvasElement | null = null;
     private ctx: CanvasRenderingContext2D | null = null;
     private resizeObserver: ResizeObserver | null = null;
+    private themeObserver: MutationObserver | null = null;
+    private windowResizeHandler: (() => void) | null = null;
     private lastWidth = 0;
     private lastHeight = 0;
+    private lastDpr = 1;
 
     private getGlobalState(): MatrixSingleton {
       if (!(window as any).__matrixState) {
         (window as any).__matrixState = {
+          worker: null,
           drops: (window as any).__matrixDrops || [],
           animationFrameId: null,
           timeoutId: null,
           disconnectTimer: null,
           lastWidth: 0,
           lastHeight: 0,
+          lastDpr: 1,
           canvas: null,
           ctx: null,
           renderFn: null,
@@ -65,7 +72,7 @@ const {
     }
 
     connectedCallback() {
-      if (window.innerWidth < 768) return;
+      if (typeof window === "undefined" || window.innerWidth < 768) return;
       if (
         window.matchMedia &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -79,12 +86,14 @@ const {
       }
 
       // Check if a global canvas singleton is already running
-      const existingCanvas = (window as any)
-        .__matrixCanvas as HTMLCanvasElement | null;
+      const existingCanvas = (state.canvas ||
+        (window as any).__matrixCanvas) as HTMLCanvasElement | null;
       const currentCanvas = this.querySelector("canvas");
 
-      if (existingCanvas && state.animationFrameId !== null) {
-        // A canvas is already created, sized, and actively running!
+      if (
+        existingCanvas &&
+        (state.worker !== null || state.animationFrameId !== null)
+      ) {
         if (currentCanvas && currentCanvas !== existingCanvas) {
           currentCanvas.remove();
         }
@@ -92,56 +101,164 @@ const {
           this.appendChild(existingCanvas);
         }
         this.canvas = existingCanvas;
-        this.ctx = existingCanvas.getContext("2d");
-        state.canvas = existingCanvas;
-        state.ctx = this.ctx;
+        if (!state.worker) {
+          this.ctx = existingCanvas.getContext("2d");
+          state.ctx = this.ctx;
+        }
+
+        this.setupObservers(state);
+
+        if (state.worker) {
+          const isLight =
+            document.documentElement.getAttribute("data-theme") === "light";
+          state.worker.postMessage({ type: "theme", isLight });
+        }
         return;
       }
 
       this.canvas = currentCanvas;
       if (!this.canvas) return;
-      this.ctx = this.canvas.getContext("2d");
-      if (!this.ctx) return;
 
       (window as any).__matrixCanvas = this.canvas;
       state.canvas = this.canvas;
-      state.ctx = this.ctx;
 
       this.lastWidth = window.innerWidth;
       this.lastHeight = window.innerHeight;
+      this.lastDpr = window.devicePixelRatio || 1;
       state.lastWidth = this.lastWidth;
       state.lastHeight = this.lastHeight;
-
-      this.initCanvasDimensions();
+      state.lastDpr = this.lastDpr;
 
       if (!state.drops || state.drops.length === 0) {
         this.initRain(false);
       }
 
+      // Try OffscreenCanvas + Web Worker for zero main-thread overhead
+      if (
+        "transferControlToOffscreen" in this.canvas &&
+        typeof Worker !== "undefined"
+      ) {
+        try {
+          const offscreen = this.canvas.transferControlToOffscreen();
+          const dpr = window.devicePixelRatio || 1;
+          const isLight =
+            document.documentElement.getAttribute("data-theme") === "light";
+
+          const worker = new Worker(
+            new URL("../../scripts/matrix.worker.ts", import.meta.url),
+            { type: "module" },
+          );
+
+          state.worker = worker;
+          worker.postMessage(
+            {
+              type: "init",
+              canvas: offscreen,
+              width: window.innerWidth,
+              height: window.innerHeight,
+              dpr,
+              isLight,
+            },
+            [offscreen],
+          );
+
+          this.setupObservers(state);
+          document.addEventListener("visibilitychange", this.handleVisibility);
+          return;
+        } catch {
+          // Fallback to main thread loop
+        }
+      }
+
+      // Main thread fallback
+      this.ctx = this.canvas.getContext("2d");
+      if (!this.ctx) return;
+      state.ctx = this.ctx;
+      this.initCanvasDimensions();
+
       if (state.animationFrameId === null) {
         this.startRainLoop();
       }
 
-      this.resizeObserver = new ResizeObserver((entries) => {
-        const entry = entries[0];
-        if (!entry) return;
-        const currentWidth = entry.contentRect.width || window.innerWidth;
-        const currentHeight = entry.contentRect.height || window.innerHeight;
-        // Only re-init if canvas dimensions actually changed by more than 50px
+      this.setupObservers(state);
+    }
+
+    private setupObservers(state: MatrixSingleton) {
+      if (this.resizeObserver) {
+        this.resizeObserver.disconnect();
+      }
+
+      const handleResize = (entryWidth?: number, entryHeight?: number) => {
+        const currentWidth = entryWidth || window.innerWidth;
+        const currentHeight = entryHeight || window.innerHeight;
+        const currentDpr = window.devicePixelRatio || 1;
+        const dprChanged = Math.abs(currentDpr - (this.lastDpr || 1)) > 0.001;
+
+        // Only re-init if canvas dimensions actually changed by more than 50px or zoom/DPR shifted
         if (
           Math.abs(currentWidth - this.lastWidth) > 50 ||
-          Math.abs(currentHeight - this.lastHeight) > 50
+          Math.abs(currentHeight - this.lastHeight) > 50 ||
+          dprChanged
         ) {
           this.lastWidth = currentWidth;
           this.lastHeight = currentHeight;
+          this.lastDpr = currentDpr;
           state.lastWidth = currentWidth;
           state.lastHeight = currentHeight;
-          this.initCanvasDimensions();
-          this.initRain(false);
+          state.lastDpr = currentDpr;
+
+          if (state.worker) {
+            state.worker.postMessage({
+              type: "resize",
+              width: currentWidth,
+              height: currentHeight,
+              dpr: currentDpr,
+            });
+          } else {
+            this.initCanvasDimensions();
+            this.initRain(false);
+          }
         }
+      };
+
+      this.resizeObserver = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        handleResize(entry.contentRect.width, entry.contentRect.height);
       });
       this.resizeObserver.observe(this);
+
+      if (this.windowResizeHandler) {
+        window.removeEventListener("resize", this.windowResizeHandler);
+      }
+      this.windowResizeHandler = () => handleResize();
+      window.addEventListener("resize", this.windowResizeHandler, {
+        passive: true,
+      });
+
+      if (this.themeObserver) {
+        this.themeObserver.disconnect();
+      }
+      this.themeObserver = new MutationObserver(() => {
+        if (!state.worker) return;
+        const isLight =
+          document.documentElement.getAttribute("data-theme") === "light";
+        state.worker.postMessage({ type: "theme", isLight });
+      });
+      this.themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"],
+      });
     }
+
+    private handleVisibility = () => {
+      const state = this.getGlobalState();
+      if (!state.worker) return;
+      state.worker.postMessage({
+        type: "visibility",
+        hidden: document.hidden,
+      });
+    };
 
     disconnectedCallback() {
       const state = this.getGlobalState();
@@ -149,12 +266,29 @@ const {
         window.clearTimeout(state.disconnectTimer);
       }
 
+      if (this.windowResizeHandler) {
+        window.removeEventListener("resize", this.windowResizeHandler);
+        this.windowResizeHandler = null;
+      }
+
       // Defer cancellation: during Astro transitions or DOM swaps, element is re-parented within ms
       state.disconnectTimer = window.setTimeout(() => {
         if (!document.querySelector("matrix-canvas-layer")) {
+          document.removeEventListener(
+            "visibilitychange",
+            this.handleVisibility,
+          );
+          if (this.themeObserver) {
+            this.themeObserver.disconnect();
+            this.themeObserver = null;
+          }
           if (this.resizeObserver) {
             this.resizeObserver.disconnect();
             this.resizeObserver = null;
+          }
+          if (state.worker) {
+            state.worker.terminate();
+            state.worker = null;
           }
           if (state.animationFrameId !== null) {
             cancelAnimationFrame(state.animationFrameId);
@@ -164,10 +298,11 @@ const {
             window.clearTimeout(state.timeoutId);
             state.timeoutId = null;
           }
+          state.canvas = null;
           (window as any).__matrixCanvas = null;
         }
         state.disconnectTimer = null;
-      }, 800);
+      }, 1000);
     }
 
     private initCanvasDimensions() {
@@ -178,15 +313,22 @@ const {
       const height = rect.height || window.innerHeight;
       const targetW = Math.round(width * dpr);
       const targetH = Math.round(height * dpr);
+      const dprChanged = Math.abs(dpr - (this.lastDpr || 1)) > 0.001;
 
       // CRITICAL: Setting canvas.width clears the entire bitmap buffer.
-      // NEVER re-assign if dimensions already match!
-      if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+      // NEVER re-assign if dimensions and DPR already match!
+      if (
+        this.canvas.width !== targetW ||
+        this.canvas.height !== targetH ||
+        dprChanged
+      ) {
         this.canvas.width = targetW;
         this.canvas.height = targetH;
+        this.lastDpr = dpr;
         if (this.ctx) {
           this.ctx.resetTransform?.();
           this.ctx.scale(dpr, dpr);
+          this.ctx.clearRect(0, 0, width, height);
         }
       }
     }
@@ -205,7 +347,9 @@ const {
         state.drops = new Array(columns);
         for (let i = 0; i < columns; i++) {
           state.drops[i] =
-            i < existing.length ? existing[i]! : -Math.floor(Math.random() * 24);
+            i < existing.length
+              ? existing[i]!
+              : -Math.floor(Math.random() * 24);
         }
       } else {
         state.drops = new Array(columns)
@@ -282,4 +426,13 @@ const {
   if (!customElements.get("matrix-canvas-layer")) {
     customElements.define("matrix-canvas-layer", MatrixCanvasLayer);
   }
+
+  document.addEventListener("astro:after-swap", () => {
+    const state = (window as any).__matrixState as MatrixSingleton | undefined;
+    if (state?.worker) {
+      const isLight =
+        document.documentElement.getAttribute("data-theme") === "light";
+      state.worker.postMessage({ type: "theme", isLight });
+    }
+  });
 </script>

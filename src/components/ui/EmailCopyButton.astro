@@ -59,6 +59,8 @@ const copiedText = isEs ? "Copiado al portapapeles" : "Copied to clipboard";
 </email-copy-trigger>
 
 <script>
+  import { copyToClipboard } from "@/lib/utils/clipboard";
+
   class EmailCopyTrigger extends HTMLElement {
     private button: HTMLButtonElement | null = null;
     private feedback: HTMLElement | null = null;
@@ -82,8 +84,8 @@ const copiedText = isEs ? "Copiado al portapapeles" : "Copied to clipboard";
       if (!email) return;
 
       try {
-        await navigator.clipboard.writeText(email);
-        if (this.feedback) {
+        const copied = await copyToClipboard(email);
+        if (copied && this.feedback) {
           const isDocEs = document.documentElement.lang === "es";
           const dynamicText = isDocEs
             ? this.dataset.copiedEs || "Copiado al portapapeles"
@@ -94,7 +96,8 @@ const copiedText = isEs ? "Copiado al portapapeles" : "Copied to clipboard";
           this.feedback.classList.add("opacity-100");
           // Top layer: always above any other fixed banner/toast regardless of stacking contexts
           try {
-            if (!this.feedback.matches(":popover-open")) this.feedback.showPopover();
+            if (!this.feedback.matches(":popover-open"))
+              this.feedback.showPopover();
           } catch {
             /* popover unsupported: z-index fallback */
           }

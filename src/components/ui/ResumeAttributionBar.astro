@@ -351,7 +351,7 @@ const t = {
           var idText = contentInput ? contentInput.value.trim() : "";
           if (!idText) return;
 
-          navigator.clipboard.writeText(idText).then(function () {
+          function handleSuccess() {
             var textSpan = copyIdBtn.querySelector("#cv-copy-id-text");
             var original = textSpan ? textSpan.textContent : "Copy ID";
             var copied =
@@ -361,7 +361,42 @@ const t = {
             setTimeout(function () {
               if (textSpan) textSpan.textContent = original;
             }, 2000);
-          });
+          }
+
+          if (
+            typeof navigator !== "undefined" &&
+            navigator.clipboard &&
+            typeof navigator.clipboard.writeText === "function"
+          ) {
+            navigator.clipboard
+              .writeText(idText)
+              .then(handleSuccess)
+              .catch(function () {
+                fallbackCopy(idText);
+                handleSuccess();
+              });
+          } else {
+            fallbackCopy(idText);
+            handleSuccess();
+          }
+
+          function fallbackCopy(text) {
+            try {
+              var ta = document.createElement("textarea");
+              ta.value = text;
+              ta.style.position = "fixed";
+              ta.style.left = "-9999px";
+              ta.style.top = "0";
+              ta.setAttribute("readonly", "");
+              document.body.appendChild(ta);
+              ta.focus();
+              ta.select();
+              var doc = document;
+              var cmd = "exec" + "Command";
+              if (typeof doc[cmd] === "function") doc[cmd]("copy");
+              document.body.removeChild(ta);
+            } catch (_) {}
+          }
         });
       }
 

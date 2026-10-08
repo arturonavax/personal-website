@@ -160,7 +160,7 @@ const effectiveTargetUrl =
 
       var isTargetEs = dest === "/es/" || dest.indexOf("/es/") === 0;
       if (typeof window.__showBeacon === "function") {
-        window.__showBeacon(isTargetEs ? "Cargando..." : "Fetching...");
+        window.__showBeacon(isTargetEs ? "Cargando..." : "Fetching...", true);
       }
 
       var currentY =

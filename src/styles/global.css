@@ -694,17 +694,17 @@ header {
 .progressive-reveal {
   animation: progressiveContentFade 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-  @media print {
-    .progressive-reveal,
-    #resume-live-preview.progressive-reveal,
-    .resume-document.progressive-reveal,
-    .cv-document.progressive-reveal {
-      animation: none !important;
-      filter: none !important;
-      transform: none !important;
-      opacity: 1 !important;
-    }
+@media print {
+  .progressive-reveal,
+  #resume-live-preview.progressive-reveal,
+  .resume-document.progressive-reveal,
+  .cv-document.progressive-reveal {
+    animation: none !important;
+    filter: none !important;
+    transform: none !important;
+    opacity: 1 !important;
   }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .progressive-reveal {
