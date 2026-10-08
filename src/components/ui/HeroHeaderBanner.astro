@@ -1,6 +1,5 @@
 ---
 import type { Locale } from "@/i18n/ui";
-import { useTranslations } from "@/i18n/utils";
 import TechIcon from "@/components/ui/TechIcon.astro";
 import { Image } from "astro:assets";
 import arturoPhoto from "@/assets/arturonava.png";
@@ -11,7 +10,6 @@ interface Props {
 }
 
 const { locale } = Astro.props;
-const t = useTranslations(locale);
 const isEs = locale === "es";
 
 const techStack = [
@@ -37,12 +35,12 @@ const techStack = [
 <section
   id="about"
   aria-labelledby="hero-heading"
-  class="geometric-box relative p-5 sm:p-7 lg:p-9 rounded-sm flex flex-col justify-between lg:min-h-[calc(100dvh-5.5rem)] lg:max-h-[840px] overflow-hidden"
+  class="geometric-box relative p-4 sm:p-6 lg:p-7 rounded-sm flex flex-col justify-between overflow-hidden shadow-card"
 >
   <!-- Top Split: Technical Identity & Blueprint Specimen -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center my-auto">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
     <!-- Left Column: 4 Strict Text Elements -->
-    <div class="lg:col-span-8 space-y-4 sm:space-y-5 text-left min-w-0">
+    <div class="lg:col-span-7 space-y-3.5 sm:space-y-4 text-left min-w-0">
       <!-- 1. Eyebrow: Strict domain title without version tags or timezones -->
       <p class="text-xs sm:text-sm font-mono tracking-widest text-[var(--color-accent-gold)] uppercase font-semibold">
         {isEs
@@ -53,20 +51,20 @@ const techStack = [
       <!-- 2. Headline: Arturo Nava -->
       <h1
         id="hero-heading"
-        class="text-4xl sm:text-6xl font-extrabold tracking-tight text-[var(--color-text-primary)] leading-tight"
+        class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text-primary)] leading-tight"
       >
         Arturo Nava
       </h1>
 
       <!-- 3. Subtext: Strictly under 20 words -->
-      <p class="text-base sm:text-lg text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-2xl [overflow-wrap:anywhere]">
+      <p class="text-sm sm:text-base text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xl [overflow-wrap:anywhere]">
         {isEs
           ? "Diseño arquitecturas de alta concurrencia en Go y Rust, motores anti-fraude sub-50ms y pipelines de agentes autónomos."
           : "Designing high-concurrency Go and Rust architectures, sub-50ms fraud engines, and autonomous AI pipelines with zero-trust DevSecOps."}
       </p>
 
       <!-- 4. CTAs: Single-line desktop action bar with Primary & Secondary -->
-      <div class="pt-2 flex flex-wrap items-center gap-3 font-mono text-xs sm:text-sm">
+      <div class="pt-1.5 flex flex-wrap items-center gap-3 font-mono text-xs sm:text-sm">
         <a
           href="#contact"
           class="btn-gold px-5 py-2.5 inline-flex items-center gap-2 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
@@ -110,39 +108,51 @@ const techStack = [
       </div>
     </div>
 
-    <!-- Right Column: Technical Blueprint Profile Frame -->
-    <div class="lg:col-span-4 flex justify-center lg:justify-end">
-      <div class="relative rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/80 p-4 sm:p-5 max-w-[260px] sm:max-w-[280px] w-full shadow-sm">
+    <!-- Right Column: Architectural Specimen & Telemetry Console -->
+    <div class="lg:col-span-5 flex justify-center lg:justify-end">
+      <div class="relative rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/80 p-3.5 sm:p-4 max-w-[340px] sm:max-w-[360px] w-full shadow-sm">
         <!-- Blueprint Corner Datum Marks -->
-        <span class="absolute top-1 left-1.5 font-mono text-[9px] text-[var(--color-text-muted)] select-none">
+        <span
+          class="absolute top-1 left-1.5 font-mono text-[9px] text-[var(--color-text-muted)] select-none"
+          aria-hidden="true"
+        >
           +
         </span>
-        <span class="absolute top-1 right-1.5 font-mono text-[9px] text-[var(--color-text-muted)] select-none">
+        <span
+          class="absolute top-1 right-1.5 font-mono text-[9px] text-[var(--color-text-muted)] select-none"
+          aria-hidden="true"
+        >
           +
         </span>
-        <span class="absolute bottom-1 left-1.5 font-mono text-[9px] text-[var(--color-text-muted)] select-none">
+        <span
+          class="absolute bottom-1 left-1.5 font-mono text-[9px] text-[var(--color-text-muted)] select-none"
+          aria-hidden="true"
+        >
           +
         </span>
-        <span class="absolute bottom-1 right-1.5 font-mono text-[9px] text-[var(--color-text-muted)] select-none">
+        <span
+          class="absolute bottom-1 right-1.5 font-mono text-[9px] text-[var(--color-text-muted)] select-none"
+          aria-hidden="true"
+        >
           +
         </span>
 
         <!-- Header Telemetry Strip -->
-        <div class="flex items-center justify-between text-[10px] font-mono text-[var(--color-text-muted)] border-b border-[var(--color-surface-border-subtle)] pb-2 mb-3">
-          <span class="text-[var(--color-accent-gold)] font-bold">
-            SPEC // ARCH_01
+        <div class="flex items-center justify-between text-[10px] font-mono text-[var(--color-text-muted)] border-b border-[var(--color-surface-border-subtle)] pb-2 mb-2.5">
+          <span class="text-[var(--color-accent-gold)] font-bold tracking-wider">
+            STATUS: ACTIVE // R&amp;D
           </span>
-          <span>LATENCY: &lt;50ms</span>
+          <span class="tracking-wider">LAT 4.71° N</span>
         </div>
 
         <!-- Arturo Photo Specimen -->
         <div class="relative mx-auto flex justify-center py-1">
-          <div class="h-32 w-32 sm:h-36 sm:w-36 rounded-full border-2 border-[var(--color-surface-border)] p-1 bg-[var(--color-surface-card)] transition-colors hover:border-[var(--color-accent-gold)]">
+          <div class="h-28 w-28 sm:h-32 sm:w-32 rounded-full border-2 border-[var(--color-surface-border)] p-1 bg-[var(--color-surface-card)] transition-colors hover:border-[var(--color-accent-gold)]">
             <Image
               src={arturoPhoto}
               alt="Arturo Nava - Senior Software / AI Engineer"
-              width={144}
-              height={144}
+              width={128}
+              height={128}
               format="webp"
               loading="eager"
               fetchpriority="high"
@@ -152,19 +162,44 @@ const techStack = [
           </div>
         </div>
 
-        <!-- Footer Blueprint Metadata -->
-        <div class="mt-3 pt-2 border-t border-[var(--color-surface-border-subtle)] font-mono text-[11px] text-[var(--color-text-secondary)] space-y-1">
-          <div class="flex items-center justify-between">
-            <span class="text-[var(--color-text-muted)]">STATUS:</span>
-            <span class="text-[var(--color-accent-status)] font-medium flex items-center gap-1.5">
-              <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)] inline-block"></span>
-              {t("hero.badge")}
+        <!-- Integrated Telemetry Chips Grid -->
+        <div class="mt-2.5 pt-2.5 border-t border-[var(--color-surface-border-subtle)] grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+          <div class="rounded-sm border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)]/70 px-2 py-1.5 flex flex-col justify-center">
+            <span class="text-[var(--color-text-muted)] text-[9px] uppercase tracking-wider">
+              p99 LATENCY
+            </span>
+            <span class="text-[var(--color-accent-gold)] font-semibold">
+              // &lt;1.2ms
             </span>
           </div>
-          <div class="flex items-center justify-between">
-            <span class="text-[var(--color-text-muted)]">STACK:</span>
-            <span class="text-[var(--color-accent-gold)] font-medium">
-              GO / RUST / AI
+          <div class="rounded-sm border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)]/70 px-2 py-1.5 flex flex-col justify-center">
+            <span class="text-[var(--color-text-muted)] text-[9px] uppercase tracking-wider">
+              THROUGHPUT
+            </span>
+            <span class="text-[var(--color-accent-gold)] font-semibold">
+              // 120k+ RPS
+            </span>
+          </div>
+          <div class="rounded-sm border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)]/70 px-2 py-1.5 flex flex-col justify-center">
+            <span class="text-[var(--color-text-muted)] text-[9px] uppercase tracking-wider">
+              RUNTIME
+            </span>
+            <span
+              class="text-[var(--color-accent-gold)] font-semibold text-[9.5px] truncate"
+              title="GO · RUST · EBPF"
+            >
+              // GO · RUST · EBPF
+            </span>
+          </div>
+          <div class="rounded-sm border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)]/70 px-2 py-1.5 flex flex-col justify-center">
+            <span class="text-[var(--color-text-muted)] text-[9px] uppercase tracking-wider">
+              ZERO-ALLOC
+            </span>
+            <span
+              class="text-[var(--color-accent-gold)] font-semibold text-[9.5px] truncate"
+              title="SIMD CONCURRENCY"
+            >
+              // SIMD CONCURRENCY
             </span>
           </div>
         </div>
@@ -173,7 +208,7 @@ const techStack = [
   </div>
 
   <!-- Production Technical Arsenal: Refined Hairline Strip at Base of Hero -->
-  <div class="border-t border-[var(--color-surface-border-subtle)] pt-3.5 mt-6 space-y-2.5">
+  <div class="border-t border-[var(--color-surface-border-subtle)] pt-3 mt-5 space-y-2">
     <div class="flex items-center justify-between text-xs font-mono">
       <span class="text-[var(--color-accent-gold)] uppercase tracking-wider font-semibold">
         {isEs

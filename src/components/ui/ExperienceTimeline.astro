@@ -13,11 +13,53 @@ interface Props {
 
 const { items, locale } = Astro.props;
 const t = useTranslations(locale);
+const isEs = locale === "es";
 
 const sortedItems = [...items].sort((a, b) => a.data.order - b.data.order);
+const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
 ---
 
 <div class="relative space-y-8 before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-[var(--color-surface-border)]">
+  {!hasActiveJob && (
+    <div data-experience-rnd-node class="relative flex items-start gap-6 pl-10">
+      <!-- Node indicator with glowing pin -->
+      <span class="absolute left-2.5 top-2.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] flex items-center justify-center shadow-[0_0_8px_var(--color-accent-gold)]">
+        <span class="h-1 w-1 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
+      </span>
+
+      <div class="geometric-box w-full p-4 sm:p-5 rounded relative border border-[var(--color-accent-gold)]/40 bg-[var(--color-surface-card)] shadow-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--color-surface-border-subtle)] pb-2.5 mb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 font-mono text-xs font-semibold text-[var(--color-accent-gold)] uppercase tracking-wider">
+              [ ACTIVE DEVELOPMENT // R&amp;D ]
+            </span>
+          </div>
+          <span class="font-mono text-xs text-[var(--color-text-muted)]">
+            {t("meta.present")}
+          </span>
+        </div>
+
+        <div class="h-6 overflow-hidden font-mono text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium">
+          <div class="ticker-scroll flex flex-col">
+            <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
+              {isEs ? "Construyendo proyectos..." : "Building projects..."}
+            </span>
+            <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
+              {isEs ? "Desarrollando productos..." : "Developing products..."}
+            </span>
+            <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
+              {isEs
+                ? "Explorando nuevas fronteras..."
+                : "Exploring new frontiers..."}
+            </span>
+            <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
+              {isEs ? "Construyendo proyectos..." : "Building projects..."}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
   {sortedItems.map((item) => {
     const {
       company,
@@ -190,6 +232,46 @@ const sortedItems = [...items].sort((a, b) => a.data.order - b.data.order);
               </button>
             ))}
           </div>
+
+          <!-- Live Broadcast Section (Active Job Invariant) -->
+          {!endDate && (
+            <div class="mt-4 pt-3.5 border-t border-[var(--color-surface-border-subtle)] flex flex-wrap items-center justify-between gap-3 font-mono text-xs">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 text-xs font-semibold text-[var(--color-accent-gold)] uppercase tracking-wider">
+                  <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
+                  <span>
+                    {locale === "es"
+                      ? "[ LIVE BROADCAST // EN EMISIÓN ]"
+                      : "[ LIVE BROADCAST // CURRENT ROLE ]"}
+                  </span>
+                </span>
+              </div>
+              <div class="h-6 overflow-hidden text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium">
+                <div class="ticker-scroll flex flex-col">
+                  <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
+                    {locale === "es"
+                      ? "Construyendo la historia..."
+                      : "Writing history..."}
+                  </span>
+                  <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
+                    {locale === "es"
+                      ? "Obteniendo experiencias..."
+                      : "Gaining experiences..."}
+                  </span>
+                  <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
+                    {locale === "es"
+                      ? "Creando impacto..."
+                      : "Creating impact..."}
+                  </span>
+                  <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
+                    {locale === "es"
+                      ? "Construyendo la historia..."
+                      : "Writing history..."}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <!-- Job Footer: Simulation Count Link & Role Detail Link -->
           <div
