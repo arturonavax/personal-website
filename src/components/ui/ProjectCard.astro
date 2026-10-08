@@ -33,7 +33,7 @@ const detailUrl =
   data-project-card
   data-tech-stack={techStack.map((t) => t.toLowerCase().trim()).join("|")}
   data-company={(company ?? "Independent").toLowerCase().trim()}
-  class="virtualized-feed-item geometric-box group relative flex flex-col justify-between p-6 sm:p-7 rounded transition-all project-card"
+  class="virtualized-feed-item geometric-box group relative flex flex-col justify-between p-6 sm:p-7 rounded-sm transition-all project-card"
 >
   <div>
     <div class="flex items-center justify-between gap-2 text-xs sm:text-sm font-mono text-[var(--color-text-muted)]">
@@ -62,8 +62,8 @@ const detailUrl =
         <div class="grid grid-cols-3 gap-2 sm:gap-3">
           {metrics.map((m) => (
             <div
-              class="flex flex-col justify-between min-w-0 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/40 p-2 sm:p-2.5"
-              title={`${m.value} — ${m.label}`}
+              class="flex flex-col justify-between min-w-0 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/40 p-2 sm:p-2.5"
+              title={`${m.value} - ${m.label}`}
             >
               <span class="block whitespace-normal break-words font-mono text-xs sm:text-sm font-bold text-[var(--color-text-primary)] leading-tight tracking-tight">
                 {m.value}
@@ -91,7 +91,7 @@ const detailUrl =
               ? `Buscar proyectos y notas sobre ${tech}`
               : `Search projects & posts mentioning ${tech}`
           }
-          class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer notranslate"
+          class="inline-flex items-center gap-1.5 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer notranslate"
         >
           <TechIcon
             name={tech}

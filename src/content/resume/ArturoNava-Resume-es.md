@@ -1,7 +1,7 @@
 ---
 canonicalId: "arturo-nava-resume"
 locale: "es"
-title: "Arturo Nava — Ingeniero de Software Senior | CV"
+title: "Arturo Nava - Ingeniero de Software Senior | CV"
 name: "Arturo Nava"
 role: "Senior Software Engineer | Sistemas Distribuidos, Alta Concurrencia & Seguridad"
 location: "Bogotá, D.C., Colombia"
@@ -95,11 +95,11 @@ Ingeniero de Software Senior con más de 8 años de experiencia en el diseño y 
 
 ## [Experiencia Profesional](https://arturonavax.dev/es/experience/)
 
-### [**Leal** — Bogotá, Colombia](https://arturonavax.dev/es/experience/?filters=leal)
+### [**Leal** - Bogotá, Colombia](https://arturonavax.dev/es/experience/?filters=leal)
 
-#### **[Senior Software Engineer – Plataforma Core & Seguridad](https://arturonavax.dev/es/experience/leal/)**
+#### **[Senior Software Engineer - Plataforma Core & Seguridad](https://arturonavax.dev/es/experience/leal/)**
 
-_Septiembre 2025 – Junio 2026_
+_Septiembre 2025 - Junio 2026_
 
 - Diseñé y desplegué microservicios de misión crítica en Golang bajo Arquitectura Limpia/Hexagonal, implementando primitivas de concurrencia (`goroutines`, canales, worker pools) sobre DynamoDB y Redis para procesamiento no bloqueante de eventos transaccionales.
 - Desarrollé desde cero un motor empresarial de prevención de fraude aplicando el Patrón Estrategia para evaluar en tiempo real colusión cajero-cliente y anomalías de velocidad, garantizando endpoints sincrónicos sub-50ms en checkout de POS con consistencia de husos horarios (`FlexibleTime`).
@@ -111,11 +111,11 @@ _Tecnologías:_ `Golang`, `Rust`, `AWS (DynamoDB, SQS, Secrets Manager)`, `Snowf
 
 ---
 
-### [**Mercado Libre** — Bogotá, Colombia](https://arturonavax.dev/es/experience/?filters=mercado+libre)
+### [**Mercado Libre** - Bogotá, Colombia](https://arturonavax.dev/es/experience/?filters=mercado+libre)
 
 #### **[Senior Backend Security Engineer](https://arturonavax.dev/es/experience/mercado-libre/)**
 
-_Agosto 2024 – Septiembre 2025_
+_Agosto 2024 - Septiembre 2025_
 
 - Diseñé e implementé un motor interno de evaluación de riesgo y gobernanza de accesos en Golang y Python, correlacionando telemetría de BigQuery, APIs internas y almacenamiento cloud para auditar permisos y ejecutar protocolos preventivos de mitigación en toda la organización.
 - Arquitecté pipelines de detección continua de fugas de información y minimización de datos PII mediante escaneos distribuidos sobre repositorios, commits y entornos de almacenamiento en Google Cloud, previniendo la exposición de credenciales y datos sensibles.
@@ -126,11 +126,11 @@ _Tecnologías:_ `Golang`, `Python`, `Bash`, `Google Cloud (GCP)`, `BigQuery`, `n
 
 ---
 
-### [**Imagemaker** — Remoto / Chile](https://arturonavax.dev/es/experience/?filters=imagemaker)
+### [**Imagemaker** - Remoto / Chile](https://arturonavax.dev/es/experience/?filters=imagemaker)
 
-#### **[Software Engineer – Plataformas de Identidad & Confianza](https://arturonavax.dev/experience/imagemaker/)**
+#### **[Software Engineer - Plataformas de Identidad & Confianza](https://arturonavax.dev/experience/imagemaker/)**
 
-_Diciembre 2023 – Agosto 2024_
+_Diciembre 2023 - Agosto 2024_
 
 - Diseñé y desarrollé microservicios de verificación y autorización de identidad digital en Golang y PostgreSQL para plataformas de confianza empresarial (SOVOS Trust-Services), previniendo el fraude en la vinculación de usuarios y garantizando cumplimiento regulatorio.
 - Diseñé pipelines de autenticación biométrica multimodal, integrando reconocimiento facial, retos dinámicos de preguntas y respuestas y validación en tiempo real con bases de datos gubernamentales.
@@ -140,11 +140,11 @@ _Tecnologías:_ `Golang`, `PostgreSQL`, `OAuth2`, `OTP`, `Biometría`, `Microser
 
 ---
 
-### [**FYLD, Inc.** — Estados Unidos (Remoto)](https://arturonavax.dev/es/experience/?filters=fyld%2C+inc.)
+### [**FYLD, Inc.** - Estados Unidos (Remoto)](https://arturonavax.dev/es/experience/?filters=fyld%2C+inc.)
 
 #### **[Co-Founder & Principal Engineer](https://arturonavax.dev/experience/fyld/)**
 
-_Mayo 2019 – Septiembre 2023_
+_Mayo 2019 - Septiembre 2023_
 
 - Diseñé y escalé una plataforma empresarial de atestación de datos (_Data Witnessing_) en Golang, gRPC y LevelDB/PostgreSQL, ofreciendo pistas de auditoría criptográfica verificables e inmutables para clientes corporativos.
 - Desarrollé protocolos de anclaje de estado criptográfico sobre arquitecturas Bitcoin/UTXO y árboles de Merkle, garantizando pruebas matemáticas de estado sobre redes distribuidas.
@@ -156,11 +156,11 @@ _Tecnologías:_ `Golang`, `gRPC`, `Bitcoin Script / UTXO`, `SIMD / Assembly`, `L
 
 ---
 
-### [**Cobuild Lab** — Miami, FL, Estados Unidos (Remoto)](https://arturonavax.dev/es/experience/?filters=cobuild+lab)
+### [**Cobuild Lab** - Miami, FL, Estados Unidos (Remoto)](https://arturonavax.dev/es/experience/?filters=cobuild+lab)
 
 #### **[Backend Software Engineer](https://arturonavax.dev/experience/cobuild-lab/)**
 
-_Noviembre 2018 – Junio 2019_
+_Noviembre 2018 - Junio 2019_
 
 - Diseñé un coordinador de colas de trabajo concurrentes en Golang con algoritmos de reloj de ventana deslizante para regular el rendimiento de lectura/escritura y eliminar contención en bases de datos bajo alta demanda.
 - Desarrollé una herramienta CLI de automatización de alto rendimiento (`pex-cmd`) en Go (Cobra, Testify, Docker) para descompresión streaming de archivos GZIP/Deflate y procesamiento batch concurrente de XML hacia IBM Cloudant.
@@ -172,12 +172,12 @@ _Tecnologías:_ `Golang (Cobra, Gin)`, `IBM Cloudant`, `Docker`, `Auth0`, `Testi
 
 ### **Experiencia Previa**
 
-- **[Backend Engineer | PlazaETC](https://arturonavax.dev/es/experience/plaza-etc/)** _(Oct 2018 – Dic 2018)_: Desarrollo de plataforma de comercio electrónico multi-tienda en AWS, optimizando esquemas e índices en MySQL para búsqueda de catálogo.
-- **[Backend Software Engineer | 4Geeks Developers Community](https://arturonavax.dev/es/experience/4geeks/)** _(Abr 2018 – Jul 2018)_: Construcción de APIs REST de referidos y afiliados en Golang (Echo) con capa de caché de baja latencia en Aerospike NoSQL.
-- **[Software Engineer | E.T.C.R Rómulo Gallegos](https://arturonavax.dev/es/experience/romulo-gallegos/)** _(Dic 2017 – Mar 2018)_: Desarrollo de "iRG App", plataforma web de pre-inscripción institucional con backend en Golang, PostgreSQL, GraphQL y autenticación JWT desplegada en Heroku, y creación del portal web institucional.
+- **[Backend Engineer | PlazaETC](https://arturonavax.dev/es/experience/plaza-etc/)** _(Oct 2018 - Dic 2018)_: Desarrollo de plataforma de comercio electrónico multi-tienda en AWS, optimizando esquemas e índices en MySQL para búsqueda de catálogo.
+- **[Backend Software Engineer | 4Geeks Developers Community](https://arturonavax.dev/es/experience/4geeks/)** _(Abr 2018 - Jul 2018)_: Construcción de APIs REST de referidos y afiliados en Golang (Echo) con capa de caché de baja latencia en Aerospike NoSQL.
+- **[Software Engineer | E.T.C.R Rómulo Gallegos](https://arturonavax.dev/es/experience/romulo-gallegos/)** _(Dic 2017 - Mar 2018)_: Desarrollo de "iRG App", plataforma web de pre-inscripción institucional con backend en Golang, PostgreSQL, GraphQL y autenticación JWT desplegada en Heroku, y creación del portal web institucional.
 
 ---
 
 ## Educación & Certificaciones
 
-- **Técnico Medio en Informática** | E.T.C.R Rómulo Gallegos (2012 – 2018)
+- **Técnico Medio en Informática** | E.T.C.R Rómulo Gallegos (2012 - 2018)

@@ -65,23 +65,21 @@ const defaultIndexItems: IndexItem[] = [
     id: "about",
     label: "Profile / Executive Summary",
     labelEs: "Perfil / Resumen Ejecutivo",
-    subitems: [
-      {
-        id: "hero-philosophies",
-        label: "Architecture Principles",
-        labelEs: "Principios de Arquitectura",
-      },
-      {
-        id: "hero-ai-workflow",
-        label: "AI Engineer Workflow",
-        labelEs: "Flujo de Ingeniería con IA",
-      },
-    ],
   },
   {
     id: "metrics",
     label: "Operational Metrics Grid",
     labelEs: "Métricas Operacionales",
+  },
+  {
+    id: "philosophies",
+    label: "Architectural Principles",
+    labelEs: "Principios de Arquitectura",
+  },
+  {
+    id: "ai-workflow",
+    label: "AI Engineering Workflow",
+    labelEs: "Flujo de Ingeniería con IA",
   },
   ...(hasExperience
     ? [
@@ -101,21 +99,21 @@ const defaultIndexItems: IndexItem[] = [
         },
       ]
     : []),
-  ...(hasPosts
-    ? [
-        {
-          id: "blog",
-          label: "Blog & Systems Notes",
-          labelEs: "Blog & Notas de Sistemas",
-        },
-      ]
-    : []),
   ...(hasCaseStudies
     ? [
         {
           id: "telemetry",
           label: "Architecture Case Studies & Telemetry",
           labelEs: "Casos de Estudio & Telemetría",
+        },
+      ]
+    : []),
+  ...(hasPosts
+    ? [
+        {
+          id: "blog",
+          label: "Blog & Systems Notes",
+          labelEs: "Blog & Notas de Sistemas",
         },
       ]
     : []),
@@ -199,7 +197,7 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
                       class="group flex min-h-[28px] items-center gap-1.5 py-1 pl-3 pr-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors rounded"
                     >
                       <span class="text-[var(--color-surface-border)] group-hover:text-[var(--color-accent-gold)]">
-                        &ndash;
+                        -
                       </span>
                       <span class="truncate">
                         {sanitizeNavLabel(isEs ? sub.labelEs : sub.label)}

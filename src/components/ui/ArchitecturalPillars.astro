@@ -1,0 +1,99 @@
+---
+import type { Locale } from "@/i18n/ui";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const isEs = locale === "es";
+
+const pillars = [
+  {
+    index: "01",
+    tag: "HEXAGONAL_CORE",
+    title: isEs
+      ? "Arquitectura Limpia y Hexagonal"
+      : "Clean & Hexagonal Architecture",
+    desc: isEs
+      ? "Desacople estricto entre lógica de dominio, persistencia relacional y capas de transporte HTTP/gRPC."
+      : "Decoupled domain rules isolated from relational storage, message brokers, and delivery transport.",
+  },
+  {
+    index: "02",
+    tag: "CONCURRENCY_RUNTIME",
+    title: isEs
+      ? "Concurrencia de Primeros Principios"
+      : "First-Principles Concurrency",
+    desc: isEs
+      ? "Goroutines, canales y worker pools sin bloqueos; buffers de memoria de cero alocaciones (sync.Pool)."
+      : "Non-blocking Go worker pools, channels, and zero-allocation memory abstractions (sync.Pool).",
+  },
+  {
+    index: "03",
+    tag: "ZERO_TRUST_DEVSECOPS",
+    title: isEs
+      ? "Seguridad Zero-Trust y Shift-Left"
+      : "Zero-Trust & Shift-Left DevSecOps",
+    desc: isEs
+      ? "Gobernanza de accesos de mínimo privilegio, detección proactiva de secretos y cumplimiento SOC 2."
+      : "Automated access governance, continuous secret detection, PII minimization, and SOC 2 hardening.",
+  },
+  {
+    index: "04",
+    tag: "WORKLOAD_DECOUPLING",
+    title: isEs
+      ? "Desacople Riguroso OLTP / OLAP"
+      : "Strict OLTP / OLAP Workload Decoupling",
+    desc: isEs
+      ? "Aislamiento transaccional en DynamoDB/Postgres con streaming continuo hacia Snowflake y BigQuery."
+      : "Transactional POS stability preserved by streaming analytical interactions into Snowflake & BigQuery.",
+  },
+];
+---
+
+<section
+  id="philosophies"
+  aria-labelledby="philosophies-heading"
+  class="space-y-4"
+>
+  <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
+    <div>
+      <span class="font-mono text-xs text-[var(--color-accent-gold)] tracking-widest uppercase font-semibold">
+        {isEs ? "PRINCIPIOS DE SISTEMAS" : "CORE SYSTEM PRINCIPLES"}
+      </span>
+      <h2
+        id="philosophies-heading"
+        class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl mt-0.5"
+      >
+        {isEs
+          ? "Filosofías de Arquitectura & Soluciones"
+          : "Architectural Philosophies & Engineering Principles"}
+      </h2>
+    </div>
+    <span class="text-xs font-mono text-[var(--color-text-muted)] hidden sm:inline">
+      {isEs
+        ? "Mecánica de Sistemas Distribuidos"
+        : "Distributed Systems Mechanics"}
+    </span>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+    {pillars.map((item) => (
+      <div class="geometric-box relative p-4 sm:p-5 rounded-sm space-y-2.5 font-mono group">
+        <div class="flex items-center justify-between text-xs border-b border-[var(--color-surface-border-subtle)] pb-2 text-[var(--color-text-muted)]">
+          <span class="text-[var(--color-accent-gold)] font-bold">
+            {item.index} //
+          </span>
+          <span class="text-[10px] tracking-wider uppercase">{item.tag}</span>
+        </div>
+        <div class="text-base sm:text-lg font-bold text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-gold)] transition-colors">
+          {item.title}
+        </div>
+        <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] font-sans leading-relaxed">
+          {item.desc}
+        </p>
+      </div>
+    ))}
+  </div>
+</section>

@@ -40,7 +40,7 @@ searchKeywords:
 
 ### Overview
 
-Without explicit domain boundaries, distributed platforms inevitably degrade into distributed monoliths—sharing database locks, propagating cascading failures, and creating operational gridlock. I design distributed systems grounded in first principles that isolate business domains, scale concurrent message ingestion effortlessly, and sustain uninterrupted operation through partial network partitions.
+Without explicit domain boundaries, distributed platforms inevitably degrade into distributed monoliths - sharing database locks, propagating cascading failures, and creating operational gridlock. I design distributed systems grounded in first principles that isolate business domains, scale concurrent message ingestion effortlessly, and sustain uninterrupted operation through partial network partitions.
 
 ### What We Deliver
 

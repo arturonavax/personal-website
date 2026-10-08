@@ -4,7 +4,7 @@ companyUrl: "https://imagemaker.com"
 companyDomain: "imagemaker.com"
 companyIndustry: "Enterprise Software & Identity Platforms"
 companyDescription: "Global IT consulting and digital transformation firm engineering mission-critical identity, electronic signature, and trust platforms (SOVOS Trust-Services)."
-role: "Software Engineer – Identity & Trust Platforms"
+role: "Software Engineer - Identity & Trust Platforms"
 location: "Remote / Santiago, Chile"
 employmentType: "Full-time"
 startDate: 2023-12-01

@@ -147,8 +147,8 @@ const isEs = locale === "es";
         const displayStart = startIndex + 1;
         const displayEnd = endIndex;
         infoSpan!.textContent = isEs
-          ? `Mostrando ${displayStart}–${displayEnd} de ${total}`
-          : `Showing ${displayStart}–${displayEnd} of ${total}`;
+          ? `Mostrando ${displayStart}-${displayEnd} de ${total}`
+          : `Showing ${displayStart}-${displayEnd} of ${total}`;
 
         if (totalPages <= 1) {
           navEl!.style.display = "none";

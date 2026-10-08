@@ -1,6 +1,8 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import MetricCallout from "@/components/ui/MetricCallout.astro";
+import ArchitecturalPillars from "@/components/ui/ArchitecturalPillars.astro";
+import AiEngineeringSection from "@/components/ui/AiEngineeringSection.astro";
 import ProjectCard from "@/components/ui/ProjectCard.astro";
 import ExperienceTimeline from "@/components/ui/ExperienceTimeline.astro";
 import PostCard from "@/components/ui/PostCard.astro";
@@ -64,8 +66,8 @@ const jsonLd = getHomepageJsonLd(locale);
 <BaseLayout
   title={
     isEs
-      ? "Arturo Nava — Ingeniero de Software Senior / IA"
-      : "Arturo Nava — Senior Software / AI Engineer"
+      ? "Arturo Nava - Ingeniero de Software Senior / IA"
+      : "Arturo Nava - Senior Software / AI Engineer"
   }
   description={
     isEs
@@ -83,10 +85,10 @@ const jsonLd = getHomepageJsonLd(locale);
   <PageIndexNav locale={locale} />
 
   <div class="mx-auto max-w-5xl px-2 min-[360px]:px-3 sm:px-6 pt-1.5 sm:pt-4 lg:pt-6 pb-12 sm:pb-16 space-y-10 sm:space-y-14">
-    <!-- Hero Header Banner with Photo, Philosophies, Tech Stack, & AI Engineering Workflow -->
+    <!-- 1. Hero Header Banner -->
     <HeroHeaderBanner locale={locale} />
 
-    <!-- Operational Metrics Grid -->
+    <!-- 2. Operational Metrics Grid -->
     <section
       id="metrics"
       aria-label="Operational Metrics"
@@ -114,7 +116,13 @@ const jsonLd = getHomepageJsonLd(locale);
       />
     </section>
 
-    <!-- Career Timeline -->
+    <!-- 3. Architectural Philosophies Section -->
+    <ArchitecturalPillars locale={locale} />
+
+    <!-- 4. AI Engineering Workflow Section -->
+    <AiEngineeringSection locale={locale} />
+
+    <!-- 5. Career Highlights -->
     {recentExperience.length > 0 && (
       <section
         id="experience"
@@ -141,7 +149,7 @@ const jsonLd = getHomepageJsonLd(locale);
 
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[var(--color-surface-border-subtle)] font-mono text-xs sm:text-sm">
           <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
-            <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
+            <span class="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shrink-0"></span>
             <span>
               {isEs
                 ? `Mostrando ${recentExperience.length} de ${allExperience.length} etapas profesionales`
@@ -160,7 +168,7 @@ const jsonLd = getHomepageJsonLd(locale);
           </div>
           <a
             href={`${basePath}/experience/`}
-            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
           >
             <span>
               {isEs
@@ -173,7 +181,7 @@ const jsonLd = getHomepageJsonLd(locale);
       </section>
     )}
 
-    <!-- Featured Projects -->
+    <!-- 6. Featured Systems -->
     {featuredProjects.length > 0 && (
       <section
         id="projects"
@@ -206,7 +214,7 @@ const jsonLd = getHomepageJsonLd(locale);
 
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[var(--color-surface-border-subtle)] font-mono text-xs sm:text-sm">
           <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
-            <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
+            <span class="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shrink-0"></span>
             <span>
               {isEs
                 ? `Mostrando ${featuredProjects.length} de ${allProjectsList.length} sistemas`
@@ -225,7 +233,7 @@ const jsonLd = getHomepageJsonLd(locale);
           </div>
           <a
             href={`${basePath}/projects/`}
-            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
           >
             <span>
               {isEs
@@ -238,7 +246,34 @@ const jsonLd = getHomepageJsonLd(locale);
       </section>
     )}
 
-    <!-- Blog & Engineering Notes -->
+    <!-- 7. Live Telemetry Lab -->
+    {hasCaseStudies && (
+      <section
+        id="telemetry"
+        aria-label={
+          isEs
+            ? "Casos de Estudio Interactivos de Arquitectura"
+            : "Interactive Architecture Case Studies"
+        }
+        class="space-y-3"
+      >
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2 font-mono text-xs sm:text-sm text-[var(--color-text-muted)]">
+          <span class="text-[var(--color-accent-gold)] uppercase tracking-wider text-xs font-semibold">
+            {isEs
+              ? "Casos de Estudio de Arquitectura & Telemetría"
+              : "Interactive Architecture Case Studies"}
+          </span>
+          <span class="hidden sm:inline text-xs">
+            {isEs
+              ? "Telemetría en Pipeline Sub-50ms"
+              : "Sub-50ms Pipeline Telemetry Lab"}
+          </span>
+        </div>
+        <SystemTelemetryDemo locale={locale} />
+      </section>
+    )}
+
+    <!-- 8. Engineering Notes -->
     {recentPosts.length > 0 && (
       <section id="blog" aria-labelledby="posts-heading" class="space-y-6">
         <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
@@ -267,7 +302,7 @@ const jsonLd = getHomepageJsonLd(locale);
 
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[var(--color-surface-border-subtle)] font-mono text-xs sm:text-sm">
           <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
-            <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] shrink-0 animate-pulse"></span>
+            <span class="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shrink-0"></span>
             <span>
               {isEs
                 ? `Mostrando ${recentPosts.length} de ${allPosts.length} publicaciones`
@@ -286,7 +321,7 @@ const jsonLd = getHomepageJsonLd(locale);
           </div>
           <a
             href={`${basePath}/blog/`}
-            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
           >
             <span>
               {isEs
@@ -299,34 +334,7 @@ const jsonLd = getHomepageJsonLd(locale);
       </section>
     )}
 
-    <!-- Interactive Architecture Case Studies & Distributed Telemetry -->
-    {hasCaseStudies && (
-      <section
-        id="telemetry"
-        aria-label={
-          isEs
-            ? "Casos de Estudio Interactivos de Arquitectura"
-            : "Interactive Architecture Case Studies"
-        }
-        class="space-y-3"
-      >
-        <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2 font-mono text-xs sm:text-sm text-[var(--color-text-muted)]">
-          <span class="text-[var(--color-accent-gold)] uppercase tracking-wider text-xs font-semibold">
-            {isEs
-              ? "Casos de Estudio de Arquitectura & Telemetría"
-              : "Interactive Architecture Case Studies"}
-          </span>
-          <span class="hidden sm:inline text-xs">
-            {isEs
-              ? "Telemetría en Pipeline Sub-50ms"
-              : "Sub-50ms Pipeline Telemetry Lab"}
-          </span>
-        </div>
-        <SystemTelemetryDemo locale={locale} />
-      </section>
-    )}
-
-    <!-- Dedicated Contact & Recruiter Hub -->
+    <!-- 9. Contact Hub -->
     <ContactSection locale={locale} />
 
     <!-- Discreet Coffee / Contributions Modal -->

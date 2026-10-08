@@ -8,16 +8,24 @@ interface Props {
 const { value, label, subtext } = Astro.props;
 ---
 
-<div class="geometric-box relative flex flex-col justify-between p-3.5 sm:p-5 rounded min-w-0 overflow-hidden">
-  <div class="font-mono text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold tracking-tight text-[var(--color-text-primary)] break-words leading-tight">
+<div class="geometric-box relative flex flex-col justify-between p-4 sm:p-5 rounded-sm min-w-0 overflow-hidden group">
+  <!-- Telemetry datum indicator -->
+  <span class="absolute top-2 right-2.5 font-mono text-[9px] text-[var(--color-text-muted)] tracking-widest select-none uppercase opacity-80">
+    TLM
+  </span>
+
+  <div class="font-mono text-2xl sm:text-3xl lg:text-3xl xl:text-4xl font-extrabold tracking-tight tabular-nums text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-gold)] transition-colors break-words leading-tight">
     {value}
   </div>
+
   <div class="mt-2 text-xs sm:text-sm font-medium text-[var(--color-text-secondary)] break-words leading-snug">
     {label}
   </div>
+
   {subtext && (
-    <div class="mt-1 text-xs font-mono text-[var(--color-accent-gold)] break-words">
-      {subtext}
+    <div class="mt-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] uppercase tracking-wider break-words flex items-center gap-1">
+      <span class="opacity-60">&gt;</span>
+      <span>{subtext}</span>
     </div>
   )}
 </div>
