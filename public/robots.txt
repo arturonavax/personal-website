@@ -1,5 +1,5 @@
 # ==============================================================================
-# robots.txt — https://arturonavax.dev
+# robots.txt - https://arturonavax.dev
 # RFC 9309 Compliant: Unrestricted access for search engines, AI crawlers,
 # and recruiter tools, protecting internal query endpoints.
 # ==============================================================================

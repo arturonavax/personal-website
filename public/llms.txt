@@ -1,4 +1,4 @@
-# Arturo Nava — Senior Software & AI Engineer
+# Arturo Nava - Senior Software & AI Engineer
 
 > Senior Backend and Distributed Systems Engineer with 8+ years of production experience designing high-throughput concurrent microservices, sub-50ms real-time fraud engines, autonomous AI agent pipelines, and enterprise security platforms in Go and Rust[cite: 11].
 
@@ -35,11 +35,11 @@
 - Enterprise Security & Compliance Automation: Automated access governance and secret detection across 10+ core repositories correlating BigQuery telemetry, internal APIs, and pre-commit hooks under SOC 2 / Vanta standards[cite: 2, 11].
 
 ## Verified Career History
-- Senior Software Engineer – Core Platform & Security @ Leal (Sep 2025 – Jun 2026): Engineered real-time Go anti-fraud engines, Clean Architecture microservices on DynamoDB/Redis, centralized TOTP platform, Snowflake analytics pipelines, and SOC 2 container hardening[cite: 2, 11].
-- Senior Backend Security Engineer @ Mercado Libre (Aug 2024 – Sep 2025): Deployed internal risk evaluation engines in Go/Python, automated secret scanning across Git histories/GCP buckets, enforced shift-left pre-commit controls, and orchestrated incident triage via n8n[cite: 2, 11].
-- Software Engineer – Identity & Trust Platforms @ Imagemaker (Dec 2023 – Aug 2024): Architected digital identity verification microservices in Go and PostgreSQL for SOVOS Trust-Services, biometric facial validation, OAuth2 protocols, and dynamic OTP engines[cite: 2, 11].
-- Co-Founder & Principal Engineer @ FYLD, Inc. (May 2019 – Sep 2023): Designed enterprise data witnessing platform in Go/gRPC, Bitcoin/UTXO state-anchoring, Merkle tree proofs, SIMD SHA-256 acceleration, and kernel inode monitoring[cite: 2, 11].
-- Backend Software Engineer @ Cobuild Lab (Nov 2018 – Jun 2019): Built concurrent work queue coordinators, streaming GZIP/XML parsing CLI tools, and Gin REST microservices with Auth0[cite: 7, 11].
+- Senior Software Engineer - Core Platform & Security @ Leal (Sep 2025 - Jun 2026): Engineered real-time Go anti-fraud engines, Clean Architecture microservices on DynamoDB/Redis, centralized TOTP platform, Snowflake analytics pipelines, and SOC 2 container hardening[cite: 2, 11].
+- Senior Backend Security Engineer @ Mercado Libre (Aug 2024 - Sep 2025): Deployed internal risk evaluation engines in Go/Python, automated secret scanning across Git histories/GCP buckets, enforced shift-left pre-commit controls, and orchestrated incident triage via n8n[cite: 2, 11].
+- Software Engineer - Identity & Trust Platforms @ Imagemaker (Dec 2023 - Aug 2024): Architected digital identity verification microservices in Go and PostgreSQL for SOVOS Trust-Services, biometric facial validation, OAuth2 protocols, and dynamic OTP engines[cite: 2, 11].
+- Co-Founder & Principal Engineer @ FYLD, Inc. (May 2019 - Sep 2023): Designed enterprise data witnessing platform in Go/gRPC, Bitcoin/UTXO state-anchoring, Merkle tree proofs, SIMD SHA-256 acceleration, and kernel inode monitoring[cite: 2, 11].
+- Backend Software Engineer @ Cobuild Lab (Nov 2018 - Jun 2019): Built concurrent work queue coordinators, streaming GZIP/XML parsing CLI tools, and Gin REST microservices with Auth0[cite: 7, 11].
 - Earlier Engineering Milestones: PlazaETC (AWS/MySQL Multi-Vendor Backend), 4Geeks Academy (Echo/Aerospike Referral APIs), E.T.C.R Rómulo Gallegos (Go/GraphQL Institutional Admissions)[cite: 7, 11].
 
 ## Key Endpoints & Architecture Case Studies
