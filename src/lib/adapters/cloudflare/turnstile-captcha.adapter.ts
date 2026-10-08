@@ -10,6 +10,13 @@ export class TurnstileCaptchaAdapter implements CaptchaVerifierPort {
   async verify(
     request: CaptchaValidationRequest,
   ): Promise<CaptchaValidationResult> {
+    if (!request.token || !request.token.trim()) {
+      return {
+        success: false,
+        errorCodes: ["missing-input-response"],
+      };
+    }
+
     try {
       const formData = new URLSearchParams();
       formData.append("secret", this.secretKey);

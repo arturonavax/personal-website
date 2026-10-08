@@ -1,58 +1,15 @@
-/* Static (non-variable) Geist instances: Firefox exports variable-font text in PDF as outlines (unselectable).
-   Static faces keep every glyph as real, selectable text in all print engines. */
+/* Static Geist fallback instances for print PDF compatibility (SPEC-007 REQ-PRINT-1, SPEC-010) */
 @font-face {
   font-family: "Geist Static";
-  src: url("/fonts/Geist-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist Static";
-  src: url("/fonts/Geist-Medium.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist Static";
-  src: url("/fonts/Geist-SemiBold.woff2") format("woff2");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist Static";
-  src: url("/fonts/Geist-Bold.woff2") format("woff2");
-  font-weight: 700;
+  src: local("Geist"), local("Arial"), local("sans-serif");
+  font-weight: 400 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Geist Mono Static";
-  src: url("/fonts/GeistMono-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist Mono Static";
-  src: url("/fonts/GeistMono-Medium.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist Mono Static";
-  src: url("/fonts/GeistMono-Bold.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist Mono Static";
-  src: url("/fonts/GeistMono-Bold.woff2") format("woff2");
-  font-weight: 600;
+  src: local("Geist Mono"), local("Courier New"), local("monospace");
+  font-weight: 400 700;
   font-style: normal;
   font-display: swap;
 }

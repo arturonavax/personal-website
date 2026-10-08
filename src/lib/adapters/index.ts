@@ -5,6 +5,7 @@ export * from "./cloudflare/turnstile-captcha.adapter";
 export * from "./cloudflare/cache-api.adapter";
 export * from "./cloudflare/edge-routing-policy.adapter";
 export * from "./cloudflare/circuit-breaker.adapter";
+export * from "./cloudflare/prefetch-circuit-breaker.adapter";
 
 export * from "./fallback/local-filesystem-storage.adapter";
 export * from "./fallback/s3-storage.adapter";

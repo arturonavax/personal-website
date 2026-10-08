@@ -70,3 +70,47 @@ CREATE TABLE IF NOT EXISTS contact_leads (
 );
 
 CREATE INDEX IF NOT EXISTS idx_contact_leads_created ON contact_leads(created_at DESC);
+
+-- Isolated Prefetch Telemetry (SPEC-010, Migration 0004)
+CREATE TABLE IF NOT EXISTS prefetch_analytics_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  path TEXT NOT NULL,
+  visitor_hash TEXT NOT NULL,
+  referrer TEXT,
+  country TEXT,
+  purpose TEXT NOT NULL DEFAULT 'prefetch',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_prefetch_path ON prefetch_analytics_events(path, created_at);
+CREATE INDEX IF NOT EXISTS idx_prefetch_created ON prefetch_analytics_events(created_at);
+
+-- Telemetry Circuit Breaker Incidents & Traceability (SPEC-010, Migration 0005)
+CREATE TABLE IF NOT EXISTS circuit_breaker_incidents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  subsystem TEXT NOT NULL,
+  date TEXT NOT NULL,
+  tripped_at TEXT NOT NULL DEFAULT (datetime('now')),
+  reason TEXT NOT NULL,
+  shed_count INTEGER NOT NULL DEFAULT 1,
+  data_completeness TEXT NOT NULL DEFAULT 'partial',
+  notes TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cb_subsystem_date ON circuit_breaker_incidents(subsystem, date);
+CREATE INDEX IF NOT EXISTS idx_cb_date ON circuit_breaker_incidents(date);
+
+-- Analytical View for Prefetch with Data Completeness Flag
+CREATE VIEW IF NOT EXISTS v_prefetch_daily_summary AS
+SELECT
+  strftime('%Y-%m-%d', p.created_at) AS summary_date,
+  p.path,
+  COUNT(p.id) AS recorded_prefetches,
+  COALESCE(c.data_completeness, 'complete') AS data_completeness,
+  COALESCE(c.shed_count, 0) AS estimated_shed_count,
+  c.reason AS circuit_breaker_reason
+FROM prefetch_analytics_events p
+LEFT JOIN circuit_breaker_incidents c
+  ON c.subsystem = 'prefetch_telemetry'
+  AND c.date = strftime('%Y-%m-%d', p.created_at)
+GROUP BY summary_date, p.path;
