@@ -281,15 +281,23 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <UniversalSearchModal locale={locale} />
     {hasJudges && <OnlineJudgesModal locale={locale} />}
 
+    <!-- Edge Navigation Loading Bar (Top-layer Slim Progress Line) -->
+    <div
+      id="page-navigation-bar"
+      data-astro-transition-persist="page-navigation-bar"
+      class="pointer-events-none fixed top-0 left-0 right-0 h-[2px] z-[10000] bg-gradient-to-r from-transparent via-[var(--color-accent-gold)] to-transparent opacity-0 transition-opacity duration-150 ease-out select-none"
+      aria-hidden="true"
+    ></div>
+
     <!-- Edge Fetch Navigation Loading Beacon -->
     <div
       id="page-navigation-beacon"
       data-astro-transition-persist="page-navigation-beacon"
-      class="pointer-events-none fixed z-[9999] top-16 sm:top-[4.25rem] left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--color-accent-gold)]/50 bg-[var(--color-surface-card)]/95 backdrop-blur-md px-3 py-1.5 font-mono text-[10px] text-[var(--color-accent-gold)] shadow-xl opacity-0 scale-95 transition-[opacity,transform] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] select-none"
+      class="pointer-events-none fixed z-[9999] top-16 sm:top-[4.25rem] left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--color-accent-gold)]/40 bg-[var(--color-surface-card)]/95 backdrop-blur-md px-3 py-1 font-mono text-[10px] text-[var(--color-accent-gold)] shadow-lg opacity-0 scale-95 transition-[opacity,transform] duration-150 ease-out select-none"
       aria-hidden="true"
     >
       <svg
-        class="h-3 w-3 animate-spin text-[var(--color-accent-gold)] shrink-0"
+        class="h-2.5 w-2.5 animate-spin text-[var(--color-accent-gold)] shrink-0"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
@@ -335,35 +343,73 @@ const hasShortcuts = Boolean(shortcuts?.length);
         (Window.prototype as any).closest = () => null;
       }
 
-      // 2. Control del Beacon (se ancla a window para consumo de LanguageSwitcher.astro)
+      // 2. Control del Beacon y Barra de Carga Perimetral
       let isBeaconShown = false;
       let beaconShownTime = 0;
+      let beaconShowTimeout: ReturnType<typeof setTimeout> | null = null;
       let beaconHideTimeout: ReturnType<typeof setTimeout> | null = null;
-      const MIN_VISIBLE_MS = 550;
+      const DEBOUNCE_SHOW_MS = 120;
+      const MIN_VISIBLE_MS = 120;
 
-      function showBeacon(customText?: string) {
-        if (beaconHideTimeout) clearTimeout(beaconHideTimeout);
+      function renderBeaconVisible(customText?: string) {
         const beacon = document.getElementById("page-navigation-beacon");
-        if (!beacon) return;
-
-        const txt = beacon.querySelector("span");
-        if (txt) {
-          txt.textContent =
-            typeof customText === "string" && customText.trim().length > 0
-              ? customText
-              : document.documentElement.lang === "es"
-                ? "Cargando..."
-                : "Fetching...";
+        const bar = document.getElementById("page-navigation-bar");
+        if (beacon) {
+          const txt = beacon.querySelector("span");
+          if (txt) {
+            txt.textContent =
+              typeof customText === "string" && customText.trim().length > 0
+                ? customText
+                : document.documentElement.lang === "es"
+                  ? "Cargando..."
+                  : "Fetching...";
+          }
+          beacon.classList.remove("opacity-0", "scale-95");
+          beacon.classList.add("opacity-100", "scale-100");
         }
-
+        if (bar) {
+          bar.classList.remove("opacity-0");
+          bar.classList.add("opacity-100");
+        }
         isBeaconShown = true;
         beaconShownTime = performance.now();
-        beacon.classList.remove("opacity-0", "scale-95");
-        beacon.classList.add("opacity-100", "scale-100");
+      }
+
+      function showBeacon(customText?: string, immediate = false) {
+        if (beaconHideTimeout) {
+          clearTimeout(beaconHideTimeout);
+          beaconHideTimeout = null;
+        }
+
+        if (immediate) {
+          if (beaconShowTimeout) clearTimeout(beaconShowTimeout);
+          renderBeaconVisible(customText);
+          return;
+        }
+
+        if (isBeaconShown) return;
+        if (beaconShowTimeout) clearTimeout(beaconShowTimeout);
+        beaconShowTimeout = setTimeout(() => {
+          renderBeaconVisible(customText);
+          beaconShowTimeout = null;
+        }, DEBOUNCE_SHOW_MS);
       }
 
       function hideBeacon() {
-        if (!isBeaconShown) return;
+        if (beaconShowTimeout) {
+          clearTimeout(beaconShowTimeout);
+          beaconShowTimeout = null;
+        }
+
+        const bar = document.getElementById("page-navigation-bar");
+        if (!isBeaconShown) {
+          if (bar) {
+            bar.classList.remove("opacity-100");
+            bar.classList.add("opacity-0");
+          }
+          return;
+        }
+
         const elapsed = performance.now() - beaconShownTime;
         const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed);
 
@@ -374,7 +420,12 @@ const hasShortcuts = Boolean(shortcuts?.length);
             beacon.classList.remove("opacity-100", "scale-100");
             beacon.classList.add("opacity-0", "scale-95");
           }
+          if (bar) {
+            bar.classList.remove("opacity-100");
+            bar.classList.add("opacity-0");
+          }
           isBeaconShown = false;
+          beaconHideTimeout = null;
         }, remaining);
       }
 

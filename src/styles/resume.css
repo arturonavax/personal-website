@@ -340,7 +340,10 @@
     font-optical-sizing: none !important;
     font-synthesis: none !important;
     font-variant-ligatures: none !important;
-    font-feature-settings: "liga" 0, "clig" 0, "calt" 0 !important;
+    font-feature-settings:
+      "liga" 0,
+      "clig" 0,
+      "calt" 0 !important;
     word-spacing: 0 !important;
     user-select: text !important;
     -webkit-user-select: text !important;

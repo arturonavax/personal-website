@@ -1,6 +1,7 @@
 # Task Plan: Convert Specs to 100% ODD Workflow
 
 ## Overview
+
 Convert the 7 hybrid SPEC files (SPEC-001 to SPEC-007) from a mixed SDD/RDD/ODD methodology to a pure Organic/Operational-Driven Development (ODD) workflow. Goal: eliminate the SDD/RDD hybrid layer, standardize only ODD phases, and optimize token efficiency.
 
 ## Sub-tasks
@@ -16,11 +17,14 @@ Convert the 7 hybrid SPEC files (SPEC-001 to SPEC-007) from a mixed SDD/RDD/ODD 
 9. **Verify all odd/ files exist and are consistent** — Run final check: every spec heading has ODD reference only, no SDD/RDD hybrid language remains in methodology sections.
 
 ## Definition of Done (DoD)
+
 - All 7 SPEC files have methodology section referencing only ODD phases (no SDD/RDD).
 - `odd/convert-specs/tasks.md` has all 9 tasks marked as done.
 - No technical content (REQ, VAL, code blocks, schemas) was removed or altered.
 - All `odd/` directory structure follows the established pattern (no nested hybrids).
+
 ## Execution Log
+
 - [done] Created `odd/convert-specs/README.md` (ODD flow standard)
 - [done] Created `odd/convert-specs/tasks.md` (9 sub-tasks defined before any edit)
 - [done] Updated SPEC-001 (YAML + 1.2 section)

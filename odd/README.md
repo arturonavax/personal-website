@@ -4,8 +4,8 @@
 
 - **Propósito**: Source of truth del **qué** y **porqué**. Contratos, requisitos, invariantes, esquemas, matrices DoD.
 - **Ciclo de vida**: Inmutables salvo decisión explícita del arquitecto. No se mueven ni se duplican.
-- **Contenido**: SPEC-001 a SPEC-007, cada uno con methodology, REQ-*, VAL-*, code blocks, DoD matrices.
-- **Regla**: Los specs **nunca** se trasladan a `odd/`. Solo se *leen* desde allí para guiar el trabajo.
+- **Contenido**: SPEC-001 a SPEC-007, cada uno con methodology, REQ-_, VAL-_, code blocks, DoD matrices.
+- **Regla**: Los specs **nunca** se trasladan a `odd/`. Solo se _leen_ desde allí para guiar el trabajo.
 
 ## `odd/` — Artefactos de Flujo ODD (Efímeros)
 

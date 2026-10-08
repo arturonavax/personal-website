@@ -353,7 +353,8 @@ describe("SPEC-007 REQ-6: Print CV margin synchronization & Firefox chrome suppr
 });
 
 describe("Component 7: Print CV Fidelity (REQ-PRINT-1..6)", () => {
-  const read = (f: string) => fs.readFileSync(path.resolve(process.cwd(), f), "utf-8");
+  const read = (f: string) =>
+    fs.readFileSync(path.resolve(process.cwd(), f), "utf-8");
   const resumeCss = read("src/styles/resume.css");
 
   it("REQ-PRINT-1: CV never uses variable fonts (unselectable in Firefox PDF)", () => {
@@ -368,16 +369,27 @@ describe("Component 7: Print CV Fidelity (REQ-PRINT-1..6)", () => {
 
   it("REQ-PRINT-3: header lines merge into one paragraph with <br>", async () => {
     const { parseMarkdownResume } = await import("../../src/data/resume");
-    const { html } = parseMarkdownResume("# Name\n\n**Role**  \nCity • [a](mailto:a@b.c)\n\n## S\n");
-    expect(html).toMatch(/<h1[^>]*>Name<\/h1>\s*<p><strong>Role<\/strong>\s*<br \/>\s*City/);
+    const { html } = parseMarkdownResume(
+      "# Name\n\n**Role**  \nCity • [a](mailto:a@b.c)\n\n## S\n",
+    );
+    expect(html).toMatch(
+      /<h1[^>]*>Name<\/h1>\s*<p><strong>Role<\/strong>\s*<br \/>\s*City/,
+    );
     expect((html.match(/<p>/g) || []).length).toBe(1);
   });
 
   it("REQ-PRINT-4: header links underlined; beforeprint scripts never strip underline from href links", () => {
-    expect(resumeCss).toMatch(/h1 \+ p a\[href\][^}]*text-decoration:\s*underline/);
-    for (const f of ["src/pages/[...lang]/resume/index.astro", "src/pages/[...lang]/resume/maker.astro"]) {
+    expect(resumeCss).toMatch(
+      /h1 \+ p a\[href\][^}]*text-decoration:\s*underline/,
+    );
+    for (const f of [
+      "src/pages/[...lang]/resume/index.astro",
+      "src/pages/[...lang]/resume/maker.astro",
+    ]) {
       const code = read(f);
-      expect(code).not.toMatch(/a\[href\]"\)\.forEach[\s\S]{0,200}textDecoration\s*=\s*"none"/);
+      expect(code).not.toMatch(
+        /a\[href\]"\)\.forEach[\s\S]{0,200}textDecoration\s*=\s*"none"/,
+      );
     }
   });
 

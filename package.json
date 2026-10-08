@@ -16,8 +16,8 @@
     "build:assets": "node scripts/generate-assets.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "deploy": "pnpm dlx wrangler deploy",
-    "dev-prod": "pnpm check && pnpm build && pnpm dlx wrangler pages dev ./dist --port 8788 --ip 0.0.0.0",
+    "deploy": "wrangler deploy",
+    "dev-prod": "pnpm check && pnpm build && wrangler dev --port 8788 --ip 0.0.0.0",
     "audit:mobile": "pnpm dlx lighthouse http://127.0.0.1:8788 --output=json --output-path=./lh-raw.json --chrome-flags=\"--headless\" --quiet && node scripts/filter-lh.mjs"
   },
   "dependencies": {

@@ -277,7 +277,9 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
           }
         });
       }
-      var docEls = document.querySelectorAll(".resume-document, .cv-document, #cv-document-sheet, article");
+      var docEls = document.querySelectorAll(
+        ".resume-document, .cv-document, #cv-document-sheet, article",
+      );
       docEls.forEach(function (el) {
         el.style.userSelect = "text";
         el.style.animation = "none";

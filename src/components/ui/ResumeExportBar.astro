@@ -129,6 +129,7 @@ const t = {
     serializeResumeToTOML,
     serializeResumeToXML,
   } from "@/utils/resumeExporters";
+  import { copyToClipboard } from "@/lib/utils/clipboard";
 
   function setupResumeExport() {
     const roots = document.querySelectorAll<HTMLElement>(
@@ -187,8 +188,8 @@ const t = {
           const textToCopy = getExportContent(format);
           if (!textToCopy) return;
 
-          try {
-            await navigator.clipboard.writeText(textToCopy);
+          const copied = await copyToClipboard(textToCopy);
+          if (copied) {
             const labelEl = btn.querySelector<HTMLElement>(".copy-btn-label");
             const originalText =
               btn.getAttribute("data-default-label") ||
@@ -210,8 +211,6 @@ const t = {
                 "text-[var(--color-accent-gold)]",
               );
             }, 2000);
-          } catch (err) {
-            console.error("Clipboard copy failed:", err);
           }
         });
       });

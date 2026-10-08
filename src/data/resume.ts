@@ -124,7 +124,10 @@ export function parseMarkdownResume(md: string): ResumeData {
     const rawLine = lines[i] ?? "";
     const trimmed = rawLine.trim();
 
-    if (openParaIdx !== -1 && (!trimmed || /^(#{1,4} |- |---$)/.test(trimmed))) {
+    if (
+      openParaIdx !== -1 &&
+      (!trimmed || /^(#{1,4} |- |---$)/.test(trimmed))
+    ) {
       openParaIdx = -1;
     }
 
