@@ -81,7 +81,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
   lang={locale}
   data-theme="dark"
   class="dark"
-  style="background-color: #260205; color-scheme: dark;"
+  style="background-color: var(--surface-backdrop); color-scheme: dark;"
 >
   <head>
     <ClientRouter />
@@ -197,14 +197,13 @@ const hasShortcuts = Boolean(shortcuts?.length);
             if (theme === "light") {
               root.classList.remove("dark");
               root.classList.add("light");
-              root.style.backgroundColor = "#F4F6F8";
               root.style.colorScheme = "light";
             } else {
               root.classList.add("dark");
               root.classList.remove("light");
-              root.style.backgroundColor = "#260205";
               root.style.colorScheme = "dark";
             }
+            root.style.removeProperty("background-color");
           } catch (_) {}
         }
 

@@ -43,7 +43,7 @@ export async function triggerCircularThemeReveal(
       ],
     },
     {
-      duration: 360,
+      duration: 380,
       easing: "cubic-bezier(0.16, 1, 0.3, 1)",
       pseudoElement: "::view-transition-new(root)",
     },

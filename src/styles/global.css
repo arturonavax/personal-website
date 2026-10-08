@@ -842,3 +842,33 @@ html.lang-text-reacting .copy-feedback,
   content-visibility: auto;
   contain-intrinsic-size: 0 420px;
 }
+
+/* Pure CSS Dynamic Ticker Scroll Animation (Compositor-only transform, zero CLS) */
+@keyframes tickerScroll {
+  0%,
+  28% {
+    transform: translateY(0%);
+  }
+  33.3%,
+  61.3% {
+    transform: translateY(-25%);
+  }
+  66.6%,
+  94.6% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(-75%);
+  }
+}
+
+.ticker-scroll {
+  animation: tickerScroll 9s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-scroll {
+    animation: none !important;
+    transform: none !important;
+  }
+}

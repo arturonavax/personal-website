@@ -310,6 +310,15 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
         }
       });
 
+      const rndNode = document.querySelector("[data-experience-rnd-node]");
+      if (rndNode) {
+        if (isAllActive) {
+          rndNode.classList.remove("hidden");
+        } else {
+          rndNode.classList.add("hidden");
+        }
+      }
+
       const visibleCount = visibleItems.length;
 
       // Update button visual states & dynamic faceted counts

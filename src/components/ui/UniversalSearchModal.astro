@@ -93,7 +93,7 @@ const searchIndexPath = "/search-index.json";
         id="search-suggestions"
         class="flex flex-wrap items-center gap-1.5 border-b border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 px-4 py-2 text-xs font-mono"
       >
-        <span class="text-[var(--color-text-muted)]">
+        <span id="search-popular-label" class="text-[var(--color-text-muted)]">
           {isEs ? "Populares:" : "Popular:"}
         </span>
         {[
@@ -165,7 +165,10 @@ const searchIndexPath = "/search-index.json";
             <kbd class="inline-flex h-5 min-w-[2rem] items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 text-[10px] font-semibold text-[var(--color-text-secondary)] shadow-xs leading-none">
               Esc
             </kbd>
-            <span class="leading-none text-[11px]">
+            <span
+              id="search-shortcut-esc-label"
+              class="leading-none text-[11px]"
+            >
               {isEs ? "cerrar" : "close"}
             </span>
           </span>
@@ -173,8 +176,22 @@ const searchIndexPath = "/search-index.json";
             <kbd class="inline-flex h-5 min-w-[2rem] items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 text-[11px] font-semibold text-[var(--color-text-secondary)] shadow-xs leading-none">
               &uarr;&darr;
             </kbd>
-            <span class="leading-none text-[11px]">
+            <span
+              id="search-shortcut-nav-label"
+              class="leading-none text-[11px]"
+            >
               {isEs ? "navegar" : "navigate"}
+            </span>
+          </span>
+          <span class="hidden sm:inline-flex items-center gap-2">
+            <kbd class="inline-flex h-5 min-w-[2rem] items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 text-[10px] font-semibold text-[var(--color-text-secondary)] shadow-xs leading-none">
+              Enter
+            </kbd>
+            <span
+              id="search-shortcut-select-label"
+              class="leading-none text-[11px]"
+            >
+              {isEs ? "seleccionar" : "select"}
             </span>
           </span>
           <span
@@ -440,6 +457,20 @@ const searchIndexPath = "/search-index.json";
           scrollHintSpan.textContent = isEs
             ? "Más resultados abajo"
             : "More results below";
+        }
+        var esc = document.getElementById("search-shortcut-esc-label");
+        if (esc) esc.textContent = isEs ? "cerrar" : "close";
+        var nav = document.getElementById("search-shortcut-nav-label");
+        if (nav) nav.textContent = isEs ? "navegar" : "navigate";
+        var sel = document.getElementById("search-shortcut-select-label");
+        if (sel) sel.textContent = isEs ? "seleccionar" : "select";
+        var pop = document.getElementById("search-popular-label");
+        if (pop) pop.textContent = isEs ? "Populares:" : "Popular:";
+        var emptyText = document.querySelector("#search-empty-state p");
+        if (emptyText) {
+          emptyText.textContent = isEs
+            ? "Escribe cualquier tecnología o palabra clave para ver resultados instantáneos."
+            : "Type any technology, keyword, or company to see live results.";
         }
       }
 
