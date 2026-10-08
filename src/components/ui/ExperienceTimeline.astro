@@ -3,6 +3,7 @@ import type { CollectionEntry } from "astro:content";
 import type { Locale } from "@/i18n/ui";
 import { formatDate, useTranslations } from "@/i18n/utils";
 import TechIcon from "@/components/ui/TechIcon.astro";
+import TypewriterTicker from "@/components/ui/TypewriterTicker.astro";
 import { getCompanyInfo } from "@/data/companies";
 import { getSimulationCountForJob } from "@/data/simulations";
 
@@ -39,24 +40,20 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
           </span>
         </div>
 
-        <div class="h-6 overflow-hidden font-mono text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium">
-          <div class="ticker-scroll flex flex-col">
-            <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-              {isEs ? "Construyendo proyectos..." : "Building projects..."}
-            </span>
-            <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-              {isEs ? "Desarrollando productos..." : "Developing products..."}
-            </span>
-            <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-              {isEs
-                ? "Explorando nuevas fronteras..."
-                : "Exploring new frontiers..."}
-            </span>
-            <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-              {isEs ? "Construyendo proyectos..." : "Building projects..."}
-            </span>
-          </div>
-        </div>
+        <TypewriterTicker
+          phrases={isEs
+            ? [
+                "Construyendo proyectos...",
+                "Desarrollando productos...",
+                "Explorando nuevas fronteras...",
+              ]
+            : [
+                "Building projects...",
+                "Developing products...",
+                "Exploring new frontiers...",
+              ]}
+          class="text-xs sm:text-sm"
+        />
       </div>
     </div>
   )}
@@ -246,30 +243,20 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
                   </span>
                 </span>
               </div>
-              <div class="h-6 overflow-hidden text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium">
-                <div class="ticker-scroll flex flex-col">
-                  <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-                    {locale === "es"
-                      ? "Construyendo la historia..."
-                      : "Writing history..."}
-                  </span>
-                  <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-                    {locale === "es"
-                      ? "Obteniendo experiencias..."
-                      : "Gaining experiences..."}
-                  </span>
-                  <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-                    {locale === "es"
-                      ? "Creando impacto..."
-                      : "Creating impact..."}
-                  </span>
-                  <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-                    {locale === "es"
-                      ? "Construyendo la historia..."
-                      : "Writing history..."}
-                  </span>
-                </div>
-              </div>
+              <TypewriterTicker
+                phrases={locale === "es"
+                  ? [
+                      "Construyendo la historia...",
+                      "Obteniendo experiencias...",
+                      "Creando impacto...",
+                    ]
+                  : [
+                      "Writing history...",
+                      "Gaining experiences...",
+                      "Creating impact...",
+                    ]}
+                class="text-xs sm:text-sm"
+              />
             </div>
           )}
 

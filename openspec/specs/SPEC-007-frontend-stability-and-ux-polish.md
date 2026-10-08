@@ -11,6 +11,8 @@
   - `src/components/ui/LanguageSuggestionBanner.astro`
   - `src/components/common/LanguageSwitcher.astro`
   - `src/components/ui/MatrixBackground.astro`
+  - `src/components/ui/TypewriterTicker.astro`
+  - `src/components/ui/ExperienceTimeline.astro`
   - `src/pages/[...lang]/experience/[slug].astro`
   - `src/pages/[...lang]/index.astro`
   - `src/styles/resume.css`
@@ -19,7 +21,7 @@
 
 ---
 
-## 1.1 Methodology — ODD (Organic/Operational-Driven Development)
+## 1.1 Methodology - ODD (Organic/Operational-Driven Development)
 
 Flujo estándar ODD: Authorize → Explore (CodeGraph + skills) → Resolve Uncertainty → Classify (track in `odd/convert-specs/tasks.md`) → Implement → Check (`bun run check`, audit gates, CWV) → Close (verified outcome, memory if key).
 
@@ -205,11 +207,11 @@ const isMoreActive =
 
 ---
 
-### Component 7: Print CV Fidelity — Selectable Text, Header-Only Underlined Links, Parity (`src/styles/resume.css`)
+### Component 7: Print CV Fidelity: Selectable Text, Header-Only Underlined Links, Parity (`src/styles/resume.css`)
 
 **Invariantes (REQ-PRINT-1..6), válidos para `/resume/` y `/resume/maker/` en Chromium y Firefox:**
 
-1. **Texto 100% seleccionable (REQ-PRINT-1):** el CV usa EXCLUSIVAMENTE las familias estáticas `Geist Static` / `Geist Mono Static` (`Geist-{Regular,Medium,SemiBold,Bold}.woff2`, `GeistMono-{Regular,Medium,Bold}.woff2`). Las fuentes variables (`*-Variable.woff2`) están PROHIBIDAS dentro de `.cv-document`/`.resume-document`: Firefox exporta su texto a PDF como contornos (no seleccionable: h1–h4, negritas, cursivas, `code`). Ligaduras desactivadas (`font-variant-ligatures: none`) y `user-select: text` en impresión.
+1. **Texto 100% seleccionable (REQ-PRINT-1):** el CV usa EXCLUSIVAMENTE las familias estáticas `Geist Static` / `Geist Mono Static` (`Geist-{Regular,Medium,SemiBold,Bold}.woff2`, `GeistMono-{Regular,Medium,Bold}.woff2`). Las fuentes variables (`*-Variable.woff2`) están PROHIBIDAS dentro de `.cv-document`/`.resume-document`: Firefox exporta su texto a PDF como contornos (no seleccionable: h1-h4, negritas, cursivas, `code`). Ligaduras desactivadas (`font-variant-ligatures: none`) y `user-select: text` en impresión.
 2. **Paridad de estilos (REQ-PRINT-2):** ambas rutas comparten `resume.css`; bloque `@media print` fija `font-size`, `line-height`, `letter-spacing`, `word-spacing`, `text-rendering: geometricPrecision`, `text-size-adjust: none`.
 3. **Encabezado idéntico (REQ-PRINT-3):** subtítulo y contacto forman UN solo `<p>` con `<br>` (el parser `parseMarkdownResume` fusiona líneas consecutivas como CommonMark; hard break con 2 espacios finales). Prohibido emitir `<p>` separados para ambas líneas.
 4. **Enlaces (REQ-PRINT-4):** los únicos clickeables son los del encabezado (`h1 + p a[href]`) y SIEMPRE subrayados (pantalla, previsualización e impresión). Enlaces del cuerpo pierden `href` al imprimir y no se subrayan. Los scripts `beforeprint` NO deben forzar `text-decoration: none` sobre enlaces con `href`.
@@ -217,6 +219,41 @@ const isMoreActive =
 6. **Matrix primera carga (REQ-PRINT-6):** en la primera inicialización las columnas arrancan en filas `<= 0` (caen desde arriba), nunca a mitad de pantalla.
 
 > Lección: no diagnosticar "texto no seleccionable" con `user-select`/ligaduras; la causa raíz fue la fuente variable en el motor de impresión de Firefox.
+
+---
+
+### Component 8: Dynamic Experience Timeline Typewriter Engine (REQ-EXP-TYPEWRITER)
+
+- **Native Web Component Lifecycle (Zero External Client JS)**:
+  - Custom element `<typewriter-ticker>` encapsulates typing, pausing, and backspacing logic with standard DOM APIs and zero external runtime libraries.
+  - Implements `connectedCallback()` and `disconnectedCallback()` with clean timer disposal via `clearTimeout` to prevent memory leaks during client-side navigation.
+  - Mechanical terminal typing cadence:
+    * Typing speed: 45ms per character.
+    * Hold duration: 2200ms pause at the end of each phrase.
+    * Deletion speed: 20ms per character backspacing.
+    * Phrase turnaround pause: 300ms before commencing typing of the next phrase.
+    * Indefinite cycle across provided localized phrases.
+
+- **SSR Text Retention with CLS = 0.000**:
+  - The first phrase (`phrases[0]`) is rendered directly into the server-side HTML within `<span class="typewriter-text text-[var(--color-accent-gold)] font-medium">`.
+  - Search crawlers, screen readers, and initial browser paint capture complete text immediately without layout shifts (`CLS = 0.000`).
+  - The animated terminal cursor is rendered as `<span class="typewriter-cursor inline-block w-1.5 h-3.5 bg-[var(--color-accent-gold)] ml-1 animate-pulse" aria-hidden="true"></span>`.
+
+- **Dual-State Support (Independent R&D vs Active In-Seat Role)**:
+  - Case A (No active role / Independent R&D node):
+    * Badge: `[ ACTIVE DEVELOPMENT // R&D ]`
+    * Phrases (ES): `["Construyendo proyectos...", "Desarrollando productos...", "Explorando nuevas fronteras..."]`
+    * Phrases (EN): `["Building projects...", "Developing products...", "Exploring new frontiers..."]`
+  - Case B (Active role with `!endDate` / Live Broadcast):
+    * Badge: `[ LIVE BROADCAST // EN EMISIÓN ]` (ES) / `[ LIVE BROADCAST // CURRENT ROLE ]` (EN)
+    * Phrases (ES): `["Construyendo la historia...", "Obteniendo experiencias...", "Creando impacto..."]`
+    * Phrases (EN): `["Writing history...", "Gaining experiences...", "Creating impact..."]`
+  - Shared across both timeline feed (`ExperienceTimeline.astro`) and individual role deep-dive view (`experience/[slug].astro`).
+
+- **Accessibility, Reduced-Motion & Performance Fallbacks**:
+  - Full respect for `prefers-reduced-motion: reduce`: animation loop is entirely bypassed, cursor blinking is halted, and SSR text remains statically visible.
+  - Cursor is hidden from accessibility trees via `aria-hidden="true"`.
+  - Cursor animation relies strictly on GPU compositor opacity transitions with zero layout thrashing or geometric repaints.
 
 ## 3. Low-Cost Local Testing Suite
 
@@ -324,4 +361,5 @@ describe("SPEC-007: Frontend Glitches & UX Verification", () => {
 - [x] **Solo enlaces del encabezado, subrayados** en pantalla, previsualización y PDF (REQ-PRINT-4).
 - [x] **Todo el texto del PDF seleccionable en Firefox y Chromium** mediante fuentes estáticas (REQ-PRINT-1).
 - [x] **Toast de copiado sobre el banner de idioma** (REQ-PRINT-5) y **Matrix cae desde arriba al primer render** (REQ-PRINT-6).
-- [x] **Tests:** `bun test tests/spec-007` incluye guardas de regresión REQ-PRINT-*.
+- [x] **Typewriter Animation Engine** (REQ-EXP-TYPEWRITER): Custom element typewriter ticker con SSR inicial (CLS = 0.000), dual-state (R&D vs Active Role), fallback prefers-reduced-motion y cursor con opacidad de compositor.
+- [x] **Tests:** `bun test tests/spec-007` incluye guardas de regresión REQ-PRINT-* y REQ-EXP-TYPEWRITER.

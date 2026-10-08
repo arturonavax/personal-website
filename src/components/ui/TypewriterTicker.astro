@@ -1,0 +1,130 @@
+---
+interface Props {
+  phrases: string[];
+  class?: string;
+  typeSpeed?: number;
+  deleteSpeed?: number;
+  pauseDuration?: number;
+}
+
+const {
+  phrases,
+  class: className = "",
+  typeSpeed = 45,
+  deleteSpeed = 20,
+  pauseDuration = 2200,
+} = Astro.props;
+
+const initialPhrase = phrases.length > 0 ? phrases[0] : "";
+---
+
+<typewriter-ticker
+  class={`min-h-[1.5rem] inline-flex items-center font-mono ${className}`.trim()}
+  data-phrases={JSON.stringify(phrases)}
+  data-type-speed={typeSpeed}
+  data-delete-speed={deleteSpeed}
+  data-pause-duration={pauseDuration}
+>
+  <span class="typewriter-text text-[var(--color-accent-gold)] font-medium">{initialPhrase}</span>
+  <span class="typewriter-cursor inline-block w-1.5 h-3.5 bg-[var(--color-accent-gold)] ml-1 animate-pulse" aria-hidden="true"></span>
+</typewriter-ticker>
+
+<script>
+  class TypewriterTickerElement extends HTMLElement {
+    private phrases: string[] = [];
+    private typeSpeed = 45;
+    private deleteSpeed = 20;
+    private pauseDuration = 2200;
+    private currentIndex = 0;
+    private currentLength = 0;
+    private textEl: HTMLElement | null = null;
+    private timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    connectedCallback(): void {
+      this.clearTimer();
+
+      try {
+        const raw = this.dataset.phrases;
+        this.phrases = raw ? JSON.parse(raw) : [];
+      } catch {
+        this.phrases = [];
+      }
+
+      this.typeSpeed = Number(this.dataset.typeSpeed) || 45;
+      this.deleteSpeed = Number(this.dataset.deleteSpeed) || 20;
+      this.pauseDuration = Number(this.dataset.pauseDuration) || 2200;
+
+      this.textEl = this.querySelector(".typewriter-text");
+
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        return;
+      }
+
+      if (!this.phrases || this.phrases.length <= 1) {
+        return;
+      }
+
+      this.currentIndex = 0;
+      this.currentLength = this.phrases[0]?.length || 0;
+
+      // Initial phrase is pre-rendered via SSR. Pause before starting backspace.
+      this.timeoutId = setTimeout(() => {
+        this.deleteNextChar();
+      }, this.pauseDuration);
+    }
+
+    disconnectedCallback(): void {
+      this.clearTimer();
+    }
+
+    private clearTimer(): void {
+      if (this.timeoutId !== null) {
+        clearTimeout(this.timeoutId);
+        this.timeoutId = null;
+      }
+    }
+
+    private deleteNextChar(): void {
+      if (this.currentLength > 0) {
+        this.currentLength--;
+        const phrase = this.phrases[this.currentIndex] || "";
+        if (this.textEl) {
+          this.textEl.textContent = phrase.slice(0, this.currentLength);
+        }
+        this.timeoutId = setTimeout(() => {
+          this.deleteNextChar();
+        }, this.deleteSpeed);
+      } else {
+        // Finished backspacing phrase. Advance to next phrase index.
+        this.currentIndex = (this.currentIndex + 1) % this.phrases.length;
+        this.currentLength = 0;
+        // Pause 300ms before typing the next phrase
+        this.timeoutId = setTimeout(() => {
+          this.typeNextChar();
+        }, 300);
+      }
+    }
+
+    private typeNextChar(): void {
+      const phrase = this.phrases[this.currentIndex] || "";
+      if (this.currentLength < phrase.length) {
+        this.currentLength++;
+        if (this.textEl) {
+          this.textEl.textContent = phrase.slice(0, this.currentLength);
+        }
+        this.timeoutId = setTimeout(() => {
+          this.typeNextChar();
+        }, this.typeSpeed);
+      } else {
+        // Finished typing entire phrase. Pause at end before backspacing.
+        this.timeoutId = setTimeout(() => {
+          this.deleteNextChar();
+        }, this.pauseDuration);
+      }
+    }
+  }
+
+  if (!customElements.get("typewriter-ticker")) {
+    customElements.define("typewriter-ticker", TypewriterTickerElement);
+  }
+</script>

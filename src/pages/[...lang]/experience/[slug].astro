@@ -6,6 +6,7 @@ import PageIndexNav, {
 } from "@/components/ui/PageIndexNav.astro";
 import SimulationCard from "@/components/ui/SimulationCard.astro";
 import TechIcon from "@/components/ui/TechIcon.astro";
+import TypewriterTicker from "@/components/ui/TypewriterTicker.astro";
 import { getCompanyInfo } from "@/data/companies";
 import { getSimulationsForJob } from "@/data/simulations";
 import { formatDate, useTranslations } from "@/i18n/utils";
@@ -522,24 +523,20 @@ const jobIndexItems: IndexItem[] = [
                 </span>
               </span>
             </div>
-            <div class="h-6 overflow-hidden text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium">
-              <div class="ticker-scroll flex flex-col">
-                <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-                  {isEs ? "Construyendo la historia..." : "Writing history..."}
-                </span>
-                <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-                  {isEs
-                    ? "Obteniendo experiencias..."
-                    : "Gaining experiences..."}
-                </span>
-                <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-                  {isEs ? "Creando impacto..." : "Creating impact..."}
-                </span>
-                <span class="h-6 flex items-center text-[var(--color-accent-gold)]">
-                  {isEs ? "Construyendo la historia..." : "Writing history..."}
-                </span>
-              </div>
-            </div>
+            <TypewriterTicker
+              phrases={isEs
+                ? [
+                    "Construyendo la historia...",
+                    "Obteniendo experiencias...",
+                    "Creando impacto...",
+                  ]
+                : [
+                    "Writing history...",
+                    "Gaining experiences...",
+                    "Creating impact...",
+                  ]}
+              class="text-xs sm:text-sm"
+            />
           </div>
         )}
       </section>
