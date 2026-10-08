@@ -83,7 +83,10 @@ export default defineConfig({
   },
   integrations: [
     sitemap({
-      filter: (page) => !page.includes("/search/"),
+      filter: (page) =>
+        !page.includes("/search/") &&
+        !page.includes("/404") &&
+        !page.includes("/case-studies/"),
 
       i18n: {
         defaultLocale: "en",

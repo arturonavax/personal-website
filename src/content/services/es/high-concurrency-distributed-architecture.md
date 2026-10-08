@@ -24,7 +24,7 @@ deliverables:
   - "Desacoplamiento OLTP vs. OLAP: Protección de la base transaccional principal transmitiendo flujos analíticos hacia almacenes de datos dedicados"
   - "Architecture Decision Records (ADRs): Documentación formal y estructurada sobre trade-offs, límites del sistema y decisiones clave de diseño"
   - "Estrategias de resiliencia y mitigación: Implementación de circuit breakers, políticas de reintento con backoff exponencial y degradación elegante"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Solicitar Asesoría de Arquitectura"
 searchKeywords:
   [

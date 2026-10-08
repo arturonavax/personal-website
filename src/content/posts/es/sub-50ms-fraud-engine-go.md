@@ -2,7 +2,8 @@
 title: "Diseño de Motores Antifraude Sub-50ms en Go"
 description: "Cómo construir pipelines de evaluación en Go con cero alocaciones dinámicas mediante Strategy Pattern y ventanas deslizantes en Redis para terminales POS."
 pubDate: 2026-02-15
-draft: false
+draft: true
+visible: false
 locale: "es"
 translationKey: "sub-50ms-fraud-engine-go"
 category: "systems"

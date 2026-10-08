@@ -1,7 +1,7 @@
 ---
 company: "E.T.C.R Rómulo Gallegos"
 companyUrl: "https://www.instagram.com/etcrromulogallegosmcbo/"
-companyDomain: "https://www.instagram.com/etcrromulogallegosmcbo/"
+companyDomain: "instagram.com"
 companyIndustry: "Technical & Vocational Secondary Education"
 companyDescription: "Technical high school in Maracaibo, Venezuela, providing vocational education specialized in computer systems, informatics, and accounting."
 role: "Software Engineer"
@@ -11,6 +11,7 @@ startDate: 2017-12-01
 endDate: 2018-03-01
 order: 8
 locale: "en"
+translationKey: "romulo-gallegos"
 skills:
   - "Golang"
   - "PostgreSQL"

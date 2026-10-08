@@ -24,7 +24,7 @@ deliverables:
   - "Guardrails y memoria de contexto: Arquitectura determinista orientada a mitigar alucinaciones, prompt injection y respuestas inconsistentes"
   - "Integración con CRM y pasarelas: Sincronización bidireccional con plataformas de cobro, bases de datos relacionales y motores de orquestación"
   - "Panel operativo y fallback humano: Enrutamiento instantáneo a operadores humanos ante solicitudes críticas o flujos que requieren juicio manual"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Desplegar Agente de IA"
 searchKeywords:
   [

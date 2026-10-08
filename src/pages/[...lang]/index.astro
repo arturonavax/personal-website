@@ -4,6 +4,7 @@ import MetricCallout from "@/components/ui/MetricCallout.astro";
 import ArchitecturalPillars from "@/components/ui/ArchitecturalPillars.astro";
 import AiEngineeringSection from "@/components/ui/AiEngineeringSection.astro";
 import ProjectCard from "@/components/ui/ProjectCard.astro";
+import ServiceCard from "@/components/ui/ServiceCard.astro";
 import ExperienceTimeline from "@/components/ui/ExperienceTimeline.astro";
 import PostCard from "@/components/ui/PostCard.astro";
 import HeroHeaderBanner from "@/components/ui/HeroHeaderBanner.astro";
@@ -43,6 +44,19 @@ const allProjects = allProjectsList.filter((p) => p.data.featured);
 const featuredProjects = allProjects
   .sort((a, b) => a.data.order - b.data.order)
   .slice(0, 3);
+
+const allServicesList = await getVisibleCollection(
+  "services",
+  ({ data }) => data.locale === locale,
+);
+const featuredServices = allServicesList
+  .filter((s) => s.data.featured)
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 3);
+const displayServices =
+  featuredServices.length > 0
+    ? featuredServices
+    : allServicesList.sort((a, b) => a.data.order - b.data.order).slice(0, 3);
 
 const allExperience = await getVisibleCollection(
   "experience",
@@ -246,7 +260,72 @@ const jsonLd = getHomepageJsonLd(locale);
       </section>
     )}
 
-    <!-- 7. Live Telemetry Lab -->
+    <!-- 7. Technical Services & Advisory -->
+    {displayServices.length > 0 && (
+      <section
+        id="services"
+        aria-labelledby="services-heading"
+        class="space-y-6"
+      >
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
+          <h2
+            id="services-heading"
+            class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl"
+          >
+            {t("section.services")}
+          </h2>
+          <a
+            href={`${basePath}/services/`}
+            class="btn-secondary px-3.5 py-1.5 font-mono text-xs sm:text-sm text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] inline-flex items-center gap-1.5 min-h-[38px] transition-colors"
+          >
+            <span>{t("section.services.viewAll")}</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+
+        <div
+          class={`grid gap-6 ${displayServices.length === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"}`}
+        >
+          {displayServices.map((service) => (
+            <ServiceCard service={service} locale={locale} />
+          ))}
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[var(--color-surface-border-subtle)] font-mono text-xs sm:text-sm">
+          <div class="flex items-center gap-2.5 text-[var(--color-text-secondary)]">
+            <span class="flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shrink-0"></span>
+            <span>
+              {isEs
+                ? `Mostrando ${displayServices.length} de ${allServicesList.length} servicios`
+                : `Showing ${displayServices.length} of ${allServicesList.length} services`}
+              {allServicesList.length > displayServices.length && (
+                <>
+                  {" • "}
+                  <strong class="text-[var(--color-accent-gold)]">
+                    +{allServicesList.length - displayServices.length}{" "}
+                    {isEs ? "más" : "more"}
+                  </strong>{" "}
+                  {isEs ? "disponibles" : "available"}
+                </>
+              )}
+            </span>
+          </div>
+          <a
+            href={`${basePath}/services/`}
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-4 py-2 font-mono text-xs sm:text-sm font-semibold text-[var(--color-accent-gold)] hover:border-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)] transition-colors min-h-[40px]"
+          >
+            <span>
+              {isEs
+                ? "Explorar todos los servicios"
+                : "Explore all technical services"}
+            </span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+      </section>
+    )}
+
+    <!-- 8. Live Telemetry Lab -->
     {hasCaseStudies && (
       <section
         id="telemetry"
@@ -273,7 +352,7 @@ const jsonLd = getHomepageJsonLd(locale);
       </section>
     )}
 
-    <!-- 8. Engineering Notes -->
+    <!-- 9. Engineering Notes -->
     {recentPosts.length > 0 && (
       <section id="blog" aria-labelledby="posts-heading" class="space-y-6">
         <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
@@ -334,7 +413,7 @@ const jsonLd = getHomepageJsonLd(locale);
       </section>
     )}
 
-    <!-- 9. Contact Hub -->
+    <!-- 10. Contact Hub -->
     <ContactSection locale={locale} />
 
     <!-- Discreet Coffee / Contributions Modal -->

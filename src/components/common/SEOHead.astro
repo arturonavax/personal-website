@@ -9,6 +9,7 @@ interface Props {
   jsonLd?: Record<string, unknown> | Array<Record<string, unknown>> | undefined;
   alternateEnUrl?: string | undefined;
   alternateEsUrl?: string | undefined;
+  noindex?: boolean | undefined;
 }
 
 const {
@@ -21,6 +22,7 @@ const {
   jsonLd,
   alternateEnUrl,
   alternateEsUrl,
+  noindex = false,
 } = Astro.props;
 
 const siteUrl = Astro.site?.origin ?? "https://arturonavax.dev";
@@ -206,10 +208,12 @@ const resolvedOgImage = ogImage.startsWith("http")
   href="https://arturonavax.dev/llms.txt"
 />
 
-<!-- robots.txt -->
+<!-- robots.txt / search engine directives -->
 <meta
   name="robots"
-  content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+  content={noindex
+    ? "noindex, nofollow"
+    : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"}
 />
 
 <!-- Structured Data (JSON-LD) -->

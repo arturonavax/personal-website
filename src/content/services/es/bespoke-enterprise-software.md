@@ -25,7 +25,7 @@ deliverables:
   - "Automatización de procesos de negocio: Digitalización de flujos manuales repetitivos, generación de reportes y eliminación de cuellos de botella operativos"
   - "Control de acceso granular (RBAC) y seguridad: Matriz de permisos por rol, autenticación corporativa robusta y trazabilidad completa de acciones internas"
   - "Infraestructura contenerizada y CI/CD: Entornos de despliegue automatizados (staging y producción) con respaldos programados y alta tolerancia a fallos"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Construir Sistema a Medida"
 searchKeywords:
   [

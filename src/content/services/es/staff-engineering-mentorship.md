@@ -24,7 +24,7 @@ deliverables:
   - "Revisiones de código y modelos de concurrencia: Análisis de asignación de memoria, primitivas de sincronización y estructuras sin bloqueos (lock-free)"
   - "Acompañamiento asíncrono directo: Canal privado para segundas opiniones sobre decisiones de arquitectura, ADRs y propuestas técnicas"
   - "Roadmaps y análisis de papers técnicos: Estudio guiado de papers fundacionales sobre sistemas distribuidos y su aplicación en la industria actual"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Postular a la Mentoría"
 searchKeywords:
   [

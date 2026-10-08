@@ -34,6 +34,7 @@ interface Props {
     | "case-studies"
     | undefined;
   hideSubtleCoffee?: boolean | undefined;
+  noindex?: boolean | undefined;
 }
 
 const {
@@ -47,6 +48,7 @@ const {
   translationKey,
   collectionName,
   hideSubtleCoffee = false,
+  noindex = false,
 } = Astro.props;
 
 const alternateEnUrl =
@@ -95,6 +97,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
       jsonLd={jsonLd}
       alternateEnUrl={alternateEnUrl}
       alternateEsUrl={alternateEsUrl}
+      noindex={noindex}
     />
 
     <!-- Anti-FOUC de tema, bloqueo condicional de traducción y restauración de Scroll -->

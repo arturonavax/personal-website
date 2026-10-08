@@ -1,8 +1,8 @@
 ---
 import type { Locale } from "@/i18n/ui";
 import TechIcon from "@/components/ui/TechIcon.astro";
-import { Image } from "astro:assets";
-import arturoPhoto from "@/assets/arturonava.png";
+import { Picture } from "astro:assets";
+import arturoPhoto from "@/assets/arturonava.jpg";
 import { hasResume } from "@/data/resume";
 
 interface Props {
@@ -40,12 +40,12 @@ const techStack = [
   <!-- Top Split: Technical Identity & Blueprint Specimen -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
     <!-- Left Column: 4 Strict Text Elements -->
-    <div class="lg:col-span-7 space-y-3.5 sm:space-y-4 text-left min-w-0">
+    <div class="lg:col-span-8 space-y-3.5 sm:space-y-4 text-left min-w-0">
       <!-- 1. Eyebrow: Strict domain title without version tags or timezones -->
       <p class="text-xs sm:text-sm font-mono tracking-widest text-[var(--color-accent-gold)] uppercase font-semibold">
         {isEs
-          ? "SISTEMAS DISTRIBUIDOS & ARQUITECTURA DE IA"
-          : "DISTRIBUTED SYSTEMS & AI ARCHITECTURE"}
+          ? "SISTEMAS DISTRIBUIDOS, ALTA CONCURRENCIA & APPSEC"
+          : "DISTRIBUTED SYSTEMS, HIGH CONCURRENCY & APPSEC"}
       </p>
 
       <!-- 2. Headline: Arturo Nava -->
@@ -59,8 +59,8 @@ const techStack = [
       <!-- 3. Subtext: Strictly under 20 words -->
       <p class="text-sm sm:text-base text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xl [overflow-wrap:anywhere]">
         {isEs
-          ? "Diseño arquitecturas de alta concurrencia en Go y Rust, motores anti-fraude sub-50ms y pipelines de agentes autónomos."
-          : "Designing high-concurrency Go and Rust architectures, sub-50ms fraud engines, and autonomous AI pipelines with zero-trust DevSecOps."}
+          ? "Diseño arquitecturas backend concurrentes y de baja latencia en Go y Rust, motores transaccionales antifraude y flujos agénticos con DevSecOps."
+          : "Engineering low-latency, high-concurrency backends in Go and Rust, real-time fraud evaluation engines, and agentic workflows with DevSecOps."}
       </p>
 
       <!-- 4. CTAs: Single-line desktop action bar with Primary & Secondary -->
@@ -109,8 +109,8 @@ const techStack = [
     </div>
 
     <!-- Right Column: Architectural Specimen & Telemetry Console -->
-    <div class="lg:col-span-5 flex justify-center lg:justify-end">
-      <div class="relative rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/80 p-3.5 sm:p-4 max-w-[340px] sm:max-w-[360px] w-full shadow-sm">
+    <div class="lg:col-span-4 flex justify-center lg:justify-end">
+      <div class="relative rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/80 p-3.5 sm:p-4 max-w-[280px] sm:max-w-[300px] w-full shadow-sm">
         <!-- Blueprint Corner Datum Marks -->
         <span
           class="absolute top-1 left-1.5 font-mono text-[9px] text-[var(--color-text-muted)] select-none"
@@ -139,24 +139,38 @@ const techStack = [
 
         <!-- Header Telemetry Strip -->
         <div class="flex items-center justify-between text-[10px] font-mono text-[var(--color-text-muted)] border-b border-[var(--color-surface-border-subtle)] pb-2 mb-2.5">
-          <span class="text-[var(--color-accent-gold)] font-bold tracking-wider">
-            STATUS: ACTIVE // R&amp;D
+          <div class="flex items-center gap-1.5">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-accent-status)] opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-accent-status)]"></span>
+            </span>
+            <span class="text-[var(--color-accent-gold)] font-bold tracking-wider uppercase">
+              {isEs
+                ? "STATUS: ACTIVO // DISPONIBLE"
+                : "STATUS: ACTIVE // AVAILABLE"}
+            </span>
+          </div>
+          <span class="tracking-wider text-[var(--color-text-secondary)] font-medium">
+            {isEs ? "BOGOTÁ (UTC-5 · EE. UU.)" : "BOGOTA (UTC-5 · US-ALIGNED)"}
           </span>
-          <span class="tracking-wider">LAT 4.71° N</span>
         </div>
 
-        <!-- Arturo Photo Specimen -->
+        <!-- Arturo Photo Specimen (Round portrait) -->
         <div class="relative mx-auto flex justify-center py-1">
-          <div class="h-28 w-28 sm:h-32 sm:w-32 rounded-full border-2 border-[var(--color-surface-border)] p-1 bg-[var(--color-surface-card)] transition-colors hover:border-[var(--color-accent-gold)]">
-            <Image
+          <div class="h-28 w-28 sm:h-32 sm:w-32 rounded-full border-2 border-[var(--color-surface-border)] p-1 bg-[var(--color-surface-card)] transition-colors hover:border-[var(--color-accent-gold)] overflow-hidden shadow-sm">
+            <Picture
               src={arturoPhoto}
               alt="Arturo Nava - Senior Software / AI Engineer"
-              width={128}
-              height={128}
-              format="webp"
+              formats={["avif", "webp"]}
+              width={320}
+              height={320}
+              quality={95}
               loading="eager"
               fetchpriority="high"
               decoding="async"
+              pictureAttributes={{
+                class: "block h-full w-full rounded-full overflow-hidden",
+              }}
               class="h-full w-full rounded-full object-cover"
             />
           </div>
@@ -186,9 +200,9 @@ const techStack = [
             </span>
             <span
               class="text-[var(--color-accent-gold)] font-semibold text-[9.5px] truncate"
-              title="GO · RUST · EBPF"
+              title="GO · RUST · LINUX"
             >
-              // GO · RUST · EBPF
+              // GO · RUST · LINUX
             </span>
           </div>
           <div class="rounded-sm border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)]/70 px-2 py-1.5 flex flex-col justify-center">
@@ -197,9 +211,9 @@ const techStack = [
             </span>
             <span
               class="text-[var(--color-accent-gold)] font-semibold text-[9.5px] truncate"
-              title="SIMD CONCURRENCY"
+              title="SIMD & CONCURRENCY"
             >
-              // SIMD CONCURRENCY
+              // SIMD &amp; CONCURRENCY
             </span>
           </div>
         </div>

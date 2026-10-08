@@ -25,7 +25,7 @@ deliverables:
   - "Sistema de diseño UI/UX responsivo: Componentes modulares accesibles, micro-interacciones fluidas y adaptabilidad total en cualquier dispositivo"
   - "Integración de formularios, CMS y analítica: Conexión con gestores de contenido headless, telemetría de eventos y canalización de leads"
   - "Despliegue global en Edge y CI/CD: Alojamiento en redes de distribución de contenido (CDN), compresión en el borde y pipelines de entrega continua"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Construir Plataforma Web"
 searchKeywords:
   [

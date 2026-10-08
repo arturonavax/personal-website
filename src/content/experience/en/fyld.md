@@ -11,6 +11,7 @@ startDate: 2019-05-01
 endDate: 2023-09-01
 order: 4
 locale: "en"
+translationKey: "fyld"
 skills:
   - "Golang"
   - "gRPC"

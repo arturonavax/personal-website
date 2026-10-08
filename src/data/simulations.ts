@@ -38,6 +38,7 @@ export interface ArchitectureSimulation {
 export const rawSimulationsData: ArchitectureSimulation[] = [
   {
     id: "fraud-engine",
+    visible: false,
     name: "real-time-fraud-evaluation",
     scriptName: "fraud_strategy_runner.go",
     company: "Mercado Libre",
@@ -123,6 +124,7 @@ export const rawSimulationsData: ArchitectureSimulation[] = [
   },
   {
     id: "biometric-trust",
+    visible: false,
     name: "biometric-identity-pipeline",
     scriptName: "biometric_identity_verifier.go",
     company: "Imagemaker",
@@ -208,6 +210,7 @@ export const rawSimulationsData: ArchitectureSimulation[] = [
   },
   {
     id: "snowflake-streaming",
+    visible: false,
     name: "snowflake-olap-sync",
     scriptName: "snowflake_event_streaming_sink.go",
     company: "Leal",
@@ -293,6 +296,7 @@ export const rawSimulationsData: ArchitectureSimulation[] = [
   },
   {
     id: "edge-safety-inference",
+    visible: false,
     name: "edge-predictive-safety",
     scriptName: "field_safety_inference_stream.py",
     company: "FYLD",

@@ -1,7 +1,7 @@
 ---
 company: "E.T.C.R Rómulo Gallegos"
 companyUrl: "https://www.instagram.com/etcrromulogallegosmcbo/"
-companyDomain: "https://www.instagram.com/etcrromulogallegosmcbo/"
+companyDomain: "instagram.com"
 companyIndustry: "Educación Técnica Media y Comercial"
 companyDescription: "Institución de educación media técnica en Maracaibo, Venezuela, especializada en la formación técnica en informática y contabilidad mercantil."
 role: "Desarrollador de Software"
@@ -11,6 +11,7 @@ startDate: 2017-12-01
 endDate: 2018-03-01
 order: 8
 locale: "es"
+translationKey: "romulo-gallegos"
 skills:
   - "Golang"
   - "PostgreSQL"

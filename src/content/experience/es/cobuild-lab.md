@@ -11,6 +11,7 @@ startDate: 2018-11-01
 endDate: 2019-06-01
 order: 5
 locale: "es"
+translationKey: "cobuild-lab"
 skills:
   - "Golang (Cobra, Gin)"
   - "IBM Cloudant"
