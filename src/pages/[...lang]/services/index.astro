@@ -28,11 +28,11 @@ const allServices = await getVisibleCollection(
 const sortedServices = allServices.sort((a, b) => a.data.order - b.data.order);
 
 const pageTitle = isEs
-  ? "Servicios Técnicos - Arturo Nava"
-  : "Technical Services - Arturo Nava";
+  ? "Servicios Técnicos & Consultoría - Arturo Nava"
+  : "Technical Services & Engineering Consulting - Arturo Nava";
 const pageDescription = isEs
-  ? "Asesoría en arquitectura de producción, consultoría de sistemas distribuidos, auditorías de rendimiento, plantillas de código y mentoría Staff."
-  : "Production engineering advisory, distributed systems consulting, performance audits, architectural blueprints, and 1-on-1 Staff mentorship.";
+  ? "Consultoría en sistemas distribuidos, motores antifraude en tiempo real, auditorías de latencia p99, flujos agénticos de IA y seguridad de aplicaciones."
+  : "High-concurrency distributed systems consulting, real-time fraud engines, p99 latency audits, production AI workflows, and AppSec hardening.";
 ---
 
 <BaseLayout
@@ -58,12 +58,12 @@ const pageDescription = isEs
           </span>
         </div>
         <h1 class="text-3xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-4xl">
-          {isEs ? "Servicios Técnicos" : "Technical Services"}
+          {isEs ? "Servicios Técnicos & Consultoría" : "Technical Services & Advisory"}
         </h1>
         <p class="mt-3 max-w-2xl text-base text-[var(--color-text-secondary)] leading-relaxed">
           {isEs
-            ? "Asesoría técnica estratégica, diseño de sistemas distribuidos, auditorías de latencia p99 y plantillas de código probadas en entornos de producción a gran escala."
-            : "High-leverage engineering advisory, distributed systems design, backend performance audits, and production-tested codebase blueprints built from real-world high-throughput deployments."}
+            ? "Consultoría en arquitectura distribuida, diseño de motores antifraude de baja latencia, auditorías de rendimiento p99 e integración de pipelines de IA para empresas de base tecnológica."
+            : "High-concurrency systems design, sub-50ms real-time fraud engines, p99 latency audits, and production-grade AI agent integrations for venture-backed and high-growth engineering teams."}
         </p>
       </header>
     </div>

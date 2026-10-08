@@ -13,29 +13,29 @@ const aiWorkflowPillars = [
     tool: "Spec-Driven Dev (SDD)",
     badge: "Schema-First",
     detail: isEs
-      ? "Especificaciones formales, diseño de invariantes y contratos de tipos estrictos antes de cualquier ciclo de ejecución generativo."
-      : "Formal architectural specs, system invariants, and strict type contracts defined prior to generative execution loops.",
+      ? "Especificaciones formales, diseño de invariantes y contratos de tipos estrictos antes de cualquier ciclo generativo para evitar desvíos."
+      : "Formal architectural specs, system invariants, and strict type contracts defined before generative execution loops to prevent drift.",
   },
   {
-    tool: "Eval-Driven Dev & Guardrails",
-    badge: "Continuous Eval",
+    tool: "Continuous Evals & Guardrails",
+    badge: "Zero Hallucination",
     detail: isEs
-      ? "Evaluación continua y testing adversarial con herramientas como Promptfoo y Langfuse para prevenir regresiones y alucinaciones."
-      : "Continuous evaluation and adversarial testing with tools like Promptfoo and Langfuse to eliminate regressions and hallucinations.",
+      ? "Evaluación continua y testing adversarial con Promptfoo y Langfuse para detectar alucinaciones y regresiones antes de producción."
+      : "Continuous evaluation and adversarial testing with Promptfoo and Langfuse to eliminate hallucinations and regressions before production.",
   },
   {
-    tool: "Multi-Agent & Context Protocol",
-    badge: "MCP / DAG Workflows",
+    tool: "Context Protocol & Multi-Agent DAGs",
+    badge: "MCP / Workflows",
     detail: isEs
-      ? "Descomposición jerárquica de tareas en grafos estructurados e integración de herramientas mediante Model Context Protocol (MCP)."
-      : "Hierarchical task decomposition into structured graphs and external tool integration via Model Context Protocol (MCP).",
+      ? "Descomposición jerárquica de tareas en grafos estructurados e integración directa de herramientas mediante Model Context Protocol (MCP)."
+      : "Hierarchical task decomposition into structured graphs and external tool execution via standard Model Context Protocol (MCP).",
   },
   {
-    tool: "Herdr (herdr.dev) Supervision",
-    badge: "Stateful Daemons",
+    tool: "Stateful Daemon Supervision",
+    badge: "Crash-Resilient",
     detail: isEs
-      ? "Supervisión del ciclo de vida de procesos de larga duración, checkpoints de sesión resilientes y recuperación de daemons."
-      : "Long-running daemon supervision, resilient session checkpointing, and robust process crash-recovery.",
+      ? "Supervisión de daemons de larga duración con checkpoints de sesión incrementales y recuperación resiliente ante caídas de procesos."
+      : "Long-running daemon supervision with resilient session checkpointing and automated crash recovery for autonomous coding workflows.",
   },
 ];
 ---
@@ -49,16 +49,16 @@ const aiWorkflowPillars = [
     <div>
       <span class="font-mono text-xs text-[var(--color-accent-gold)] tracking-widest uppercase font-semibold">
         {isEs
-          ? "ORQUESTACIÓN & PIPELINES DE IA"
-          : "AI ORCHESTRATION & AGENTIC PIPELINES"}
+          ? "ORQUESTACIÓN DE IA & SISTEMAS AGÉNTICOS"
+          : "AI ORCHESTRATION & AGENTIC SYSTEMS"}
       </span>
       <h2
         id="ai-workflow-heading"
         class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl mt-0.5"
       >
         {isEs
-          ? "Flujo de Desarrollo AI Engineer & Orquestación"
-          : "Modern AI Engineer Workflow & Multi-Agent Toolchain"}
+          ? "Ingeniería de IA en Producción & Guardrails Deterministas"
+          : "Production AI Engineering & Deterministic Toolchains"}
       </h2>
     </div>
     <span class="text-xs font-mono text-[var(--color-text-muted)] hidden sm:inline">
