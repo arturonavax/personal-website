@@ -105,11 +105,8 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
       </a>
 
       <!-- Availability Indicator -->
-      <div class="hidden min-[1700px]:flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-0.5 text-[11px] font-mono text-[var(--color-text-secondary)] whitespace-nowrap shrink-0">
-        <span class="relative flex h-2 w-2 shrink-0">
-          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent-status)] opacity-75"></span>
-          <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent-status)]"></span>
-        </span>
+      <div class="hidden min-[1700px]:flex items-center gap-2 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-0.5 text-[11px] font-mono text-[var(--color-text-secondary)] whitespace-nowrap shrink-0">
+        <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent-status)]"></span>
         <span>{t("hero.badge")}</span>
       </div>
     </div>
@@ -134,13 +131,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
         ]}
       >
         <span>{t("nav.about")}</span>
-        <span
-          class:list={[
-            "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
-            isAboutActive ? "inline-block" : "hidden",
-          ]}
-          aria-hidden="true"
-        ></span>
       </a>
 
       <!-- 2. Trayectoria / Experience -->
@@ -158,13 +148,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           ]}
         >
           <span>{t("nav.experience")}</span>
-          <span
-            class:list={[
-              "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
-              isExperienceActive ? "inline-block" : "hidden",
-            ]}
-            aria-hidden="true"
-          ></span>
         </a>
       )}
 
@@ -183,13 +166,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           ]}
         >
           <span>{t("nav.projects")}</span>
-          <span
-            class:list={[
-              "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
-              isProjectsActive ? "inline-block" : "hidden",
-            ]}
-            aria-hidden="true"
-          ></span>
         </a>
       )}
 
@@ -208,13 +184,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           ]}
         >
           <span>{t("nav.caseStudies")}</span>
-          <span
-            class:list={[
-              "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
-              isCaseStudiesActive ? "inline-block" : "hidden",
-            ]}
-            aria-hidden="true"
-          ></span>
         </a>
       )}
 
@@ -233,13 +202,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           ]}
         >
           <span>{t("nav.services")}</span>
-          <span
-            class:list={[
-              "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle",
-              isServicesActive ? "inline-block" : "hidden",
-            ]}
-            aria-hidden="true"
-          ></span>
         </a>
       )}
 
@@ -250,10 +212,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
         class="hidden min-[1380px]:flex h-full items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
       >
         <span>{t("nav.contact")}</span>
-        <span
-          class="active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1.5 shrink-0 align-middle hidden"
-          aria-hidden="true"
-        ></span>
       </a>
 
       <!-- Menú Desplegable "Más" (Visible en >= 820px y se oculta en >= 1380px si no hay Blog/Judges) -->
@@ -276,13 +234,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
             ]}
           >
             <span>{t("nav.more")}</span>
-            <span
-              class:list={[
-                "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] ml-1 shrink-0 align-middle",
-                isMoreActive ? "inline-block" : "hidden",
-              ]}
-              aria-hidden="true"
-            ></span>
             <svg
               class="h-3.5 w-3.5 stroke-current fill-none transition-transform duration-200 group-open/more:rotate-180"
               viewBox="0 0 24 24"
@@ -309,13 +260,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 ]}
               >
                 <span>{t("nav.projects")}</span>
-                <span
-                  class:list={[
-                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                    isProjectsActive ? "inline-block" : "hidden",
-                  ]}
-                  aria-hidden="true"
-                ></span>
               </a>
             )}
 
@@ -336,13 +280,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                   <span class="text-sm">🔬</span>
                   <span>{t("nav.caseStudies")}</span>
                 </div>
-                <span
-                  class:list={[
-                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                    isCaseStudiesActive ? "inline-block" : "hidden",
-                  ]}
-                  aria-hidden="true"
-                ></span>
               </a>
             )}
 
@@ -363,13 +300,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                   <span class="text-sm">⚡</span>
                   <span>{t("nav.services")}</span>
                 </div>
-                <span
-                  class:list={[
-                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                    isServicesActive ? "inline-block" : "hidden",
-                  ]}
-                  aria-hidden="true"
-                ></span>
               </a>
             )}
 
@@ -390,13 +320,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                   <span>📝</span>
                   <span>{t("nav.blog")}</span>
                 </div>
-                <span
-                  class:list={[
-                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                    isBlogActive ? "inline-block" : "hidden",
-                  ]}
-                  aria-hidden="true"
-                ></span>
               </a>
             )}
 
@@ -427,10 +350,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 <span class="text-sm">💬</span>
                 <span>{t("nav.contact")}</span>
               </div>
-              <span
-                class="active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0 hidden"
-                aria-hidden="true"
-              ></span>
             </a>
           </div>
         </details>
@@ -563,13 +482,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
               ]}
             >
               <span>{t("nav.about")}</span>
-              <span
-                class:list={[
-                  "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                  isAboutActive ? "inline-block" : "hidden",
-                ]}
-                aria-hidden="true"
-              ></span>
             </a>
 
             {hasExperience && (
@@ -578,20 +490,13 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 data-nav-section="experience"
                 data-astro-prefetch="hover"
                 class:list={[
-                  "rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
+                  "rounded-sm px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
                   isExperienceActive
                     ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/40"
                     : "",
                 ]}
               >
                 <span>{t("nav.experience")}</span>
-                <span
-                  class:list={[
-                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                    isExperienceActive ? "inline-block" : "hidden",
-                  ]}
-                  aria-hidden="true"
-                ></span>
               </a>
             )}
 
@@ -601,20 +506,13 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 data-nav-section="projects"
                 data-astro-prefetch="hover"
                 class:list={[
-                  "rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
+                  "rounded-sm px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
                   isProjectsActive
                     ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/40"
                     : "",
                 ]}
               >
                 <span>{t("nav.projects")}</span>
-                <span
-                  class:list={[
-                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                    isProjectsActive ? "inline-block" : "hidden",
-                  ]}
-                  aria-hidden="true"
-                ></span>
               </a>
             )}
 
@@ -624,7 +522,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 data-nav-section="case-studies"
                 data-astro-prefetch="hover"
                 class:list={[
-                  "rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
+                  "rounded-sm px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
                   isCaseStudiesActive
                     ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/40"
                     : "",
@@ -634,13 +532,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                   <span class="text-sm">🔬</span>
                   <span>{t("nav.caseStudies")}</span>
                 </div>
-                <span
-                  class:list={[
-                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                    isCaseStudiesActive ? "inline-block" : "hidden",
-                  ]}
-                  aria-hidden="true"
-                ></span>
               </a>
             )}
 
@@ -650,7 +541,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 data-nav-section="services"
                 data-astro-prefetch="hover"
                 class:list={[
-                  "rounded px-3 py-2 text-left text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] flex items-center justify-between cursor-pointer",
+                  "rounded-sm px-3 py-2 text-left text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-accent-gold)] flex items-center justify-between cursor-pointer",
                   isServicesActive
                     ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/50"
                     : "",
@@ -660,26 +551,15 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                   <span>⚡</span>
                   <span>{t("nav.services")}</span>
                 </div>
-                <span
-                  class:list={[
-                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                    isServicesActive ? "inline-block" : "hidden",
-                  ]}
-                  aria-hidden="true"
-                ></span>
               </a>
             )}
 
             <a
               href={isHomePage ? "#contact" : `${homeUrl}#contact`}
               data-nav-section="contact"
-              class="rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between"
+              class="rounded-sm px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between"
             >
               <span>{t("nav.contact")}</span>
-              <span
-                class="active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0 hidden"
-                aria-hidden="true"
-              ></span>
             </a>
 
             {hasPosts && (
@@ -688,20 +568,13 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 data-nav-section="blog"
                 data-astro-prefetch="hover"
                 class:list={[
-                  "rounded px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
+                  "rounded-sm px-3 py-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-primary)] flex items-center justify-between",
                   isBlogActive
                     ? "text-[var(--color-accent-gold)] font-bold bg-[var(--color-surface-border)]/40"
                     : "",
                 ]}
               >
                 <span>{t("nav.blog")}</span>
-                <span
-                  class:list={[
-                    "active-dot h-1.5 w-1.5 rounded-full bg-[var(--color-accent-gold)] shadow-[0_0_8px_var(--color-accent-gold)] shrink-0",
-                    isBlogActive ? "inline-block" : "hidden",
-                  ]}
-                  aria-hidden="true"
-                ></span>
               </a>
             )}
 
@@ -941,7 +814,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
         document.querySelectorAll("a[data-nav-section]").forEach(function (a) {
           var sec = a.getAttribute("data-nav-section");
           var isCurrent = sec === currentSection;
-          var dot = a.querySelector(".active-dot");
 
           if (isCurrent) {
             a.setAttribute("aria-current", "page");
@@ -951,10 +823,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
               a.classList.remove("border-transparent");
             }
             a.classList.remove("text-[var(--color-text-secondary)]");
-            if (dot) {
-              dot.classList.remove("hidden");
-              dot.classList.add("inline-block");
-            }
           } else {
             a.removeAttribute("aria-current");
             a.classList.remove(
@@ -965,10 +833,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
               a.classList.add("border-transparent");
             }
             a.classList.add("text-[var(--color-text-secondary)]");
-            if (dot) {
-              dot.classList.add("hidden");
-              dot.classList.remove("inline-block");
-            }
           }
         });
 
@@ -987,27 +851,18 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
 
         var moreSummary = document.getElementById("header-more-summary");
         if (moreSummary) {
-          var moreDot = moreSummary.querySelector(".active-dot");
           if (isMoreActive) {
             moreSummary.classList.add(
               "text-[var(--color-accent-gold)]",
               "border-b-[var(--color-accent-gold)]",
             );
             moreSummary.classList.remove("border-transparent");
-            if (moreDot) {
-              moreDot.classList.remove("hidden");
-              moreDot.classList.add("inline-block");
-            }
           } else {
             moreSummary.classList.remove(
               "text-[var(--color-accent-gold)]",
               "border-b-[var(--color-accent-gold)]",
             );
             moreSummary.classList.add("border-transparent");
-            if (moreDot) {
-              moreDot.classList.add("hidden");
-              moreDot.classList.remove("inline-block");
-            }
           }
         }
       }

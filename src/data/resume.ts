@@ -98,8 +98,9 @@ function cleanText(text: string): string {
   s = s.replace(/(?:^|[^\w])_([^_]+)_(?=[^\w]|$)/g, " $1");
   s = s.replace(/`([^`]+)`/g, "$1");
   s = s.replace(/&bull;/g, "•");
-  s = s.replace(/&ndash;/g, "–");
-  s = s.replace(/&mdash;/g, "—");
+  s = s.replace(/&ndash;/g, "-");
+  s = s.replace(/&mdash;/g, "-");
+  s = s.replace(/[\u2013\u2014]/g, "-");
   s = s.replace(/&nbsp;/g, " ");
   s = s.replace(/\s+/g, " ").trim();
   return s;
@@ -282,7 +283,7 @@ export function parseHtmlResume(rawHtml: string): ResumeData {
     (match, tag, attrs, inner) => {
       const tagName = tag.toLowerCase();
       const rawText = cleanText(inner);
-      const shortLabel = rawText.split("—")[0]?.trim() || rawText;
+      const shortLabel = rawText.split("-")[0]?.trim() || rawText;
 
       const idMatch = attrs.match(/id=["']([^"']+)["']/i);
       const id = idMatch ? idMatch[1] : slugify(shortLabel);

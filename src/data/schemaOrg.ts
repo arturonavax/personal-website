@@ -20,8 +20,8 @@ export function getHomepageJsonLd(locale: "en" | "es" = "en") {
         "@id": "https://arturonavax.dev/#profilepage",
         url: isEs ? "https://arturonavax.dev/es/" : "https://arturonavax.dev/",
         name: isEs
-          ? "Arturo Nava — Ingeniero Senior de Backend y Sistemas Distribuidos"
-          : "Arturo Nava — Senior Backend & Distributed Systems Engineer",
+          ? "Arturo Nava - Ingeniero Senior de Backend y Sistemas Distribuidos"
+          : "Arturo Nava - Senior Backend & Distributed Systems Engineer",
         isPartOf: { "@id": "https://arturonavax.dev/#website" },
         inLanguage: isEs ? "es" : "en",
         dateCreated: "2025-09-01T00:00:00Z",
@@ -134,8 +134,8 @@ export function getHomepageJsonLd(locale: "en" | "es" = "en") {
           {
             "@type": "Role",
             roleName: isEs
-              ? "Senior Software Engineer – Plataforma Core & Seguridad"
-              : "Senior Software Engineer – Core Platform & Security",
+              ? "Senior Software Engineer - Plataforma Core & Seguridad"
+              : "Senior Software Engineer - Core Platform & Security",
             startDate: "2023-08-01",
             endDate: "2026-02-01",
             worksFor: {
@@ -160,8 +160,8 @@ export function getHomepageJsonLd(locale: "en" | "es" = "en") {
           {
             "@type": "Role",
             roleName: isEs
-              ? "Software Engineer – Plataformas de Identidad & Confianza"
-              : "Software Engineer – Identity & Trust Platforms",
+              ? "Software Engineer - Plataformas de Identidad & Confianza"
+              : "Software Engineer - Identity & Trust Platforms",
             startDate: "2021-02-01",
             endDate: "2021-12-01",
             worksFor: {

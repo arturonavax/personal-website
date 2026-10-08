@@ -106,7 +106,7 @@ const sameCompanyExperiences = allExperiences.filter(
 );
 const companyFilterUrl = `${basePath}/experience/?company=${encodeURIComponent(company.toLowerCase().trim())}`;
 
-const pageTitle = `${role} @ ${company} — Arturo Nava`;
+const pageTitle = `${role} @ ${company} - Arturo Nava`;
 const pageDescription = isEs
   ? `Registro de carrera, hitos de arquitectura y simulaciones interactivas de Arturo Nava como ${role} en ${company}.`
   : `Career milestone, architecture achievements, and interactive system simulations for Arturo Nava as ${role} at ${company}.`;
@@ -114,7 +114,7 @@ const pageDescription = isEs
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  headline: `${role} at ${company} — Career Milestone & System Architecture`,
+  headline: `${role} at ${company} - Career Milestone & System Architecture`,
   description: pageDescription,
   author: {
     "@type": "Person",
@@ -287,7 +287,7 @@ const jobIndexItems: IndexItem[] = [
                 <span>{employmentType}</span>
               </span>
               <span class="truncate">
-                {startStr} &mdash; {endStr} &bull; {location}
+                {startStr} - {endStr} &bull; {location}
               </span>
             </div>
 

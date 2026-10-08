@@ -1,0 +1,88 @@
+---
+import type { Locale } from "@/i18n/ui";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const isEs = locale === "es";
+
+const aiWorkflowPillars = [
+  {
+    tool: "Spec-Driven Dev (SDD)",
+    badge: "Schema-First",
+    detail: isEs
+      ? "Especificaciones formales, diseño de invariantes y contratos de tipos estrictos antes de cualquier ciclo de ejecución generativo."
+      : "Formal architectural specs, system invariants, and strict type contracts defined prior to generative execution loops.",
+  },
+  {
+    tool: "Custom Pi (pi.dev) Harness",
+    badge: "Adaptive Eval",
+    detail: isEs
+      ? "Harness a medida sobre el runtime de pi.dev para benchmarking heurístico, stress testing de modelos y verificación de razonamiento."
+      : "Custom evaluation and execution harness over pi.dev for heuristic benchmarking, model stress-testing, and reasoning verification.",
+  },
+  {
+    tool: "Multi-Agent Orchestration",
+    badge: "DAG Topologies",
+    detail: isEs
+      ? "Descomposición jerárquica de tareas complejas en grafos acíclicos dirigidos (DAG) con validación estricta de tool-calling."
+      : "Hierarchical task decomposition into directed acyclic graphs (DAG) with strictly typed tool-calling schemas.",
+  },
+  {
+    tool: "Herdr (herdr.dev) Supervision",
+    badge: "Stateful Daemons",
+    detail: isEs
+      ? "Supervisión del ciclo de vida de procesos de larga duración, checkpoints de sesión resilientes y recuperación de daemons."
+      : "Long-running daemon supervision, resilient session checkpointing, and robust process crash-recovery.",
+  },
+];
+---
+
+<section
+  id="ai-workflow"
+  aria-labelledby="ai-workflow-heading"
+  class="space-y-4"
+>
+  <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
+    <div>
+      <span class="font-mono text-xs text-[var(--color-accent-gold)] tracking-widest uppercase font-semibold">
+        {isEs
+          ? "ORQUESTACIÓN & PIPELINES DE IA"
+          : "AI ORCHESTRATION & AGENTIC PIPELINES"}
+      </span>
+      <h2
+        id="ai-workflow-heading"
+        class="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl mt-0.5"
+      >
+        {isEs
+          ? "Flujo de Desarrollo AI Engineer & Orquestación"
+          : "Modern AI Engineer Workflow & Multi-Agent Toolchain"}
+      </h2>
+    </div>
+    <span class="text-xs font-mono text-[var(--color-text-muted)] hidden sm:inline">
+      Ghostty : Multi-Agent : Test Harnesses
+    </span>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 font-mono">
+    {aiWorkflowPillars.map((p) => (
+      <div class="geometric-box relative p-4 sm:p-5 rounded-sm space-y-3 flex flex-col justify-between group">
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="inline-block rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-xs text-[var(--color-accent-gold)] font-medium">
+              {p.badge}
+            </span>
+          </div>
+          <strong class="text-[var(--color-text-primary)] font-bold text-sm sm:text-base leading-snug block group-hover:text-[var(--color-accent-gold)] transition-colors">
+            {p.tool}
+          </strong>
+        </div>
+        <p class="text-xs sm:text-sm text-[var(--color-text-secondary)] font-sans leading-relaxed">
+          {p.detail}
+        </p>
+      </div>
+    ))}
+  </div>
+</section>

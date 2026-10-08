@@ -56,7 +56,7 @@ export async function GET(context: APIContext) {
               : "";
 
           return {
-            title: `${isEs ? "[ES] " : ""}${project.data.title} — ${project.data.role}`,
+            title: `${isEs ? "[ES] " : ""}${project.data.title} - ${project.data.role}`,
             pubDate: stableDate,
             description: `${project.data.description}${stackSuffix}`,
             link: isEs ? `/es/projects/${slug}/` : `/projects/${slug}/`,
@@ -70,7 +70,7 @@ export async function GET(context: APIContext) {
   const items = blogItems.length > 0 ? blogItems : projectItems;
 
   return rss({
-    title: "Arturo Nava — Engineering Blog & Systems Notes",
+    title: "Arturo Nava - Engineering Blog & Systems Notes",
     description:
       "Senior Software / AI Engineer specializing in Go, Rust, Distributed Systems, and Application Security.",
     site: context.site?.origin ?? "https://arturonavax.dev",

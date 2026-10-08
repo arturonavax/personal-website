@@ -4,7 +4,7 @@ companyUrl: "https://leal.co"
 companyDomain: "leal.co"
 companyIndustry: "Ecosistema Retail, Fidelización y Fintech"
 companyDescription: "Plataforma fintech y de fidelización B2B/B2C a gran escala en Latinoamérica, procesando millones de transacciones diarias, redenciones de recompensas e interacciones de usuarios en miles de comercios."
-role: "Senior Software Engineer – Core Platform & Security"
+role: "Senior Software Engineer - Core Platform & Security"
 location: "Bogotá, D.C., Colombia (Híbrido / Remoto)"
 employmentType: "Jornada completa"
 startDate: 2025-09-01
