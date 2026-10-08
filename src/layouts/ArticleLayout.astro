@@ -35,6 +35,9 @@ const rawPath = Astro.url.pathname;
 const normalizedPath = rawPath.endsWith("/") ? rawPath : `${rawPath}/`;
 const canonicalUrl = `${siteUrl}${normalizedPath}`;
 
+const cleanPath = rawPath.replace(/^\//, "").replace(/\/$/, "");
+const ogImageUrl = `/og/${cleanPath}.png`;
+
 const jsonLd = buildArticleJsonLd({
   locale,
   canonicalUrl,
@@ -52,6 +55,7 @@ const jsonLd = buildArticleJsonLd({
   type="article"
   translationKey={translationKey}
   collectionName={collectionName}
+  ogImage={ogImageUrl}
   jsonLd={jsonLd}
 >
   <article class="mx-auto max-w-3xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6">

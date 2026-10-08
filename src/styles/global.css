@@ -22,8 +22,8 @@
     "Geist Variable", "Geist Sans", "Geist Fallback", -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono:
-    "GeistMono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo,
-    Monaco, Consolas, monospace;
+    "GeistMono Variable", "Geist Mono", "GeistMono Fallback", ui-monospace,
+    SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Elevation Spacers & Easing Primitives */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
@@ -50,14 +50,23 @@
   --color-btn-gold-text: #1e0103;
 }
 
-/* Font Face Metric Overrides for Zero Layout Shift (SPEC-004 Section 3.4.2) */
+/* Font Face Metric Overrides for Zero Layout Shift (SPEC-004 & SPEC-010) */
 @font-face {
   font-family: "Geist Fallback";
   src: local("Arial");
-  ascent-override: 84.38%;
-  descent-override: 21.88%;
+  ascent-override: 92.5%;
+  descent-override: 24.5%;
   line-gap-override: 0%;
-  size-adjust: 106.67%;
+  size-adjust: 102%;
+}
+
+@font-face {
+  font-family: "GeistMono Fallback";
+  src: local("Courier New");
+  ascent-override: 85%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+  size-adjust: 98%;
 }
 
 @font-face {
@@ -832,4 +841,10 @@ html.lang-text-reacting .copy-feedback,
     animation: none !important;
     transform: none !important;
   }
+}
+
+/* CSS Rendering Virtualization for Extensive Feeds (SPEC-010 Subsystem E) */
+.virtualized-feed-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 420px;
 }
