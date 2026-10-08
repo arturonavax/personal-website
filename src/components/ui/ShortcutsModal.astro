@@ -184,16 +184,6 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
             <span>
               {isEs ? "Presiona Esc para cerrar" : "Press Esc to close"}
             </span>
-            <span class="text-[var(--color-surface-border)]">&bull;</span>
-            <span class="flex items-center gap-1">
-              <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)]">
-                j
-              </kbd>
-              <kbd class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)]">
-                k
-              </kbd>
-              <span>{isEs ? "scroll" : "scroll"}</span>
-            </span>
           </div>
           <span class="text-[var(--color-accent-gold)] font-semibold">
             arturonavax.dev
@@ -244,6 +234,12 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
           passive: true,
           signal,
         });
+
+        if ("ResizeObserver" in window) {
+          const ro = new ResizeObserver(() => updateScrollHint());
+          ro.observe(gridScroll);
+          signal.addEventListener("abort", () => ro.disconnect());
+        }
       }
 
       (window as any).__openShortcutsModal = () => toggleShortcutsModal(true);
@@ -255,7 +251,12 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
         if (isOpen && !dialog.open && typeof dialog.showModal === "function") {
           dialog.showModal();
           openBtn?.setAttribute("aria-expanded", "true");
-          requestAnimationFrame(updateScrollHint);
+          updateScrollHint();
+          requestAnimationFrame(() => {
+            updateScrollHint();
+            setTimeout(updateScrollHint, 50);
+            setTimeout(updateScrollHint, 150);
+          });
         } else if (!isOpen && dialog.open) {
           dialog.close();
           openBtn?.setAttribute("aria-expanded", "false");

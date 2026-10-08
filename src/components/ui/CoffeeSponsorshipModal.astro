@@ -508,17 +508,32 @@ const hasSponsorships =
           var scrollHint = document.getElementById("coffee-scroll-hint");
 
           function updateCoffeeScrollHint() {
-            if (!scrollBody || !scrollHint) return;
-            var hasMore =
-              scrollBody.scrollHeight >
-              scrollBody.clientHeight + scrollBody.scrollTop + 14;
+            var sb = document.getElementById("coffee-dialog-scroll");
+            var sh = document.getElementById("coffee-scroll-hint");
+            if (!sb || !sh) return;
+            var hasMore = sb.scrollHeight > sb.clientHeight + sb.scrollTop + 14;
             if (hasMore) {
-              scrollHint.classList.remove("opacity-0");
-              scrollHint.classList.add("opacity-100");
+              sh.classList.remove("opacity-0");
+              sh.classList.add("opacity-100");
             } else {
-              scrollHint.classList.remove("opacity-100");
-              scrollHint.classList.add("opacity-0");
+              sh.classList.remove("opacity-100");
+              sh.classList.add("opacity-0");
             }
+          }
+
+          window.__updateCoffeeScrollHint = updateCoffeeScrollHint;
+
+          if (!window.__coffeeResizeBound) {
+            window.__coffeeResizeBound = true;
+            window.addEventListener(
+              "resize",
+              function () {
+                if (typeof window.__updateCoffeeScrollHint === "function") {
+                  window.__updateCoffeeScrollHint();
+                }
+              },
+              { passive: true },
+            );
           }
 
           if (scrollBody && !boundElements.has(scrollBody)) {
@@ -526,10 +541,40 @@ const hasSponsorships =
             scrollBody.addEventListener("scroll", updateCoffeeScrollHint, {
               passive: true,
             });
+            if ("ResizeObserver" in window) {
+              var ro = new ResizeObserver(function () {
+                updateCoffeeScrollHint();
+              });
+              ro.observe(scrollBody);
+            }
           }
 
           if (!boundElements.has(dialog)) {
             boundElements.add(dialog);
+
+            if ("MutationObserver" in window) {
+              var mo = new MutationObserver(function (mutations) {
+                for (var i = 0; i < mutations.length; i++) {
+                  if (
+                    mutations[i].attributeName === "open" &&
+                    dialog &&
+                    dialog.open
+                  ) {
+                    updateCoffeeScrollHint();
+                    requestAnimationFrame(function () {
+                      updateCoffeeScrollHint();
+                      setTimeout(updateCoffeeScrollHint, 50);
+                      setTimeout(updateCoffeeScrollHint, 150);
+                    });
+                  }
+                }
+              });
+              mo.observe(dialog, {
+                attributes: true,
+                attributeFilter: ["open"],
+              });
+            }
+
             // Close when clicking dialog backdrop
             dialog.addEventListener("click", function (e) {
               var rect = dialog.getBoundingClientRect();
@@ -548,6 +593,10 @@ const hasSponsorships =
             });
           }
 
+          if (dialog.open) {
+            updateCoffeeScrollHint();
+          }
+
           // Document-level delegation for opening/closing coffee modal
           if (!window.__globalCoffeeDocDelegationBound) {
             window.__globalCoffeeDocDelegationBound = true;
@@ -564,7 +613,12 @@ const hasSponsorships =
                 if (d) {
                   if (typeof d.showModal === "function") d.showModal();
                   else d.setAttribute("open", "");
-                  requestAnimationFrame(updateCoffeeScrollHint);
+                  updateCoffeeScrollHint();
+                  requestAnimationFrame(function () {
+                    updateCoffeeScrollHint();
+                    setTimeout(updateCoffeeScrollHint, 50);
+                    setTimeout(updateCoffeeScrollHint, 150);
+                  });
                 }
                 return;
               }

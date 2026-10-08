@@ -601,13 +601,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
       if (!window.__indexKeydownBound) {
         window.__indexKeydownBound = true;
         document.addEventListener("keydown", function (e) {
-          var active = document.activeElement;
-          var tag =
-            active && active.tagName ? active.tagName.toUpperCase() : "";
-          var isInputFocused =
-            tag === "INPUT" ||
-            tag === "TEXTAREA" ||
-            (active && active.isContentEditable);
           if (e.key === "Escape") {
             var currentPanel =
               panel || document.getElementById("mobile-page-index-container");
@@ -620,7 +613,35 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
               if (currentBtn) currentBtn.focus();
               return;
             }
+            return;
           }
+
+          var active = document.activeElement;
+          var tag =
+            active && active.tagName ? active.tagName.toUpperCase() : "";
+          var target = e.target;
+          var targetTag =
+            target && target.tagName ? target.tagName.toUpperCase() : "";
+          var isInputFocused =
+            tag === "INPUT" ||
+            tag === "TEXTAREA" ||
+            tag === "SELECT" ||
+            targetTag === "INPUT" ||
+            targetTag === "TEXTAREA" ||
+            targetTag === "SELECT" ||
+            Boolean(active && active.isContentEditable) ||
+            Boolean(target && target.isContentEditable);
+
+          if (isInputFocused) return;
+
+          var isModalOpen = Boolean(
+            document.querySelector(
+              'dialog[open], [role="dialog"]:not(.hidden)',
+            ),
+          );
+          if (isModalOpen) return;
+
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
 
           if (e.key === "i" || e.key === "I") {
             e.preventDefault();
@@ -629,12 +650,7 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
             }
           }
 
-          if (
-            (e.key === "p" || e.key === "P") &&
-            !e.ctrlKey &&
-            !e.metaKey &&
-            !e.altKey
-          ) {
+          if (e.key === "p" || e.key === "P") {
             var printBtn =
               document.getElementById("desktop-cv-print-btn") ||
               document.getElementById("mobile-cv-print-btn");
