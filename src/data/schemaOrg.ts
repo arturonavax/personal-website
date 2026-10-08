@@ -20,8 +20,8 @@ export function getHomepageJsonLd(locale: "en" | "es" = "en") {
         "@id": "https://arturonavax.dev/#profilepage",
         url: isEs ? "https://arturonavax.dev/es/" : "https://arturonavax.dev/",
         name: isEs
-          ? "Arturo Nava - Ingeniero Senior de Backend y Sistemas Distribuidos"
-          : "Arturo Nava - Senior Backend & Distributed Systems Engineer",
+          ? "Arturo Nava - Ingeniero de Software Senior / IA"
+          : "Arturo Nava - Senior Software / AI Engineer",
         isPartOf: { "@id": "https://arturonavax.dev/#website" },
         inLanguage: isEs ? "es" : "en",
         dateCreated: "2025-09-01T00:00:00Z",
@@ -35,11 +35,11 @@ export function getHomepageJsonLd(locale: "en" | "es" = "en") {
         name: "Arturo Nava",
         alternateName: ["arturonavax", "Arturo Enrique Nava Matheus"],
         jobTitle: isEs
-          ? "Ingeniero Senior de Backend y Sistemas Distribuidos"
-          : "Senior Backend & Distributed Systems Engineer",
+          ? "Ingeniero de Software Senior / IA"
+          : "Senior Software / AI Engineer",
         description: isEs
-          ? "Ingeniero de Backend y Sistemas Senior con más de 8 años de experiencia en la arquitectura de backends distribuidos de alto rendimiento, motores de detección de fraude en tiempo real y plataformas criptográficas en Go, Rust y Python. Disponible para roles remotos a tiempo completo Senior/Staff a nivel global vía Contractor B2B (W-8BEN) o EOR (alineado con la zona horaria UTC-5 / EE. UU., sin necesidad de patrocinio de visa)."
-          : "Senior Backend & Systems Engineer with 8+ years architecting high-throughput distributed backends, real-time fraud detection engines, and cryptographic platforms in Go, Rust, and Python. Open to remote full-time Senior/Staff roles globally via B2B contractor (W-8BEN) or EOR (aligned with UTC-5 / US time zones, no visa sponsorship needed).",
+          ? "Ingeniero de Software Senior / IA con más de 8 años diseñando arquitecturas distribuidas de alto rendimiento, motores antifraude en tiempo real, verificación criptográfica Web3 y flujos agénticos en Go, Rust y Python. Disponible para roles remotos Senior/Staff y consultoría a nivel global vía Contractor B2B (W-8BEN) o EOR (alineado con la zona horaria UTC-5 / EE. UU., sin patrocinio de visa)."
+          : "Senior Software & AI Engineer with 8+ years architecting high-throughput distributed backends, real-time fraud engines, Web3 cryptographic verification, and production AI workflows in Go, Rust, and Python. Open to remote full-time Senior/Staff roles and advisory globally via B2B contractor (W-8BEN) or EOR (aligned with UTC-5 / US time zones, no visa sponsorship needed).",
         url: "https://arturonavax.dev/",
         mainEntityOfPage: { "@id": "https://arturonavax.dev/#profilepage" },
         image: [

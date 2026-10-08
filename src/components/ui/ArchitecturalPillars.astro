@@ -16,38 +16,38 @@ const pillars = [
       ? "Arquitectura Limpia y Hexagonal"
       : "Clean & Hexagonal Architecture",
     desc: isEs
-      ? "Desacople estricto entre lógica de dominio, persistencia relacional y capas de transporte HTTP/gRPC."
-      : "Decoupled domain rules isolated from relational storage, message brokers, and delivery transport.",
+      ? "Aislamiento estricto entre lógica de negocio, persistencia relacional y protocolos de transporte. Cambiar bases de datos o APIs nunca altera el dominio."
+      : "Strict boundary isolation between domain logic, relational storage, and delivery protocols. Infrastructure migrations never compromise business rules.",
   },
   {
     index: "02",
     tag: "CONCURRENCY_RUNTIME",
     title: isEs
-      ? "Concurrencia de Primeros Principios"
-      : "First-Principles Concurrency",
+      ? "Concurrencia de Primeros Principios & Alto Throughput"
+      : "First-Principles Concurrency & High Throughput",
     desc: isEs
-      ? "Goroutines, canales y worker pools sin bloqueos; buffers de memoria de cero alocaciones (sync.Pool)."
-      : "Non-blocking Go worker pools, channels, and zero-allocation memory abstractions (sync.Pool).",
+      ? "Worker pools concurrentes en Go, canales sin bloqueos y reutilización de memoria con sync.Pool. Máxima saturación del hardware sin picos de latencia."
+      : "Non-blocking Go worker pools, lockless channels, and memory reuse via sync.Pool. Hardware resources saturate efficiently without garbage collection latency spikes.",
   },
   {
     index: "03",
     tag: "ZERO_TRUST_DEVSECOPS",
     title: isEs
-      ? "Seguridad Zero-Trust y Shift-Left"
-      : "Zero-Trust & Shift-Left DevSecOps",
+      ? "Seguridad Zero-Trust & Shift-Left AppSec"
+      : "Zero-Trust Security & Shift-Left AppSec",
     desc: isEs
-      ? "Gobernanza de accesos de mínimo privilegio, detección proactiva de secretos y cumplimiento SOC 2."
-      : "Automated access governance, continuous secret detection, PII minimization, and SOC 2 hardening.",
+      ? "Detección continua de secretos en CI/CD, autenticación criptográfica TOTP/HMAC y gobernanza de accesos auditada bajo estándares SOC 2 y Vanta."
+      : "Continuous secret detection in CI/CD, cryptographic TOTP/HMAC authentication, and automated access governance audited under SOC 2 and Vanta baselines.",
   },
   {
     index: "04",
     tag: "DATA_PIPELINES_RESILIENCE",
     title: isEs
-      ? "Pipelines de Datos Confiables y Analítica"
-      : "Reliable Data Pipelines & Analytics",
+      ? "Desacople OLTP/OLAP & Resiliencia de Datos"
+      : "OLTP/OLAP Decoupling & Streaming Resilience",
     desc: isEs
-      ? "Flujos continuos de datos y desacople analítico para preservar la estabilidad operacional, integrando almacenes como Snowflake, BigQuery y DynamoDB."
-      : "Continuous ingestion pipelines and analytical decoupling to protect operational stability, integrating warehouses like Snowflake, BigQuery, and DynamoDB.",
+      ? "Protección de bases de datos transaccionales desviando analítica masiva y telemetría hacia Snowflake y BigQuery mediante pipelines asíncronos."
+      : "Shielding transactional checkout databases by routing heavy analytics, telemetry, and reporting directly into Snowflake and BigQuery via asynchronous pipelines.",
   },
 ];
 ---
