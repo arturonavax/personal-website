@@ -86,6 +86,10 @@ export default {
       const response = await env.ASSETS.fetch(request);
       const headers = new Headers(response.headers);
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      if (pathname.startsWith("/fonts/")) {
+        headers.set("Access-Control-Allow-Origin", "*");
+      }
+      headers.set("X-Content-Type-Options", "nosniff");
       const body =
         response.status === 304 || response.status === 204
           ? null
@@ -189,13 +193,57 @@ export default {
 
     const response = await assetResponsePromise;
 
-    // RFC 9111 Cache Directives for PDF Documents
+    // Apply deterministic RFC 9111 cache & edge security directives based on asset type
+    const headers = new Headers(response.headers);
+    let shouldWrapResponse = false;
+
     if (pathname.endsWith(".pdf")) {
-      const headers = new Headers(response.headers);
       headers.set(
         "Cache-Control",
         "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
       );
+      shouldWrapResponse = true;
+    } else if (/\.(?:png|jpg|jpeg|webp|avif|svg|ico)$/i.test(pathname)) {
+      headers.set(
+        "Cache-Control",
+        "public, max-age=604800, stale-while-revalidate=86400",
+      );
+      headers.set("X-Content-Type-Options", "nosniff");
+      shouldWrapResponse = true;
+    } else if (pathname.startsWith("/search-index")) {
+      headers.set(
+        "Cache-Control",
+        "public, max-age=3600, stale-while-revalidate=86400",
+      );
+      headers.set("Access-Control-Allow-Origin", "*");
+      shouldWrapResponse = true;
+    } else if (
+      pathname.endsWith("sitemap-index.xml") ||
+      pathname.endsWith("sitemap-0.xml") ||
+      pathname === "/rss.xml" ||
+      pathname === "/robots.txt" ||
+      pathname.startsWith("/llms")
+    ) {
+      headers.set("Cache-Control", "public, max-age=3600, must-revalidate");
+      shouldWrapResponse = true;
+    } else {
+      const contentType = headers.get("content-type") || "";
+      if (
+        contentType.includes("text/html") ||
+        pathname.endsWith("/") ||
+        !pathname.includes(".")
+      ) {
+        if (!headers.has("Cache-Control")) {
+          headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+        }
+        headers.set("X-Content-Type-Options", "nosniff");
+        headers.set("X-Frame-Options", "DENY");
+        headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+        shouldWrapResponse = true;
+      }
+    }
+
+    if (shouldWrapResponse) {
       const body =
         response.status === 304 || response.status === 204
           ? null
@@ -598,7 +646,7 @@ export async function handleAdminDashboardRequest(
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Admin Dashboard — arturonavax.dev</title>
+  <title>Admin Dashboard - arturonavax.dev</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow, noarchive" />
   <style>
