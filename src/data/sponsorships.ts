@@ -53,6 +53,7 @@ export const rawSponsorshipData: SponsorshipData = {
       network: "Native SegWit (Bech32)",
       networkEs: "Native SegWit (Bech32)",
       address: "bc1q9v89u2v0e883m7xzg592s38u445v9y2v929p4s",
+      visible: false,
     },
     {
       id: "eth",
@@ -61,6 +62,7 @@ export const rawSponsorshipData: SponsorshipData = {
       network: "Ethereum Mainnet / Arbitrum / Optimism / Base",
       networkEs: "Ethereum Mainnet / Arbitrum / Optimism / Base",
       address: "0x71C67E7aEdf2aF6Ea3B3D966E2a02b11394c8e76",
+      visible: false,
     },
     {
       id: "usdt",
@@ -69,6 +71,7 @@ export const rawSponsorshipData: SponsorshipData = {
       network: "Tron (TRC-20) / Arbitrum (ERC-20)",
       networkEs: "Tron (TRC-20) / Arbitrum (ERC-20)",
       address: "TX9rqvJmX8PsqYv99dZ6u8GkQ7b35Q7W7R",
+      visible: false,
     },
     {
       id: "sol",
@@ -77,6 +80,7 @@ export const rawSponsorshipData: SponsorshipData = {
       network: "Solana Mainnet (SPL)",
       networkEs: "Solana Mainnet (SPL)",
       address: "7hE5kZ3uYgK9uJmX8PsqYv99dZ6u8GkQ7b35Q7W7Rxyz",
+      visible: false,
     },
   ],
   platforms: [
@@ -91,6 +95,7 @@ export const rawSponsorshipData: SponsorshipData = {
       badge: "Active",
       badgeEs: "Activo",
       icon: "paypal",
+      visible: false,
     },
     {
       id: "github",
@@ -102,6 +107,7 @@ export const rawSponsorshipData: SponsorshipData = {
       badge: "Verified",
       badgeEs: "Verificado",
       icon: "github",
+      visible: false,
     },
   ],
   futureIntegrations: [
@@ -116,6 +122,7 @@ export const rawSponsorshipData: SponsorshipData = {
       badgeEs: "En Desarrollo",
       type: "stripe",
       status: "planned",
+      visible: false,
     },
     {
       id: "web3",
@@ -128,6 +135,7 @@ export const rawSponsorshipData: SponsorshipData = {
       badgeEs: "Prototipo Web3",
       type: "web3",
       status: "prototype",
+      visible: false,
     },
   ],
 };

@@ -11,6 +11,7 @@ startDate: 2018-10-01
 endDate: 2018-12-01
 order: 6
 locale: "es"
+translationKey: "plaza-etc"
 skills:
   - "PHP"
   - "MySQL"

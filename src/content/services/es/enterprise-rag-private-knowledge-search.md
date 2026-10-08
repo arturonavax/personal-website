@@ -24,7 +24,7 @@ deliverables:
   - "Arquitectura Zero-Data-Leakage: Integración con modelos locales autoalojados o APIs empresariales bajo acuerdos de estricta privacidad"
   - "Capa de re-ranking y citación estricta: Filtros de relevancia y re-ordenamiento para garantizar respuestas fundamentadas con enlaces a la fuente original"
   - "Control de acceso basado en roles (RBAC): Aislamiento documental granular alineado con los niveles de autorización de la organización"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Construir Motor RAG"
 searchKeywords:
   [

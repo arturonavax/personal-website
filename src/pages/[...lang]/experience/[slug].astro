@@ -109,8 +109,12 @@ const companyFilterUrl = `${basePath}/experience/?company=${encodeURIComponent(c
 
 const pageTitle = `${role} @ ${company} - Arturo Nava`;
 const pageDescription = isEs
-  ? `Registro de carrera, hitos de arquitectura y simulaciones interactivas de Arturo Nava como ${role} en ${company}.`
-  : `Career milestone, architecture achievements, and interactive system simulations for Arturo Nava as ${role} at ${company}.`;
+  ? simulations.length > 0
+    ? `Registro de carrera, hitos de arquitectura y simulaciones interactivas de Arturo Nava como ${role} en ${company}.`
+    : `Registro de carrera e hitos de arquitectura de producción de Arturo Nava como ${role} en ${company}.`
+  : simulations.length > 0
+    ? `Career milestone, architecture achievements, and interactive system simulations for Arturo Nava as ${role} at ${company}.`
+    : `Career milestone and production architecture achievements for Arturo Nava as ${role} at ${company}.`;
 
 const jsonLd = {
   "@context": "https://schema.org",

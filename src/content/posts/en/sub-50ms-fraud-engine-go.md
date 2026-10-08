@@ -2,7 +2,8 @@
 title: "Designing Sub-50ms Fraud Detection in Go"
 description: "How to engineer zero-allocation rule evaluation pipelines in Go using the Strategy Pattern and Redis sliding windows during point-of-sale checkout."
 pubDate: 2026-02-15
-draft: false
+draft: true
+visible: false
 locale: "en"
 translationKey: "sub-50ms-fraud-engine-go"
 category: "systems"

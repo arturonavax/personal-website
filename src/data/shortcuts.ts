@@ -35,6 +35,7 @@ export const rawShortcuts: ShortcutItem[] = [
           badge: "Live",
           badgeEs: "En Vivo",
           icon: "cv" as const,
+          visible: false,
         },
       ]
     : []),
@@ -50,6 +51,7 @@ export const rawShortcuts: ShortcutItem[] = [
     badge: "Code",
     badgeEs: "Código",
     icon: "github",
+    visible: false,
   },
   {
     id: "fraud-engine",
@@ -63,6 +65,7 @@ export const rawShortcuts: ShortcutItem[] = [
     badge: "Spec",
     badgeEs: "Arquitectura",
     icon: "architecture",
+    visible: false,
   },
   {
     id: "snowflake-pipeline",
@@ -77,6 +80,7 @@ export const rawShortcuts: ShortcutItem[] = [
     badge: "Pipeline",
     badgeEs: "Pipeline",
     icon: "terminal",
+    visible: false,
   },
 ];
 

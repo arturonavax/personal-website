@@ -11,6 +11,7 @@ startDate: 2024-08-01
 endDate: 2025-09-01
 order: 2
 locale: "es"
+translationKey: "mercado-libre"
 skills:
   - "Golang"
   - "Python"

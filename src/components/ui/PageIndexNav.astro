@@ -51,14 +51,16 @@ const hasSponsorships =
   (sponsorshipData.crypto && sponsorshipData.crypto.length > 0) ||
   (sponsorshipData.platforms && sponsorshipData.platforms.length > 0);
 const hasCaseStudies = Boolean(simulationsData && simulationsData.length > 0);
-const [allProjects, allExperience, allPosts] = await Promise.all([
+const [allProjects, allExperience, allPosts, allServices] = await Promise.all([
   getVisibleCollection("projects", ({ data }) => data.locale === locale),
   getVisibleCollection("experience", ({ data }) => data.locale === locale),
   getVisibleCollection("posts", ({ data }) => data.locale === locale),
+  getVisibleCollection("services", ({ data }) => data.locale === locale),
 ]);
 const hasProjects = allProjects.length > 0;
 const hasExperience = allExperience.length > 0;
 const hasPosts = allPosts.length > 0;
+const hasServices = allServices.length > 0;
 
 const defaultIndexItems: IndexItem[] = [
   {
@@ -96,6 +98,15 @@ const defaultIndexItems: IndexItem[] = [
           id: "projects",
           label: "Distributed Architectures",
           labelEs: "Sistemas Distribuidos",
+        },
+      ]
+    : []),
+  ...(hasServices
+    ? [
+        {
+          id: "services",
+          label: "Technical Services & Advisory",
+          labelEs: "Servicios Técnicos & Asesoría",
         },
       ]
     : []),

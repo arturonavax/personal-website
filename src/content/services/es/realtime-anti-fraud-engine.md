@@ -24,7 +24,7 @@ deliverables:
   - "Normalización temporal multi-zona: Alineación de marcas temporales para plataformas transfronterizas y validación uniforme de eventos"
   - "Microservicio de verificación criptográfica: Autenticación multifactor con firmas criptográficas seguras y mecanismos anti-fuerza bruta"
   - "Trazabilidad para auditoría y cumplimiento: Registros inmutables del cálculo de riesgo listos para auditorías financieras y requerimientos regulatorios"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Construir Motor Antifraude"
 searchKeywords:
   [

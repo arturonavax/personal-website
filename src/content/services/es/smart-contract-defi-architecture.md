@@ -26,7 +26,7 @@ deliverables:
   - "Auditoría defensiva y modelado de amenazas: Análisis exhaustivo contra vectores críticos como reentrancy, manipulación de oráculos, flash loans y MEV"
   - "Suites de pruebas de fuzzing e invariantes: Pruebas basadas en propiedades, simulación en forks de red y verificación determinista de balance patrimonial"
   - "Integración con oráculos y puentes off-chain: Conexión resiliente con feeds de precios descentralizados, mecanismos de fallback y mensajería entre redes"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Diseñar Protocolo DeFi"
 searchKeywords:
   [

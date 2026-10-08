@@ -24,7 +24,7 @@ deliverables:
   - "Gobernanza de acceso y políticas Zero-Trust: Principio de menor privilegio en roles IAM y gestión centralizada de secretos de infraestructura"
   - "Protección y sanitización de datos sensibles: Flujos automáticos para evitar la fuga de PII en bitácoras de eventos o depósitos de almacenamiento"
   - "Consolidación de evidencias técnicas: Documentación y configuración requeridas por plataformas de auditoría y cumplimiento continuo"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Asegurar Plataforma"
 searchKeywords:
   [

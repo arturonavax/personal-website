@@ -24,7 +24,7 @@ deliverables:
   - "Auditoría de concurrencia y sincronización: Detección de contención de locks, deadlocks y condiciones de carrera en flujos paralelos"
   - "Plan de remediación priorizado por impacto: Informe técnico ejecutivo con métricas comparativas antes/después y refactorizaciones directas"
   - "Estrategias de caché y reducción de I/O: Optimización de conexiones persistentes, minimización de llamadas de red y compresión de carga útil"
-ctaUrl: "/es#contact"
+ctaUrl: "/es/#contact"
 ctaText: "Agendar Auditoría de Rendimiento"
 searchKeywords:
   [

@@ -34,3 +34,8 @@ prompt-perf.json
 # Agent Tooling
 .atl/
 .engram/
+
+# Local Context & Temp Assets
+.cv/
+yo2.jpg
+

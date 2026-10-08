@@ -35,6 +35,7 @@ export const rawJudgeProfiles: JudgeProfile[] = [
     categoryEs: "Algoritmos & Resolución de Problemas",
     accentColor: "#FFA116",
     icon: "code",
+    visible: false,
     metrics: [
       {
         label: "Rating",
@@ -68,6 +69,7 @@ export const rawJudgeProfiles: JudgeProfile[] = [
     categoryEs: "Programación Competitiva",
     accentColor: "#1F8ACB",
     icon: "bar-chart",
+    visible: false,
     metrics: [
       {
         label: "Rating",
@@ -101,6 +103,7 @@ export const rawJudgeProfiles: JudgeProfile[] = [
     categoryEs: "Teoría CS & Dominio de Lenguajes",
     accentColor: "#00EA64",
     icon: "terminal",
+    visible: false,
     metrics: [
       {
         label: "Badge",
@@ -134,6 +137,7 @@ export const rawJudgeProfiles: JudgeProfile[] = [
     categoryEs: "Archivo Algorítmico",
     accentColor: "#FF6F00",
     icon: "cpu",
+    visible: false,
     metrics: [
       {
         label: "Level",

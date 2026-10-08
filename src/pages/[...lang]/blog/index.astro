@@ -8,7 +8,11 @@ import { useTranslations } from "@/i18n/utils";
 import type { SupportedLocale } from "@/i18n/config";
 import { getVisibleCollection } from "@/utils/visibility";
 
-export function getStaticPaths() {
+export async function getStaticPaths() {
+  const posts = await getVisibleCollection("posts");
+  if (!posts || posts.length === 0) {
+    return [];
+  }
   return [
     { params: { lang: undefined }, props: { locale: "en" as const } },
     { params: { lang: "es" }, props: { locale: "es" as const } },

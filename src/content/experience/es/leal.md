@@ -11,6 +11,7 @@ startDate: 2025-09-01
 endDate: 2026-06-01
 order: 1
 locale: "es"
+translationKey: "leal"
 skills:
   - "Golang"
   - "Rust"
