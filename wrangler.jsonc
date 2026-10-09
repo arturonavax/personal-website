@@ -23,12 +23,13 @@
       "migrations_dir": "./cloudflare/d1/migrations",
     },
   ],
-  "r2_buckets": [
-    {
-      "binding": "STORAGE_BUCKET",
-      "bucket_name": "arturonava-production-assets",
-    },
-  ],
+  // R2 Bucket: Reactivar una vez habilitado R2 en el Cloudflare Dashboard
+  // "r2_buckets": [
+  //   {
+  //     "binding": "STORAGE_BUCKET",
+  //     "bucket_name": "arturonava-production-assets",
+  //   },
+  // ],
   "vectorize": [
     {
       "binding": "VECTORIZE_INDEX",

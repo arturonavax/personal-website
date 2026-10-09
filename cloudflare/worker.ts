@@ -13,6 +13,7 @@ import {
   FailOpenCircuitBreaker,
   PrefetchQuotaCircuitBreaker,
   StaticMemorySearchAdapter,
+  DeploymentRegistry,
 } from "../src/lib/adapters";
 import type { SearchResultItem } from "../src/lib/ports/search.port";
 
@@ -126,6 +127,27 @@ export default {
 
     if (pathname.startsWith("/cdn-assets/") && env.STORAGE_BUCKET) {
       return handleCdnStorageAsset(request, env, ctx, url);
+    }
+
+    if (pathname === "/api/status" || pathname === "/api/deployment") {
+      const registry = new DeploymentRegistry(env.DB);
+      const activeDeployment = await registry.getActiveDeployment();
+      return new Response(
+        JSON.stringify({
+          status: "healthy",
+          environment: "production",
+          timestamp: new Date().toISOString(),
+          deployment: activeDeployment,
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store, private",
+            "X-Content-Type-Options": "nosniff",
+          },
+        },
+      );
     }
 
     // -------------------------------------------------------------------------
@@ -580,12 +602,15 @@ export async function handleAdminDashboardRequest(
   const url = new URL(request.url);
 
   if (url.pathname === "/status" || url.pathname === "/api/status") {
+    const registry = new DeploymentRegistry(env.DB);
+    const activeDeployment = await registry.getActiveDeployment();
     return new Response(
       JSON.stringify({
         status: "healthy",
         surface: "admin-isolated",
         environment: "production",
         timestamp: new Date().toISOString(),
+        deployment: activeDeployment,
       }),
       {
         status: 200,
@@ -594,6 +619,23 @@ export async function handleAdminDashboardRequest(
           "Cache-Control": "no-store, private",
           "X-Frame-Options": "DENY",
           "X-Content-Type-Options": "nosniff",
+        },
+      },
+    );
+  }
+
+  if (url.pathname === "/api/deployments") {
+    const registry = new DeploymentRegistry(env.DB);
+    const deployments = await registry.listDeployments(20);
+    return new Response(
+      JSON.stringify({
+        deployments,
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store, private",
         },
       },
     );

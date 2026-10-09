@@ -114,3 +114,21 @@ LEFT JOIN circuit_breaker_incidents c
   ON c.subsystem = 'prefetch_telemetry'
   AND c.date = strftime('%Y-%m-%d', p.created_at)
 GROUP BY summary_date, p.path;
+
+-- System Deployments Registry (Migration 0006)
+CREATE TABLE IF NOT EXISTS system_deployments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  release_version TEXT NOT NULL,
+  worker_name TEXT NOT NULL DEFAULT 'personal-website',
+  git_commit TEXT,
+  deployed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  environment TEXT NOT NULL DEFAULT 'production',
+  status TEXT NOT NULL DEFAULT 'active',
+  compatibility_date TEXT,
+  metadata TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_deployments_version ON system_deployments(release_version);
+CREATE INDEX IF NOT EXISTS idx_deployments_deployed ON system_deployments(deployed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_deployments_status ON system_deployments(status);
+
