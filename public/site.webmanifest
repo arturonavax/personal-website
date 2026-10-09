@@ -1,0 +1,26 @@
+{
+  "name": "Arturo Nava — Senior Software / AI Engineer",
+  "short_name": "Arturo Nava",
+  "description": "Personal engineering portal & systems portfolio of Arturo Nava.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#120305",
+  "theme_color": "#120305",
+  "icons": [
+    {
+      "src": "/favicon-48x48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

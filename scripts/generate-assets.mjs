@@ -52,10 +52,8 @@ const CONFIG = {
     role: "Senior Software / AI Engineer",
     badgeText: "AVAILABLE FOR SENIOR / STAFF ROLES",
     techPillars: "Distributed Systems • High Concurrency • AppSec",
-    coreStack:
-      "Distributed Systems • High Performance • Web3 • AppSec",
-    secondaryStack:
-      "Specializing in Go, Rust & AI-Integrated Backend Systems",
+    coreStack: "Distributed Systems • High Performance • Web3 • AppSec",
+    secondaryStack: "Specializing in Go, Rust & AI-Integrated Backend Systems",
     bannerSummary:
       "Distributed Systems • High Performance • AI • Web3 • AppSec",
     domain: "arturonavax.dev",
@@ -512,6 +510,8 @@ async function generateFavicons() {
   const { outputDir, faviconSvg } = CONFIG.paths;
   const favicon48Path = path.join(outputDir, "favicon-48x48.png");
   const favicon180Path = path.join(outputDir, "apple-touch-icon.png");
+  const icon192Path = path.join(outputDir, "icon-192.png");
+  const icon512Path = path.join(outputDir, "icon-512.png");
   const faviconIcoPath = path.join(outputDir, "favicon.ico");
 
   try {
@@ -527,8 +527,18 @@ async function generateFavicons() {
       .png(CONFIG.rendering.sharpPngOptions)
       .toFile(favicon180Path);
 
+    await sharp(svgBuffer, { density: 300 })
+      .resize(192, 192, { kernel: sharp.kernel.lanczos3 })
+      .png(CONFIG.rendering.sharpPngOptions)
+      .toFile(icon192Path);
+
+    await sharp(svgBuffer, { density: 300 })
+      .resize(512, 512, { kernel: sharp.kernel.lanczos3 })
+      .png(CONFIG.rendering.sharpPngOptions)
+      .toFile(icon512Path);
+
     console.log(
-      "✓ Generated: favicon-48x48.png and apple-touch-icon.png (supersampled)",
+      "✓ Generated: favicon-48x48.png, apple-touch-icon.png, icon-192.png, icon-512.png (supersampled)",
     );
 
     const args = [
