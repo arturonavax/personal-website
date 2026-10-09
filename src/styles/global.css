@@ -406,6 +406,17 @@ html[data-theme="light"] body {
   border-bottom-right-radius: 3px;
 }
 
+/* Soporte adaptativo para contenedores con esquinas redondeadas tipo rounded-lg (8px) */
+.geometric-box.rounded-lg::before,
+.geometric-box[class*="rounded-lg"]::before {
+  border-top-left-radius: 8px;
+}
+
+.geometric-box.rounded-lg::after,
+.geometric-box[class*="rounded-lg"]::after {
+  border-bottom-right-radius: 8px;
+}
+
 /* Modificador para contenedores que no deben llevar esquinas geométricas */
 .no-corner-accents::before,
 .no-corner-accents::after,
@@ -699,11 +710,21 @@ header {
   z-index: 50;
 }
 
-/* Sub-headers and content banners in /links/, /resume/maker/, and article sections must remain static */
+/* Sub-headers and content banners in /links/, /resume/maker/, and article sections must remain non-sticky */
 header:not(#site-header) {
   position: static;
   top: auto;
   z-index: auto;
+}
+
+/* Ensure banner cards and geometric boxes using <header> preserve relative positioning for corner accents */
+header:not(#site-header).relative,
+header:not(#site-header).geometric-box,
+header:not(#site-header)[class*="relative"],
+header:not(#site-header)[class*="geometric-box"],
+#role-header {
+  position: relative;
+  z-index: 10;
 }
 
 /* SPEC-007 REQ-2: Progressive content entrance (compositor-only: opacity, filter, transform).
@@ -770,7 +791,7 @@ html.theme-transitioning *::after {
 }
 
 ::view-transition-group(root) {
-  animation-duration: 0.38s;
+  animation-duration: 0.42s;
   contain: paint;
 }
 

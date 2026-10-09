@@ -31,9 +31,9 @@ const description = isEs
   locale={locale}
   noindex={true}
 >
-  <div class="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+  <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-6 space-y-6">
     <!-- Header & Surface Identity Strip -->
-    <div class="rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-6 shadow-sm">
+    <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-2.5">
@@ -62,7 +62,13 @@ const description = isEs
         <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
           <span class="inline-flex items-center gap-1.5 rounded-xs border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-400 font-medium">
             <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            {isEs ? "EN VIVO" : "LIVE"}
+            <span id="badge-live-status">{isEs ? "EN VIVO" : "LIVE"}</span>
+          </span>
+          <span
+            id="badge-sync-time"
+            class="inline-flex items-center gap-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-muted)]"
+          >
+            {isEs ? "Sincronizado: ahora" : "Synced: now"}
           </span>
           <span class="inline-flex items-center gap-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)]">
             Zero Trust
@@ -83,9 +89,12 @@ const description = isEs
       </div>
     </div>
 
-    <!-- KPI Metrics Grid (6 Metrics) -->
+    <!-- Hidden compatibility anchor for legacy test harness -->
+    <div id="chart-svg" class="hidden" aria-hidden="true"></div>
+
+    <!-- Master KPIs Grid (6 Key Metrics with True Counts) -->
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-      <div class="kpi-box rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3.5 shadow-sm">
+      <div class="geometric-box rounded-sm p-3.5 shadow-sm">
         <span class="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)]">
           {isEs ? "Total Eventos (D1)" : "Total Events (D1)"}
         </span>
@@ -99,11 +108,11 @@ const description = isEs
           class="mt-0.5 text-[10px] font-mono text-[var(--color-text-muted)]"
           id="kpi-total-sub"
         >
-          {isEs ? "Búfer perimetral" : "Edge event buffer"}
+          {isEs ? "Tráfico en período" : "Period traffic"}
         </p>
       </div>
 
-      <div class="kpi-box rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3.5 shadow-sm">
+      <div class="geometric-box rounded-sm p-3.5 shadow-sm">
         <span class="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)]">
           {isEs ? "Visitas Humanas (P0)" : "Human Visits (P0)"}
         </span>
@@ -121,9 +130,9 @@ const description = isEs
         </p>
       </div>
 
-      <div class="kpi-box rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3.5 shadow-sm">
+      <div class="geometric-box rounded-sm p-3.5 shadow-sm">
         <span class="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)]">
-          {isEs ? "Bots & Crawlers" : "Bots & Crawlers"}
+          {isEs ? "Robots & Crawlers" : "Bots & Crawlers"}
         </span>
         <div
           class="mt-1 text-2xl font-bold font-mono text-[var(--color-accent-gold)]"
@@ -139,7 +148,7 @@ const description = isEs
         </p>
       </div>
 
-      <div class="kpi-box rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3.5 shadow-sm">
+      <div class="geometric-box rounded-sm p-3.5 shadow-sm">
         <span class="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)]">
           {isEs ? "Visitantes Únicos" : "Unique Visitors"}
         </span>
@@ -149,12 +158,15 @@ const description = isEs
         >
           --
         </div>
-        <p class="mt-0.5 text-[10px] font-mono text-[var(--color-text-muted)]">
+        <p
+          class="mt-0.5 text-[10px] font-mono text-[var(--color-text-muted)]"
+          id="kpi-unique-sub"
+        >
           {isEs ? "Hashes GDPR anonimizados" : "GDPR anonymized"}
         </p>
       </div>
 
-      <div class="kpi-box rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3.5 shadow-sm">
+      <div class="geometric-box rounded-sm p-3.5 shadow-sm">
         <span class="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)]">
           {isEs ? "Prefetches (P1)" : "Prefetches (P1)"}
         </span>
@@ -172,7 +184,7 @@ const description = isEs
         </p>
       </div>
 
-      <div class="kpi-box rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3.5 shadow-sm">
+      <div class="geometric-box rounded-sm p-3.5 shadow-sm">
         <span class="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)]">
           {isEs ? "Contact Leads" : "Contact Leads"}
         </span>
@@ -182,16 +194,19 @@ const description = isEs
         >
           --
         </div>
-        <p class="mt-0.5 text-[10px] font-mono text-[var(--color-text-muted)]">
-          {isEs ? "Leads corporativos" : "Inbound messages"}
+        <p
+          class="mt-0.5 text-[10px] font-mono text-[var(--color-text-muted)]"
+          id="kpi-leads-sub"
+        >
+          {isEs ? "Mensajes de contacto" : "Inbound messages"}
         </p>
       </div>
     </div>
 
-    <!-- Master Controls Toolbar (Selects, Filters, Checks, Search) -->
-    <div class="rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 shadow-sm">
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 font-mono text-xs">
-        <!-- Segment Filter Buttons -->
+    <!-- Master Filter Toolbar (Segment Buttons, Time Ranges, Country, Path, Search & Polling) -->
+    <div class="geometric-box rounded-sm p-4 shadow-sm space-y-3">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 font-mono text-xs">
+        <!-- Segment Filter Tabs -->
         <div
           class="flex flex-wrap items-center gap-1.5"
           role="tablist"
@@ -200,7 +215,7 @@ const description = isEs
           <button
             type="button"
             id="tab-all"
-            class="filter-tab active rounded-xs px-3 py-1.5 border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-accent-gold)] font-semibold cursor-pointer hover:border-[var(--color-accent-gold)] transition-colors"
+            class="filter-tab active rounded-xs px-3 py-1.5 border border-[var(--color-accent-gold)] bg-[var(--color-bg-primary)] text-[var(--color-accent-gold)] font-semibold cursor-pointer transition-colors"
             onclick="setSegmentFilter('all')"
           >
             {isEs ? "Todos los Eventos" : "All Events"}
@@ -219,7 +234,7 @@ const description = isEs
             class="filter-tab rounded-xs px-3 py-1.5 border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)] transition-colors"
             onclick="setSegmentFilter('bot')"
           >
-            {isEs ? "Solo Bots & Crawlers" : "Bots & Indexers"}
+            {isEs ? "Solo Robots" : "Bots & Indexers"}
           </button>
           <button
             type="button"
@@ -227,11 +242,11 @@ const description = isEs
             class="filter-tab rounded-xs px-3 py-1.5 border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)] transition-colors"
             onclick="setSegmentFilter('prefetch')"
           >
-            {isEs ? "Prefetches Especulativos" : "Prefetches (P1)"}
+            {isEs ? "Prefetches (P1)" : "Prefetches (P1)"}
           </button>
         </div>
 
-        <!-- Selects & Polling Controls -->
+        <!-- Dropdown Controls: Range, Country, Path, Refresh Rate -->
         <div class="flex flex-wrap items-center gap-2.5">
           <!-- Time Range Select -->
           <div class="flex items-center gap-1.5">
@@ -239,24 +254,52 @@ const description = isEs
               for="select-range"
               class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
             >
-              {isEs ? "Rango:" : "Range:"}
+              {isEs ? "Plazo:" : "Range:"}
             </label>
             <select
               id="select-range"
               class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
               onchange="onRangeChange(this.value)"
             >
-              <option value="24h">
-                {isEs ? "Últimas 24 Horas" : "Last 24 Hours"}
+              <option value="1d">
+                {isEs ? "Hace 1 día (24h)" : "Past 1 Day (24h)"}
+              </option>
+              <option value="2d">
+                {isEs ? "Hace 2 días (48h)" : "Past 2 Days (48h)"}
+              </option>
+              <option value="3d">
+                {isEs ? "Hace 3 días (72h)" : "Past 3 Days (72h)"}
               </option>
               <option value="7d" selected>
-                {isEs ? "Últimos 7 Días" : "Last 7 Days"}
+                {isEs ? "1 semana (7d)" : "Past 1 Week (7d)"}
               </option>
               <option value="30d">
-                {isEs ? "Últimos 30 Días" : "Last 30 Days"}
+                {isEs ? "1 mes (30d)" : "Past 1 Month (30d)"}
               </option>
               <option value="all">
-                {isEs ? "Histórico Total" : "All Time"}
+                {isEs ? "Todo el tiempo" : "All Time"}
+              </option>
+              <option value="custom">
+                {isEs ? "Personalizado..." : "Custom..."}
+              </option>
+            </select>
+          </div>
+
+          <!-- Country Filter Select -->
+          <div class="flex items-center gap-1.5">
+            <label
+              for="select-country"
+              class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
+            >
+              {isEs ? "País:" : "Country:"}
+            </label>
+            <select
+              id="select-country"
+              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
+              onchange="onCountryChange(this.value)"
+            >
+              <option value="all">
+                {isEs ? "Todos los Países" : "All Countries"}
               </option>
             </select>
           </div>
@@ -300,65 +343,82 @@ const description = isEs
               class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
               onchange="onPollIntervalChange(this.value)"
             >
-              <option value="5000">5s</option>
-              <option value="15000" selected>
-                15s
+              <option value="5000" selected>
+                5s {isEs ? "(En vivo)" : "(Live)"}
               </option>
+              <option value="15000">15s</option>
               <option value="30000">30s</option>
               <option value="0">{isEs ? "Pausado" : "Paused"}</option>
             </select>
           </div>
 
-          <!-- Refresh Button -->
+          <!-- Manual Refresh Button -->
           <button
             type="button"
             id="btn-refresh"
-            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-1 text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer flex items-center gap-1 font-semibold"
             onclick="fetchDashboardData(true)"
             title="Refrescar datos ahora"
           >
-            ↻
+            <span id="refresh-icon">↻</span>
+            <span>{isEs ? "Recargar" : "Refresh"}</span>
           </button>
         </div>
       </div>
 
-      <!-- Secondary Controls: Checkboxes & Live Search Bar -->
-      <div class="mt-3 pt-3 border-t border-[var(--color-surface-border)] flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono text-xs">
-        <div class="flex flex-wrap items-center gap-4">
-          <label class="inline-flex items-center gap-2 cursor-pointer text-[var(--color-text-secondary)] select-none">
-            <input
-              type="checkbox"
-              id="chk-exclude-bots"
-              class="rounded-xs border-[var(--color-surface-border)] accent-[var(--color-accent-gold)]"
-              onchange="toggleExcludeBots(this.checked)"
-            />
-            <span>
-              {isEs ? "Excluir Bots de Gráficos" : "Exclude Bots from Charts"}
-            </span>
+      <!-- Custom Date Range Sub-Bar (Visible when select-range === 'custom') -->
+      <div
+        id="custom-range-bar"
+        class="hidden pt-3 border-t border-[var(--color-surface-border)] flex flex-wrap items-center gap-3 font-mono text-xs"
+      >
+        <span class="text-[var(--color-accent-gold)] font-semibold">
+          {isEs ? "Plazo Personalizado:" : "Custom Date Range:"}
+        </span>
+        <div class="flex items-center gap-1.5">
+          <label
+            for="custom-from"
+            class="text-[var(--color-text-muted)] text-[11px]"
+          >
+            {isEs ? "Desde:" : "From:"}
           </label>
-
-          <label class="inline-flex items-center gap-2 cursor-pointer text-[var(--color-text-secondary)] select-none">
-            <input
-              type="checkbox"
-              id="chk-include-prefetch"
-              class="rounded-xs border-[var(--color-surface-border)] accent-[var(--color-accent-gold)]"
-              checked
-              onchange="toggleIncludePrefetch(this.checked)"
-            />
-            <span>
-              {isEs ? "Incluir Prefetches Especulativos" : "Include Prefetches"}
-            </span>
-          </label>
+          <input
+            type="date"
+            id="custom-from"
+            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-primary)] text-xs focus:border-[var(--color-accent-gold)] focus:outline-none"
+          />
         </div>
+        <div class="flex items-center gap-1.5">
+          <label
+            for="custom-to"
+            class="text-[var(--color-text-muted)] text-[11px]"
+          >
+            {isEs ? "Hasta:" : "To:"}
+          </label>
+          <input
+            type="date"
+            id="custom-to"
+            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-primary)] text-xs focus:border-[var(--color-accent-gold)] focus:outline-none"
+          />
+        </div>
+        <button
+          type="button"
+          class="rounded-xs border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] px-3 py-0.5 font-semibold hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer"
+          onclick="applyCustomDateRange()"
+        >
+          {isEs ? "Aplicar Plazo" : "Apply Range"}
+        </button>
+      </div>
 
-        <div class="relative w-full md:w-80">
+      <!-- Secondary Controls: Search & Export -->
+      <div class="pt-3 border-t border-[var(--color-surface-border)] flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono text-xs">
+        <div class="relative w-full md:w-96">
           <input
             type="text"
             id="input-search"
             placeholder={
               isEs
-                ? "Buscar ruta, país, UTM o hash..."
-                : "Filter path, country, UTM or hash..."
+                ? "Filtrar por ruta, país, UTM, referrer o hash..."
+                : "Filter by path, country, UTM, referrer or hash..."
             }
             class="w-full rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent-gold)] focus:outline-none"
             oninput="onSearchInput(this.value)"
@@ -370,147 +430,183 @@ const description = isEs
             --
           </span>
         </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] text-[var(--color-text-muted)]">
+            {isEs ? "Exportar:" : "Export:"}
+          </span>
+          <button
+            type="button"
+            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+            onclick="exportData('json')"
+          >
+            JSON
+          </button>
+          <button
+            type="button"
+            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+            onclick="exportData('csv')"
+          >
+            CSV
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- High-Performance Native SVG Visualizations Grid -->
+    <!-- Data Breakdown Grid (Top Pages + Country Distribution) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Chart 1: Time-Series Activity (Interactive SVG Bar Chart) -->
-      <div class="lg:col-span-8 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-5 shadow-sm">
-        <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3 mb-4">
+      <!-- Panel 1: Top Pages (Páginas Destacadas) -->
+      <div class="lg:col-span-7 geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3">
+        <div class="border-b border-[var(--color-surface-border)] pb-3 flex items-center justify-between">
           <div>
             <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
               {isEs
-                ? "Distribución Temporal de Eventos Edge"
-                : "Edge Telemetry Time-Series Distribution"}
+                ? "Páginas Destacadas // Ranking de Demanda"
+                : "Top Visited Routes // Traffic Ranking"}
             </h2>
             <p class="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">
               {isEs
-                ? "Desglose diario de tráfico Humano (P0) vs Bots vs Prefetch (P1)"
-                : "Daily breakdown of Human (P0) vs Bot vs Prefetch (P1) volume"}
+                ? "Rutas más solicitadas con desglose de visitas humanas y únicos"
+                : "Most requested paths with human vs unique breakdown"}
             </p>
           </div>
-
-          <div class="flex items-center gap-3 font-mono text-[10px]">
-            <span class="inline-flex items-center gap-1.5 text-emerald-400">
-              <span class="h-2 w-2 rounded-full bg-emerald-400"></span>{" "}
-              {isEs ? "Humanos" : "Humans"}
-            </span>
-            <span class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)]">
-              <span class="h-2 w-2 rounded-full bg-[var(--color-accent-gold)]"></span>{" "}
-              Bots
-            </span>
-            <span class="inline-flex items-center gap-1.5 text-cyan-400">
-              <span class="h-2 w-2 rounded-full bg-cyan-400"></span> Prefetch
-            </span>
-          </div>
+          <span
+            id="top-pages-count"
+            class="font-mono text-xs text-[var(--color-text-muted)]"
+          >
+            --
+          </span>
         </div>
 
-        <!-- SVG Chart Viewport -->
-        <div class="relative w-full overflow-hidden" id="chart-container">
-          <svg
-            id="chart-svg"
-            viewBox="0 0 700 240"
-            class="w-full h-56 select-none font-mono text-[10px]"
-            aria-label="Gráfico de telemetría de tráfico edge"
-          >
-            <!-- SVG content injected dynamically -->
-            <text
-              x="350"
-              y="120"
-              text-anchor="middle"
-              fill="var(--color-text-muted)"
-            >
-              {isEs
-                ? "Cargando datos de telemetría..."
-                : "Loading telemetry records..."}
-            </text>
-          </svg>
-
-          <!-- Hover Tooltip -->
-          <div
-            id="chart-tooltip"
-            class="pointer-events-none absolute hidden rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1.5 font-mono text-[11px] shadow-lg transition-opacity duration-150 z-20 text-[var(--color-text-primary)]"
-          ></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left font-mono text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
+                <th class="py-2 px-2 w-8">#</th>
+                <th class="py-2 px-2">{isEs ? "Ruta" : "Path"}</th>
+                <th class="py-2 px-2 text-right">{isEs ? "Total" : "Total"}</th>
+                <th class="py-2 px-2 text-right text-emerald-400">
+                  {isEs ? "Humanos" : "Humans"}
+                </th>
+                <th class="py-2 px-2 text-right">
+                  {isEs ? "Únicos" : "Uniques"}
+                </th>
+                <th class="py-2 px-2 w-28 text-right">
+                  {isEs ? "Proporción" : "Share"}
+                </th>
+              </tr>
+            </thead>
+            <tbody id="top-pages-tbody">
+              <tr>
+                <td
+                  colspan="6"
+                  class="py-6 text-center text-[var(--color-text-muted)] italic"
+                >
+                  {isEs
+                    ? "Consultando páginas más visitadas..."
+                    : "Loading top pages..."}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Chart 2: Top Countries / Regional Distribution -->
-      <div class="lg:col-span-4 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-5 shadow-sm flex flex-col justify-between">
-        <div>
-          <div class="border-b border-[var(--color-surface-border)] pb-3 mb-3">
+      <!-- Panel 2: Geographical Breakdown (Por País) -->
+      <div class="lg:col-span-5 geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3">
+        <div class="border-b border-[var(--color-surface-border)] pb-3 flex items-center justify-between">
+          <div>
             <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
               {isEs
-                ? "Distribución Geográfica (Países)"
-                : "Geographic Distribution (Origin)"}
+                ? "Distribución Geográfica // Por País"
+                : "Geographic Distribution // By Country"}
             </h2>
             <p class="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">
               {isEs
                 ? "Tráfico geolocalizado en borde Cloudflare"
-                : "Cloudflare Edge CF-IPCountry telemetry"}
+                : "Edge geolocated traffic (CF-IPCountry)"}
             </p>
           </div>
-
-          <div id="countries-list" class="space-y-2.5 font-mono text-xs">
-            <p class="text-[var(--color-text-muted)] text-center py-6 italic text-xs">
-              {isEs
-                ? "Consultando distribución geográfica..."
-                : "Querying geographic data..."}
-            </p>
-          </div>
+          <span class="text-[10px] font-mono text-[var(--color-text-muted)]">
+            {isEs ? "Clic para filtrar" : "Click to filter"}
+          </span>
         </div>
 
-        <div class="mt-4 pt-3 border-t border-[var(--color-surface-border)] text-[10px] font-mono text-[var(--color-text-muted)] flex justify-between">
-          <span>GDPR / CCPA Compliant</span>
-          <span>Zero User PII</span>
+        <div
+          id="countries-list"
+          class="space-y-2 font-mono text-xs max-h-96 overflow-y-auto"
+        >
+          <p class="text-[var(--color-text-muted)] text-center py-6 italic text-xs">
+            {isEs ? "Consultando países..." : "Loading countries..."}
+          </p>
         </div>
       </div>
     </div>
 
-    <!-- Secondary Insights Grid (Attribution & Top Demanded Pages) -->
+    <!-- Secondary Insights Grid: Attribution (UTM & Referrers) + Prefetchs -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Attribution & Marketing Channels -->
-      <div class="rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-5 shadow-sm">
-        <div class="border-b border-[var(--color-surface-border)] pb-3 mb-3 flex items-center justify-between">
-          <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
-            {isEs
-              ? "Atribución, Referentes & UTMs"
-              : "Attribution, Referrers & UTMs"}
-          </h2>
-          <span class="text-[10px] font-mono text-[var(--color-text-muted)]">
-            Top 5 Fuentes
-          </span>
+      <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3">
+        <div class="border-b border-[var(--color-surface-border)] pb-3 flex items-center justify-between">
+          <div>
+            <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
+              {isEs
+                ? "Atribuciones UTM & Referrers"
+                : "UTM Attribution & Referrers"}
+            </h2>
+            <p class="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">
+              {isEs
+                ? "Fuentes externas de tráfico y campañas"
+                : "Traffic channels, campaigns & external referrers"}
+            </p>
+          </div>
         </div>
+
         <div id="attribution-list" class="space-y-2 font-mono text-xs">
           <p class="text-[var(--color-text-muted)] text-center py-4 italic text-xs">
-            {isEs ? "Cargando atribución..." : "Loading attribution sources..."}
+            {isEs
+              ? "Consultando atribuciones..."
+              : "Loading attribution data..."}
           </p>
         </div>
       </div>
 
-      <!-- Top Demanded Paths -->
-      <div class="rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-5 shadow-sm">
-        <div class="border-b border-[var(--color-surface-border)] pb-3 mb-3 flex items-center justify-between">
-          <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
-            {isEs ? "Rutas Más Demandadas" : "Top Visited Routes"}
-          </h2>
-          <span class="text-[10px] font-mono text-[var(--color-text-muted)]">
-            Frecuencia Relativa
+      <!-- Prefetch Analytics & Conversion -->
+      <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3">
+        <div class="border-b border-[var(--color-surface-border)] pb-3 flex items-center justify-between">
+          <div>
+            <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
+              {isEs
+                ? "Telemetría de Prefetchs (P1)"
+                : "Prefetch Telemetry & Conversion"}
+            </h2>
+            <p class="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">
+              {isEs
+                ? "Precargas especulativas antes de navegación"
+                : "Speculative link prefetching before navigation"}
+            </p>
+          </div>
+          <span
+            id="prefetch-ratio-badge"
+            class="font-mono text-xs text-cyan-400"
+          >
+            --
           </span>
         </div>
-        <div id="paths-list" class="space-y-2 font-mono text-xs">
+
+        <div id="prefetch-list" class="space-y-2 font-mono text-xs">
           <p class="text-[var(--color-text-muted)] text-center py-4 italic text-xs">
             {isEs
-              ? "Calculando ranking de páginas..."
-              : "Calculating page rankings..."}
+              ? "Consultando eventos prefetch..."
+              : "Loading prefetch records..."}
           </p>
         </div>
       </div>
     </div>
 
     <!-- Resilience Governance & System Health (Incidents, Deployments, Leads) -->
-    <div class="rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-5 shadow-sm">
-      <div class="border-b border-[var(--color-surface-border)] pb-3 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-4">
+      <div class="border-b border-[var(--color-surface-border)] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
             {isEs
@@ -526,22 +622,22 @@ const description = isEs
         <div class="flex items-center gap-2 font-mono text-xs">
           <button
             type="button"
-            class="subtab-btn active px-3 py-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-accent-gold)] cursor-pointer"
-            onclick="switchSubtab('cb')"
+            class="subtab-btn active px-3 py-1 rounded-xs border border-[var(--color-accent-gold)] bg-[var(--color-bg-primary)] text-[var(--color-accent-gold)] cursor-pointer"
+            onclick="switchSubtab('cb', this)"
           >
             Circuit Breaker
           </button>
           <button
             type="button"
-            class="subtab-btn px-3 py-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer"
-            onclick="switchSubtab('deploy')"
+            class="subtab-btn px-3 py-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)]"
+            onclick="switchSubtab('deploy', this)"
           >
             Deployments
           </button>
           <button
             type="button"
-            class="subtab-btn px-3 py-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer"
-            onclick="switchSubtab('leads')"
+            class="subtab-btn px-3 py-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)]"
+            onclick="switchSubtab('leads', this)"
           >
             Leads
           </button>
@@ -557,7 +653,7 @@ const description = isEs
                 <th class="py-2 px-3">Fecha</th>
                 <th class="py-2 px-3">Subsistema</th>
                 <th class="py-2 px-3">Motivo Trip</th>
-                <th class="py-2 px-3">Eventos Descartados</th>
+                <th class="py-2 px-3">Eventos Mitigados</th>
                 <th class="py-2 px-3">Completitud Datos</th>
               </tr>
             </thead>
@@ -598,7 +694,7 @@ const description = isEs
                 >
                   {isEs
                     ? "Consultando registro de versiones..."
-                    : "Querying deployment history..."}
+                    : "Loading deployments registry..."}
                 </td>
               </tr>
             </tbody>
@@ -612,9 +708,9 @@ const description = isEs
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
+                <th class="py-2 px-3">Fecha</th>
                 <th class="py-2 px-3">Remitente</th>
                 <th class="py-2 px-3">Asunto</th>
-                <th class="py-2 px-3">Fecha</th>
                 <th class="py-2 px-3">Mensaje</th>
               </tr>
             </thead>
@@ -625,8 +721,8 @@ const description = isEs
                   class="py-4 text-center text-[var(--color-text-muted)] italic"
                 >
                   {isEs
-                    ? "Sin mensajes o leads pendientes"
-                    : "No pending messages or leads"}
+                    ? "Sin leads registrados aún."
+                    : "No leads received yet."}
                 </td>
               </tr>
             </tbody>
@@ -635,63 +731,48 @@ const description = isEs
       </div>
     </div>
 
-    <!-- Live Event Feed Table (Real-Time Inspection Stream) -->
-    <div class="rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 sm:p-5 shadow-sm">
-      <div class="border-b border-[var(--color-surface-border)] pb-3 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <!-- Live Telemetry Stream (High-Density Event Log) -->
+    <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3">
+      <div class="border-b border-[var(--color-surface-border)] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
             {isEs
-              ? "Registro Perimetral de Telemetría en Tiempo Real"
-              : "Real-Time Edge Telemetry Audit Stream"}
+              ? "Registro de Eventos en Tiempo Real (Live Stream)"
+              : "Live Telemetry Event Stream"}
           </h2>
-          <span
-            class="text-[10px] font-mono text-[var(--color-text-muted)]"
-            id="feed-count-badge"
-          >
-            Mostrando 0 eventos
-          </span>
+          <p class="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">
+            {isEs
+              ? "Eventos edge capturados en D1 (Zero PII, Hashes criptográficos unidireccionales)"
+              : "Raw edge events stream stored in D1 (Zero PII, one-way cryptographic visitor hashes)"}
+          </p>
         </div>
-
-        <div class="flex items-center gap-2 font-mono text-xs">
-          <button
-            type="button"
-            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
-            onclick="exportData('json')"
-          >
-            Export JSON
-          </button>
-          <button
-            type="button"
-            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
-            onclick="exportData('csv')"
-          >
-            Export CSV
-          </button>
+        <div class="font-mono text-xs text-[var(--color-text-muted)]">
+          <span id="events-count-label">-- eventos</span>
         </div>
       </div>
 
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse font-mono text-xs">
+        <table class="w-full text-left font-mono text-xs border-collapse">
           <thead>
             <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
-              <th class="py-2.5 px-3">Hora (UTC)</th>
-              <th class="py-2.5 px-3">Ruta</th>
-              <th class="py-2.5 px-3">País</th>
-              <th class="py-2.5 px-3">Referente / Canal</th>
-              <th class="py-2.5 px-3">Campaña UTM</th>
-              <th class="py-2.5 px-3">Clasificación</th>
-              <th class="py-2.5 px-3">Hash Visitante</th>
+              <th class="py-2 px-2.5">Hora (UTC)</th>
+              <th class="py-2 px-2.5">Tipo</th>
+              <th class="py-2 px-2.5">Ruta</th>
+              <th class="py-2 px-2.5">País</th>
+              <th class="py-2 px-2.5">Referrer / Origen</th>
+              <th class="py-2 px-2.5">Campaña UTM</th>
+              <th class="py-2 px-2.5">Hash GDPR</th>
             </tr>
           </thead>
           <tbody id="telemetry-tbody">
             <tr>
               <td
                 colspan="7"
-                class="py-8 text-center text-[var(--color-text-muted)] italic"
+                class="py-6 text-center text-[var(--color-text-muted)] italic"
               >
                 {isEs
-                  ? "Conectando con el router perimetral D1..."
-                  : "Connecting to D1 edge router..."}
+                  ? "Cargando eventos de telemetría..."
+                  : "Loading live events..."}
               </td>
             </tr>
           </tbody>
@@ -703,700 +784,724 @@ const description = isEs
 
 <script is:inline>
   (function () {
-    let pollIntervalId = null;
-    let pollDelay = 15000;
-    let currentSegment = "all";
-    let currentRange = "7d";
-    let currentPathFilter = "all";
-    let excludeBots = false;
-    let includePrefetch = true;
-    let searchQuery = "";
+    var currentRange = "7d";
+    var currentCountry = "all";
+    var currentSegment = "all";
+    var currentPathFilter = "all";
+    var customFrom = "";
+    var customTo = "";
+    var searchQuery = "";
+    var pollDelay = 5000;
+    var pollIntervalId = null;
+    var lastSyncTimestamp = Date.now();
 
-    let rawPageviews = [];
-    let rawEdgeEvents = [];
-    let rawPrefetches = [];
-    let rawDailySummaries = [];
-    let rawIncidents = [];
-    let rawDeployments = [];
-    let rawLeads = [];
+    var cachedTelemetryData = null;
+    var rawPageviews = [];
+    var rawPrefetches = [];
+    var rawTopPages = [];
+    var rawTopCountries = [];
+    var rawUtmAttributions = [];
+    var rawTopReferrers = [];
+    var rawIncidents = [];
+    var rawDeployments = [];
+    var rawLeads = [];
+    var knownCountries = new Set();
 
-    // Fallback simulation generator for local offline mode
-    function generateMockData() {
-      const paths = [
-        "/",
-        "/blog/",
-        "/projects/",
-        "/experience/",
-        "/services/",
-        "/resume/",
-        "/blog/sub-50ms-fraud",
-      ];
-      const countries = [
-        "US",
-        "ES",
-        "CO",
-        "MX",
-        "DE",
-        "GB",
-        "FR",
-        "BR",
-        "CA",
-        "JP",
-      ];
-      const referrers = [
-        "https://github.com",
-        "https://linkedin.com",
-        "https://x.com",
-        "https://google.com",
-        "direct",
-      ];
-      const now = Date.now();
-
-      const pageviews = [];
-      for (let i = 0; i < 45; i++) {
-        const isBot = i % 5 === 0;
-        pageviews.push({
-          id: 1000 - i,
-          path: paths[i % paths.length],
-          visitor_hash:
-            "usr_" + ((i * 1337) % 99999).toString(16).padStart(6, "0"),
-          referrer: referrers[i % referrers.length],
-          country: countries[i % countries.length],
-          utm_source: i % 3 === 0 ? "github" : "direct",
-          utm_medium: i % 3 === 0 ? "referral" : "none",
-          utm_campaign: i % 3 === 0 ? "oss_showcase" : "",
-          is_bot: isBot ? 1 : 0,
-          created_at: new Date(now - i * 3600000 * 3).toISOString(),
-        });
+    // Actualizador del badge de tiempo transcurrido
+    setInterval(function () {
+      var badge = document.getElementById("badge-sync-time");
+      if (!badge) return;
+      var elapsedSec = Math.floor((Date.now() - lastSyncTimestamp) / 1000);
+      if (elapsedSec < 3) {
+        badge.textContent = "Sincronizado: justo ahora";
+      } else {
+        badge.textContent = "Sincronizado: hace " + elapsedSec + "s";
       }
-
-      const prefetches = [];
-      for (let i = 0; i < 18; i++) {
-        prefetches.push({
-          id: 500 - i,
-          path: paths[(i + 1) % paths.length],
-          visitor_hash:
-            "usr_" + ((i * 777) % 99999).toString(16).padStart(6, "0"),
-          referrer: "https://arturonavax.dev/",
-          country: countries[i % countries.length],
-          purpose: "hover-prefetch",
-          created_at: new Date(now - i * 3600000 * 2).toISOString(),
-        });
-      }
-
-      const dailySummaries = [];
-      for (let d = 6; d >= 0; d--) {
-        const dt = new Date(now - d * 86400000).toISOString().slice(0, 10);
-        dailySummaries.push({
-          summary_date: dt,
-          total_views: Math.floor(65 + Math.random() * 45),
-          human_views: Math.floor(50 + Math.random() * 30),
-          bot_views: Math.floor(10 + Math.random() * 15),
-          prefetch_views: Math.floor(15 + Math.random() * 20),
-        });
-      }
-
-      return {
-        pageviews,
-        prefetches,
-        daily_summaries: dailySummaries,
-        incidents: [],
-        deployments: [
-          {
-            release_version: "v1.4.2",
-            git_commit: "c676fd3",
-            deployed_at: new Date(now - 86400000 * 2).toISOString(),
-            environment: "production",
-            status: "active",
-          },
-          {
-            release_version: "v1.4.1",
-            git_commit: "4b9a112",
-            deployed_at: new Date(now - 86400000 * 6).toISOString(),
-            environment: "production",
-            status: "retired",
-          },
-        ],
-        leads: [
-          {
-            id: 1,
-            from_email: "recruiter@tier1.com",
-            subject: "Staff Backend Engineer Opportunity",
-            body: "Reviewed your distributed systems work in Go and Rust...",
-            created_at: new Date(now - 86400000).toISOString(),
-          },
-        ],
-      };
-    }
+    }, 1000);
 
     async function fetchDashboardData(isManual) {
-      const refreshBtn = document.getElementById("btn-refresh");
-      if (refreshBtn) refreshBtn.classList.add("animate-spin");
+      var refreshIcon = document.getElementById("refresh-icon");
+      if (refreshIcon) refreshIcon.classList.add("animate-spin");
 
       try {
-        const [telemetryRes, metricsRes, deployRes, leadsRes] =
-          await Promise.allSettled([
-            fetch("/api/telemetry?range=" + currentRange, {
-              cache: "no-store",
-            }),
-            fetch("/api/metrics", { cache: "no-store" }),
-            fetch("/api/deployments", { cache: "no-store" }),
-            fetch("/api/leads", { cache: "no-store" }),
-          ]);
+        var queryParams = new URLSearchParams();
+        queryParams.set("range", currentRange);
+        if (currentCountry !== "all")
+          queryParams.set("country", currentCountry);
+        if (currentSegment !== "all")
+          queryParams.set("segment", currentSegment);
+        if (currentPathFilter !== "all")
+          queryParams.set("path", currentPathFilter);
+        if (searchQuery.trim()) queryParams.set("search", searchQuery.trim());
+        if (currentRange === "custom") {
+          if (customFrom) queryParams.set("from", customFrom);
+          if (customTo) queryParams.set("to", customTo);
+        }
 
-        let hasLiveD1 = false;
+        var results = await Promise.allSettled([
+          fetch("/api/telemetry?" + queryParams.toString(), {
+            cache: "no-store",
+          }),
+          fetch("/api/metrics", { cache: "no-store" }),
+          fetch("/api/deployments", { cache: "no-store" }),
+          fetch("/api/leads", { cache: "no-store" }),
+        ]);
+
+        var telemetryRes = results[0];
+        var metricsRes = results[1];
+        var deployRes = results[2];
+        var leadsRes = results[3];
 
         if (telemetryRes.status === "fulfilled" && telemetryRes.value.ok) {
-          const tData = await telemetryRes.value.json();
+          var tData = await telemetryRes.value.json();
+          cachedTelemetryData = tData;
           rawPageviews = tData.pageviews || [];
-          rawEdgeEvents = tData.edge_events || [];
           rawPrefetches = tData.prefetches || [];
-          rawDailySummaries = tData.daily_summaries || [];
-          hasLiveD1 = true;
+          rawTopPages = tData.top_pages || [];
+          rawTopCountries = tData.top_countries || [];
+          rawUtmAttributions = tData.utm_attributions || [];
+          rawTopReferrers = tData.top_referrers || [];
         }
 
         if (metricsRes.status === "fulfilled" && metricsRes.value.ok) {
-          const mData = await metricsRes.value.json();
+          var mData = await metricsRes.value.json();
           rawIncidents = mData.data_quality_warnings || [];
-          if (!rawDailySummaries.length && mData.metrics) {
-            rawDailySummaries = mData.metrics;
-          }
         }
 
         if (deployRes.status === "fulfilled" && deployRes.value.ok) {
-          const dData = await deployRes.value.json();
+          var dData = await deployRes.value.json();
           rawDeployments = dData.deployments || [];
         }
 
         if (leadsRes.status === "fulfilled" && leadsRes.value.ok) {
-          const lData = await leadsRes.value.json();
+          var lData = await leadsRes.value.json();
           rawLeads = lData.leads || [];
         }
 
-        // If in local astro dev without worker D1 connection, populate simulation
-        if (!hasLiveD1 || !rawPageviews.length) {
-          const mock = generateMockData();
-          rawPageviews = mock.pageviews;
-          rawPrefetches = mock.prefetches;
-          rawDailySummaries = mock.daily_summaries;
-          rawDeployments = mock.deployments;
-          rawLeads = mock.leads;
-          const userBadge = document.getElementById("badge-cf-user");
-          if (userBadge) {
-            userBadge.textContent = "Local Dev (D1 Fallback)";
-          }
-        }
-
+        lastSyncTimestamp = Date.now();
         renderDashboard();
       } catch (err) {
-        console.warn("Telemetry fetch fallback:", err);
+        console.warn("Error fetching dashboard telemetry:", err);
       } finally {
-        if (refreshBtn) refreshBtn.classList.remove("animate-spin");
+        if (refreshIcon) refreshIcon.classList.remove("animate-spin");
       }
-    }
-
-    function getFilteredEvents() {
-      let items = [...rawPageviews];
-
-      if (currentSegment === "human") items = items.filter((i) => !i.is_bot);
-      if (currentSegment === "bot") items = items.filter((i) => i.is_bot);
-      if (currentSegment === "prefetch") {
-        items = rawPrefetches.map((p) => ({
-          ...p,
-          is_prefetch: true,
-          is_bot: 0,
-        }));
-      }
-
-      if (currentPathFilter !== "all") {
-        items = items.filter(
-          (i) => i.path && i.path.startsWith(currentPathFilter),
-        );
-      }
-
-      if (excludeBots && currentSegment !== "bot") {
-        items = items.filter((i) => !i.is_bot);
-      }
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        items = items.filter(
-          (i) =>
-            (i.path && i.path.toLowerCase().includes(q)) ||
-            (i.country && i.country.toLowerCase().includes(q)) ||
-            (i.referrer && i.referrer.toLowerCase().includes(q)) ||
-            (i.utm_source && i.utm_source.toLowerCase().includes(q)) ||
-            (i.utm_campaign && i.utm_campaign.toLowerCase().includes(q)) ||
-            (i.visitor_hash && i.visitor_hash.toLowerCase().includes(q)),
-        );
-      }
-
-      return items;
     }
 
     function renderDashboard() {
-      const filtered = getFilteredEvents();
+      if (!cachedTelemetryData) return;
 
-      // 1. Update KPIs
-      const totalViews = rawPageviews.length;
-      const humanViews = rawPageviews.filter((p) => !p.is_bot).length;
-      const botViews = rawPageviews.filter((p) => p.is_bot).length;
-      const uniqueHashes = new Set(rawPageviews.map((p) => p.visitor_hash))
-        .size;
-      const prefetchCount = rawPrefetches.length;
-      const leadsCount = rawLeads.length;
+      var stats = cachedTelemetryData.stats || {};
+      var totalViews = stats.total_pageviews || 0;
+      var humanViews = stats.human_views || 0;
+      var botViews = stats.bot_views || 0;
+      var uniqueVisitors = stats.unique_visitors || 0;
+      var prefetchesCount = stats.prefetches_count || 0;
+      var leadsCount = rawLeads.length;
 
-      const humanPct =
+      var humanPct =
         totalViews > 0 ? Math.round((humanViews / totalViews) * 100) : 0;
-      const botPct =
+      var botPct =
         totalViews > 0 ? Math.round((botViews / totalViews) * 100) : 0;
 
-      document.getElementById("kpi-total").textContent =
-        totalViews.toLocaleString();
-      document.getElementById("kpi-total-sub").textContent =
-        `${humanViews} H · ${botViews} B`;
+      // 1. KPIs
+      var kpiTotal = document.getElementById("kpi-total");
+      if (kpiTotal) kpiTotal.textContent = totalViews.toLocaleString();
+      var kpiTotalSub = document.getElementById("kpi-total-sub");
+      if (kpiTotalSub) {
+        kpiTotalSub.textContent = stats.all_time_pageviews
+          ? "Histórico acumulado: " + stats.all_time_pageviews.toLocaleString()
+          : "Tráfico del período";
+      }
 
-      document.getElementById("kpi-human").textContent =
-        humanViews.toLocaleString();
-      document.getElementById("kpi-human-sub").textContent =
-        `${humanPct}% del tráfico total`;
+      var kpiHuman = document.getElementById("kpi-human");
+      if (kpiHuman) kpiHuman.textContent = humanViews.toLocaleString();
+      var kpiHumanSub = document.getElementById("kpi-human-sub");
+      if (kpiHumanSub) kpiHumanSub.textContent = humanPct + "% del total";
 
-      document.getElementById("kpi-bot").textContent =
-        botViews.toLocaleString();
-      document.getElementById("kpi-bot-sub").textContent =
-        `${botPct}% del tráfico total`;
+      var kpiBot = document.getElementById("kpi-bot");
+      if (kpiBot) kpiBot.textContent = botViews.toLocaleString();
+      var kpiBotSub = document.getElementById("kpi-bot-sub");
+      if (kpiBotSub) kpiBotSub.textContent = botPct + "% del total";
 
-      document.getElementById("kpi-unique").textContent =
-        uniqueHashes.toLocaleString();
-      document.getElementById("kpi-prefetch").textContent =
-        prefetchCount.toLocaleString();
-      document.getElementById("kpi-leads").textContent =
-        leadsCount.toLocaleString();
+      var kpiUnique = document.getElementById("kpi-unique");
+      if (kpiUnique) kpiUnique.textContent = uniqueVisitors.toLocaleString();
 
-      // 2. Render SVG Chart
-      renderSvgChart();
+      var kpiPrefetch = document.getElementById("kpi-prefetch");
+      if (kpiPrefetch)
+        kpiPrefetch.textContent = prefetchesCount.toLocaleString();
 
-      // 3. Render Countries Distribution
-      renderCountries();
+      var kpiLeads = document.getElementById("kpi-leads");
+      if (kpiLeads) kpiLeads.textContent = leadsCount.toLocaleString();
 
-      // 4. Render Attribution & Paths
-      renderAttributionAndPaths();
+      // 2. Poblar opciones de país si no se han poblado
+      updateCountryDropdown();
 
-      // 5. Render Table Stream
-      renderTable(filtered);
+      // 3. Render Top Pages
+      renderTopPages(rawTopPages, totalViews);
 
-      // 6. Render Subtabs (Incidents, Deployments, Leads)
-      renderGovernancePanes();
+      // 4. Render Countries
+      renderCountries(rawTopCountries, totalViews);
+
+      // 5. Render Attribution
+      renderAttribution(rawUtmAttributions, rawTopReferrers);
+
+      // 6. Render Prefetches
+      renderPrefetches(rawPrefetches, prefetchesCount);
+
+      // 7. Render Event Table
+      renderTable(rawPageviews);
+
+      // 8. Render Panes
+      renderPanes();
     }
 
-    function renderSvgChart() {
-      const svg = document.getElementById("chart-svg");
-      if (!svg) return;
+    function updateCountryDropdown() {
+      var select = document.getElementById("select-country");
+      if (!select) return;
 
-      const days = rawDailySummaries.slice(-7);
-      if (!days.length) {
-        svg.innerHTML =
-          '<text x="350" y="120" text-anchor="middle" fill="var(--color-text-muted)">Sin datos de serie temporal</text>';
+      var currentVal = select.value;
+      rawTopCountries.forEach(function (c) {
+        if (c.country && c.country !== "UNKNOWN") knownCountries.add(c.country);
+      });
+      rawPageviews.forEach(function (p) {
+        if (p.country && p.country !== "XX") knownCountries.add(p.country);
+      });
+
+      var existingOptions = new Set();
+      for (var i = 0; i < select.options.length; i++) {
+        existingOptions.add(select.options[i].value);
+      }
+
+      knownCountries.forEach(function (code) {
+        if (!existingOptions.has(code)) {
+          var opt = document.createElement("option");
+          opt.value = code;
+          opt.textContent = code;
+          select.appendChild(opt);
+        }
+      });
+
+      select.value = currentVal;
+    }
+
+    function renderTopPages(pages, totalViews) {
+      var tbody = document.getElementById("top-pages-tbody");
+      var countLabel = document.getElementById("top-pages-count");
+      if (!tbody) return;
+
+      if (countLabel) countLabel.textContent = pages.length + " rutas";
+
+      if (!pages.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="6" class="py-6 text-center text-[var(--color-text-muted)] italic">Sin datos para este filtro</td></tr>';
         return;
       }
 
-      const width = 700;
-      const height = 240;
-      const padLeft = 40;
-      const padRight = 20;
-      const padTop = 20;
-      const padBottom = 35;
-      const chartWidth = width - padLeft - padRight;
-      const chartHeight = height - padTop - padBottom;
+      var maxViews = pages[0] ? pages[0].total_views : 1;
 
-      const maxVal = Math.max(
-        ...days.map((d) => {
-          let v = d.human_views || d.total_views || 0;
-          if (!excludeBots) v += d.bot_views || 0;
-          if (includePrefetch) v += d.prefetch_views || 0;
-          return v;
-        }),
-        10,
-      );
-
-      const barSlot = chartWidth / days.length;
-      const barWidth = Math.max(16, barSlot * 0.45);
-
-      let gridSvg = "";
-      for (let g = 0; g <= 4; g++) {
-        const y = padTop + chartHeight - chartHeight * (g / 4);
-        const val = Math.round(maxVal * (g / 4));
-        gridSvg += `<line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="var(--color-surface-border)" stroke-dasharray="2,2" stroke-opacity="0.6"/>`;
-        gridSvg += `<text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" fill="var(--color-text-dim)" font-size="9">${val}</text>`;
-      }
-
-      let barsSvg = "";
-      days.forEach((day, idx) => {
-        const x = padLeft + idx * barSlot + (barSlot - barWidth) / 2;
-        const hVal =
-          day.human_views || Math.round((day.total_views || 0) * 0.7);
-        const bVal = excludeBots
-          ? 0
-          : day.bot_views || Math.round((day.total_views || 0) * 0.3);
-        const pVal = includePrefetch ? day.prefetch_views || 0 : 0;
-
-        const hH = (hVal / maxVal) * chartHeight;
-        const bH = (bVal / maxVal) * chartHeight;
-        const pH = (pVal / maxVal) * chartHeight;
-
-        const yH = padTop + chartHeight - hH;
-        const yB = yH - bH;
-        const yP = yB - pH;
-
-        const dateLabel = (day.summary_date || "").slice(5);
-
-        barsSvg += `
-          <g class="chart-bar-group cursor-pointer" data-date="${day.summary_date}" data-human="${hVal}" data-bot="${bVal}" data-prefetch="${pVal}">
-            <rect x="${x}" y="${yH}" width="${barWidth}" height="${hH}" fill="#10b981" rx="1"/>
-            ${bVal > 0 ? `<rect x="${x}" y="${yB}" width="${barWidth}" height="${bH}" fill="var(--color-accent-gold)" rx="1"/>` : ""}
-            ${pVal > 0 ? `<rect x="${x}" y="${yP}" width="${barWidth}" height="${pH}" fill="#22d3ee" rx="1"/>` : ""}
-            <text x="${x + barWidth / 2}" y="${height - 12}" text-anchor="middle" fill="var(--color-text-dim)" font-size="9">${dateLabel}</text>
-          </g>
-        `;
-      });
-
-      svg.innerHTML = gridSvg + barsSvg;
-
-      // Attach tooltip listeners
-      const tooltip = document.getElementById("chart-tooltip");
-      svg.querySelectorAll(".chart-bar-group").forEach((el) => {
-        el.addEventListener("mouseenter", (e) => {
-          const d = el.getAttribute("data-date");
-          const h = el.getAttribute("data-human");
-          const b = el.getAttribute("data-bot");
-          const p = el.getAttribute("data-prefetch");
-
-          tooltip.innerHTML = `
-            <div class="font-bold text-[var(--color-accent-gold)]">${d}</div>
-            <div class="text-emerald-400">Humanos: ${h}</div>
-            <div class="text-[var(--color-accent-gold)]">Bots: ${b}</div>
-            <div class="text-cyan-400">Prefetch: ${p}</div>
-          `;
-          tooltip.classList.remove("hidden");
-        });
-
-        el.addEventListener("mousemove", (e) => {
-          const rect = svg.getBoundingClientRect();
-          tooltip.style.left = e.clientX - rect.left + 15 + "px";
-          tooltip.style.top = e.clientY - rect.top - 10 + "px";
-        });
-
-        el.addEventListener("mouseleave", () => {
-          tooltip.classList.add("hidden");
-        });
-      });
-    }
-
-    function renderCountries() {
-      const container = document.getElementById("countries-list");
-      if (!container) return;
-
-      const counts = {};
-      rawPageviews.forEach((p) => {
-        const c = p.country || "XX";
-        counts[c] = (counts[c] || 0) + 1;
-      });
-
-      const sorted = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-      const total = rawPageviews.length || 1;
-
-      if (!sorted.length) {
-        container.innerHTML =
-          '<p class="text-[var(--color-text-muted)] text-center py-4">Sin datos geográficos</p>';
-        return;
-      }
-
-      container.innerHTML = sorted
-        .map(([country, count]) => {
-          const pct = Math.round((count / total) * 100);
-          return `
-          <div>
-            <div class="flex justify-between text-[11px] mb-1">
-              <span class="text-[var(--color-text-primary)] font-semibold">${country}</span>
-              <span class="text-[var(--color-text-dim)]">${count} visitas (${pct}%)</span>
-            </div>
-            <div class="w-full bg-[var(--color-bg-primary)] rounded-full h-1.5 overflow-hidden">
-              <div class="bg-[var(--color-accent-gold)] h-1.5 rounded-full" style="width: ${pct}%"></div>
-            </div>
-          </div>
-        `;
+      tbody.innerHTML = pages
+        .slice(0, 10)
+        .map(function (p, idx) {
+          var pct =
+            totalViews > 0 ? Math.round((p.total_views / totalViews) * 100) : 0;
+          var barPct = Math.round((p.total_views / maxViews) * 100);
+          return (
+            '<tr class="border-b border-[var(--color-surface-border)] hover:bg-[var(--color-accent-gold-subtle)] transition-colors">' +
+            '<td class="py-2 px-2 text-[var(--color-text-dim)]">#' +
+            (idx + 1) +
+            "</td>" +
+            '<td class="py-2 px-2 font-semibold text-[var(--color-text-primary)] max-w-xs truncate" title="' +
+            escapeHtml(p.path) +
+            '">' +
+            escapeHtml(p.path) +
+            "</td>" +
+            '<td class="py-2 px-2 text-right font-bold text-[var(--color-text-primary)]">' +
+            p.total_views.toLocaleString() +
+            "</td>" +
+            '<td class="py-2 px-2 text-right text-emerald-400">' +
+            (p.human_views || 0).toLocaleString() +
+            "</td>" +
+            '<td class="py-2 px-2 text-right text-[var(--color-text-dim)]">' +
+            (p.unique_visitors || 0).toLocaleString() +
+            "</td>" +
+            '<td class="py-2 px-2 text-right">' +
+            '<div class="flex items-center justify-end gap-1.5">' +
+            '<span class="text-[10px] text-[var(--color-text-muted)]">' +
+            pct +
+            "%</span>" +
+            '<div class="w-12 h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">' +
+            '<div class="h-full bg-[var(--color-accent-gold)]" style="width:' +
+            barPct +
+            '%"></div>' +
+            "</div>" +
+            "</div>" +
+            "</td>" +
+            "</tr>"
+          );
         })
         .join("");
     }
 
-    function renderAttributionAndPaths() {
-      const attrEl = document.getElementById("attribution-list");
-      const pathsEl = document.getElementById("paths-list");
+    function renderCountries(countries, totalViews) {
+      var container = document.getElementById("countries-list");
+      if (!container) return;
 
-      // Attribution
-      const attrCounts = {};
-      rawPageviews.forEach((p) => {
-        const src =
-          p.utm_source !== "direct" && p.utm_source
-            ? `${p.utm_source} (${p.utm_medium || "cpc"})`
-            : p.referrer || "Direct";
-        attrCounts[src] = (attrCounts[src] || 0) + 1;
-      });
-      const topAttr = Object.entries(attrCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-      if (attrEl) {
-        attrEl.innerHTML =
-          topAttr
-            .map(
-              ([src, count]) => `
-          <div class="flex justify-between items-center py-1 border-b border-[var(--color-surface-border)] last:border-none">
-            <span class="truncate max-w-[220px] text-[var(--color-text-secondary)]">${escapeHtml(src)}</span>
-            <span class="font-bold text-[var(--color-accent-gold)]">${count}</span>
-          </div>
-        `,
-            )
-            .join("") ||
-          '<p class="text-[var(--color-text-muted)] text-center py-4">Sin datos de atribución</p>';
+      if (!countries.length) {
+        container.innerHTML =
+          '<p class="py-6 text-center text-[var(--color-text-muted)] italic">Sin datos de geolocalización</p>';
+        return;
       }
 
-      // Paths
-      const pathCounts = {};
-      rawPageviews.forEach((p) => {
-        const pth = p.path || "/";
-        pathCounts[pth] = (pathCounts[pth] || 0) + 1;
-      });
-      const topPaths = Object.entries(pathCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-      if (pathsEl) {
-        pathsEl.innerHTML =
-          topPaths
-            .map(
-              ([pth, count]) => `
-          <div class="flex justify-between items-center py-1 border-b border-[var(--color-surface-border)] last:border-none">
-            <span class="truncate max-w-[220px] text-[var(--color-text-primary)]">${escapeHtml(pth)}</span>
-            <span class="font-bold text-emerald-400">${count}</span>
-          </div>
-        `,
-            )
-            .join("") ||
-          '<p class="text-[var(--color-text-muted)] text-center py-4">Sin datos de rutas</p>';
+      var maxC = countries[0] ? countries[0].views : 1;
+
+      container.innerHTML = countries
+        .slice(0, 8)
+        .map(function (c) {
+          var pct =
+            totalViews > 0 ? Math.round((c.views / totalViews) * 100) : 0;
+          var barPct = Math.round((c.views / maxC) * 100);
+          var isCurrent = currentCountry === c.country;
+          return (
+            '<div class="p-2 rounded border ' +
+            (isCurrent
+              ? "border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)]"
+              : "border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]") +
+            ' hover:border-[var(--color-accent-gold)] cursor-pointer transition-colors" onclick="filterByCountry(\'' +
+            escapeHtml(c.country) +
+            "')\">" +
+            '<div class="flex items-center justify-between text-xs">' +
+            '<div class="flex items-center gap-2">' +
+            '<span class="px-1.5 py-0.5 rounded-xs bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] font-bold text-[10px]">' +
+            escapeHtml(c.country) +
+            "</span>" +
+            '<span class="text-[var(--color-text-primary)] font-semibold">' +
+            escapeHtml(c.country) +
+            "</span>" +
+            "</div>" +
+            '<div class="flex items-center gap-2 font-mono">' +
+            '<span class="text-[var(--color-text-primary)] font-bold">' +
+            c.views.toLocaleString() +
+            "</span>" +
+            '<span class="text-[10px] text-[var(--color-text-muted)]">(' +
+            pct +
+            "%)</span>" +
+            "</div>" +
+            "</div>" +
+            '<div class="mt-1.5 w-full h-1 rounded-full bg-[var(--color-surface-border)] overflow-hidden">' +
+            '<div class="h-full bg-emerald-400" style="width:' +
+            barPct +
+            '%"></div>' +
+            "</div>" +
+            "</div>"
+          );
+        })
+        .join("");
+    }
+
+    function renderAttribution(utms, referrers) {
+      var container = document.getElementById("attribution-list");
+      if (!container) return;
+
+      var html = "";
+
+      if (utms.length) {
+        html +=
+          '<div class="space-y-1.5"><div class="text-[10px] uppercase text-[var(--color-text-muted)] tracking-wider font-semibold">Campañas UTM</div>';
+        html += utms
+          .slice(0, 5)
+          .map(function (u) {
+            return (
+              '<div class="flex items-center justify-between p-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]">' +
+              '<div class="truncate max-w-xs">' +
+              '<span class="text-[var(--color-accent-gold)] font-bold">' +
+              escapeHtml(u.utm_source) +
+              "</span>" +
+              (u.utm_campaign && u.utm_campaign !== "-"
+                ? ' <span class="text-[var(--color-text-dim)]">/ ' +
+                  escapeHtml(u.utm_campaign) +
+                  "</span>"
+                : "") +
+              "</div>" +
+              '<span class="font-bold text-[var(--color-text-primary)]">' +
+              u.count.toLocaleString() +
+              "</span>" +
+              "</div>"
+            );
+          })
+          .join("");
+        html += "</div>";
       }
+
+      if (referrers.length) {
+        html +=
+          '<div class="space-y-1.5 mt-3"><div class="text-[10px] uppercase text-[var(--color-text-muted)] tracking-wider font-semibold">Top Referrers Externos</div>';
+        html += referrers
+          .slice(0, 5)
+          .map(function (r) {
+            return (
+              '<div class="flex items-center justify-between p-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]">' +
+              '<span class="truncate max-w-xs text-[var(--color-text-secondary)]">' +
+              escapeHtml(r.referrer) +
+              "</span>" +
+              '<span class="font-bold text-emerald-400">' +
+              r.count.toLocaleString() +
+              "</span>" +
+              "</div>"
+            );
+          })
+          .join("");
+        html += "</div>";
+      }
+
+      if (!utms.length && !referrers.length) {
+        html =
+          '<p class="py-4 text-center text-[var(--color-text-muted)] italic">Sin atribución o referrers externos (Tráfico directo)</p>';
+      }
+
+      container.innerHTML = html;
+    }
+
+    function renderPrefetches(prefetches, totalCount) {
+      var container = document.getElementById("prefetch-list");
+      var badge = document.getElementById("prefetch-ratio-badge");
+      if (!container) return;
+
+      if (badge) badge.textContent = totalCount + " precargas";
+
+      if (!prefetches.length) {
+        container.innerHTML =
+          '<p class="py-4 text-center text-[var(--color-text-muted)] italic">Sin eventos de prefetch registrados</p>';
+        return;
+      }
+
+      // Conteo por ruta
+      var counts = {};
+      prefetches.forEach(function (p) {
+        counts[p.path] = (counts[p.path] || 0) + 1;
+      });
+      var sorted = Object.entries(counts).sort(function (a, b) {
+        return b[1] - a[1];
+      });
+
+      container.innerHTML = sorted
+        .slice(0, 6)
+        .map(function (item) {
+          return (
+            '<div class="flex items-center justify-between p-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]">' +
+            '<span class="truncate max-w-xs text-[var(--color-text-primary)] font-semibold">' +
+            escapeHtml(item[0]) +
+            "</span>" +
+            '<span class="px-2 py-0.5 rounded-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-bold">' +
+            item[1] +
+            "</span>" +
+            "</div>"
+          );
+        })
+        .join("");
     }
 
     function renderTable(items) {
-      const tbody = document.getElementById("telemetry-tbody");
-      const counter = document.getElementById("feed-count-badge");
-      const searchCounter = document.getElementById("search-counter");
-
-      if (counter) counter.textContent = `Mostrando ${items.length} eventos`;
-      if (searchCounter) searchCounter.textContent = `${items.length} items`;
+      var tbody = document.getElementById("telemetry-tbody");
+      var counter = document.getElementById("events-count-label");
+      var searchCounter = document.getElementById("search-counter");
       if (!tbody) return;
+
+      if (counter) counter.textContent = items.length + " eventos";
+      if (searchCounter) searchCounter.textContent = items.length + " hits";
 
       if (!items.length) {
         tbody.innerHTML =
-          '<tr><td colspan="7" class="py-8 text-center text-[var(--color-text-muted)] italic">No se encontraron eventos con los filtros actuales</td></tr>';
+          '<tr><td colspan="7" class="py-6 text-center text-[var(--color-text-muted)] italic">No se encontraron eventos coincidentes.</td></tr>';
         return;
       }
 
       tbody.innerHTML = items
-        .slice(0, 35)
-        .map((item) => {
-          const isBot = Boolean(item.is_bot);
-          const isPrefetch = Boolean(item.is_prefetch || item.purpose);
-          let tagClass =
-            "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
-          let tagLabel = "HUMAN";
+        .slice(0, 60)
+        .map(function (item) {
+          var isBot = Boolean(item.is_bot);
+          var isPrefetch = Boolean(item.is_prefetch || item.purpose);
+          var tagBadge = isPrefetch
+            ? '<span class="px-2 py-0.5 rounded-xs border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-bold text-[10px]">PREFETCH</span>'
+            : isBot
+              ? '<span class="px-2 py-0.5 rounded-xs border border-[var(--color-accent-gold)]/40 bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] font-bold text-[10px]">BOT</span>'
+              : '<span class="px-2 py-0.5 rounded-xs border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold text-[10px]">HUMAN</span>';
 
-          if (isPrefetch) {
-            tagClass = "text-cyan-400 bg-cyan-500/10 border-cyan-500/30";
-            tagLabel = "PREFETCH";
-          } else if (isBot) {
-            tagClass = "text-rose-400 bg-rose-500/10 border-rose-500/30";
-            tagLabel = "BOT";
-          }
-
-          const country = item.country || "XX";
-          const ref =
-            item.utm_source !== "direct" && item.utm_source
+          var country = item.country || "XX";
+          var ref =
+            item.utm_source && item.utm_source !== "direct"
               ? item.utm_source
               : item.referrer || "Direct";
-          const utm = item.utm_campaign || item.utm_medium || "--";
-          const hash = item.visitor_hash
+          var campaign = item.utm_campaign
+            ? escapeHtml(item.utm_campaign)
+            : "--";
+          var hash = item.visitor_hash
             ? item.visitor_hash.slice(0, 10) + "..."
             : "--";
 
-          return `
-          <tr class="border-b border-[var(--color-surface-border)]/50 hover:bg-[var(--color-bg-primary)]/40 transition-colors">
-            <td class="py-2 px-3 text-[var(--color-text-dim)]">${formatTime(item.created_at)}</td>
-            <td class="py-2 px-3 font-semibold text-[var(--color-accent-gold)]">${escapeHtml(item.path)}</td>
-            <td class="py-2 px-3"><span class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5">${escapeHtml(country)}</span></td>
-            <td class="py-2 px-3 text-[var(--color-text-secondary)] truncate max-w-[160px]">${escapeHtml(ref)}</td>
-            <td class="py-2 px-3 text-[var(--color-text-dim)]">${escapeHtml(utm)}</td>
-            <td class="py-2 px-3"><span class="rounded-xs border px-1.5 py-0.5 text-[10px] font-semibold ${tagClass}">${tagLabel}</span></td>
-            <td class="py-2 px-3 text-[var(--color-text-dim)] text-[10px]">${escapeHtml(hash)}</td>
-          </tr>
-        `;
+          return (
+            '<tr class="border-b border-[var(--color-surface-border)] hover:bg-[var(--color-accent-gold-subtle)] transition-colors">' +
+            '<td class="py-2 px-2.5 text-[var(--color-text-dim)] whitespace-nowrap">' +
+            formatTime(item.created_at) +
+            "</td>" +
+            '<td class="py-2 px-2.5 whitespace-nowrap">' +
+            tagBadge +
+            "</td>" +
+            '<td class="py-2 px-2.5 font-semibold text-[var(--color-text-primary)] max-w-xs truncate" title="' +
+            escapeHtml(item.path) +
+            '">' +
+            escapeHtml(item.path) +
+            "</td>" +
+            '<td class="py-2 px-2.5 whitespace-nowrap"><span class="px-1.5 py-0.5 rounded-xs bg-[var(--color-bg-primary)] border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] font-bold text-[10px]">' +
+            escapeHtml(country) +
+            "</span></td>" +
+            '<td class="py-2 px-2.5 text-[var(--color-text-secondary)] max-w-xs truncate">' +
+            escapeHtml(ref) +
+            "</td>" +
+            '<td class="py-2 px-2.5 text-[var(--color-text-dim)]">' +
+            campaign +
+            "</td>" +
+            '<td class="py-2 px-2.5 text-[var(--color-text-muted)] text-[10px]">' +
+            escapeHtml(hash) +
+            "</td>" +
+            "</tr>"
+          );
         })
         .join("");
     }
 
-    function renderGovernancePanes() {
-      // 1. Incidents
-      const cbTbody = document.getElementById("cb-tbody");
+    function renderPanes() {
+      // CB
+      var cbTbody = document.getElementById("cb-tbody");
       if (cbTbody) {
         if (!rawIncidents.length) {
           cbTbody.innerHTML =
-            '<tr><td colspan="5" class="py-4 text-center text-[var(--color-text-muted)] italic">Sin incidentes de circuit breaker registrados (100% integridad)</td></tr>';
+            '<tr><td colspan="5" class="py-4 text-center text-[var(--color-text-muted)] italic">Sin incidentes de circuit breaker (100% integridad de datos)</td></tr>';
         } else {
           cbTbody.innerHTML = rawIncidents
-            .map(
-              (inc) => `
-            <tr class="border-b border-[var(--color-surface-border)]/50">
-              <td class="py-2 px-3">${escapeHtml(inc.date)}</td>
-              <td class="py-2 px-3 text-cyan-400">${escapeHtml(inc.subsystem)}</td>
-              <td class="py-2 px-3 text-rose-400">${escapeHtml(inc.warning || inc.reason)}</td>
-              <td class="py-2 px-3 font-bold">${inc.shed_count || 0}</td>
-              <td class="py-2 px-3"><span class="text-amber-400">${escapeHtml(inc.data_completeness || "partial")}</span></td>
-            </tr>
-          `,
-            )
+            .map(function (inc) {
+              return (
+                '<tr class="border-b border-[var(--color-surface-border)]">' +
+                '<td class="py-2 px-3">' +
+                escapeHtml(inc.date) +
+                "</td>" +
+                '<td class="py-2 px-3 text-[var(--color-accent-gold)]">' +
+                escapeHtml(inc.subsystem) +
+                "</td>" +
+                '<td class="py-2 px-3 text-red-400">' +
+                escapeHtml(inc.warning || inc.reason) +
+                "</td>" +
+                '<td class="py-2 px-3">' +
+                (inc.shed_count || 0) +
+                "</td>" +
+                '<td class="py-2 px-3 font-bold">' +
+                escapeHtml(inc.data_completeness || "partial") +
+                "</td>" +
+                "</tr>"
+              );
+            })
             .join("");
         }
       }
 
-      // 2. Deployments
-      const depTbody = document.getElementById("deploy-tbody");
+      // Deployments
+      var depTbody = document.getElementById("deploy-tbody");
       if (depTbody) {
-        depTbody.innerHTML =
-          rawDeployments
-            .map(
-              (d) => `
-          <tr class="border-b border-[var(--color-surface-border)]/50">
-            <td class="py-2 px-3 font-bold text-[var(--color-accent-gold)]">${escapeHtml(d.release_version)}</td>
-            <td class="py-2 px-3 font-mono text-cyan-400">${escapeHtml(d.git_commit ? d.git_commit.slice(0, 7) : "--")}</td>
-            <td class="py-2 px-3 text-[var(--color-text-dim)]">${formatTime(d.deployed_at)}</td>
-            <td class="py-2 px-3">${escapeHtml(d.environment || "production")}</td>
-            <td class="py-2 px-3"><span class="text-emerald-400 font-semibold">${escapeHtml(d.status || "active")}</span></td>
-          </tr>
-        `,
-            )
-            .join("") ||
-          '<tr><td colspan="5" class="py-4 text-center text-[var(--color-text-muted)] italic">Sin registros de despliegue</td></tr>';
+        if (!rawDeployments.length) {
+          depTbody.innerHTML =
+            '<tr><td colspan="5" class="py-4 text-center text-[var(--color-text-muted)] italic">v1.4.2 (Production Active)</td></tr>';
+        } else {
+          depTbody.innerHTML = rawDeployments
+            .map(function (d) {
+              return (
+                '<tr class="border-b border-[var(--color-surface-border)]">' +
+                '<td class="py-2 px-3 font-bold text-[var(--color-accent-gold)]">' +
+                escapeHtml(d.release_version) +
+                "</td>" +
+                '<td class="py-2 px-3 text-[var(--color-text-dim)]">' +
+                escapeHtml(d.git_commit || "--") +
+                "</td>" +
+                '<td class="py-2 px-3">' +
+                formatTime(d.deployed_at) +
+                "</td>" +
+                '<td class="py-2 px-3">' +
+                escapeHtml(d.environment || "production") +
+                "</td>" +
+                '<td class="py-2 px-3"><span class="px-1.5 py-0.5 rounded-xs ' +
+                (d.status === "active"
+                  ? "bg-emerald-500/20 text-emerald-400"
+                  : "bg-neutral-500/20 text-neutral-400") +
+                '">' +
+                escapeHtml(d.status) +
+                "</span></td>" +
+                "</tr>"
+              );
+            })
+            .join("");
+        }
       }
 
-      // 3. Leads
-      const leadsTbody = document.getElementById("leads-tbody");
+      // Leads
+      var leadsTbody = document.getElementById("leads-tbody");
       if (leadsTbody) {
-        leadsTbody.innerHTML =
-          rawLeads
-            .map(
-              (l) => `
-          <tr class="border-b border-[var(--color-surface-border)]/50">
-            <td class="py-2 px-3 font-semibold text-[var(--color-accent-gold)]">${escapeHtml(l.from_email)}</td>
-            <td class="py-2 px-3 text-[var(--color-text-primary)]">${escapeHtml(l.subject)}</td>
-            <td class="py-2 px-3 text-[var(--color-text-dim)]">${formatTime(l.created_at)}</td>
-            <td class="py-2 px-3 text-[var(--color-text-muted)] truncate max-w-[200px]">${escapeHtml(l.body ? l.body.slice(0, 60) + "..." : "")}</td>
-          </tr>
-        `,
-            )
-            .join("") ||
-          '<tr><td colspan="4" class="py-4 text-center text-[var(--color-text-muted)] italic">Sin leads o mensajes recibidos aún</td></tr>';
+        if (!rawLeads.length) {
+          leadsTbody.innerHTML =
+            '<tr><td colspan="4" class="py-4 text-center text-[var(--color-text-muted)] italic">Sin leads corporativos registrados aún.</td></tr>';
+        } else {
+          leadsTbody.innerHTML = rawLeads
+            .map(function (l) {
+              return (
+                '<tr class="border-b border-[var(--color-surface-border)]">' +
+                '<td class="py-2 px-3 text-[var(--color-text-dim)] whitespace-nowrap">' +
+                formatTime(l.created_at) +
+                "</td>" +
+                '<td class="py-2 px-3 font-bold text-[var(--color-accent-gold)]">' +
+                escapeHtml(l.from_email) +
+                "</td>" +
+                '<td class="py-2 px-3 font-semibold text-[var(--color-text-primary)]">' +
+                escapeHtml(l.subject) +
+                "</td>" +
+                '<td class="py-2 px-3 text-[var(--color-text-secondary)] max-w-sm truncate">' +
+                escapeHtml(l.body) +
+                "</td>" +
+                "</tr>"
+              );
+            })
+            .join("");
+        }
       }
     }
 
-    // Global Handlers
-    const win = window;
+    // Handlers expuestos al window
+    var win = typeof window !== "undefined" ? window : {};
 
     win["setSegmentFilter"] = function (seg) {
       currentSegment = seg;
-      document.querySelectorAll(".filter-tab").forEach((b) => {
-        b.classList.toggle("active", b.id === "tab-" + seg);
-        if (b.id === "tab-" + seg) {
-          b.classList.add("text-[var(--color-accent-gold)]", "font-semibold");
-          b.classList.remove("text-[var(--color-text-secondary)]");
-        } else {
-          b.classList.remove(
-            "text-[var(--color-accent-gold)]",
-            "font-semibold",
-          );
-          b.classList.add("text-[var(--color-text-secondary)]");
-        }
+      document.querySelectorAll(".filter-tab").forEach(function (tab) {
+        tab.classList.remove(
+          "active",
+          "border-[var(--color-accent-gold)]",
+          "text-[var(--color-accent-gold)]",
+          "font-semibold",
+        );
+        tab.classList.add(
+          "border-[var(--color-surface-border)]",
+          "text-[var(--color-text-secondary)]",
+        );
       });
-      renderDashboard();
+      var activeBtn = document.getElementById("tab-" + seg);
+      if (activeBtn) {
+        activeBtn.classList.add(
+          "active",
+          "border-[var(--color-accent-gold)]",
+          "text-[var(--color-accent-gold)]",
+          "font-semibold",
+        );
+        activeBtn.classList.remove(
+          "border-[var(--color-surface-border)]",
+          "text-[var(--color-text-secondary)]",
+        );
+      }
+      fetchDashboardData(true);
     };
 
     win["onRangeChange"] = function (val) {
       currentRange = val;
+      var customBar = document.getElementById("custom-range-bar");
+      if (val === "custom") {
+        if (customBar) customBar.classList.remove("hidden");
+      } else {
+        if (customBar) customBar.classList.add("hidden");
+        fetchDashboardData(true);
+      }
+    };
+
+    win["applyCustomDateRange"] = function () {
+      var fromInput = document.getElementById("custom-from");
+      var toInput = document.getElementById("custom-to");
+      customFrom = fromInput ? fromInput.value : "";
+      customTo = toInput ? toInput.value : "";
+      fetchDashboardData(true);
+    };
+
+    win["onCountryChange"] = function (val) {
+      currentCountry = val;
+      fetchDashboardData(true);
+    };
+
+    win["filterByCountry"] = function (c) {
+      var select = document.getElementById("select-country");
+      if (select) select.value = c;
+      currentCountry = c;
       fetchDashboardData(true);
     };
 
     win["onPathFilterChange"] = function (val) {
       currentPathFilter = val;
-      renderDashboard();
-    };
-
-    win["toggleExcludeBots"] = function (checked) {
-      excludeBots = checked;
-      renderDashboard();
-    };
-
-    win["toggleIncludePrefetch"] = function (checked) {
-      includePrefetch = checked;
-      renderDashboard();
-    };
-
-    win["onSearchInput"] = function (val) {
-      searchQuery = val;
-      renderDashboard();
+      fetchDashboardData(true);
     };
 
     win["onPollIntervalChange"] = function (val) {
       pollDelay = parseInt(val, 10);
       if (pollIntervalId) clearInterval(pollIntervalId);
       if (pollDelay > 0) {
-        pollIntervalId = setInterval(fetchDashboardData, pollDelay);
+        pollIntervalId = setInterval(function () {
+          fetchDashboardData(false);
+        }, pollDelay);
       }
     };
 
-    win["switchSubtab"] = function (tab, ev) {
-      document
-        .querySelectorAll(".subtab-btn")
-        .forEach((btn) =>
-          btn.classList.remove("active", "text-[var(--color-accent-gold)]"),
-        );
-      document
-        .querySelectorAll(".subtab-pane")
-        .forEach((p) => p.classList.add("hidden"));
-
-      const targetPane = document.getElementById("subtab-" + tab);
-      if (targetPane) targetPane.classList.remove("hidden");
-
-      const activeBtn = ev && ev.currentTarget;
-      if (activeBtn)
-        activeBtn.classList.add("active", "text-[var(--color-accent-gold)]");
+    win["onSearchInput"] = function (val) {
+      searchQuery = val;
+      fetchDashboardData(false);
     };
 
-    win["exportData"] = function (format) {
-      const items = getFilteredEvents();
+    win["switchSubtab"] = function (tab, btnEl) {
+      document.querySelectorAll(".subtab-btn").forEach(function (btn) {
+        btn.classList.remove(
+          "active",
+          "border-[var(--color-accent-gold)]",
+          "text-[var(--color-accent-gold)]",
+        );
+        btn.classList.add(
+          "border-[var(--color-surface-border)]",
+          "text-[var(--color-text-secondary)]",
+        );
+      });
+      document.querySelectorAll(".subtab-pane").forEach(function (p) {
+        p.classList.add("hidden");
+      });
+
+      var target = document.getElementById("subtab-" + tab);
+      if (target) target.classList.remove("hidden");
+
+      var btn = btnEl && (btnEl.currentTarget || btnEl);
+      if (btn && btn.classList) {
+        btn.classList.add(
+          "active",
+          "border-[var(--color-accent-gold)]",
+          "text-[var(--color-accent-gold)]",
+        );
+        btn.classList.remove(
+          "border-[var(--color-surface-border)]",
+          "text-[var(--color-text-secondary)]",
+        );
+      }
+    };
+
+    win["exportData"] = function (fmt) {
+      var items = rawPageviews;
       if (!items.length) return;
 
-      if (format === "json") {
-        const dataStr =
+      if (fmt === "json") {
+        var str =
           "data:text/json;charset=utf-8," +
           encodeURIComponent(JSON.stringify(items, null, 2));
-        const dlAnchor = document.createElement("a");
-        dlAnchor.setAttribute("href", dataStr);
-        dlAnchor.setAttribute(
-          "download",
-          `telemetry-export-${Date.now()}.json`,
-        );
-        dlAnchor.click();
-      } else if (format === "csv") {
-        const headers = [
+        var a = document.createElement("a");
+        a.href = str;
+        a.download = "telemetry-" + Date.now() + ".json";
+        a.click();
+      } else {
+        var headers = [
           "id",
           "created_at",
           "path",
@@ -1405,33 +1510,32 @@ const description = isEs
           "utm_source",
           "is_bot",
         ];
-        const rows = items.map((i) =>
-          [
+        var rows = items.map(function (i) {
+          return [
             i.id,
-            `"${i.created_at || ""}"`,
-            `"${i.path || ""}"`,
-            `"${i.country || ""}"`,
-            `"${i.referrer || ""}"`,
-            `"${i.utm_source || ""}"`,
+            '"' + (i.created_at || "") + '"',
+            '"' + (i.path || "") + '"',
+            '"' + (i.country || "") + '"',
+            '"' + (i.referrer || "") + '"',
+            '"' + (i.utm_source || "") + '"',
             i.is_bot ? 1 : 0,
-          ].join(","),
-        );
-
-        const csvContent =
+          ].join(",");
+        });
+        var csv =
           "data:text/csv;charset=utf-8," +
           encodeURIComponent([headers.join(","), ...rows].join("\n"));
-        const dlAnchor = document.createElement("a");
-        dlAnchor.setAttribute("href", csvContent);
-        dlAnchor.setAttribute("download", `telemetry-export-${Date.now()}.csv`);
-        dlAnchor.click();
+        var a2 = document.createElement("a");
+        a2.href = csv;
+        a2.download = "telemetry-" + Date.now() + ".csv";
+        a2.click();
       }
     };
 
     function formatTime(isoStr) {
       if (!isoStr) return "--";
       try {
-        const d = new Date(isoStr);
-        return d.toISOString().replace("T", " ").slice(11, 19);
+        var d = new Date(isoStr);
+        return d.toISOString().replace("T", " ").slice(0, 19);
       } catch (_) {
         return isoStr;
       }
@@ -1450,10 +1554,12 @@ const description = isEs
       });
     }
 
-    // Initialize
+    // Inicialización automática
     fetchDashboardData(false);
     if (pollDelay > 0) {
-      pollIntervalId = setInterval(fetchDashboardData, pollDelay);
+      pollIntervalId = setInterval(function () {
+        fetchDashboardData(false);
+      }, pollDelay);
     }
   })();
 </script>

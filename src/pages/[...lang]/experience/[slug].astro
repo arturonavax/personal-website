@@ -234,19 +234,19 @@ const jobIndexItems: IndexItem[] = [
 
   <article
     id="experience-article"
-    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 overflow-x-clip"
+    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12"
   >
     <div
       id="experience-article-content"
-      class="space-y-4 sm:space-y-6 lg:space-y-8 overflow-x-clip"
+      class="space-y-4 sm:space-y-6 lg:space-y-8"
     >
       <!-- Timeline Rail Container with Horizontal Line & Travel Navigation Steppers (Task 3 & 53) -->
       <div
-        class="relative py-2 sm:py-4 my-1 sm:my-2"
+        class="relative isolate py-2 sm:py-4 my-1 sm:my-2"
         id="timeline-rail-container"
       >
-        <!-- Horizontal Timeline Axis Line aligned with header title row to prevent vertical jumping -->
-        <div class="absolute top-[5.5rem] sm:top-[7rem] left-0 right-0 sm:-left-12 sm:-right-12 -translate-y-1/2 h-0.5 bg-[var(--color-surface-border)] pointer-events-none z-0">
+        <!-- Horizontal Timeline Axis Line aligned behind header title row to prevent vertical jumping -->
+        <div class="absolute top-[5.5rem] sm:top-[7rem] -left-6 -right-6 sm:-left-12 sm:-right-12 -translate-y-1/2 h-0.5 bg-[var(--color-surface-border)] pointer-events-none -z-10">
           <div class="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--color-accent-gold)]/50 to-transparent"></div>
           <svg
             class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 h-3 w-3 text-[var(--color-accent-gold)] shrink-0 aspect-square"
@@ -404,7 +404,7 @@ const jobIndexItems: IndexItem[] = [
             data-timeline-nav="past"
             data-astro-prefetch="hover"
             title={`${isEs ? "Hito anterior:" : "Past timeline milestone:"} ${pastExperience.data.role} @ ${pastExperience.data.company}`}
-            class="group/timeline-nav absolute left-0 sm:-left-5 top-[5.5rem] sm:top-[7rem] -translate-y-1/2 z-50 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+            class="group/timeline-nav absolute left-0 top-[5.5rem] sm:top-[7rem] -translate-x-1/2 -translate-y-1/2 z-50 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
             aria-label={`${isEs ? "Rol anterior:" : "Past role:"} ${pastExperience.data.role} (press h)`}
           >
             <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
@@ -433,7 +433,7 @@ const jobIndexItems: IndexItem[] = [
             data-timeline-nav="future"
             data-astro-prefetch="hover"
             title={`${isEs ? "Siguiente hito:" : "Future timeline milestone:"} ${futureExperience.data.role} @ ${futureExperience.data.company}`}
-            class="group/timeline-nav absolute right-0 sm:-right-5 top-[5.5rem] sm:top-[7rem] -translate-y-1/2 z-50 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+            class="group/timeline-nav absolute right-0 top-[5.5rem] sm:top-[7rem] translate-x-1/2 -translate-y-1/2 z-50 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
             aria-label={`${isEs ? "Siguiente rol:" : "Future role:"} ${futureExperience.data.role} (press l)`}
           >
             <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
