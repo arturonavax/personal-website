@@ -5,6 +5,16 @@
   "compatibility_date": "2026-09-26",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "arturonavax.dev",
+      "custom_domain": true,
+    },
+    {
+      "pattern": "admin.arturonavax.dev",
+      "custom_domain": true,
+    },
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -23,13 +33,12 @@
       "migrations_dir": "./cloudflare/d1/migrations",
     },
   ],
-  // R2 Bucket: Reactivar una vez habilitado R2 en el Cloudflare Dashboard
-  // "r2_buckets": [
-  //   {
-  //     "binding": "STORAGE_BUCKET",
-  //     "bucket_name": "arturonava-production-assets",
-  //   },
-  // ],
+  "r2_buckets": [
+    {
+      "binding": "STORAGE_BUCKET",
+      "bucket_name": "arturonavax-production-assets",
+    },
+  ],
   "vectorize": [
     {
       "binding": "VECTORIZE_INDEX",

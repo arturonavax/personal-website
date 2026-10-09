@@ -220,7 +220,9 @@ export default {
             )
           ) {
             prefetchCircuitBreaker.recordVisit();
-            ctx.waitUntil(recordAnalyticsNonBlocking(request, pathname, env.DB));
+            ctx.waitUntil(
+              recordAnalyticsNonBlocking(request, pathname, env.DB),
+            );
           }
         }
       }
