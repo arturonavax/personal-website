@@ -53,29 +53,29 @@ const CONFIG = {
     badgeText: "AVAILABLE FOR SENIOR / STAFF ROLES",
     techPillars: "Distributed Systems • High Concurrency • AppSec",
     coreStack:
-      "High-Concurrency Distributed Systems • Low-Latency Backends • Go & Rust",
+      "Distributed Systems • High Performance • Web3 • AppSec",
     secondaryStack:
-      "Enterprise AI Agents • Autonomous RAG • Zero-Trust • Edge Architecture",
+      "Specializing in Go, Rust & AI-Integrated Backend Systems",
     bannerSummary:
-      "High-Concurrency Distributed Systems • AI Agents • Zero-Trust • Go, Rust & Python",
+      "Distributed Systems • High Performance • AI • Web3 • AppSec",
     domain: "arturonavax.dev",
     handle: "@arturonavax",
     email: "arturo@arturonavax.dev",
   },
   theme: {
     colors: {
-      bgDark: "#0E0102",
-      bgMid: "#160103",
-      bgLight: "#260205",
-      amberPrimary: "#E5A93C",
-      amberLead: "#FEF08A",
+      bgDark: "#0A0203",
+      bgMid: "#120305",
+      bgLight: "#180406",
+      amberPrimary: "#D48B38",
+      amberLead: "#E5A352",
       amberTail: "#8E5E1C",
       textWhite: "#FFFFFF",
-      textMuted: "#E5E7EB",
-      textDim: "#9CA3AF",
-      statusGreen: "#22C55E",
-      badgeBg: "#34060A",
-      badgeBorder: "#68131B",
+      textMuted: "#E2D5D5",
+      textDim: "#A39292",
+      statusGreen: "#10B981",
+      badgeBg: "#180406",
+      badgeBorder: "#521317",
     },
     fonts: {
       sans: '"Geist Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -155,9 +155,9 @@ function generateMatrixGlyphs(width, height, textZones = [], frameInset = 28) {
   const { headChars, bodyChars, columnWidth, verticalStep, glyphSize } =
     CONFIG.matrix;
 
-  const TONE_HEAD = "#D9822B";
+  const TONE_HEAD = "#D48B38";
   const TONE_BODY = "#9E471E";
-  const TONE_TAIL = "#631F16";
+  const TONE_TAIL = "#521317";
 
   // RIGID MARGIN BOUNDS: Matrix never touches or crosses the outer frame
   const safeMinX = frameInset + 20;
@@ -279,7 +279,7 @@ function getDefsAndStyles(width, height, textZones = [], frameInset = 28) {
 
     <!-- Radial vignette focused on top-left quadrant -->
     <radialGradient id="vignette" cx="28%" cy="38%" r="80%">
-      <stop offset="0%" stop-color="#44070D" stop-opacity="0.30" />
+      <stop offset="0%" stop-color="#3A0D10" stop-opacity="0.30" />
       <stop offset="55%" stop-color="${colors.bgMid}" stop-opacity="0.10" />
       <stop offset="100%" stop-color="${colors.bgDark}" stop-opacity="0.90" />
     </radialGradient>
