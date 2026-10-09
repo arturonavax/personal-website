@@ -721,7 +721,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
 
       document
         .querySelectorAll(
-          "header a, #mobile-nav-details a, [data-nav-reset-scroll]",
+          "header a, #mobile-nav-details a, [data-nav-reset-scroll], [data-contact-scroll]",
         )
         .forEach(function (link) {
           if (!boundElements.has(link)) {
@@ -771,41 +771,48 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 }
               } else if (isContact) {
                 e.preventDefault();
-                var contactSec = document.getElementById("contact");
-                if (contactSec) {
-                  setActiveSection("contact");
-                  window.__isProgrammaticNav = true;
-                  try {
-                    contactSec.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
-                  } catch (_) {
-                    var siteHeader = document.getElementById("site-header");
-                    var headerOffset =
-                      (siteHeader ? siteHeader.offsetHeight : 56) + 16;
-                    var targetY = Math.max(
-                      0,
-                      contactSec.getBoundingClientRect().top +
-                        window.pageYOffset -
-                        headerOffset,
-                    );
-                    window.scrollTo({ top: targetY, behavior: "smooth" });
-                  }
-                  var clearContactScroll = function () {
-                    window.__isProgrammaticNav = false;
-                    window.removeEventListener("scrollend", clearContactScroll);
-                  };
-                  if ("onscrollend" in window) {
-                    window.addEventListener("scrollend", clearContactScroll, {
-                      once: true,
-                    });
-                  }
-                  setTimeout(function () {
-                    window.__isProgrammaticNav = false;
-                  }, 900);
-                  if (history.pushState) {
-                    history.pushState(null, "", "#contact");
+                setActiveSection("contact");
+                if (typeof window.__smoothScrollToContact === "function") {
+                  window.__smoothScrollToContact();
+                } else {
+                  var contactSec = document.getElementById("contact");
+                  if (contactSec) {
+                    window.__isProgrammaticNav = true;
+                    try {
+                      contactSec.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    } catch (_) {
+                      var siteHeader = document.getElementById("site-header");
+                      var headerOffset =
+                        (siteHeader ? siteHeader.offsetHeight : 56) + 24;
+                      var targetY = Math.max(
+                        0,
+                        contactSec.getBoundingClientRect().top +
+                          window.pageYOffset -
+                          headerOffset,
+                      );
+                      window.scrollTo({ top: targetY, behavior: "smooth" });
+                    }
+                    var clearContactScroll = function () {
+                      window.__isProgrammaticNav = false;
+                      window.removeEventListener(
+                        "scrollend",
+                        clearContactScroll,
+                      );
+                    };
+                    if ("onscrollend" in window) {
+                      window.addEventListener("scrollend", clearContactScroll, {
+                        once: true,
+                      });
+                    }
+                    setTimeout(function () {
+                      window.__isProgrammaticNav = false;
+                    }, 900);
+                    if (history.pushState) {
+                      history.pushState(null, "", "#contact");
+                    }
                   }
                 }
               }
@@ -876,6 +883,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           }
         }
       }
+      window.__setActiveNavSection = setActiveSection;
 
       function updateActiveNavState() {
         var rawPath = window.location.pathname;
