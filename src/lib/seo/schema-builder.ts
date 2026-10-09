@@ -34,7 +34,7 @@ export function buildPersonJsonLd(
     url: options.canonicalUrl,
     sameAs: options.sameAs || [
       "https://github.com/arturonavax",
-      "https://linkedin.com/in/arturonava",
+      "https://www.linkedin.com/in/arturonavax",
       "https://x.com/arturonavax",
     ],
   };

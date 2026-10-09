@@ -228,11 +228,11 @@ const isMoreActive =
   - Custom element `<typewriter-ticker>` encapsulates typing, pausing, and backspacing logic with standard DOM APIs and zero external runtime libraries.
   - Implements `connectedCallback()` and `disconnectedCallback()` with clean timer disposal via `clearTimeout` to prevent memory leaks during client-side navigation.
   - Mechanical terminal typing cadence:
-    * Typing speed: 45ms per character.
-    * Hold duration: 2200ms pause at the end of each phrase.
-    * Deletion speed: 20ms per character backspacing.
-    * Phrase turnaround pause: 300ms before commencing typing of the next phrase.
-    * Indefinite cycle across provided localized phrases.
+    - Typing speed: 45ms per character.
+    - Hold duration: 2200ms pause at the end of each phrase.
+    - Deletion speed: 20ms per character backspacing.
+    - Phrase turnaround pause: 300ms before commencing typing of the next phrase.
+    - Indefinite cycle across provided localized phrases.
 
 - **SSR Text Retention with CLS = 0.000**:
   - The first phrase (`phrases[0]`) is rendered directly into the server-side HTML within `<span class="typewriter-text text-[var(--color-accent-gold)] font-medium">`.
@@ -241,13 +241,13 @@ const isMoreActive =
 
 - **Dual-State Support (Independent R&D vs Active In-Seat Role)**:
   - Case A (No active role / Independent R&D node):
-    * Badge: `[ ACTIVE DEVELOPMENT // R&D ]`
-    * Phrases (ES): `["Construyendo proyectos...", "Desarrollando productos...", "Explorando nuevas fronteras..."]`
-    * Phrases (EN): `["Building projects...", "Developing products...", "Exploring new frontiers..."]`
+    - Badge: `[ ACTIVE DEVELOPMENT // R&D ]`
+    - Phrases (ES): `["Construyendo proyectos...", "Desarrollando productos...", "Explorando nuevas fronteras..."]`
+    - Phrases (EN): `["Building projects...", "Developing products...", "Exploring new frontiers..."]`
   - Case B (Active role with `!endDate` / Live Broadcast):
-    * Badge: `[ LIVE BROADCAST // EN EMISIÓN ]` (ES) / `[ LIVE BROADCAST // CURRENT ROLE ]` (EN)
-    * Phrases (ES): `["Construyendo la historia...", "Obteniendo experiencias...", "Creando impacto..."]`
-    * Phrases (EN): `["Writing history...", "Gaining experiences...", "Creating impact..."]`
+    - Badge: `[ LIVE BROADCAST // EN EMISIÓN ]` (ES) / `[ LIVE BROADCAST // CURRENT ROLE ]` (EN)
+    - Phrases (ES): `["Construyendo la historia...", "Obteniendo experiencias...", "Creando impacto..."]`
+    - Phrases (EN): `["Writing history...", "Gaining experiences...", "Creating impact..."]`
   - Shared across both timeline feed (`ExperienceTimeline.astro`) and individual role deep-dive view (`experience/[slug].astro`).
 
 - **Accessibility, Reduced-Motion & Performance Fallbacks**:

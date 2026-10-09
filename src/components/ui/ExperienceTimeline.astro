@@ -41,17 +41,19 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
         </div>
 
         <TypewriterTicker
-          phrases={isEs
-            ? [
-                "Construyendo proyectos...",
-                "Desarrollando productos...",
-                "Explorando nuevas fronteras...",
-              ]
-            : [
-                "Building projects...",
-                "Developing products...",
-                "Exploring new frontiers...",
-              ]}
+          phrases={
+            isEs
+              ? [
+                  "Construyendo proyectos...",
+                  "Desarrollando productos...",
+                  "Explorando nuevas fronteras...",
+                ]
+              : [
+                  "Building projects...",
+                  "Developing products...",
+                  "Exploring new frontiers...",
+                ]
+          }
           class="text-xs sm:text-sm"
         />
       </div>
@@ -244,17 +246,19 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
                 </span>
               </div>
               <TypewriterTicker
-                phrases={locale === "es"
-                  ? [
-                      "Construyendo la historia...",
-                      "Obteniendo experiencias...",
-                      "Creando impacto...",
-                    ]
-                  : [
-                      "Writing history...",
-                      "Gaining experiences...",
-                      "Creating impact...",
-                    ]}
+                phrases={
+                  locale === "es"
+                    ? [
+                        "Construyendo la historia...",
+                        "Obteniendo experiencias...",
+                        "Creando impacto...",
+                      ]
+                    : [
+                        "Writing history...",
+                        "Gaining experiences...",
+                        "Creating impact...",
+                      ]
+                }
                 class="text-xs sm:text-sm"
               />
             </div>

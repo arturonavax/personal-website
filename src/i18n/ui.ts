@@ -26,7 +26,8 @@ export const ui = {
     "hero.badge": "Available for Senior / Staff Roles & Advisory",
     "hero.name": "Arturo Nava",
     "hero.title": "Senior Software / AI Engineer",
-    "hero.subtitle": "Distributed Systems · High Performance · AI · Web3 · AppSec",
+    "hero.subtitle":
+      "Distributed Systems · High Performance · AI · Web3 · AppSec",
     "hero.summary":
       "Specializing in Go, Rust, and AI-integrated backend systems. 8+ years architecting high-throughput distributed backends, real-time fraud engines, cryptographic verification, and production AI workflows.",
     "metrics.latency.value": "Sub-50ms",
@@ -51,7 +52,8 @@ export const ui = {
       "Open to Senior / Staff engineering roles, specialized architecture consulting, and high-concurrency backend leadership. US-aligned (UTC-5) via B2B contractor.",
     "contact.copyEmail": "Copy Email",
     "contact.copied": "Copied to clipboard!",
-    "contact.status": "Actively Available for Senior / Staff Roles & Consulting",
+    "contact.status":
+      "Actively Available for Senior / Staff Roles & Consulting",
     "contact.location": "Bogota, Colombia (UTC-5 · US-Aligned)",
     "contact.responseTime": "Response time: < 24 hours",
     "contact.startConversation": "Start a Conversation",
@@ -81,7 +83,8 @@ export const ui = {
     "hero.badge": "Disponible para roles Senior / Staff y Consultoría",
     "hero.name": "Arturo Nava",
     "hero.title": "Ingeniero de Software Senior / IA",
-    "hero.subtitle": "Sistemas Distribuidos · Alto Rendimiento · IA · Web3 · AppSec",
+    "hero.subtitle":
+      "Sistemas Distribuidos · Alto Rendimiento · IA · Web3 · AppSec",
     "hero.summary":
       "Especializado en Go, Rust y sistemas backend con IA integrada. +8 años diseñando arquitecturas distribuidas de alto rendimiento, motores antifraude en tiempo real, verificación criptográfica y flujos agénticos en producción.",
     "metrics.latency.value": "Sub-50ms",
@@ -101,7 +104,8 @@ export const ui = {
     "section.blog": "Blog & Notas de Ingeniería",
     "section.blog.viewAll": "Ver todas las publicaciones y notas",
     "section.contact": "Contacto Directo",
-    "contact.title": "Construyamos infraestructura distribuida de alto impacto.",
+    "contact.title":
+      "Construyamos infraestructura distribuida de alto impacto.",
     "contact.subtitle":
       "Disponible para roles de ingeniería Senior / Staff, consultoría en arquitectura de sistemas y liderazgo backend de alta concurrencia. Horario compatible con EE. UU. (UTC-5) vía B2B contractor.",
     "contact.copyEmail": "Copiar Correo",

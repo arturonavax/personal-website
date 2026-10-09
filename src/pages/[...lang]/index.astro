@@ -18,6 +18,8 @@ import { useTranslations } from "@/i18n/utils";
 import { getHomepageJsonLd } from "@/data/schemaOrg";
 import type { SupportedLocale } from "@/i18n/config";
 import { getVisibleCollection } from "@/utils/visibility";
+import { getImage } from "astro:assets";
+import arturoPhoto from "@/assets/arturonava.jpg";
 
 export function getStaticPaths() {
   return [
@@ -74,7 +76,15 @@ const recentPosts = allPosts
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
   .slice(0, 3);
 
-const jsonLd = getHomepageJsonLd(locale);
+const avatarWebp = await getImage({
+  src: arturoPhoto,
+  format: "webp",
+  width: 320,
+  height: 320,
+  quality: 95,
+});
+
+const jsonLd = getHomepageJsonLd(locale, avatarWebp.src);
 ---
 
 <BaseLayout
