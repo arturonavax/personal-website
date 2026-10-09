@@ -370,6 +370,7 @@ html[data-theme="light"] body {
   height: 14px;
   pointer-events: none;
   z-index: 5;
+  box-sizing: border-box;
   transition: border-color 200ms ease;
 }
 
@@ -387,6 +388,21 @@ html[data-theme="light"] body {
   border-bottom: 2px solid var(--color-accent-gold);
   border-right: 2px solid var(--color-accent-gold);
   border-bottom-right-radius: 4px;
+}
+
+/* Prevención robusta de rotura de esquinas en contenedores con overflow u offsets fraccionarios */
+.geometric-box.overflow-hidden::before,
+.geometric-box[class*="overflow-hidden"]::before {
+  top: 0;
+  left: 0;
+  border-top-left-radius: 3px;
+}
+
+.geometric-box.overflow-hidden::after,
+.geometric-box[class*="overflow-hidden"]::after {
+  bottom: 0;
+  right: 0;
+  border-bottom-right-radius: 3px;
 }
 
 /* Modificador para contenedores que no deben llevar esquinas geométricas */
