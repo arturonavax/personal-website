@@ -17,7 +17,7 @@ const email = "arturo@arturonavax.dev";
 <section
   id="contact"
   aria-labelledby="contact-heading"
-  class="scroll-mt-20 sm:scroll-mt-24 geometric-box no-corner-accents relative p-6 sm:p-10 rounded-sm overflow-hidden"
+  class="scroll-mt-20 geometric-box no-corner-accents relative p-6 sm:p-10 rounded-sm overflow-hidden"
 >
   <div class="space-y-8">
     <!-- Header -->
@@ -389,6 +389,11 @@ const email = "arturo@arturonavax.dev";
       var sec = getContactSec();
       if (!sec) return;
 
+      highlightContact();
+      if (typeof window.__setActiveNavSection === "function") {
+        window.__setActiveNavSection("contact");
+      }
+
       window.__isProgrammaticNav = true;
       try {
         sec.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -398,7 +403,7 @@ const email = "arturo@arturonavax.dev";
         var secRect = sec.getBoundingClientRect();
         var currentY =
           window.pageYOffset || document.documentElement.scrollTop || 0;
-        var targetY = Math.max(0, currentY + secRect.top - headerHeight - 16);
+        var targetY = Math.max(0, currentY + secRect.top - headerHeight - 24);
         window.scrollTo({ top: targetY, behavior: "smooth" });
       }
 
@@ -413,23 +418,13 @@ const email = "arturo@arturonavax.dev";
         window.__isProgrammaticNav = false;
       }, 900);
 
-      // Guard against layout shifts from late-loading images or dynamic elements
-      setTimeout(function () {
-        var currentSec = getContactSec();
-        if (currentSec && window.location.hash === "#contact") {
-          var rect = currentSec.getBoundingClientRect();
-          if (rect.top > 160 || rect.top < -100) {
-            currentSec.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        }
-      }, 450);
-
       if (window.location.hash !== "#contact") {
         try {
-          history.replaceState(null, "", "#contact");
+          history.pushState(null, "", "#contact");
         } catch (_) {}
       }
     }
+    window.__smoothScrollToContact = smoothScrollToContact;
 
     function checkContactLanding() {
       var sec = getContactSec();
@@ -445,25 +440,18 @@ const email = "arturo@arturonavax.dev";
 
       if (hasPending || window.location.hash === "#contact") {
         highlightContact();
-        var doScroll = function () {
-          smoothScrollToContact();
-        };
-        requestAnimationFrame(doScroll);
-        if (document.fonts && typeof document.fonts.ready === "object") {
-          document.fonts.ready.then(function () {
-            setTimeout(doScroll, 80);
-          });
-        } else {
-          setTimeout(doScroll, 120);
+        if (typeof window.__setActiveNavSection === "function") {
+          window.__setActiveNavSection("contact");
         }
-        if (document.readyState !== "complete") {
-          window.addEventListener(
-            "load",
-            function () {
-              setTimeout(doScroll, 150);
-            },
-            { once: true },
-          );
+        var performLandingScroll = function () {
+          requestAnimationFrame(function () {
+            smoothScrollToContact();
+          });
+        };
+        if (document.fonts && typeof document.fonts.ready === "object") {
+          document.fonts.ready.then(performLandingScroll);
+        } else {
+          performLandingScroll();
         }
       }
     }
@@ -475,7 +463,6 @@ const email = "arturo@arturonavax.dev";
         window.__contactHashBound = true;
         window.addEventListener("hashchange", function () {
           if (window.location.hash === "#contact") {
-            highlightContact();
             smoothScrollToContact();
           }
         });
@@ -483,40 +470,39 @@ const email = "arturo@arturonavax.dev";
 
       if (!window.__contactClickBound) {
         window.__contactClickBound = true;
-        document.addEventListener(
-          "click",
-          function (e) {
-            var target = e.target;
-            var link =
-              target && target.closest
-                ? target.closest('a[href$="#contact"], a[href="#contact"]')
-                : null;
-            if (link) {
-              var href = link.getAttribute("href") || "";
-              var currentPath =
-                window.location.pathname.replace(/\/+$/, "") || "/";
-              var rawLinkPath = href.split("#")[0];
-              var linkPath = rawLinkPath
-                ? rawLinkPath.replace(/\/+$/, "") || "/"
-                : currentPath;
+        document.addEventListener("click", function (e) {
+          var target = e.target;
+          var link =
+            target && target.closest
+              ? target.closest('a[href$="#contact"], a[href="#contact"]')
+              : null;
+          if (link) {
+            var href = link.getAttribute("href") || "";
+            var currentPath =
+              window.location.pathname.replace(/\/+$/, "") || "/";
+            var rawLinkPath = href.split("#")[0];
+            var linkPath = rawLinkPath
+              ? rawLinkPath.replace(/\/+$/, "") || "/"
+              : currentPath;
 
-              var isSamePage = href.startsWith("#") || linkPath === currentPath;
-              if (isSamePage) {
-                var s = getContactSec();
-                if (s) {
+            var isSamePage = href.startsWith("#") || linkPath === currentPath;
+            if (isSamePage) {
+              var s = getContactSec();
+              if (s) {
+                // Si el enlace está dentro del header o tiene data-contact-scroll, el listener directo maneja el scroll
+                if (
+                  !link.closest("header, #mobile-nav-details") &&
+                  !link.hasAttribute("data-contact-scroll")
+                ) {
                   e.preventDefault();
-                  e.stopPropagation();
-                  e.stopImmediatePropagation();
-                  highlightContact();
                   smoothScrollToContact();
                 }
-              } else {
-                highlightContact();
               }
+            } else {
+              highlightContact();
             }
-          },
-          true,
-        );
+          }
+        });
       }
 
       if (!window.__contactOutsideBound) {

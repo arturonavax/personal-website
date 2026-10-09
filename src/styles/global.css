@@ -112,6 +112,7 @@
   --text-body: #e2d5d5;
   --text-muted: #a39292;
   --action-primary: #d48b38;
+  --header-height: 3.5rem;
 
   --color-bg-primary: #120305;
   --color-surface-bg: #0a0203;
@@ -248,7 +249,6 @@ dialog {
   padding: 0;
   scrollbar-gutter: auto;
 }
-
 
 dialog::-webkit-scrollbar,
 #index-expanded-panel::-webkit-scrollbar {
