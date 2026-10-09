@@ -388,15 +388,19 @@ const email = "arturo@arturonavax.dev";
       var sec = getContactSec();
       if (!sec) return;
 
-      var header = document.getElementById("site-header");
-      var headerHeight = header ? header.offsetHeight : 56;
-      var secRect = sec.getBoundingClientRect();
-      var currentY =
-        window.pageYOffset || document.documentElement.scrollTop || 0;
-      var targetY = Math.max(0, currentY + secRect.top - headerHeight - 16);
-
       window.__isProgrammaticNav = true;
-      window.scrollTo({ top: targetY, behavior: "smooth" });
+      try {
+        sec.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (_) {
+        var header = document.getElementById("site-header");
+        var headerHeight = header ? header.offsetHeight : 56;
+        var secRect = sec.getBoundingClientRect();
+        var currentY =
+          window.pageYOffset || document.documentElement.scrollTop || 0;
+        var targetY = Math.max(0, currentY + secRect.top - headerHeight - 16);
+        window.scrollTo({ top: targetY, behavior: "smooth" });
+      }
+
       var clearNav = function () {
         window.__isProgrammaticNav = false;
         window.removeEventListener("scrollend", clearNav);
@@ -407,6 +411,17 @@ const email = "arturo@arturonavax.dev";
       setTimeout(function () {
         window.__isProgrammaticNav = false;
       }, 900);
+
+      // Guard against layout shifts from late-loading images or dynamic elements
+      setTimeout(function () {
+        var currentSec = getContactSec();
+        if (currentSec && window.location.hash === "#contact") {
+          var rect = currentSec.getBoundingClientRect();
+          if (rect.top > 160 || rect.top < -100) {
+            currentSec.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }
+      }, 450);
 
       if (window.location.hash !== "#contact") {
         try {
@@ -430,16 +445,24 @@ const email = "arturo@arturonavax.dev";
       if (hasPending || window.location.hash === "#contact") {
         highlightContact();
         var doScroll = function () {
-          requestAnimationFrame(function () {
-            smoothScrollToContact();
-          });
+          smoothScrollToContact();
         };
+        requestAnimationFrame(doScroll);
         if (document.fonts && typeof document.fonts.ready === "object") {
           document.fonts.ready.then(function () {
             setTimeout(doScroll, 80);
           });
         } else {
           setTimeout(doScroll, 120);
+        }
+        if (document.readyState !== "complete") {
+          window.addEventListener(
+            "load",
+            function () {
+              setTimeout(doScroll, 150);
+            },
+            { once: true },
+          );
         }
       }
     }

@@ -703,11 +703,15 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
         });
       }
 
+      var boundDetailsCloseElements =
+        window.__headerBoundCloseElements ||
+        (window.__headerBoundCloseElements = new WeakSet());
+
       document
         .querySelectorAll("details.group\\/more a, #mobile-nav-details a")
         .forEach(function (a) {
-          if (!boundElements.has(a)) {
-            boundElements.add(a);
+          if (!boundDetailsCloseElements.has(a)) {
+            boundDetailsCloseElements.add(a);
             a.addEventListener("click", function () {
               var details = a.closest("details");
               if (details) details.removeAttribute("open");
@@ -771,16 +775,23 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 if (contactSec) {
                   setActiveSection("contact");
                   window.__isProgrammaticNav = true;
-                  var siteHeader = document.getElementById("site-header");
-                  var headerOffset =
-                    (siteHeader ? siteHeader.offsetHeight : 56) + 16;
-                  var targetY = Math.max(
-                    0,
-                    contactSec.getBoundingClientRect().top +
-                      window.pageYOffset -
-                      headerOffset,
-                  );
-                  window.scrollTo({ top: targetY, behavior: "smooth" });
+                  try {
+                    contactSec.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  } catch (_) {
+                    var siteHeader = document.getElementById("site-header");
+                    var headerOffset =
+                      (siteHeader ? siteHeader.offsetHeight : 56) + 16;
+                    var targetY = Math.max(
+                      0,
+                      contactSec.getBoundingClientRect().top +
+                        window.pageYOffset -
+                        headerOffset,
+                    );
+                    window.scrollTo({ top: targetY, behavior: "smooth" });
+                  }
                   var clearContactScroll = function () {
                     window.__isProgrammaticNav = false;
                     window.removeEventListener("scrollend", clearContactScroll);

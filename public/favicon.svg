@@ -4,6 +4,18 @@
       <stop offset="0%" stop-color="#E5A352" />
       <stop offset="100%" stop-color="#D48B38" />
     </linearGradient>
+    <linearGradient id="an-logo-garnet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B1E17" />
+      <stop offset="100%" stop-color="#7A1C16" />
+    </linearGradient>
+    <style>
+      .token-bg { fill: #120305; stroke: url(#an-logo-gold); }
+      .token-text { fill: url(#an-logo-gold); }
+      @media (prefers-color-scheme: light) {
+        .token-bg { fill: #ffffff; stroke: url(#an-logo-garnet); }
+        .token-text { fill: url(#an-logo-garnet); }
+      }
+    </style>
   </defs>
 
   <!-- Base circular token con margen de seguridad anti-recorte SEO (Google SERP circular mask) -->
@@ -11,8 +23,7 @@
     cx="32"
     cy="32"
     r="29"
-    fill="#120305"
-    stroke="url(#an-logo-gold)"
+    class="token-bg"
     stroke-width="2.2"
   />
 
@@ -20,7 +31,7 @@
   <text
     x="32"
     y="32"
-    fill="url(#an-logo-gold)"
+    class="token-text"
     font-size="28"
     font-weight="700"
     font-family="'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"

@@ -76,8 +76,8 @@ const CONFIG = {
       badgeBorder: "#521317",
     },
     fonts: {
-      sans: '"Geist Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      mono: '"Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      sans: '"DejaVu Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Geist Sans", sans-serif',
+      mono: '"DejaVu Sans Mono", "BlexMono Nerd Font", "FiraCode Nerd Font", "JetBrains Mono", "Geist Mono", monospace',
     },
   },
   matrix: {
@@ -471,24 +471,43 @@ async function renderOptimizedPng(
   targetHeight,
   keepAlpha = false,
 ) {
-  const { supersampleFactor, sharpPngOptions } = CONFIG.rendering;
-  const buffer = Buffer.from(svgString);
+  const { sharpPngOptions } = CONFIG.rendering;
 
-  let pipeline = sharp(buffer, { density: 72 * supersampleFactor }).resize(
-    targetWidth,
-    targetHeight,
-    {
-      kernel: sharp.kernel.lanczos3,
-      fit: "contain",
-    },
-  );
+  let rawPng;
+  try {
+    const { Resvg } = await import("@resvg/resvg-js");
+    const resvg = new Resvg(svgString, {
+      fitTo: { mode: "width", value: targetWidth },
+      dpi: 96,
+      shapeRendering: 2,
+      textRendering: 2,
+      font: {
+        loadSystemFonts: true,
+        defaultFontFamily: "DejaVu Sans",
+        sansSerifFamily: "DejaVu Sans",
+        monospaceFamily: "DejaVu Sans Mono",
+      },
+    });
+    const pngData = resvg.render();
+    rawPng = Buffer.from(pngData.asPng());
+  } catch {
+    const buffer = Buffer.from(svgString);
+    rawPng = await sharp(buffer, { density: 96 })
+      .resize(targetWidth, targetHeight, { fit: "contain" })
+      .toBuffer();
+  }
+
+  let pipeline = sharp(rawPng);
 
   // Strip redundant alpha channel on opaque assets to remove ~30% raw byte volume
   if (!keepAlpha) {
     pipeline = pipeline.removeAlpha();
   }
 
-  await pipeline.png(sharpPngOptions).toFile(outputPath);
+  await pipeline
+    .withMetadata({ density: 96 })
+    .png(sharpPngOptions)
+    .toFile(outputPath);
 
   try {
     await execFileAsync("oxipng", ["-o", "4", "--strip", "safe", outputPath]);

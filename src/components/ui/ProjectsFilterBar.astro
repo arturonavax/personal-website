@@ -118,7 +118,10 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
                 class="project-filter-pill rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-1.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
               >
                 <span>{c.name}</span>
-                <span data-filter-count class="ml-1 text-xs opacity-70">
+                <span
+                  data-filter-count
+                  class="ml-1 text-xs text-[var(--color-text-muted)]"
+                >
                   ({c.count})
                 </span>
               </button>
@@ -147,7 +150,10 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
                 class="project-filter-pill active rounded border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] px-3 py-1 text-xs font-semibold text-[var(--color-accent-gold)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
               >
                 <span>{isEs ? "Todos" : "All"}</span>
-                <span data-filter-count class="ml-1 text-xs opacity-75">
+                <span
+                  data-filter-count
+                  class="ml-1 text-xs text-[var(--color-accent-gold)] font-medium"
+                >
                   ({totalProjects})
                 </span>
               </button>
@@ -164,7 +170,10 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
                   class="h-3 w-3 text-[var(--color-accent-gold)]"
                 />
                 <span>{t.tag}</span>
-                <span data-filter-count class="opacity-60 text-xs">
+                <span
+                  data-filter-count
+                  class="text-xs text-[var(--color-text-muted)]"
+                >
                   ({t.count})
                 </span>
               </button>

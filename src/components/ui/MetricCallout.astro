@@ -10,7 +10,7 @@ const { value, label, subtext } = Astro.props;
 
 <div class="geometric-box relative flex flex-col justify-between p-4 sm:p-5 rounded-sm min-w-0 overflow-hidden group">
   <!-- Telemetry datum indicator -->
-  <span class="absolute top-2 right-2.5 font-mono text-[9px] text-[var(--color-text-muted)] tracking-widest select-none uppercase opacity-80">
+  <span class="absolute top-2 right-2.5 font-mono text-[9px] text-[var(--color-text-muted)] tracking-widest select-none uppercase font-semibold">
     TLM
   </span>
 
@@ -23,8 +23,8 @@ const { value, label, subtext } = Astro.props;
   </div>
 
   {subtext && (
-    <div class="mt-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] uppercase tracking-wider break-words flex items-center gap-1">
-      <span class="opacity-60">&gt;</span>
+    <div class="mt-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] uppercase tracking-wider break-words flex items-center gap-1 font-semibold">
+      <span class="text-[var(--color-text-muted)]">&gt;</span>
       <span>{subtext}</span>
     </div>
   )}

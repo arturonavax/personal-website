@@ -40,7 +40,7 @@ const effectiveTargetUrl =
   aria-label="Language selector"
   class="hidden min-[391px]:inline-flex items-center text-xs font-mono shrink-0 whitespace-nowrap"
 >
-  <div class="group inline-flex h-8 items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 gap-1.5 hover:border-[var(--color-accent-gold)] transition-colors">
+  <div class="group inline-flex h-8 items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 sm:px-2 gap-1 sm:gap-1.5 hover:border-[var(--color-accent-gold)] transition-colors">
     <!-- Ingenious Translate SVG Icon (Hidden on screens < 420px for extreme compact fit) -->
     <span
       class="hidden min-[420px]:flex h-4 w-4 items-center justify-center text-[var(--color-text-muted)] group-hover:text-[var(--color-accent-gold)] transition-colors select-none shrink-0"
@@ -69,7 +69,7 @@ const effectiveTargetUrl =
 
     <!-- Segmented Language Toggle Pill (Whole container area is clickable) -->
     {currentLocale === "en" ? (
-      <span class="h-6 px-2.5 min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">
+      <span class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">
         EN
       </span>
     ) : (
@@ -79,7 +79,7 @@ const effectiveTargetUrl =
         lang="en"
         data-astro-prefetch="hover"
         data-lang-switch="en"
-        class="h-6 px-2.5 min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+        class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
       >
         EN
       </a>
@@ -91,7 +91,7 @@ const effectiveTargetUrl =
       /
     </span>
     {currentLocale === "es" ? (
-      <span class="h-6 px-2.5 min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">
+      <span class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">
         ES
       </span>
     ) : (
@@ -101,7 +101,7 @@ const effectiveTargetUrl =
         lang="es"
         data-astro-prefetch="hover"
         data-lang-switch="es"
-        class="h-6 px-2.5 min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+        class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
       >
         ES
       </a>

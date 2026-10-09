@@ -31,6 +31,7 @@ const {
   interface MatrixSingleton {
     worker: Worker | null;
     drops: number[];
+    speeds: number[];
     animationFrameId: number | null;
     timeoutId: number | null;
     disconnectTimer: number | null;
@@ -57,6 +58,7 @@ const {
         (window as any).__matrixState = {
           worker: null,
           drops: (window as any).__matrixDrops || [],
+          speeds: [],
           animationFrameId: null,
           timeoutId: null,
           disconnectTimer: null,
@@ -343,19 +345,14 @@ const {
           ? state.drops
           : ((window as any).__matrixDrops as number[] | undefined);
 
-      if (!forceReset && existing && existing.length > 0) {
-        state.drops = new Array(columns);
-        for (let i = 0; i < columns; i++) {
-          state.drops[i] =
-            i < existing.length
-              ? existing[i]!
-              : -Math.floor(Math.random() * 24);
-        }
-      } else {
-        state.drops = new Array(columns)
-          .fill(1)
-          // First load: every stream enters from the top edge (staggered start above the viewport)
-          .map(() => -Math.floor(Math.random() * 24));
+      state.drops = new Array(columns);
+      state.speeds = new Array(columns);
+      for (let i = 0; i < columns; i++) {
+        state.drops[i] =
+          !forceReset && existing && i < existing.length
+            ? existing[i]!
+            : -Math.floor(Math.random() * 24);
+        state.speeds[i] = 0.65 + Math.random() * 0.7;
       }
       (window as any).__matrixDrops = state.drops;
     }
@@ -366,7 +363,9 @@ const {
 
       const fontSize = 14;
       const characters =
-        "01010123456789ABCDEFλ§µsGoRustSIMDAVX2ptrchnsync".split("");
+        "01010123456789ABCDEFλ§µΔΨΩθπσ0x::->/*!=&|^GoRustSIMDAVX2ptrchnsync".split(
+          "",
+        );
 
       let lastRenderTime = 0;
       const FRAME_INTERVAL = 60;
@@ -394,25 +393,33 @@ const {
           : "rgba(26, 2, 5, 0.12)";
         currentCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-        currentCtx.fillStyle = isLight ? "#7A1C16" : "#D48B38";
         currentCtx.font = `${fontSize}px ui-monospace, monospace`;
 
         const drops = state.drops;
+        const speeds = state.speeds;
         for (let i = 0; i < drops.length; i++) {
           const dropY = drops[i] ?? 0;
+          const speed = speeds[i] ?? 1;
           const char =
             characters[Math.floor(Math.random() * characters.length)] || "0";
           const x = i * fontSize;
-          const y = dropY * fontSize;
+          const y = Math.floor(dropY) * fontSize;
 
           if (dropY > 0) {
+            const isLead = Math.random() < 0.12;
+            if (isLead) {
+              currentCtx.fillStyle = isLight ? "#8B1E17" : "#FEF08A";
+            } else {
+              currentCtx.fillStyle = isLight ? "#7A1C16" : "#D48B38";
+            }
             currentCtx.fillText(char, x, y);
           }
 
-          if (y > window.innerHeight && Math.random() > 0.985) {
-            drops[i] = 0;
+          if (y > window.innerHeight + 60) {
+            drops[i] = -Math.floor(Math.random() * 45 + 5);
+            speeds[i] = 0.65 + Math.random() * 0.7;
           } else {
-            drops[i] = dropY + 1;
+            drops[i] = dropY + speed;
           }
         }
         (window as any).__matrixDrops = drops;

@@ -12,40 +12,67 @@ const { class: className = "h-8 w-8 shrink-0", size } = Astro.props;
   viewBox="0 0 64 64"
   width={size}
   height={size}
-  class={className}
+  class={`brand-logo-svg ${className}`}
   aria-hidden="true"
   role="img"
 >
   <defs>
+    <!-- Dark theme gold gradient -->
     <linearGradient id="an-logo-gold" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#E5A352"></stop>
       <stop offset="100%" stop-color="#D48B38"></stop>
     </linearGradient>
+
+    <!-- Light theme garnet gradient -->
+    <linearGradient id="an-logo-garnet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B1E17"></stop>
+      <stop offset="100%" stop-color="#7A1C16"></stop>
+    </linearGradient>
   </defs>
 
-  <!-- Base circular token con margen de seguridad anti-recorte SEO -->
+  <!-- Base circular token con soporte nativo para tema claro y oscuro -->
   <circle
     cx="32"
     cy="32"
     r="29"
-    fill="#120305"
-    stroke="url(#an-logo-gold)"
+    class="brand-logo-circle transition-colors duration-200"
     stroke-width="2.2"
   ></circle>
 
-  <!-- Iniciales AN centradas óptica y geométricamente (exacto a favicon.svg, sin espacio por formateo) -->
+  <!-- Iniciales AN centradas óptica y geométricamente (exacto a favicon.svg) -->
   <text
     x="32"
     y="32"
-    fill="url(#an-logo-gold)"
     font-size="28"
     font-weight="700"
     font-family="'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
     text-anchor="middle"
     dominant-baseline="central"
-    class="select-none"
+    class="brand-logo-text select-none transition-colors duration-200"
     set:html={
       '<tspan letter-spacing="1.5px">A</tspan><tspan letter-spacing="0">N</tspan>'
     }
   />
 </svg>
+
+<style>
+  /* Dark theme defaults */
+  .brand-logo-circle {
+    fill: #120305;
+    stroke: url(#an-logo-gold);
+  }
+  .brand-logo-text {
+    fill: url(#an-logo-gold);
+  }
+
+  /* Light theme: Swiss industrial clean print with garnet accent */
+  :global(html[data-theme="light"]) .brand-logo-circle,
+  :global(html.light) .brand-logo-circle {
+    fill: #ffffff;
+    stroke: url(#an-logo-garnet);
+  }
+  :global(html[data-theme="light"]) .brand-logo-text,
+  :global(html.light) .brand-logo-text {
+    fill: url(#an-logo-garnet);
+  }
+</style>
