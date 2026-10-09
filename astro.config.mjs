@@ -86,7 +86,8 @@ export default defineConfig({
       filter: (page) =>
         !page.includes("/search/") &&
         !page.includes("/404") &&
-        !page.includes("/case-studies/"),
+        !page.includes("/case-studies/") &&
+        !page.includes("/admin/"),
 
       i18n: {
         defaultLocale: "en",

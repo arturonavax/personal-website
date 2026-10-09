@@ -1,0 +1,61 @@
+---
+import type { Locale } from "@/i18n/ui";
+
+export interface Props {
+  calLink?: string;
+  variant?: "direct" | "modal";
+  label?: string;
+  class?: string;
+  locale?: Locale;
+}
+
+const {
+  calLink = "arturonavax",
+  label,
+  class:
+    className = "btn-gold px-5 py-2.5 inline-flex items-center gap-2 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+  locale = "en",
+} = Astro.props;
+
+const isEs = locale === "es";
+const defaultLabel = isEs ? "Agendar videollamada" : "Schedule a call";
+const displayLabel = label ?? defaultLabel;
+
+const cleanCalLink = calLink.replace(/^\/+/, "");
+const calUrl = `https://cal.com/${cleanCalLink}`;
+---
+
+<a
+  href={calUrl}
+  target="_blank"
+  rel="noopener noreferrer"
+  class={className}
+  aria-label={`${displayLabel} (cal.com/${cleanCalLink})`}
+>
+  <svg
+    class="h-4 w-4 stroke-current fill-none shrink-0"
+    viewBox="0 0 24 24"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+  <span>{displayLabel}</span>
+  <svg
+    class="h-3 w-3 stroke-current fill-none shrink-0 opacity-70 ml-0.5"
+    viewBox="0 0 24 24"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </svg>
+</a>
