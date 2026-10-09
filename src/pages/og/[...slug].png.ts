@@ -1,5 +1,4 @@
 import type { APIRoute, GetStaticPaths } from "astro";
-import { getCollection } from "astro:content";
 import { Resvg } from "@resvg/resvg-js";
 
 export const prerender = true;
@@ -56,92 +55,8 @@ function wrapText(text: string, maxCharsPerLine = 38, maxLines = 3): string[] {
 }
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  const paths: Array<{
-    params: { slug: string };
-    props: {
-      title: string;
-      description: string;
-      section: string;
-      tags?: string[];
-      locale: string;
-    };
-  }> = [];
-
-  // 1. Posts
-  const posts = await getCollection("posts");
-  for (const post of posts) {
-    if (post.data.draft || post.data.visible === false) continue;
-    const cleanId = post.id.replace(/\.(md|mdx)$/, "");
-    // Extract locale and slug
-    const parts = cleanId.split("/");
-    const locale = parts.length > 1 ? parts[0]! : "en";
-    const postSlug = parts.length > 1 ? parts.slice(1).join("/") : cleanId;
-
-    const routeSlug =
-      locale === "es" ? `es/blog/${postSlug}` : `blog/${postSlug}`;
-
-    paths.push({
-      params: { slug: routeSlug },
-      props: {
-        title: post.data.title,
-        description: post.data.description,
-        section: locale === "es" ? "ARTÍCULO TÉCNICO" : "ENGINEERING DEEP DIVE",
-        tags: post.data.tags?.slice(0, 4),
-        locale,
-      },
-    });
-  }
-
-  // 2. Projects
-  const projects = await getCollection("projects");
-  for (const proj of projects) {
-    if (proj.data.draft || proj.data.visible === false) continue;
-    const cleanId = proj.id.replace(/\.(md|mdx)$/, "");
-    const parts = cleanId.split("/");
-    const locale = parts.length > 1 ? parts[0]! : "en";
-    const projSlug = parts.length > 1 ? parts.slice(1).join("/") : cleanId;
-
-    const routeSlug =
-      locale === "es" ? `es/projects/${projSlug}` : `projects/${projSlug}`;
-
-    paths.push({
-      params: { slug: routeSlug },
-      props: {
-        title: proj.data.title,
-        description: proj.data.description,
-        section: locale === "es" ? "PROYECTO & SISTEMA" : "SYSTEM ARCHITECTURE",
-        tags: proj.data.techStack?.slice(0, 4),
-        locale,
-      },
-    });
-  }
-
-  // 3. Services
-  const services = await getCollection("services");
-  for (const s of services) {
-    if (s.data.draft || s.data.visible === false) continue;
-    const cleanId = s.id.replace(/\.(md|mdx)$/, "");
-    const parts = cleanId.split("/");
-    const locale = parts.length > 1 ? parts[0]! : "en";
-    const servSlug = parts.length > 1 ? parts.slice(1).join("/") : cleanId;
-
-    const routeSlug =
-      locale === "es" ? `es/services/${servSlug}` : `services/${servSlug}`;
-
-    paths.push({
-      params: { slug: routeSlug },
-      props: {
-        title: s.data.title,
-        description: s.data.description,
-        section:
-          locale === "es" ? "CONSULTORÍA STAFF" : "ENGINEERING CONSULTATION",
-        tags: s.data.deliverables?.slice(0, 4),
-        locale,
-      },
-    });
-  }
-
-  return paths;
+  // Desactivado temporalmente: se utiliza exclusivamente /og-default.png para todas las rutas
+  return [];
 };
 
 export const GET: APIRoute = async ({ props }) => {
