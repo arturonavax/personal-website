@@ -1,3 +1,9 @@
 # Tareas del Proyecto (ODD)
 
-[x] Mejora el favicon en todas las resoluciones necesarias para maximo SEO y buena presencia en resultados de busqueda: El favicon actual tiene bordes que se cortan en los resultados de busqueda, por lo cual quiero un favicon con mis iniciales, que siga el estilo de diseño de la pagina, colores y tipografia, que siga las mejores practicas para un favicon que se vea bien en pestañas de navegador, resultados de busqueda y en todos los lugares. Ese favicon con mis iniciales "AN" sera mi logo personal, por lo cual tambien deberias poder integrarlo perfectamente en el menu/barra superior de la pagina (el mismo codigo para que no discrepen)
+[] El titulo del banner en /links/ es sticky y no deberia.
+
+[] Aveces el scroll de el boton Contact falla, refinalo.
+
+[] Parece que el og-default carga con muy mala calidad en las previsualizaciones.
+
+[] (Human) Volver a ejecutar la indexacion de Google.

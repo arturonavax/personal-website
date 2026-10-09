@@ -1,7 +1,5 @@
 # Tasks for AI
 
-[] (Human) Reintentar la confirmacion de numero de telefono de la nueva cuenta <arturo@arturonavax.com> para ponerle foto de perfil, despues de haber quitado el numero de <arthurnavah@gmail.com>
-
 [] Sacar los banners del repositorio ya que no se muestran en la pagina web (al menos que se use para el Cover Letter Maker).
 
 [x] Quitar los enlaces del CV, menos el del header, justo antes de la impresion.
