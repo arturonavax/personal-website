@@ -213,8 +213,15 @@ export default {
           }
         } else {
           // Primary Priority (P0): Real human pageview (100% server-side, anti-adblocker)
-          prefetchCircuitBreaker.recordVisit();
-          ctx.waitUntil(recordAnalyticsNonBlocking(request, pathname, env.DB));
+          if (
+            !prefetchCircuitBreaker.canRecordVisit ||
+            prefetchCircuitBreaker.canRecordVisit(
+              env as unknown as Record<string, unknown>,
+            )
+          ) {
+            prefetchCircuitBreaker.recordVisit();
+            ctx.waitUntil(recordAnalyticsNonBlocking(request, pathname, env.DB));
+          }
         }
       }
     }
@@ -505,6 +512,29 @@ async function handleTelemetryIngestion(
 ): Promise<Response> {
   if (isPrefetch) {
     return new Response(null, { status: 204 });
+  }
+
+  const userAgent = request.headers.get("user-agent") || "";
+  if (BOT_REGEX.test(userAgent)) {
+    return new Response(JSON.stringify({ status: "bypassed", reason: "bot" }), {
+      status: 202,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (
+    prefetchCircuitBreaker.canRecordVisit &&
+    !prefetchCircuitBreaker.canRecordVisit(
+      env as unknown as Record<string, unknown>,
+    )
+  ) {
+    return new Response(
+      JSON.stringify({ status: "bypassed", reason: "budget_limit" }),
+      {
+        status: 202,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   ctx.waitUntil(
@@ -2064,6 +2094,10 @@ export async function recordAnalyticsNonBlocking(
     }
 
     const isBot = BOT_REGEX.test(userAgent) ? 1 : 0;
+    if (isBot) {
+      // Zero D1 writes consumed by scrapers, crawlers or automated bots
+      return;
+    }
 
     // Hash diario anonimizado (GDPR compliant)
     const today = new Date().toISOString().slice(0, 10);

@@ -97,6 +97,20 @@ export class PrefetchQuotaCircuitBreaker implements PrefetchCircuitBreakerPort {
     return true;
   }
 
+  canRecordVisit(env?: Record<string, unknown>): boolean {
+    this.checkDayRollover();
+    let totalBudget = this.defaultDailyWriteBudget;
+    if (env?.D1_DAILY_WRITE_BUDGET) {
+      const parsed = Number(env.D1_DAILY_WRITE_BUDGET);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        totalBudget = parsed;
+      }
+    }
+    // Hard ceiling: max 65% of daily budget allocated to real visit writes (prevents overage)
+    const maxVisitBudget = Math.floor(totalBudget * 0.65);
+    return this.dailyVisitCount < maxVisitBudget;
+  }
+
   getTripReason(): CircuitBreakerTripReason {
     return this.tripReason;
   }

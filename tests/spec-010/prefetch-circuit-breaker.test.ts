@@ -95,6 +95,14 @@ describe("PrefetchQuotaCircuitBreaker Unit Tests", () => {
     expect(breaker.canRecordPrefetch()).toBe(true);
     expect(breaker.getStatus().state).toBe("CLOSED");
   });
+
+  it("enforces visit budget protection when daily visits approach ceiling", () => {
+    expect(breaker.canRecordVisit()).toBe(true);
+    for (let i = 0; i < 650; i++) {
+      breaker.recordVisit();
+    }
+    expect(breaker.canRecordVisit()).toBe(false);
+  });
 });
 
 describe("Edge Worker Prefetch Telemetry Integration", () => {
