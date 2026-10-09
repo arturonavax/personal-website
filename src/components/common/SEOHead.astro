@@ -92,6 +92,8 @@ const resolvedOgImage = ogImage.startsWith("http")
 <link rel="icon" href="/favicon.ico" sizes="any" />
 <!-- 4. iOS / Safari Web Clip -->
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<!-- 5. Web App Manifest -->
+<link rel="manifest" href="/site.webmanifest" />
 
 <meta name="generator" content={Astro.generator} />
 
@@ -211,9 +213,11 @@ const resolvedOgImage = ogImage.startsWith("http")
 <!-- robots.txt / search engine directives -->
 <meta
   name="robots"
-  content={noindex
-    ? "noindex, nofollow"
-    : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"}
+  content={
+    noindex
+      ? "noindex, nofollow"
+      : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+  }
 />
 
 <!-- Structured Data (JSON-LD) -->

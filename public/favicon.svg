@@ -1,26 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Fondo y borde -->
-  <rect
-    x="4"
-    y="4"
-    width="56"
-    height="56"
-    rx="14"
-    fill="#180608"
-    stroke="#6e1d1b"
-    stroke-width="2.5"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="an-logo-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E5A352" />
+      <stop offset="100%" stop-color="#D48B38" />
+    </linearGradient>
+  </defs>
+
+  <!-- Base circular token con margen de seguridad anti-recorte SEO (Google SERP circular mask) -->
+  <circle
+    cx="32"
+    cy="32"
+    r="29"
+    fill="#120305"
+    stroke="url(#an-logo-gold)"
+    stroke-width="2.2"
   />
 
-  <!-- Iniciales centradas geométrica y ópticamente -->
+  <!-- Iniciales AN centradas óptica y geométricamente -->
   <text
     x="32"
     y="32"
-    fill="#e59b4c"
-    font-size="30"
-    font-weight="500"
+    fill="url(#an-logo-gold)"
+    font-size="28"
+    font-weight="700"
     font-family="'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
     text-anchor="middle"
     dominant-baseline="central"
-  ><tspan letter-spacing="3px">A</tspan><tspan letter-spacing="0">N</tspan></text>
+  ><tspan letter-spacing="1.5px">A</tspan><tspan letter-spacing="0">N</tspan></text>
 </svg>
-

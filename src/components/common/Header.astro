@@ -7,6 +7,7 @@ import { simulationsData } from "@/data/simulations";
 import { getCounterpartUrl } from "@/i18n/utils";
 import LanguageSwitcher from "./LanguageSwitcher.astro";
 import ThemeToggle from "./ThemeToggle.astro";
+import BrandLogo from "./BrandLogo.astro";
 import { getVisibleCollection } from "@/utils/visibility";
 import { resolveHeaderNavState } from "@/lib/navigation/nav-state";
 
@@ -96,9 +97,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
         href={homeUrl}
         class="group flex items-center gap-2.5 font-mono text-sm tracking-tight text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] shrink-0"
       >
-        <span class="flex h-8 w-8 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-xs font-semibold text-[var(--color-accent-gold)] transition-colors group-hover:border-[var(--color-accent-gold)]">
-          AN
-        </span>
+        <BrandLogo class="h-8 w-8 shrink-0 transition-transform duration-200 group-hover:scale-105" />
         <span class="font-medium tracking-tight">
           arturonavax<span class="text-[var(--color-accent-gold)]">.dev</span>
         </span>

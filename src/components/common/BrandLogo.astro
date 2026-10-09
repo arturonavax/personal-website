@@ -1,0 +1,51 @@
+---
+interface Props {
+  class?: string | undefined;
+  size?: number | string | undefined;
+}
+
+const { class: className = "h-8 w-8 shrink-0", size } = Astro.props;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  width={size}
+  height={size}
+  class={className}
+  aria-hidden="true"
+  role="img"
+>
+  <defs>
+    <linearGradient id="an-logo-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E5A352"></stop>
+      <stop offset="100%" stop-color="#D48B38"></stop>
+    </linearGradient>
+  </defs>
+
+  <!-- Base circular token con margen de seguridad anti-recorte SEO -->
+  <circle
+    cx="32"
+    cy="32"
+    r="29"
+    fill="#120305"
+    stroke="url(#an-logo-gold)"
+    stroke-width="2.2"
+  ></circle>
+
+  <!-- Iniciales AN centradas óptica y geométricamente (exacto a favicon.svg, sin espacio por formateo) -->
+  <text
+    x="32"
+    y="32"
+    fill="url(#an-logo-gold)"
+    font-size="28"
+    font-weight="700"
+    font-family="'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    text-anchor="middle"
+    dominant-baseline="central"
+    class="select-none"
+    set:html={
+      '<tspan letter-spacing="1.5px">A</tspan><tspan letter-spacing="0">N</tspan>'
+    }
+  />
+</svg>
