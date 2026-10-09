@@ -63,9 +63,16 @@ export default {
     const url = new URL(request.url);
     const host = url.hostname.toLowerCase();
 
+    const pathname = url.pathname;
+
     // -------------------------------------------------------------------------
     // 1. FAST-PATH: Subdomain Canonicalization & Apex Admin Surface Redirect (REQ-PCD-02, REQ-PCD-03)
     // -------------------------------------------------------------------------
+    const isLocal = host === "localhost" || host === "127.0.0.1";
+    if (isLocal && (pathname === "/admin" || pathname.startsWith("/admin/"))) {
+      return handleAdminDashboardRequest(request, env, ctx);
+    }
+
     const redirect = routingPolicy.resolveCanonicalRedirect(url);
     if (redirect.shouldRedirect && redirect.targetUrl) {
       return Response.redirect(redirect.targetUrl, redirect.statusCode);
@@ -79,7 +86,6 @@ export default {
     // -------------------------------------------------------------------------
     // 2. FAST-PATH: Immutable Static Assets & Typography (REQ-PCD-01, REQ-PCD-06)
     // -------------------------------------------------------------------------
-    const pathname = url.pathname;
     const isImmutableAsset =
       pathname.startsWith("/_astro/") || pathname.startsWith("/fonts/");
 
@@ -261,6 +267,11 @@ export default {
         headers.set("X-Content-Type-Options", "nosniff");
         headers.set("X-Frame-Options", "DENY");
         headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+        headers.set(
+          "Strict-Transport-Security",
+          "max-age=63072000; includeSubDomains; preload",
+        );
+        headers.set("Alt-Svc", 'h3=":443"; ma=86400');
         shouldWrapResponse = true;
       }
     }
@@ -646,18 +657,26 @@ export async function handleAdminDashboardRequest(
     let incidents: unknown[] = [];
     if (env.DB) {
       try {
-        const query = await env.DB.prepare(
+        const stmt = env.DB.prepare(
           "SELECT * FROM daily_analytics_rollups ORDER BY date DESC LIMIT 30",
-        ).all();
+        );
+        const query =
+          typeof (stmt as any).all === "function"
+            ? await (stmt as any).all()
+            : await stmt.bind().all();
         rollups = query.results || [];
       } catch {
         // Fail-open
       }
 
       try {
-        const incQuery = await env.DB.prepare(
+        const incStmt = env.DB.prepare(
           "SELECT * FROM circuit_breaker_incidents ORDER BY date DESC LIMIT 30",
-        ).all();
+        );
+        const incQuery =
+          typeof (incStmt as any).all === "function"
+            ? await (incStmt as any).all()
+            : await incStmt.bind().all();
         incidents = incQuery.results || [];
       } catch {
         // Fail-open
@@ -684,29 +703,561 @@ export async function handleAdminDashboardRequest(
     );
   }
 
+  if (url.pathname === "/api/telemetry") {
+    let pageviews: any[] = [];
+    let edgeEvents: any[] = [];
+    if (env.DB) {
+      try {
+        const stmt = env.DB.prepare(
+          "SELECT id, path, visitor_hash, referrer, country, utm_source, utm_medium, utm_campaign, utm_content, utm_term, is_bot, created_at FROM pageviews ORDER BY id DESC LIMIT 50",
+        );
+        const q =
+          typeof (stmt as any).all === "function"
+            ? await (stmt as any).all()
+            : await stmt.bind().all();
+        pageviews = q.results || [];
+      } catch {
+        // Fail-open
+      }
+
+      try {
+        const stmt = env.DB.prepare(
+          "SELECT id, timestamp, path, locale, country, user_agent, visitor_hash, referrer FROM edge_telemetry_events ORDER BY timestamp DESC LIMIT 50",
+        );
+        const q =
+          typeof (stmt as any).all === "function"
+            ? await (stmt as any).all()
+            : await stmt.bind().all();
+        edgeEvents = q.results || [];
+      } catch {
+        // Fail-open
+      }
+    }
+
+    const totalViews = pageviews.length;
+    const humanViews = pageviews.filter((p: any) => !p.is_bot).length;
+    const botViews = pageviews.filter((p: any) => p.is_bot).length;
+    const uniqueVisitors = new Set(pageviews.map((p: any) => p.visitor_hash))
+      .size;
+
+    return new Response(
+      JSON.stringify({
+        status: "ok",
+        surface: "admin-isolated",
+        timestamp: new Date().toISOString(),
+        stats: {
+          total_pageviews: totalViews,
+          human_views: humanViews,
+          bot_views: botViews,
+          unique_visitors: uniqueVisitors,
+        },
+        pageviews,
+        edge_events: edgeEvents,
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store, private",
+        },
+      },
+    );
+  }
+
   const adminHtml = `<!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Admin Dashboard - arturonavax.dev</title>
+  <title>Admin Dashboard & Telemetría en Tiempo Real - arturonavax.dev</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow, noarchive" />
   <style>
-    body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; background: #0c0a09; color: #f5f5f4; padding: 2rem; }
-    h1 { color: #f59e0b; margin-bottom: 0.5rem; }
-    .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: #292524; color: #10b981; font-size: 0.875rem; border: 1px solid #44403c; }
-    .card { background: #1c1917; border: 1px solid #292524; padding: 1.5rem; border-radius: 8px; margin-top: 1.5rem; }
+    :root {
+      --bg: #0a0203;
+      --card: #120305;
+      --card-subtle: #180406;
+      --border: #3b1014;
+      --border-gold: #d48b38;
+      --gold: #d48b38;
+      --gold-light: #e5a352;
+      --text: #ffffff;
+      --text-muted: #e2d5d5;
+      --text-dim: #a39292;
+      --green: #10b981;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: var(--bg);
+      color: var(--text);
+      padding: 1.5rem;
+      line-height: 1.5;
+    }
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: 1.35rem;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      letter-spacing: -0.5px;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      background: var(--card-subtle);
+      color: var(--green);
+      font-size: 0.75rem;
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+    .badge.live {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.1);
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      display: inline-block;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      position: relative;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; width: 3px; height: 100%;
+      background: var(--gold);
+    }
+    .kpi-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+    .kpi-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 0.25rem;
+    }
+    .kpi-sub {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-top: 0.2rem;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1.25rem;
+    }
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+    button, select {
+      background: var(--card-subtle);
+      color: var(--gold-light);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    button:hover, select:hover {
+      border-color: var(--gold);
+      background: #25070a;
+    }
+    button.active {
+      background: var(--gold);
+      color: #000;
+      font-weight: 700;
+      border-color: var(--gold);
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .panel-header {
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-subtle);
+    }
+    .panel-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--gold-light);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .table-responsive {
+      overflow-x: auto;
+      width: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.8rem;
+    }
+    th {
+      background: #0f0204;
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+    }
+    td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid rgba(59, 16, 20, 0.4);
+      white-space: nowrap;
+      color: var(--text-muted);
+    }
+    tr:hover td {
+      background: rgba(212, 139, 56, 0.05);
+    }
+    .tag {
+      display: inline-block;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .tag-human { background: rgba(16, 185, 129, 0.15); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .tag-bot { background: rgba(239, 68, 68, 0.15); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); }
+    .tag-path { color: var(--gold-light); font-weight: 600; }
+    .tag-country { background: #25070a; color: var(--gold); border: 1px solid var(--border); }
+    .hash { color: var(--text-dim); font-size: 0.75rem; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+    .info-list {
+      list-style: none;
+      padding: 0.5rem 0;
+    }
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 1.25rem;
+      border-bottom: 1px solid rgba(59, 16, 20, 0.3);
+      font-size: 0.8rem;
+    }
+    .info-item:last-child { border-bottom: none; }
+    .empty-state {
+      padding: 2.5rem;
+      text-align: center;
+      color: var(--text-dim);
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
-  <h1>Admin Management Surface</h1>
-  <p><span class="badge">Isolated Zero Trust Surface</span> Authenticated via Cloudflare Access</p>
-  <div class="card">
-    <h2>Edge Health & Security Status</h2>
-    <p>Host: <code>admin.arturonavax.dev</code></p>
-    <p>Zero Trust Boundary: Active</p>
-    <p>Public Content Coupling: 0%</p>
+  <header class="header">
+    <div>
+      <h1>⚡ Admin Management Surface // Telemetría</h1>
+      <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.2rem;">
+        Host: <code>admin.arturonavax.dev</code> &bull; Public Content Coupling: 0%
+      </p>
+    </div>
+    <div class="badges">
+      <span class="badge live"><span class="pulse-dot"></span> EN VIVO</span>
+      <span class="badge">Isolated Zero Trust Surface</span>
+      <span class="badge" style="color: var(--gold-light);">Cloudflare Access</span>
+    </div>
+  </header>
+
+  <!-- Metrics Counters -->
+  <div class="kpis">
+    <div class="kpi-card">
+      <div class="kpi-title">Eventos Recientes (D1)</div>
+      <div class="kpi-value" id="kpi-total">--</div>
+      <div class="kpi-sub">Últimos registros en búfer</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Visitas Humanas (P0)</div>
+      <div class="kpi-value" id="kpi-human" style="color: var(--green);">--</div>
+      <div class="kpi-sub">Tráfico real validado</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Bots &amp; Rastreadores</div>
+      <div class="kpi-value" id="kpi-bot" style="color: var(--gold-light);">--</div>
+      <div class="kpi-sub">Indexadores &amp; crawlers</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Visitantes Únicos</div>
+      <div class="kpi-value" id="kpi-visitors">--</div>
+      <div class="kpi-sub">Hashes GDPR anonimizados</div>
+    </div>
   </div>
+
+  <!-- Real-Time Controls -->
+  <div class="controls">
+    <div class="btn-group">
+      <button type="button" id="btn-filter-all" class="active" onclick="setFilter('all')">Todos</button>
+      <button type="button" id="btn-filter-human" onclick="setFilter('human')">Humanos</button>
+      <button type="button" id="btn-filter-bot" onclick="setFilter('bot')">Bots</button>
+    </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <span id="last-update" style="font-size: 0.75rem; color: var(--text-dim);">Actualizando...</span>
+      <button type="button" id="btn-toggle-poll" onclick="togglePolling()">Auto-refresco: ON (5s)</button>
+      <button type="button" onclick="fetchTelemetry(true)">↻ Actualizar Ahora</button>
+    </div>
+  </div>
+
+  <!-- Live Feed Table -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Registro Perimetral de Telemetría en Tiempo Real</div>
+      <span style="font-size: 0.75rem; color: var(--text-dim);" id="table-count">Mostrando 0 eventos</span>
+    </div>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Hora (UTC)</th>
+            <th>Ruta</th>
+            <th>País</th>
+            <th>Referente / Canal</th>
+            <th>Campaña UTM</th>
+            <th>Clasificación</th>
+            <th>Hash Visitante</th>
+          </tr>
+        </thead>
+        <tbody id="telemetry-tbody">
+          <tr>
+            <td colspan="7" class="empty-state">Conectando con el router perimetral D1...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Auxiliary Insights Grid -->
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Rutas Más Demandadas</div>
+      </div>
+      <ul class="info-list" id="top-paths">
+        <li class="info-item" style="color: var(--text-dim);">Cargando analíticas...</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Fuentes de Atribución &amp; UTMs</div>
+      </div>
+      <ul class="info-list" id="top-referrers">
+        <li class="info-item" style="color: var(--text-dim);">Cargando canales...</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Seguridad Perimetral &amp; Estado de Conexión</div>
+    </div>
+    <div style="padding: 1.25rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.8;">
+      <p>&bull; <strong>Aislamiento Zero Trust:</strong> Dominio confinado a Cloudflare Access (<code>admin.arturonavax.dev</code>).</p>
+      <p>&bull; <strong>Fail-Open Circuit Breaker:</strong> Telemetría ejecuta en <code>ctx.waitUntil()</code> con 0ms de latencia para el usuario.</p>
+      <p>&bull; <strong>Persistencia D1:</strong> Tablas activas <code>pageviews</code>, <code>pageview_events</code> y <code>edge_telemetry_events</code>.</p>
+    </div>
+  </div>
+
+  <script>
+    let pollInterval = null;
+    let isPolling = true;
+    let currentFilter = 'all';
+    let cachedPageviews = [];
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      document.getElementById('btn-filter-all').classList.toggle('active', filter === 'all');
+      document.getElementById('btn-filter-human').classList.toggle('active', filter === 'human');
+      document.getElementById('btn-filter-bot').classList.toggle('active', filter === 'bot');
+      renderTable();
+    }
+
+    function togglePolling() {
+      isPolling = !isPolling;
+      const btn = document.getElementById('btn-toggle-poll');
+      if (isPolling) {
+        btn.textContent = 'Auto-refresco: ON (5s)';
+        btn.style.borderColor = 'var(--gold)';
+        pollInterval = setInterval(fetchTelemetry, 5000);
+      } else {
+        btn.textContent = 'Auto-refresco: PAUSADO';
+        btn.style.borderColor = 'var(--text-dim)';
+        clearInterval(pollInterval);
+      }
+    }
+
+    function formatTime(isoStr) {
+      if (!isoStr) return '--';
+      try {
+        const d = new Date(isoStr);
+        return d.toISOString().replace('T', ' ').slice(11, 19);
+      } catch (_) {
+        return isoStr;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('telemetry-tbody');
+      let items = cachedPageviews;
+      if (currentFilter === 'human') items = items.filter(i => !i.is_bot);
+      if (currentFilter === 'bot') items = items.filter(i => i.is_bot);
+
+      document.getElementById('table-count').textContent = 'Mostrando ' + items.length + ' de ' + cachedPageviews.length + ' eventos';
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No se registraron eventos para este filtro.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(function(item) {
+        const isBot = !!item.is_bot;
+        const tagClass = isBot ? 'tag-bot' : 'tag-human';
+        const tagLabel = isBot ? 'BOT' : 'HUMAN';
+        const country = item.country || 'XX';
+        const ref = item.utm_source !== 'direct' && item.utm_source ? item.utm_source : (item.referrer || 'Direct');
+        const campaign = item.utm_campaign ? escapeHtml(item.utm_campaign) : '--';
+        const hash = item.visitor_hash ? item.visitor_hash.slice(0, 10) + '...' : '--';
+
+        return '<tr>' +
+          '<td>' + formatTime(item.created_at) + '</td>' +
+          '<td><span class="tag-path">' + escapeHtml(item.path) + '</span></td>' +
+          '<td><span class="tag tag-country">' + escapeHtml(country) + '</span></td>' +
+          '<td>' + escapeHtml(ref) + '</td>' +
+          '<td>' + campaign + '</td>' +
+          '<td><span class="tag ' + tagClass + '">' + tagLabel + '</span></td>' +
+          '<td><span class="hash">' + escapeHtml(hash) + '</span></td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function renderAggregates(items) {
+      // Top paths
+      const pathCounts = {};
+      const refCounts = {};
+      items.forEach(function(i) {
+        if (!i.is_bot && i.path) {
+          pathCounts[i.path] = (pathCounts[i.path] || 0) + 1;
+        }
+        const src = i.utm_source || i.referrer || 'Direct';
+        if (src) {
+          refCounts[src] = (refCounts[src] || 0) + 1;
+        }
+      });
+
+      const sortedPaths = Object.entries(pathCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+      const topPathsEl = document.getElementById('top-paths');
+      if (sortedPaths.length) {
+        topPathsEl.innerHTML = sortedPaths.map(function(p) {
+          return '<li class="info-item"><span class="tag-path">' + escapeHtml(p[0]) + '</span><strong>' + p[1] + ' visitas</strong></li>';
+        }).join('');
+      } else {
+        topPathsEl.innerHTML = '<li class="info-item" style="color:var(--text-dim);">Sin datos de navegación aún</li>';
+      }
+
+      const sortedRefs = Object.entries(refCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+      const topRefsEl = document.getElementById('top-referrers');
+      if (sortedRefs.length) {
+        topRefsEl.innerHTML = sortedRefs.map(function(r) {
+          return '<li class="info-item"><span>' + escapeHtml(r[0]) + '</span><strong>' + r[1] + ' eventos</strong></li>';
+        }).join('');
+      } else {
+        topRefsEl.innerHTML = '<li class="info-item" style="color:var(--text-dim);">Sin datos de atribución aún</li>';
+      }
+    }
+
+    async function fetchTelemetry(isManual) {
+      try {
+        const res = await fetch('/api/telemetry', { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        cachedPageviews = data.pageviews || [];
+        const stats = data.stats || {};
+
+        document.getElementById('kpi-total').textContent = stats.total_pageviews ?? cachedPageviews.length;
+        document.getElementById('kpi-human').textContent = stats.human_views ?? cachedPageviews.filter(p => !p.is_bot).length;
+        document.getElementById('kpi-bot').textContent = stats.bot_views ?? cachedPageviews.filter(p => p.is_bot).length;
+        document.getElementById('kpi-visitors').textContent = stats.unique_visitors ?? '--';
+
+        renderTable();
+        renderAggregates(cachedPageviews);
+
+        const now = new Date();
+        document.getElementById('last-update').textContent = 'Actualizado: ' + now.toTimeString().split(' ')[0];
+      } catch (err) {
+        document.getElementById('last-update').textContent = 'Error de conexión: reintentando...';
+      }
+    }
+
+    fetchTelemetry();
+    pollInterval = setInterval(fetchTelemetry, 5000);
+  </script>
 </body>
 </html>`;
 

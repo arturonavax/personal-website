@@ -31,6 +31,19 @@ const isEs = locale === "es";
     function setupBackToTop() {
       var btn = document.getElementById("back-to-top-btn");
       if (!btn || btn.dataset.bound) return;
+
+      // Omit button on mobile browsers with built-in native Scroll-to-Top feature
+      var ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+      var hasNativeScrollToTop =
+        /SamsungBrowser|MiuiBrowser|XiaoMi\/Miui|HuaweiBrowser|UCBrowser/i.test(
+          ua,
+        );
+      if (hasNativeScrollToTop) {
+        btn.style.display = "none";
+        btn.remove();
+        return;
+      }
+
       btn.dataset.bound = "true";
 
       var isVisible = false;

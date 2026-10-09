@@ -39,7 +39,10 @@ const scope = self as unknown as WorkerScope;
 
 const FONT_SIZE = 14;
 const FRAME_INTERVAL = 60;
-const CHARACTERS = "01010123456789ABCDEFλ§µsGoRustSIMDAVX2ptrchnsync".split("");
+const CHARACTERS =
+  "01010123456789ABCDEFλ§µΔΨΩθπσ0x::->/*!=&|^GoRustSIMDAVX2ptrchnsync".split(
+    "",
+  );
 
 let canvas: OffscreenCanvas | null = null;
 let ctx: OffscreenCanvasRenderingContext2D | null = null;
@@ -49,6 +52,7 @@ let currentDpr = 1;
 let isLight = false;
 let hidden = false;
 let drops: number[] = [];
+let speeds: number[] = [];
 let lastRenderTime = 0;
 
 function layout(w: number, h: number, dpr: number): void {
@@ -71,12 +75,16 @@ function layout(w: number, h: number, dpr: number): void {
 
   const columns = Math.floor(w / FONT_SIZE);
   const next = new Array<number>(columns);
+  const nextSpeeds = new Array<number>(columns);
   for (let i = 0; i < columns; i++) {
-    // Streams always enter from above the top edge on first paint (no mid-screen stalls)
+    // Randomized stream entrances staggered above the viewport for natural entropy
     next[i] =
-      i < drops.length ? (drops[i] ?? 0) : -Math.floor(Math.random() * 24);
+      i < drops.length ? (drops[i] ?? 0) : -Math.floor(Math.random() * 50 + 2);
+    nextSpeeds[i] =
+      i < speeds.length ? (speeds[i] ?? 1) : 0.65 + Math.random() * 0.7;
   }
   drops = next;
+  speeds = nextSpeeds;
 }
 
 function render(now: number): void {
@@ -88,23 +96,33 @@ function render(now: number): void {
     ? "rgba(244, 246, 248, 0.16)"
     : "rgba(26, 2, 5, 0.12)";
   ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = isLight ? "#7A1C16" : "#D48B38";
   ctx.font = `${FONT_SIZE}px ui-monospace, monospace`;
 
   for (let i = 0; i < drops.length; i++) {
     const dropY = drops[i] ?? 0;
+    const speed = speeds[i] ?? 1;
     const char =
       CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)] || "0";
     const x = i * FONT_SIZE;
-    const y = dropY * FONT_SIZE;
+    const y = Math.floor(dropY) * FONT_SIZE;
+
     if (dropY > 0) {
+      // Occasional glowing head glyph for organic matrix rain depth
+      const isLead = Math.random() < 0.12;
+      if (isLead) {
+        ctx.fillStyle = isLight ? "#8B1E17" : "#FEF08A";
+      } else {
+        ctx.fillStyle = isLight ? "#7A1C16" : "#D48B38";
+      }
       ctx.fillText(char, x, y);
     }
-    // If drop fell below current viewport height after a zoom change, reset cleanly
-    if (y > height + 50) {
-      drops[i] = -Math.floor(Math.random() * 10);
+
+    // Organic stream reset with variable delays and regenerated speeds
+    if (y > height + 60) {
+      drops[i] = -Math.floor(Math.random() * 45 + 5);
+      speeds[i] = 0.65 + Math.random() * 0.7;
     } else {
-      drops[i] = y > height && Math.random() > 0.985 ? 0 : dropY + 1;
+      drops[i] = dropY + speed;
     }
   }
 }
