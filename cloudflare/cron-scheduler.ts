@@ -23,9 +23,18 @@ export async function handleAnalyticsRollup(env: CronEnv): Promise<void> {
 
   await env.DB.exec(rollupQuery);
 
-  // Prune events older than 7 days to preserve D1 storage limit (500MB free)
+  // Prune events to preserve D1 storage limit (5 GB free tier, keeps DB < 2 MB indefinitely)
   const pruneQuery = `
     DELETE FROM pageview_events
+    WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
+
+    DELETE FROM pageviews
+    WHERE created_at < datetime('now', '-30 days');
+
+    DELETE FROM prefetch_analytics_events
+    WHERE created_at < datetime('now', '-30 days');
+
+    DELETE FROM edge_telemetry_events
     WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
   `;
 

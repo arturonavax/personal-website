@@ -72,6 +72,7 @@ export interface CircuitBreakerStatus {
 
 export interface PrefetchCircuitBreakerPort {
   canRecordPrefetch(env?: Record<string, unknown>): boolean;
+  canRecordVisit?(env?: Record<string, unknown>): boolean;
   getTripReason(): CircuitBreakerTripReason;
   shouldLogIncident(dateString: string): boolean;
   markIncidentLogged(dateString: string): void;
