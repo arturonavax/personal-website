@@ -415,40 +415,55 @@ describe("SPEC-007 REQ-EXP-TYPEWRITER: Experience Timeline Typewriter Engine", (
   it("TypewriterTicker renders native custom element with SSR text and glowing block cursor", () => {
     expect(tickerComponent).toContain("<typewriter-ticker");
     expect(tickerComponent).toMatch(
-      /<span class="typewriter-text text-\[var\(--color-accent-gold\)\] font-medium">\{initialPhrase\}<\/span>/,
+      /<span class="typewriter-text text-\[var\(--color-accent-gold\)\] font-medium">\s*\{initialPhrase\}\s*<\/span>/,
     );
     expect(tickerComponent).toMatch(
-      /<span class="typewriter-cursor inline-block w-1.5 h-3.5 bg-\[var\(--color-accent-gold\)\] ml-1 animate-pulse" aria-hidden="true"><\/span>/,
+      /<span\s+class="typewriter-cursor inline-block w-1.5 h-3.5 bg-\[var\(--color-accent-gold\)\] ml-1 animate-pulse"\s+aria-hidden="true"\s*>\s*<\/span>/,
     );
   });
 
   it("TypewriterTicker script implements Web Component lifecycle, clean timer teardown, and reduced motion bypass", () => {
-    expect(tickerComponent).toContain("class TypewriterTickerElement extends HTMLElement");
+    expect(tickerComponent).toContain(
+      "class TypewriterTickerElement extends HTMLElement",
+    );
     expect(tickerComponent).toContain("connectedCallback()");
     expect(tickerComponent).toContain("disconnectedCallback()");
     expect(tickerComponent).toContain("clearTimeout");
     expect(tickerComponent).toMatch(/prefers-reduced-motion:\s*reduce/);
-    expect(tickerComponent).toContain('customElements.define("typewriter-ticker", TypewriterTickerElement)');
+    expect(tickerComponent).toContain(
+      'customElements.define("typewriter-ticker", TypewriterTickerElement)',
+    );
   });
 
   it("ExperienceTimeline uses TypewriterTicker for both R&D node and active job node", () => {
-    expect(timelineComponent).toContain('import TypewriterTicker from "@/components/ui/TypewriterTicker.astro"');
-    expect(timelineComponent).toMatch(/<TypewriterTicker[^>]*phrases=\{isEs/);
-    expect(timelineComponent).toMatch(/<TypewriterTicker[^>]*phrases=\{locale === "es"/);
+    expect(timelineComponent).toContain(
+      'import TypewriterTicker from "@/components/ui/TypewriterTicker.astro"',
+    );
+    expect(timelineComponent).toMatch(
+      /<TypewriterTicker[\s\S]*?phrases=\{\s*isEs/,
+    );
+    expect(timelineComponent).toMatch(
+      /<TypewriterTicker[\s\S]*?phrases=\{\s*locale === "es"/,
+    );
     expect(timelineComponent).not.toContain("ticker-scroll");
   });
 
   it("Experience detail slug page uses TypewriterTicker for active job section", () => {
-    expect(slugPage).toContain('import TypewriterTicker from "@/components/ui/TypewriterTicker.astro"');
-    expect(slugPage).toMatch(/<TypewriterTicker[^>]*phrases=\{isEs/);
+    expect(slugPage).toContain(
+      'import TypewriterTicker from "@/components/ui/TypewriterTicker.astro"',
+    );
+    expect(slugPage).toMatch(/<TypewriterTicker[\s\S]*?phrases=\{\s*isEs/);
     expect(slugPage).not.toContain("ticker-scroll");
   });
 
   it("global.css removes old tickerScroll and defines compositor-only cursor opacity animation", () => {
     expect(globalCss).not.toContain("tickerScroll");
     expect(globalCss).not.toContain(".ticker-scroll");
-    expect(globalCss).toMatch(/@keyframes typewriterBlink\s*\{[^}]*opacity:[^}]*\}/);
-    expect(globalCss).toMatch(/\.typewriter-cursor\s*\{[^}]*animation:\s*typewriterBlink/);
+    expect(globalCss).toMatch(
+      /@keyframes typewriterBlink\s*\{[^}]*opacity:[^}]*\}/,
+    );
+    expect(globalCss).toMatch(
+      /\.typewriter-cursor\s*\{[^}]*animation:\s*typewriterBlink/,
+    );
   });
 });
-

@@ -1,4 +1,7 @@
-export function getHomepageJsonLd(locale: "en" | "es" = "en") {
+export function getHomepageJsonLd(
+  locale: "en" | "es" = "en",
+  avatarUrl?: string,
+) {
   const isEs = locale === "es";
 
   return {
@@ -43,7 +46,11 @@ export function getHomepageJsonLd(locale: "en" | "es" = "en") {
         url: "https://arturonavax.dev/",
         mainEntityOfPage: { "@id": "https://arturonavax.dev/#profilepage" },
         image: [
-          "https://arturonavax.dev/arturonava.webp",
+          avatarUrl
+            ? avatarUrl.startsWith("http")
+              ? avatarUrl
+              : `https://arturonavax.dev${avatarUrl.startsWith("/") ? "" : "/"}${avatarUrl}`
+            : "https://arturonavax.dev/og-default.png",
           "https://arturonavax.dev/og-default.png",
         ],
         email: "mailto:arturo@arturonavax.dev",

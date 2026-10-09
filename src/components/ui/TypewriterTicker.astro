@@ -25,8 +25,13 @@ const initialPhrase = phrases.length > 0 ? phrases[0] : "";
   data-delete-speed={deleteSpeed}
   data-pause-duration={pauseDuration}
 >
-  <span class="typewriter-text text-[var(--color-accent-gold)] font-medium">{initialPhrase}</span>
-  <span class="typewriter-cursor inline-block w-1.5 h-3.5 bg-[var(--color-accent-gold)] ml-1 animate-pulse" aria-hidden="true"></span>
+  <span class="typewriter-text text-[var(--color-accent-gold)] font-medium">
+    {initialPhrase}
+  </span>
+  <span
+    class="typewriter-cursor inline-block w-1.5 h-3.5 bg-[var(--color-accent-gold)] ml-1 animate-pulse"
+    aria-hidden="true"
+  ></span>
 </typewriter-ticker>
 
 <script>
