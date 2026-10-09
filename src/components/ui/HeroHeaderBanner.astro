@@ -4,6 +4,7 @@ import TechIcon from "@/components/ui/TechIcon.astro";
 import { Picture } from "astro:assets";
 import arturoPhoto from "@/assets/arturonava.jpg";
 import { hasResume } from "@/data/resume";
+import ScheduleButton from "@/components/ScheduleButton.astro";
 
 interface Props {
   locale: Locale;
@@ -65,9 +66,17 @@ const techStack = [
 
       <!-- 4. CTAs: Single-line desktop action bar with Primary & Secondary -->
       <div class="pt-1.5 flex flex-wrap items-center justify-start sm:justify-center lg:justify-start gap-3 font-mono text-xs sm:text-sm w-full">
+        <ScheduleButton
+          calLink="arturonavax"
+          variant="direct"
+          label={isEs ? "Agendar llamada" : "Schedule a call"}
+          locale={locale}
+          class="btn-gold px-5 py-2.5 inline-flex items-center gap-2 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+        />
+
         <a
           href="#contact"
-          class="btn-gold px-5 py-2.5 inline-flex items-center gap-2 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          class="btn-secondary px-5 py-2.5 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
         >
           <svg
             class="h-4 w-4 stroke-current fill-none"

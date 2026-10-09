@@ -249,6 +249,7 @@ dialog {
   scrollbar-gutter: auto;
 }
 
+
 dialog::-webkit-scrollbar,
 #index-expanded-panel::-webkit-scrollbar {
   display: none;

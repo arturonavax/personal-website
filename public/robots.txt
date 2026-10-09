@@ -8,6 +8,7 @@ User-agent: *
 Disallow: /search
 Disallow: /es/search
 Disallow: /admin
+Disallow: /es/admin
 Disallow: /case-studies
 Disallow: /es/case-studies
 Allow: /
