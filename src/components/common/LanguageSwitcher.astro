@@ -288,39 +288,41 @@ const effectiveTargetUrl =
             window.dispatchEvent(new Event("scroll"));
           }
 
+          var isMobile =
+            (typeof window !== "undefined" &&
+              window.matchMedia &&
+              (window.matchMedia("(max-width: 768px)").matches ||
+                window.matchMedia("(pointer: coarse)").matches)) ||
+            false;
+
+          if (isMobile || typeof document.startViewTransition !== "function") {
+            swapDOM();
+            try {
+              sessionStorage.removeItem("lang_switch_scroll");
+            } catch (_) {}
+            window.__isLangSwitching = false;
+            return;
+          }
+
           document.documentElement.classList.add(
             "lang-switching",
             "lang-text-reacting",
           );
 
-          if (typeof document.startViewTransition === "function") {
-            var transition = document.startViewTransition(function () {
-              swapDOM();
-            });
-            var finishLang = function () {
-              document.documentElement.classList.remove("lang-switching");
-              try {
-                sessionStorage.removeItem("lang_switch_scroll");
-              } catch (_) {}
-              setTimeout(function () {
-                document.documentElement.classList.remove("lang-text-reacting");
-                window.__isLangSwitching = false;
-              }, 240);
-            };
-            transition.finished.then(finishLang).catch(finishLang);
-          } else {
+          var transition = document.startViewTransition(function () {
             swapDOM();
+          });
+          var finishLang = function () {
+            document.documentElement.classList.remove("lang-switching");
             try {
               sessionStorage.removeItem("lang_switch_scroll");
             } catch (_) {}
             setTimeout(function () {
-              document.documentElement.classList.remove(
-                "lang-switching",
-                "lang-text-reacting",
-              );
+              document.documentElement.classList.remove("lang-text-reacting");
               window.__isLangSwitching = false;
             }, 240);
-          }
+          };
+          transition.finished.then(finishLang).catch(finishLang);
         })
         .catch(function () {
           if (typeof window.__hideBeacon === "function") {

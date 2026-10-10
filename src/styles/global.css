@@ -220,6 +220,13 @@ html {
   background-color: var(--color-surface-bg);
 }
 
+@media (max-width: 768px) {
+  html {
+    scrollbar-gutter: auto;
+    overflow-y: auto;
+  }
+}
+
 html {
   scroll-padding-top: 1.5rem;
   scroll-padding-bottom: 4.5rem;
@@ -339,6 +346,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: clip;
   max-width: 100%;
 }
@@ -790,9 +798,9 @@ html.theme-transitioning *::after {
   animation-play-state: paused !important;
 }
 
+/* Zero Group Morphing: root transition group stays rigidly locked to viewport without scaling */
 ::view-transition-group(root) {
-  animation-duration: 0.42s;
-  contain: paint;
+  animation: none !important;
 }
 
 :root[data-theme-transitioning]::view-transition-group(root),
@@ -883,6 +891,21 @@ html.lang-text-reacting .copy-feedback,
   html.lang-switching::view-transition-new(root) {
     animation: none !important;
   }
+  html.lang-text-reacting * {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* Mobile View Transitions Hardening - Prevents Snapshot Squishing / Distortion on Mobile */
+@media (max-width: 768px) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+    transform: none !important;
+  }
+
   html.lang-text-reacting * {
     animation: none !important;
     transform: none !important;

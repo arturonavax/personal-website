@@ -107,6 +107,12 @@
       var prefersReduced =
         window.matchMedia &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var isMobile =
+        (typeof window !== "undefined" &&
+          window.matchMedia &&
+          (window.matchMedia("(max-width: 768px)").matches ||
+            window.matchMedia("(pointer: coarse)").matches)) ||
+        false;
       var isAnimationDisabled =
         !ENABLE_THEME_ANIMATION ||
         window.__DISABLE_THEME_ANIMATION__ === true ||
@@ -121,7 +127,8 @@
       if (
         !document.startViewTransition ||
         prefersReduced ||
-        isAnimationDisabled
+        isAnimationDisabled ||
+        isMobile
       ) {
         applyTheme(nextTheme);
         return;
