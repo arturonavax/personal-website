@@ -283,14 +283,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <UniversalSearchModal locale={locale} />
     {hasJudges && <OnlineJudgesModal locale={locale} />}
 
-    <!-- Edge Navigation Loading Bar (Top-layer Slim Progress Line) -->
-    <div
-      id="page-navigation-bar"
-      data-astro-transition-persist="page-navigation-bar"
-      class="pointer-events-none fixed top-0 left-0 right-0 h-[2px] z-[10000] bg-gradient-to-r from-transparent via-[var(--color-accent-gold)] to-transparent opacity-0 transition-opacity duration-150 ease-out select-none"
-      aria-hidden="true"
-    ></div>
-
     <!-- Edge Fetch Navigation Loading Beacon -->
     <div
       id="page-navigation-beacon"
@@ -345,7 +337,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
         (Window.prototype as any).closest = () => null;
       }
 
-      // 2. Control del Beacon y Barra de Carga Perimetral
+      // 2. Control del Beacon de Carga
       let isBeaconShown = false;
       let beaconShownTime = 0;
       let beaconShowTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -355,7 +347,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
 
       function renderBeaconVisible(customText?: string) {
         const beacon = document.getElementById("page-navigation-beacon");
-        const bar = document.getElementById("page-navigation-bar");
         if (beacon) {
           const txt = beacon.querySelector("span");
           if (txt) {
@@ -368,10 +359,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
           }
           beacon.classList.remove("opacity-0", "scale-95");
           beacon.classList.add("opacity-100", "scale-100");
-        }
-        if (bar) {
-          bar.classList.remove("opacity-0");
-          bar.classList.add("opacity-100");
         }
         isBeaconShown = true;
         beaconShownTime = performance.now();
@@ -403,12 +390,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
           beaconShowTimeout = null;
         }
 
-        const bar = document.getElementById("page-navigation-bar");
         if (!isBeaconShown) {
-          if (bar) {
-            bar.classList.remove("opacity-100");
-            bar.classList.add("opacity-0");
-          }
           return;
         }
 
@@ -421,10 +403,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
           if (beacon) {
             beacon.classList.remove("opacity-100", "scale-100");
             beacon.classList.add("opacity-0", "scale-95");
-          }
-          if (bar) {
-            bar.classList.remove("opacity-100");
-            bar.classList.add("opacity-0");
           }
           isBeaconShown = false;
           beaconHideTimeout = null;

@@ -202,3 +202,91 @@ describe("ODD Task 2: Production-Ready Cal.com Integration (Direct Dedicated Lin
     );
   });
 });
+
+describe("ODD Task 3: Mobile View Transitions Hardening & Anti-Squishing", () => {
+  it("enforces root group isolation to eliminate bounding-box morphing", () => {
+    const cssPath = path.join(ROOT_DIR, "src", "styles", "global.css");
+    const cssContent = fs.readFileSync(cssPath, "utf8");
+
+    expect(cssContent).toContain("::view-transition-group(root)");
+    expect(cssContent).toMatch(
+      /::view-transition-group\(root\)\s*\{\s*animation:\s*none\s*!important;/,
+    );
+  });
+
+  it("normalizes mobile view transitions, scrollbars, and dynamic viewport in global.css", () => {
+    const cssPath = path.join(ROOT_DIR, "src", "styles", "global.css");
+    const cssContent = fs.readFileSync(cssPath, "utf8");
+
+    expect(cssContent).toContain("@media (max-width: 768px)");
+    expect(cssContent).toContain("scrollbar-gutter: auto");
+    expect(cssContent).toContain("min-height: 100dvh");
+    expect(cssContent).toMatch(
+      /@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*?::view-transition-group\(\*\)[\s\S]*?animation:\s*none\s*!important;/,
+    );
+  });
+
+  it("bypasses startViewTransition on mobile devices in ThemeToggle.astro", () => {
+    const themePath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "common",
+      "ThemeToggle.astro",
+    );
+    const themeContent = fs.readFileSync(themePath, "utf8");
+
+    expect(themeContent).toContain("isMobile");
+    expect(themeContent).toMatch(
+      /isMobile[\s\S]*?!document\.startViewTransition\s*\|\|\s*prefersReduced\s*\|\|\s*isAnimationDisabled\s*\|\|\s*isMobile/,
+    );
+  });
+
+  it("bypasses startViewTransition on mobile devices in LanguageSwitcher.astro while maintaining DOM swap", () => {
+    const langPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "common",
+      "LanguageSwitcher.astro",
+    );
+    const langContent = fs.readFileSync(langPath, "utf8");
+
+    expect(langContent).toContain("isMobile");
+    expect(langContent).toMatch(
+      /if\s*\(\s*isMobile\s*\|\|\s*typeof document\.startViewTransition !== "function"\s*\)\s*\{[\s\S]*?swapDOM\(\);/,
+    );
+  });
+});
+
+describe("ODD Task 4: Removal of Top Loading Bar in Favor of Fetching Beacon", () => {
+  it("completely removes page-navigation-bar from BaseLayout.astro", () => {
+    const layoutPath = path.join(
+      ROOT_DIR,
+      "src",
+      "layouts",
+      "BaseLayout.astro",
+    );
+    const layoutContent = fs.readFileSync(layoutPath, "utf8");
+
+    expect(layoutContent).not.toContain('id="page-navigation-bar"');
+    expect(layoutContent).not.toContain("page-navigation-bar");
+  });
+
+  it("preserves page-navigation-beacon with localized loading indicator in BaseLayout.astro", () => {
+    const layoutPath = path.join(
+      ROOT_DIR,
+      "src",
+      "layouts",
+      "BaseLayout.astro",
+    );
+    const layoutContent = fs.readFileSync(layoutPath, "utf8");
+
+    expect(layoutContent).toContain('id="page-navigation-beacon"');
+    expect(layoutContent).toContain(
+      'locale === "es" ? "Cargando..." : "Fetching..."',
+    );
+    expect(layoutContent).toContain("showBeacon");
+    expect(layoutContent).toContain("hideBeacon");
+  });
+});
