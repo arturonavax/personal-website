@@ -1304,10 +1304,14 @@ export async function handleAdminDashboardRequest(
     );
     const offset = (page - 1) * limit;
 
+    const isFresh =
+      url.searchParams.get("fresh") === "true" ||
+      url.searchParams.get("refresh") === "1";
+
     // 1. Edge In-Memory Cache Check (TTL: 120s) - Prevents burning D1 row read quota
     const cacheKey = `${range}:${countryParam}:${segmentParam}:${pathFilter}:${searchParam}:${page}:${limit}`;
     const cachedHit = telemetryCache.get(cacheKey);
-    if (cachedHit && Date.now() - cachedHit.timestamp < TELEMETRY_CACHE_TTL_MS) {
+    if (!isFresh && cachedHit && Date.now() - cachedHit.timestamp < TELEMETRY_CACHE_TTL_MS) {
       return new Response(JSON.stringify(cachedHit.data), {
         status: 200,
         headers: {
@@ -1404,7 +1408,50 @@ export async function handleAdminDashboardRequest(
           return q.results || [];
         };
 
-        // 1. Bounded Paginated Query: Reads ONLY `limit` rows (e.g. 50 rows, not 9,275 rows!)
+        // 1. Exact Totals Aggregations (1:1 with D1)
+        const aggSql = `SELECT COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) AS bot_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql}`;
+        const aggResults = await runQuery(aggSql, bindValues);
+        if (aggResults.length > 0) {
+          const row = aggResults[0];
+          stats.total_pageviews = Number(row.total_views || 0);
+          stats.human_views = Number(row.human_views || 0);
+          stats.bot_views = Number(row.bot_views || 0);
+          stats.unique_visitors = Number(row.unique_visitors || 0);
+        }
+
+        // 2. All-time total pageviews
+        if (whereClauses.length === 0) {
+          stats.all_time_pageviews = stats.total_pageviews;
+        } else {
+          const allRes = await runQuery("SELECT COUNT(*) AS all_views FROM pageviews");
+          if (allRes.length > 0) {
+            stats.all_time_pageviews = Number(allRes[0].all_views || 0);
+          }
+        }
+
+        // 3. Exact Top Pages (grouped by path, 1:1 with D1)
+        const pagesSql = `SELECT path, COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql} GROUP BY path ORDER BY total_views DESC LIMIT 15`;
+        topPages = await runQuery(pagesSql, bindValues);
+
+        // 4. Exact Top Countries (grouped by country, 1:1 with D1)
+        const countriesSql = `SELECT country, COUNT(*) AS views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql} GROUP BY country ORDER BY views DESC LIMIT 15`;
+        topCountries = await runQuery(countriesSql, bindValues);
+
+        // 5. Exact Top Referrers (1:1 with D1)
+        const refWhere = whereClauses.length > 0
+          ? `${whereSql} AND referrer IS NOT NULL AND referrer != 'direct'`
+          : "WHERE referrer IS NOT NULL AND referrer != 'direct'";
+        const refSql = `SELECT referrer, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${refWhere} GROUP BY referrer ORDER BY count DESC LIMIT 15`;
+        topReferrers = await runQuery(refSql, bindValues);
+
+        // 6. Exact Top UTM Attributions (1:1 with D1)
+        const utmWhere = whereClauses.length > 0
+          ? `${whereSql} AND utm_source != 'direct'`
+          : "WHERE utm_source != 'direct'";
+        const utmSql = `SELECT utm_source, utm_medium, utm_campaign, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${utmWhere} GROUP BY utm_source, utm_medium, utm_campaign ORDER BY count DESC LIMIT 15`;
+        utmAttributions = await runQuery(utmSql, bindValues);
+
+        // 7. Paginated Pageviews Batch (bounded LIMIT and OFFSET)
         const pageviewsSql = `SELECT id, path, visitor_hash, referrer, country, utm_source, utm_medium, utm_campaign, utm_content, utm_term, is_bot, created_at FROM pageviews ${whereSql} ORDER BY id DESC LIMIT ? OFFSET ?`;
         pageviews = await runQuery(pageviewsSql, [
           ...bindValues,
@@ -1412,140 +1459,14 @@ export async function handleAdminDashboardRequest(
           offset,
         ]);
 
-        // 2. Query compact aggregated daily summaries: Reads ONLY ~30-50 rows!
-        dailySummaries = await runQuery(
-          "SELECT summary_date, path, country, total_views FROM pageviews_daily_summary ORDER BY summary_date DESC LIMIT 50",
-        );
-
-        // Derive historical total views from daily summaries (0 full-table scans!)
-        const sumDaily = dailySummaries.reduce(
-          (acc, row) => acc + (Number(row.total_views) || 0),
-          0,
-        );
-        stats.all_time_pageviews = Math.max(9275, sumDaily);
-
-        // 3. Single aggregate query for total filtered (only 1 scan, not 7!):
-        if (whereClauses.length === 0) {
-          stats.total_pageviews = stats.all_time_pageviews;
-          stats.human_views = Math.round(stats.total_pageviews * 0.76);
-          stats.bot_views = stats.total_pageviews - stats.human_views;
-          stats.unique_visitors = Math.round(stats.human_views * 0.65);
-        } else {
-          const aggSql = `SELECT COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) AS bot_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql}`;
-          const aggResults = await runQuery(aggSql, bindValues);
-          if (aggResults.length > 0) {
-            const row = aggResults[0];
-            stats.total_pageviews = Number(row.total_views || 0);
-            stats.human_views = Number(row.human_views || 0);
-            stats.bot_views = Number(row.bot_views || 0);
-            stats.unique_visitors = Number(row.unique_visitors || 0);
-          }
-        }
-
-        // 4. Derive Top Pages from dailySummaries + pageviews without extra full-table scans!
-        const pageMap: Record<
-          string,
-          { total_views: number; human_views: number; unique: Set<string> }
-        > = {};
-        dailySummaries.forEach((row: any) => {
-          if (row.path) {
-            if (!pageMap[row.path])
-              pageMap[row.path] = {
-                total_views: 0,
-                human_views: 0,
-                unique: new Set(),
-              };
-            pageMap[row.path]!.total_views += Number(row.total_views || 0);
-            pageMap[row.path]!.human_views += Math.round(
-              Number(row.total_views || 0) * 0.8,
-            );
-          }
-        });
-        pageviews.forEach((p: any) => {
-          if (p.path) {
-            if (!pageMap[p.path])
-              pageMap[p.path] = {
-                total_views: 0,
-                human_views: 0,
-                unique: new Set(),
-              };
-            pageMap[p.path]!.unique.add(p.visitor_hash);
-          }
-        });
-        topPages = Object.entries(pageMap)
-          .map(([pth, v]) => ({
-            path: pth,
-            total_views: v.total_views,
-            human_views: v.human_views,
-            unique_visitors: v.unique.size || Math.round(v.human_views * 0.6),
-          }))
-          .sort((a, b) => b.total_views - a.total_views)
-          .slice(0, 15);
-
-        // 5. Derive Top Countries from dailySummaries + pageviews
-        const countryMap: Record<
-          string,
-          { views: number; human_views: number; unique: Set<string> }
-        > = {};
-        dailySummaries.forEach((row: any) => {
-          const c = row.country || "UNKNOWN";
-          if (!countryMap[c])
-            countryMap[c] = { views: 0, human_views: 0, unique: new Set() };
-          countryMap[c]!.views += Number(row.total_views || 0);
-          countryMap[c]!.human_views += Math.round(
-            Number(row.total_views || 0) * 0.8,
-          );
-        });
-        pageviews.forEach((p: any) => {
-          const c = p.country || "UNKNOWN";
-          if (!countryMap[c])
-            countryMap[c] = { views: 0, human_views: 0, unique: new Set() };
-          countryMap[c]!.unique.add(p.visitor_hash);
-        });
-        topCountries = Object.entries(countryMap)
-          .map(([c, v]) => ({
-            country: c,
-            views: v.views,
-            human_views: v.human_views,
-            unique_visitors: v.unique.size || Math.round(v.human_views * 0.6),
-          }))
-          .sort((a, b) => b.views - a.views)
-          .slice(0, 15);
-
-        // 6. Derive Referrers and UTMs from the fetched pageviews batch
-        const refMap: Record<string, number> = {};
-        const utmMap: Record<string, any> = {};
-        pageviews.forEach((p: any) => {
-          const ref = p.referrer && p.referrer !== "direct" ? p.referrer : null;
-          if (ref) refMap[ref] = (refMap[ref] || 0) + 1;
-
-          if (p.utm_source && p.utm_source !== "direct") {
-            const key = `${p.utm_source}:${p.utm_medium || "-"}:${p.utm_campaign || "-"}`;
-            if (!utmMap[key]) {
-              utmMap[key] = {
-                utm_source: p.utm_source,
-                utm_medium: p.utm_medium || "-",
-                utm_campaign: p.utm_campaign || "-",
-                count: 0,
-                unique_visitors: 0,
-              };
-            }
-            utmMap[key].count++;
-          }
-        });
-        topReferrers = Object.entries(refMap)
-          .map(([ref, count]) => ({
-            referrer: ref,
-            count,
-            unique_visitors: count,
-          }))
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 15);
-        utmAttributions = Object.values(utmMap).slice(0, 15);
-
-        // 7. Prefetches limited to 15 rows
+        // 8. Prefetches
         prefetches = await runQuery(
           "SELECT id, path, visitor_hash, referrer, country, purpose, created_at FROM prefetch_analytics_events ORDER BY id DESC LIMIT 15",
+        );
+
+        // 9. Daily Summaries
+        dailySummaries = await runQuery(
+          "SELECT summary_date, path, country, total_views FROM pageviews_daily_summary ORDER BY summary_date DESC LIMIT 50",
         );
       } catch (err) {
         // Fail-open resilience: If D1 row read quota was exceeded or temporarily blocked by Cloudflare
@@ -2223,6 +2144,147 @@ export async function handleAdminDashboardRequest(
     .tag-prefetch { background: rgba(34, 211, 238, 0.15); color: var(--cyan); border: 1px solid rgba(34, 211, 238, 0.3); }
     .tag-path { color: var(--gold); font-weight: 600; }
     .tag-country { background: var(--bg-surface); color: var(--gold); border: 1px solid var(--border); }
+
+    /* Discrete SQL Query Inspector Modal & Action Buttons */
+    .btn-sql-info {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 0.65rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      transition: all 0.15s ease;
+      margin-left: 0.4rem;
+      vertical-align: middle;
+      text-transform: none;
+    }
+    .btn-sql-info:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--gold-subtle);
+    }
+    .sql-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .sql-modal-overlay.active {
+      display: flex;
+    }
+    .sql-modal {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      overflow: hidden;
+      animation: sqlModalFadeIn 0.15s ease-out;
+    }
+    @keyframes sqlModalFadeIn {
+      from { opacity: 0; transform: scale(0.97); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .sql-modal-header {
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card);
+    }
+    .sql-modal-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .sql-modal-close {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+    }
+    .sql-modal-close:hover {
+      color: var(--text);
+      border-color: var(--gold);
+    }
+    .sql-modal-body {
+      padding: 1.25rem;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .sql-meta-box {
+      background: var(--card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 0.65rem 0.85rem;
+      margin-bottom: 1rem;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      line-height: 1.4;
+    }
+    .sql-meta-box strong {
+      color: var(--text);
+    }
+    .sql-code-block {
+      background: #050102;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem;
+      font-size: 0.75rem;
+      color: #38bdf8;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.5;
+    }
+    html[data-theme="light"] .sql-code-block {
+      background: #1e1e1e;
+      color: #7dd3fc;
+    }
+    .sql-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      margin-top: 1rem;
+      align-items: center;
+    }
+    .btn-copy-sql {
+      background: var(--gold-subtle);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      border-radius: 4px;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-copy-sql:hover {
+      background: var(--gold);
+      color: #000;
+    }
     
     /* Footer */
     .site-footer {
@@ -2301,42 +2363,61 @@ export async function handleAdminDashboardRequest(
 
       <div class="badges">
         <span class="badge live"><span class="pulse-dot"></span> EN VIVO</span>
-        <span id="badge-sync-time" class="badge">Sincronizado: justo ahora</span>
+        <span id="badge-sync-time" class="badge">Sincronizado: manual (Pausado)</span>
+        <span id="badge-cache-mode" class="badge" style="color: var(--cyan);">● Caché Edge (120s)</span>
         <span class="badge">Zero Trust Surface</span>
         <span class="badge" style="color: var(--gold-light);">Cloudflare Access</span>
-        <span class="badge" id="badge-rel">Rel: v1.4.2 (edge)</span>
+        <span class="badge" id="badge-rel">Rel: v1.4.3 (ultra-efficient)</span>
       </div>
     </div>
 
     <!-- Metrics Counters (6 KPIs) -->
     <div class="kpis">
       <div class="kpi-card">
-        <div class="kpi-title">Eventos Recientes (D1)</div>
+        <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Eventos Recientes (D1)</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-total')" title="Ver consulta SQL equivalente">i</button>
+        </div>
         <div class="kpi-value" id="kpi-total">--</div>
         <div class="kpi-sub" id="kpi-total-sub">Búfer perimetral D1</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-title">Visitas Humanas (P0)</div>
+        <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Visitas Humanas (P0)</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-human')" title="Ver consulta SQL equivalente">i</button>
+        </div>
         <div class="kpi-value" id="kpi-human" style="color: var(--green);">--</div>
         <div class="kpi-sub" id="kpi-human-sub">Tráfico real validado</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-title">Bots &amp; Crawlers</div>
+        <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Bots &amp; Crawlers</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-bot')" title="Ver consulta SQL equivalente">i</button>
+        </div>
         <div class="kpi-value" id="kpi-bot" style="color: var(--gold-light);">--</div>
         <div class="kpi-sub" id="kpi-bot-sub">Indexadores &amp; IA</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-title">Visitantes Únicos</div>
+        <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Visitantes Únicos</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-unique')" title="Ver consulta SQL equivalente">i</button>
+        </div>
         <div class="kpi-value" id="kpi-unique">--</div>
         <div class="kpi-sub">Hashes GDPR anonimizados</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-title">Prefetches (P1)</div>
+        <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Prefetches (P1)</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-prefetch')" title="Ver consulta SQL equivalente">i</button>
+        </div>
         <div class="kpi-value" id="kpi-prefetch" style="color: var(--cyan);">--</div>
         <div class="kpi-sub" id="kpi-prefetch-sub">Circuit Breaker: OK</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-title">Contact Leads</div>
+        <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Contact Leads</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-leads')" title="Ver consulta SQL equivalente">i</button>
+        </div>
         <div class="kpi-value" id="kpi-leads" style="color: var(--amber);">--</div>
         <div class="kpi-sub">Inbound pipeline</div>
       </div>
@@ -2405,7 +2486,10 @@ export async function handleAdminDashboardRequest(
     <!-- Edge System Health & Dual Circuit Breakers Monitor -->
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">⚡ Resiliencia Edge // Estado de Circuit Breakers (D1 Quota Protection)</div>
+        <div class="panel-title" style="display: flex; align-items: center;">
+          <span>⚡ Resiliencia Edge // Estado de Circuit Breakers (D1 Quota Protection)</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('circuit-breakers')" title="Ver consulta SQL equivalente">i</button>
+        </div>
         <span style="font-size: 0.7rem; color: var(--text-dim);" id="cb-summary">P0 Human Priority: GARANTIZADA</span>
       </div>
       <div class="panel-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
@@ -2470,7 +2554,10 @@ export async function handleAdminDashboardRequest(
       <!-- Top Visited Routes with Proportional CSS Bars -->
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">Rutas Más Demandadas (Proporción &amp; Visitas Reales)</div>
+          <div class="panel-title" style="display: flex; align-items: center;">
+            <span>Rutas Más Demandadas (Proporción &amp; Visitas Reales)</span>
+            <button type="button" class="btn-sql-info" onclick="showSqlModal('top-paths')" title="Ver consulta SQL equivalente">i</button>
+          </div>
           <span style="font-size: 0.7rem; color: var(--text-dim);" id="top-paths-count">Top 5</span>
         </div>
         <div class="panel-body" id="top-paths">
@@ -2481,7 +2568,10 @@ export async function handleAdminDashboardRequest(
       <!-- Countries Distribution -->
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">Distribución Geográfica (Países)</div>
+          <div class="panel-title" style="display: flex; align-items: center;">
+            <span>Distribución Geográfica (Países)</span>
+            <button type="button" class="btn-sql-info" onclick="showSqlModal('countries')" title="Ver consulta SQL equivalente">i</button>
+          </div>
           <span style="font-size: 0.7rem; color: var(--text-dim);">Top Orígenes</span>
         </div>
         <div class="panel-body" id="countries-list">
@@ -2494,7 +2584,10 @@ export async function handleAdminDashboardRequest(
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">Fuentes de Atribución &amp; UTMs</div>
+          <div class="panel-title" style="display: flex; align-items: center;">
+            <span>Fuentes de Atribución &amp; UTMs</span>
+            <button type="button" class="btn-sql-info" onclick="showSqlModal('referrers')" title="Ver consulta SQL equivalente">i</button>
+          </div>
           <span style="font-size: 0.7rem; color: var(--text-dim);">Canales</span>
         </div>
         <div class="panel-body" id="top-referrers">
@@ -2504,7 +2597,10 @@ export async function handleAdminDashboardRequest(
 
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">Mensajes Recientes // Inbound Leads (D1)</div>
+          <div class="panel-title" style="display: flex; align-items: center;">
+            <span>Mensajes Recientes // Inbound Leads (D1)</span>
+            <button type="button" class="btn-sql-info" onclick="showSqlModal('leads-table')" title="Ver consulta SQL equivalente">i</button>
+          </div>
           <span style="font-size: 0.7rem; color: var(--text-dim);" id="leads-count-badge">0 leads</span>
         </div>
         <div class="panel-body" style="padding: 0;">
@@ -2536,7 +2632,10 @@ export async function handleAdminDashboardRequest(
     <!-- Live Event Feed Table -->
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">Registro Perimetral de Telemetría en Tiempo Real</div>
+        <div class="panel-title" style="display: flex; align-items: center;">
+          <span>Registro Perimetral de Telemetría en Tiempo Real</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('telemetry-table')" title="Ver consulta SQL equivalente">i</button>
+        </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
           <span style="font-size: 0.7rem; color: var(--text-dim);" id="table-count">0 eventos</span>
           <button type="button" onclick="exportData('json')">JSON</button>
@@ -2586,6 +2685,37 @@ export async function handleAdminDashboardRequest(
       </div>
     </div>
   </main>
+
+  <!-- Discrete SQL Query Inspector Modal -->
+  <div id="sql-modal-overlay" class="sql-modal-overlay" onclick="onSqlModalOverlayClick(event)">
+    <div class="sql-modal" role="dialog" aria-modal="true" aria-labelledby="sql-modal-title">
+      <div class="sql-modal-header">
+        <div class="sql-modal-title" id="sql-modal-title">
+          <span>🔍</span>
+          <span id="sql-modal-heading">Consulta SQL Equivalente</span>
+        </div>
+        <button type="button" class="sql-modal-close" onclick="closeSqlModal()" aria-label="Cerrar modal">&times;</button>
+      </div>
+      <div class="sql-modal-body">
+        <div class="sql-meta-box">
+          <div><strong>Sección / Métrica:</strong> <span id="sql-modal-section">--</span></div>
+          <div style="margin-top: 0.25rem;"><strong>Tabla D1 Primaria:</strong> <code id="sql-modal-table" style="color: var(--cyan);">pageviews</code></div>
+          <div style="margin-top: 0.25rem;"><strong>Filtros Activos:</strong> <span id="sql-modal-filters">--</span></div>
+          <div style="margin-top: 0.35rem; font-style: italic; color: var(--gold-light);">
+            ⚡ Garantía de Consistencia 1:1: Esta consulta refleja exactamente la lógica relacional evaluada en SQLite/D1.
+          </div>
+        </div>
+        <div style="position: relative;">
+          <pre class="sql-code-block"><code id="sql-modal-code">-- Cargando consulta...</code></pre>
+        </div>
+        <div class="sql-modal-actions">
+          <span id="copy-sql-feedback" style="font-size: 0.72rem; color: var(--green); display: none;">✓ ¡Copiado al portapapeles!</span>
+          <button type="button" class="btn-copy-sql" onclick="copySqlToClipboard()">📋 Copiar SQL</button>
+          <button type="button" class="sql-modal-close" onclick="closeSqlModal()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Standard Site Footer -->
   <footer class="site-footer">
@@ -2718,13 +2848,60 @@ export async function handleAdminDashboardRequest(
       }, 300);
     }
 
+    let livePollingStartTime = 0;
+    const MAX_LIVE_POLLING_MS = 15 * 60 * 1000; // 15 minutos máx de polling continuo
+
     function onPollIntervalChange(val) {
       pollDelay = parseInt(val, 10);
-      if (pollInterval) clearInterval(pollInterval);
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
       if (pollDelay > 0) {
-        pollInterval = setInterval(fetchTelemetry, pollDelay);
+        livePollingStartTime = Date.now();
+        pollInterval = setInterval(function() {
+          if (Date.now() - livePollingStartTime > MAX_LIVE_POLLING_MS) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+            pollDelay = 0;
+            const sel = document.getElementById('select-poll');
+            if (sel) sel.value = '0';
+            const badge = document.getElementById('badge-sync-time');
+            if (badge) badge.textContent = 'Auto-pausado por inactividad (protección D1)';
+            return;
+          }
+          fetchTelemetry(false);
+        }, pollDelay);
       }
     }
+
+    // Auto-pause polling when tab is hidden or minimized
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      } else {
+        if (pollDelay > 0 && !pollInterval) {
+          fetchTelemetry(false);
+          livePollingStartTime = Date.now();
+          pollInterval = setInterval(function() {
+            if (Date.now() - livePollingStartTime > MAX_LIVE_POLLING_MS) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+              pollDelay = 0;
+              const sel = document.getElementById('select-poll');
+              if (sel) sel.value = '0';
+              const badge = document.getElementById('badge-sync-time');
+              if (badge) badge.textContent = 'Auto-pausado por inactividad (protección D1)';
+              return;
+            }
+            fetchTelemetry(false);
+          }, pollDelay);
+        }
+      }
+    });
 
     function goToPage(p) {
       if (p < 1 || p > totalPages || p === currentPage) return;
@@ -3037,6 +3214,9 @@ export async function handleAdminDashboardRequest(
           page: String(currentPage),
           limit: String(currentLimit),
         });
+        if (isManual) {
+          params.set('fresh', 'true');
+        }
 
         const [telRes, leadsRes, metRes] = await Promise.allSettled([
           fetch('/api/telemetry?' + params.toString(), { cache: 'no-store' }),
@@ -3045,6 +3225,21 @@ export async function handleAdminDashboardRequest(
         ]);
 
         if (telRes.status === 'fulfilled' && telRes.value.ok) {
+          const cacheBadge = document.getElementById('badge-cache-mode');
+          if (cacheBadge) {
+            const src = telRes.value.headers.get('X-Telemetry-Source');
+            if (src === 'edge-memory-cache') {
+              cacheBadge.textContent = '● En memoria (Caché 120s)';
+              cacheBadge.style.color = 'var(--cyan)';
+            } else if (src === 'edge-d1-fresh') {
+              cacheBadge.textContent = '● D1 Directo (1:1 Fresh)';
+              cacheBadge.style.color = 'var(--green)';
+            } else {
+              cacheBadge.textContent = '● D1 Consistente (1:1)';
+              cacheBadge.style.color = 'var(--green)';
+            }
+          }
+
           const data = await telRes.value.json();
           cachedPageviews = data.pageviews || [];
           cachedPrefetches = data.prefetches || [];
@@ -3081,6 +3276,227 @@ export async function handleAdminDashboardRequest(
         console.warn('Telemetry poll error', err);
       }
     }
+
+    // --- SQL Query Inspector Modal Logic ---
+    function getActiveWhereClause(options) {
+      options = options || {};
+      const parts = [];
+      if (currentRange === '24h' || currentRange === '1d') {
+        parts.push("created_at >= datetime('now', '-1 day')");
+      } else if (currentRange === '7d' || currentRange === '1w') {
+        parts.push("created_at >= datetime('now', '-7 days')");
+      } else if (currentRange === '30d' || currentRange === '1m') {
+        parts.push("created_at >= datetime('now', '-30 days')");
+      }
+
+      if (!options.ignoreSegment) {
+        if (currentSegment === 'human') parts.push("is_bot = 0");
+        else if (currentSegment === 'bot') parts.push("is_bot = 1");
+      }
+
+      if (currentPathFilter && currentPathFilter !== 'all') {
+        parts.push("path LIKE '" + currentPathFilter.replace(/'/g, "''") + "%'");
+      }
+
+      if (currentCountry && currentCountry !== 'all') {
+        parts.push("country = '" + currentCountry.replace(/'/g, "''") + "'");
+      }
+
+      if (searchQuery) {
+        const s = searchQuery.replace(/'/g, "''");
+        parts.push("(path LIKE '%" + s + "%' OR country LIKE '%" + s + "%' OR referrer LIKE '%" + s + "%' OR utm_source LIKE '%" + s + "%')");
+      }
+
+      return parts.length > 0 ? "WHERE " + parts.join("\n  AND ") : "";
+    }
+
+    function getActiveFiltersSummary() {
+      const list = [];
+      list.push("Rango: " + currentRange);
+      list.push("Segmento: " + currentSegment);
+      if (currentPathFilter !== 'all') list.push("Ruta: " + currentPathFilter);
+      if (currentCountry !== 'all') list.push("País: " + currentCountry);
+      if (searchQuery) list.push("Búsqueda: '" + searchQuery + "'");
+      return list.join("  |  ");
+    }
+
+    function getSqlForSection(key) {
+      const whereSql = getActiveWhereClause();
+      const filtersText = getActiveFiltersSummary();
+
+      switch(key) {
+        case 'kpi-total':
+          return {
+            title: 'Total de Eventos / Pageviews',
+            table: 'pageviews',
+            filtersText: filtersText,
+            sql: "SELECT COUNT(*) AS total_views\nFROM pageviews" + (whereSql ? "\n" + whereSql : "") + ";",
+          };
+        case 'kpi-human':
+          return {
+            title: 'Visitas Humanas Validadas (P0)',
+            table: 'pageviews',
+            filtersText: filtersText,
+            sql: "SELECT COUNT(*) AS human_views\nFROM pageviews\n" + (getActiveWhereClause({ ignoreSegment: true }) ? getActiveWhereClause({ ignoreSegment: true }) + "\n  AND is_bot = 0;" : "WHERE is_bot = 0;"),
+          };
+        case 'kpi-bot':
+          return {
+            title: 'Bots, Indexadores & IA (P2)',
+            table: 'pageviews',
+            filtersText: filtersText,
+            sql: "SELECT COUNT(*) AS bot_views\nFROM pageviews\n" + (getActiveWhereClause({ ignoreSegment: true }) ? getActiveWhereClause({ ignoreSegment: true }) + "\n  AND is_bot = 1;" : "WHERE is_bot = 1;"),
+          };
+        case 'kpi-unique':
+          return {
+            title: 'Visitantes Únicos (Hashes GDPR)',
+            table: 'pageviews',
+            filtersText: filtersText,
+            sql: "SELECT COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews" + (whereSql ? "\n" + whereSql : "") + ";",
+          };
+        case 'kpi-prefetch':
+          return {
+            title: 'Prefetches Especulativos (P1)',
+            table: 'prefetch_analytics_events',
+            filtersText: "Rango: " + currentRange,
+            sql: "SELECT COUNT(*) AS total_prefetches\nFROM prefetch_analytics_events" +
+                 (currentRange === '24h' ? "\nWHERE created_at >= datetime('now', '-1 day');" :
+                  currentRange === '7d' ? "\nWHERE created_at >= datetime('now', '-7 days');" :
+                  currentRange === '30d' ? "\nWHERE created_at >= datetime('now', '-30 days');" : ";"),
+          };
+        case 'kpi-leads':
+          return {
+            title: 'Mensajes de Contacto / Inbound Leads',
+            table: 'contact_leads',
+            filtersText: 'Total histórico recibido en D1',
+            sql: "SELECT COUNT(*) AS total_leads\nFROM contact_leads;",
+          };
+        case 'circuit-breakers':
+          return {
+            title: 'Circuit Breakers // Protección Cuota D1',
+            table: 'prefetch_analytics_events, pageviews',
+            filtersText: 'Ventana de 24 horas (cuota diaria Cloudflare)',
+            sql: "-- 1. Consumo hoy Prefetches (P1, máx 25,000 / día):\n" +
+                 "SELECT COUNT(*) AS prefetch_today\nFROM prefetch_analytics_events\nWHERE created_at >= datetime('now', '-1 day');\n\n" +
+                 "-- 2. Consumo hoy Bots & Crawlers (P2, máx 15,000 / día):\n" +
+                 "SELECT COUNT(*) AS bot_today\nFROM pageviews\nWHERE is_bot = 1 AND created_at >= datetime('now', '-1 day');",
+          };
+        case 'top-paths':
+          return {
+            title: 'Rutas Más Demandadas',
+            table: 'pageviews',
+            filtersText: filtersText,
+            sql: "SELECT\n  path,\n  COUNT(*) AS total_views,\n  SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views,\n  COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews" +
+                 (whereSql ? "\n" + whereSql : "") +
+                 "\nGROUP BY path\nORDER BY total_views DESC\nLIMIT 15;",
+          };
+        case 'countries':
+          return {
+            title: 'Distribución Geográfica (Países)',
+            table: 'pageviews',
+            filtersText: filtersText,
+            sql: "SELECT\n  country,\n  COUNT(*) AS views,\n  SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views,\n  COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews" +
+                 (whereSql ? "\n" + whereSql : "") +
+                 "\nGROUP BY country\nORDER BY views DESC\nLIMIT 15;",
+          };
+        case 'referrers':
+          return {
+            title: 'Fuentes de Atribución & UTMs',
+            table: 'pageviews',
+            filtersText: filtersText,
+            sql: "-- 1. Top Referrers Externos:\nSELECT\n  referrer,\n  COUNT(*) AS count,\n  COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews\n" +
+                 (whereSql ? whereSql + "\n  AND referrer IS NOT NULL AND referrer != 'direct'" : "WHERE referrer IS NOT NULL AND referrer != 'direct'") +
+                 "\nGROUP BY referrer\nORDER BY count DESC\nLIMIT 15;\n\n" +
+                 "-- 2. Campañas de Marketing (UTMs):\nSELECT\n  utm_source, utm_medium, utm_campaign,\n  COUNT(*) AS count,\n  COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews\n" +
+                 (whereSql ? whereSql + "\n  AND utm_source != 'direct'" : "WHERE utm_source != 'direct'") +
+                 "\nGROUP BY utm_source, utm_medium, utm_campaign\nORDER BY count DESC\nLIMIT 15;",
+          };
+        case 'leads-table':
+          return {
+            title: 'Buzón de Mensajes // Inbound Leads',
+            table: 'contact_leads',
+            filtersText: 'Últimos 50 mensajes validados',
+            sql: "SELECT\n  id, from_email, subject, name, phone, locale,\n  ip, country, city, turnstile_verified, created_at\nFROM contact_leads\nORDER BY id DESC\nLIMIT 50;",
+          };
+        case 'telemetry-table':
+          return {
+            title: 'Registro Perimetral de Telemetría (Paginado)',
+            table: 'pageviews',
+            filtersText: filtersText + "  |  Pág " + currentPage + " (" + currentLimit + " filas)",
+            sql: "SELECT\n  id, path, visitor_hash, referrer, country,\n  utm_source, utm_medium, utm_campaign, is_bot, created_at\nFROM pageviews" +
+                 (whereSql ? "\n" + whereSql : "") +
+                 "\nORDER BY id DESC\nLIMIT " + currentLimit + " OFFSET " + ((currentPage - 1) * currentLimit) + ";",
+          };
+        default:
+          return {
+            title: 'Consulta SQL Equivalente',
+            table: 'pageviews',
+            filtersText: filtersText,
+            sql: "SELECT * FROM pageviews" + (whereSql ? "\n" + whereSql : "") + "\nLIMIT 50;",
+          };
+      }
+    }
+
+    function showSqlModal(sectionKey) {
+      const overlay = document.getElementById('sql-modal-overlay');
+      const heading = document.getElementById('sql-modal-heading');
+      const sectionEl = document.getElementById('sql-modal-section');
+      const tableEl = document.getElementById('sql-modal-table');
+      const filtersEl = document.getElementById('sql-modal-filters');
+      const codeEl = document.getElementById('sql-modal-code');
+      const feedback = document.getElementById('copy-sql-feedback');
+      if (!overlay || !heading || !codeEl) return;
+
+      if (feedback) feedback.style.display = 'none';
+
+      const info = getSqlForSection(sectionKey);
+      heading.textContent = 'Consulta SQL // ' + info.title;
+      if (sectionEl) sectionEl.textContent = info.title;
+      if (tableEl) tableEl.textContent = info.table;
+      if (filtersEl) filtersEl.textContent = info.filtersText;
+      codeEl.textContent = info.sql;
+
+      overlay.classList.add('active');
+    }
+
+    function closeSqlModal() {
+      const overlay = document.getElementById('sql-modal-overlay');
+      if (overlay) overlay.classList.remove('active');
+    }
+
+    function onSqlModalOverlayClick(e) {
+      if (e.target && e.target.id === 'sql-modal-overlay') {
+        closeSqlModal();
+      }
+    }
+
+    function copySqlToClipboard() {
+      const codeEl = document.getElementById('sql-modal-code');
+      const feedback = document.getElementById('copy-sql-feedback');
+      if (!codeEl) return;
+      navigator.clipboard.writeText(codeEl.textContent).then(function() {
+        if (feedback) {
+          feedback.style.display = 'inline';
+          setTimeout(function() { feedback.style.display = 'none'; }, 2500);
+        }
+      }).catch(function() {
+        const ta = document.createElement('textarea');
+        ta.value = codeEl.textContent;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (feedback) {
+          feedback.style.display = 'inline';
+          setTimeout(function() { feedback.style.display = 'none'; }, 2500);
+        }
+      });
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeSqlModal();
+      }
+    });
 
     fetchTelemetry();
     if (pollDelay > 0) {
