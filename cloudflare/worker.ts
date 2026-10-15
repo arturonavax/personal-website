@@ -3280,6 +3280,7 @@ export async function handleAdminDashboardRequest(
     // --- SQL Query Inspector Modal Logic ---
     function getActiveWhereClause(options) {
       options = options || {};
+      const NL = String.fromCharCode(10);
       const parts = [];
       if (currentRange === '24h' || currentRange === '1d') {
         parts.push("created_at >= datetime('now', '-1 day')");
@@ -3307,7 +3308,7 @@ export async function handleAdminDashboardRequest(
         parts.push("(path LIKE '%" + s + "%' OR country LIKE '%" + s + "%' OR referrer LIKE '%" + s + "%' OR utm_source LIKE '%" + s + "%')");
       }
 
-      return parts.length > 0 ? "WHERE " + parts.join("\n  AND ") : "";
+      return parts.length > 0 ? "WHERE " + parts.join(NL + "  AND ") : "";
     }
 
     function getActiveFiltersSummary() {
@@ -3321,6 +3322,7 @@ export async function handleAdminDashboardRequest(
     }
 
     function getSqlForSection(key) {
+      const NL = String.fromCharCode(10);
       const whereSql = getActiveWhereClause();
       const filtersText = getActiveFiltersSummary();
 
@@ -3330,108 +3332,187 @@ export async function handleAdminDashboardRequest(
             title: 'Total de Eventos / Pageviews',
             table: 'pageviews',
             filtersText: filtersText,
-            sql: "SELECT COUNT(*) AS total_views\nFROM pageviews" + (whereSql ? "\n" + whereSql : "") + ";",
+            sql: [
+              "SELECT COUNT(*) AS total_views",
+              "FROM pageviews" + (whereSql ? NL + whereSql : "") + ";"
+            ].join(NL),
           };
         case 'kpi-human':
           return {
             title: 'Visitas Humanas Validadas (P0)',
             table: 'pageviews',
             filtersText: filtersText,
-            sql: "SELECT COUNT(*) AS human_views\nFROM pageviews\n" + (getActiveWhereClause({ ignoreSegment: true }) ? getActiveWhereClause({ ignoreSegment: true }) + "\n  AND is_bot = 0;" : "WHERE is_bot = 0;"),
+            sql: [
+              "SELECT COUNT(*) AS human_views",
+              "FROM pageviews",
+              (getActiveWhereClause({ ignoreSegment: true })
+                ? getActiveWhereClause({ ignoreSegment: true }) + NL + "  AND is_bot = 0;"
+                : "WHERE is_bot = 0;")
+            ].join(NL),
           };
         case 'kpi-bot':
           return {
             title: 'Bots, Indexadores & IA (P2)',
             table: 'pageviews',
             filtersText: filtersText,
-            sql: "SELECT COUNT(*) AS bot_views\nFROM pageviews\n" + (getActiveWhereClause({ ignoreSegment: true }) ? getActiveWhereClause({ ignoreSegment: true }) + "\n  AND is_bot = 1;" : "WHERE is_bot = 1;"),
+            sql: [
+              "SELECT COUNT(*) AS bot_views",
+              "FROM pageviews",
+              (getActiveWhereClause({ ignoreSegment: true })
+                ? getActiveWhereClause({ ignoreSegment: true }) + NL + "  AND is_bot = 1;"
+                : "WHERE is_bot = 1;")
+            ].join(NL),
           };
         case 'kpi-unique':
           return {
             title: 'Visitantes Únicos (Hashes GDPR)',
             table: 'pageviews',
             filtersText: filtersText,
-            sql: "SELECT COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews" + (whereSql ? "\n" + whereSql : "") + ";",
+            sql: [
+              "SELECT COUNT(DISTINCT visitor_hash) AS unique_visitors",
+              "FROM pageviews" + (whereSql ? NL + whereSql : "") + ";"
+            ].join(NL),
           };
         case 'kpi-prefetch':
           return {
             title: 'Prefetches Especulativos (P1)',
             table: 'prefetch_analytics_events',
             filtersText: "Rango: " + currentRange,
-            sql: "SELECT COUNT(*) AS total_prefetches\nFROM prefetch_analytics_events" +
-                 (currentRange === '24h' ? "\nWHERE created_at >= datetime('now', '-1 day');" :
-                  currentRange === '7d' ? "\nWHERE created_at >= datetime('now', '-7 days');" :
-                  currentRange === '30d' ? "\nWHERE created_at >= datetime('now', '-30 days');" : ";"),
+            sql: [
+              "SELECT COUNT(*) AS total_prefetches",
+              "FROM prefetch_analytics_events" +
+                (currentRange === '24h' ? NL + "WHERE created_at >= datetime('now', '-1 day');" :
+                 currentRange === '7d' ? NL + "WHERE created_at >= datetime('now', '-7 days');" :
+                 currentRange === '30d' ? NL + "WHERE created_at >= datetime('now', '-30 days');" : ";")
+            ].join(NL),
           };
         case 'kpi-leads':
           return {
             title: 'Mensajes de Contacto / Inbound Leads',
             table: 'contact_leads',
             filtersText: 'Total histórico recibido en D1',
-            sql: "SELECT COUNT(*) AS total_leads\nFROM contact_leads;",
+            sql: [
+              "SELECT COUNT(*) AS total_leads",
+              "FROM contact_leads;"
+            ].join(NL),
           };
         case 'circuit-breakers':
           return {
             title: 'Circuit Breakers // Protección Cuota D1',
             table: 'prefetch_analytics_events, pageviews',
             filtersText: 'Ventana de 24 horas (cuota diaria Cloudflare)',
-            sql: "-- 1. Consumo hoy Prefetches (P1, máx 25,000 / día):\n" +
-                 "SELECT COUNT(*) AS prefetch_today\nFROM prefetch_analytics_events\nWHERE created_at >= datetime('now', '-1 day');\n\n" +
-                 "-- 2. Consumo hoy Bots & Crawlers (P2, máx 15,000 / día):\n" +
-                 "SELECT COUNT(*) AS bot_today\nFROM pageviews\nWHERE is_bot = 1 AND created_at >= datetime('now', '-1 day');",
+            sql: [
+              "-- 1. Consumo hoy Prefetches (P1, máx 25,000 / día):",
+              "SELECT COUNT(*) AS prefetch_today",
+              "FROM prefetch_analytics_events",
+              "WHERE created_at >= datetime('now', '-1 day');",
+              "",
+              "-- 2. Consumo hoy Bots & Crawlers (P2, máx 15,000 / día):",
+              "SELECT COUNT(*) AS bot_today",
+              "FROM pageviews",
+              "WHERE is_bot = 1 AND created_at >= datetime('now', '-1 day');"
+            ].join(NL),
           };
         case 'top-paths':
           return {
             title: 'Rutas Más Demandadas',
             table: 'pageviews',
             filtersText: filtersText,
-            sql: "SELECT\n  path,\n  COUNT(*) AS total_views,\n  SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views,\n  COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews" +
-                 (whereSql ? "\n" + whereSql : "") +
-                 "\nGROUP BY path\nORDER BY total_views DESC\nLIMIT 15;",
+            sql: [
+              "SELECT",
+              "  path,",
+              "  COUNT(*) AS total_views,",
+              "  SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views,",
+              "  COUNT(DISTINCT visitor_hash) AS unique_visitors",
+              "FROM pageviews" + (whereSql ? NL + whereSql : ""),
+              "GROUP BY path",
+              "ORDER BY total_views DESC",
+              "LIMIT 15;"
+            ].join(NL),
           };
         case 'countries':
           return {
             title: 'Distribución Geográfica (Países)',
             table: 'pageviews',
             filtersText: filtersText,
-            sql: "SELECT\n  country,\n  COUNT(*) AS views,\n  SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views,\n  COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews" +
-                 (whereSql ? "\n" + whereSql : "") +
-                 "\nGROUP BY country\nORDER BY views DESC\nLIMIT 15;",
+            sql: [
+              "SELECT",
+              "  country,",
+              "  COUNT(*) AS views,",
+              "  SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views,",
+              "  COUNT(DISTINCT visitor_hash) AS unique_visitors",
+              "FROM pageviews" + (whereSql ? NL + whereSql : ""),
+              "GROUP BY country",
+              "ORDER BY views DESC",
+              "LIMIT 15;"
+            ].join(NL),
           };
         case 'referrers':
           return {
             title: 'Fuentes de Atribución & UTMs',
             table: 'pageviews',
             filtersText: filtersText,
-            sql: "-- 1. Top Referrers Externos:\nSELECT\n  referrer,\n  COUNT(*) AS count,\n  COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews\n" +
-                 (whereSql ? whereSql + "\n  AND referrer IS NOT NULL AND referrer != 'direct'" : "WHERE referrer IS NOT NULL AND referrer != 'direct'") +
-                 "\nGROUP BY referrer\nORDER BY count DESC\nLIMIT 15;\n\n" +
-                 "-- 2. Campañas de Marketing (UTMs):\nSELECT\n  utm_source, utm_medium, utm_campaign,\n  COUNT(*) AS count,\n  COUNT(DISTINCT visitor_hash) AS unique_visitors\nFROM pageviews\n" +
-                 (whereSql ? whereSql + "\n  AND utm_source != 'direct'" : "WHERE utm_source != 'direct'") +
-                 "\nGROUP BY utm_source, utm_medium, utm_campaign\nORDER BY count DESC\nLIMIT 15;",
+            sql: [
+              "-- 1. Top Referrers Externos:",
+              "SELECT",
+              "  referrer,",
+              "  COUNT(*) AS count,",
+              "  COUNT(DISTINCT visitor_hash) AS unique_visitors",
+              "FROM pageviews",
+              (whereSql ? whereSql + NL + "  AND referrer IS NOT NULL AND referrer != 'direct'" : "WHERE referrer IS NOT NULL AND referrer != 'direct'"),
+              "GROUP BY referrer",
+              "ORDER BY count DESC",
+              "LIMIT 15;",
+              "",
+              "-- 2. Campañas de Marketing (UTMs):",
+              "SELECT",
+              "  utm_source, utm_medium, utm_campaign,",
+              "  COUNT(*) AS count,",
+              "  COUNT(DISTINCT visitor_hash) AS unique_visitors",
+              "FROM pageviews",
+              (whereSql ? whereSql + NL + "  AND utm_source != 'direct'" : "WHERE utm_source != 'direct'"),
+              "GROUP BY utm_source, utm_medium, utm_campaign",
+              "ORDER BY count DESC",
+              "LIMIT 15;"
+            ].join(NL),
           };
         case 'leads-table':
           return {
             title: 'Buzón de Mensajes // Inbound Leads',
             table: 'contact_leads',
             filtersText: 'Últimos 50 mensajes validados',
-            sql: "SELECT\n  id, from_email, subject, name, phone, locale,\n  ip, country, city, turnstile_verified, created_at\nFROM contact_leads\nORDER BY id DESC\nLIMIT 50;",
+            sql: [
+              "SELECT",
+              "  id, from_email, subject, name, phone, locale,",
+              "  ip, country, city, turnstile_verified, created_at",
+              "FROM contact_leads",
+              "ORDER BY id DESC",
+              "LIMIT 50;"
+            ].join(NL),
           };
         case 'telemetry-table':
           return {
             title: 'Registro Perimetral de Telemetría (Paginado)',
             table: 'pageviews',
             filtersText: filtersText + "  |  Pág " + currentPage + " (" + currentLimit + " filas)",
-            sql: "SELECT\n  id, path, visitor_hash, referrer, country,\n  utm_source, utm_medium, utm_campaign, is_bot, created_at\nFROM pageviews" +
-                 (whereSql ? "\n" + whereSql : "") +
-                 "\nORDER BY id DESC\nLIMIT " + currentLimit + " OFFSET " + ((currentPage - 1) * currentLimit) + ";",
+            sql: [
+              "SELECT",
+              "  id, path, visitor_hash, referrer, country,",
+              "  utm_source, utm_medium, utm_campaign, is_bot, created_at",
+              "FROM pageviews" + (whereSql ? NL + whereSql : ""),
+              "ORDER BY id DESC",
+              "LIMIT " + currentLimit + " OFFSET " + ((currentPage - 1) * currentLimit) + ";"
+            ].join(NL),
           };
         default:
           return {
             title: 'Consulta SQL Equivalente',
             table: 'pageviews',
             filtersText: filtersText,
-            sql: "SELECT * FROM pageviews" + (whereSql ? "\n" + whereSql : "") + "\nLIMIT 50;",
+            sql: [
+              "SELECT * FROM pageviews" + (whereSql ? NL + whereSql : ""),
+              "LIMIT 50;"
+            ].join(NL),
           };
       }
     }
