@@ -574,10 +574,33 @@ export async function handleContactFormSubmission(
     const name = (data.name || "").toString().trim().slice(0, 100);
     const email = (data.email || "").toString().trim().slice(0, 120);
     const phone = (data.phone || "").toString().trim().slice(0, 35);
-    const subject = (data.subject || "Contact Form Inquiry")
+    const rawSubject = (data.subject || "Distributed Architecture & Performance Consulting")
       .toString()
       .trim()
       .slice(0, 150);
+    const rawLocale = (data.locale || data.lang || "en")
+      .toString()
+      .trim()
+      .slice(0, 10)
+      .toLowerCase();
+    const locale = rawLocale.startsWith("es") ? "es" : "en";
+
+    // Normalize topic/subject to English as required
+    const subjectMap: Record<string, string> = {
+      "Consultoría de Arquitectura y Rendimiento":
+        "Distributed Architecture & Performance Consulting",
+      "Consultoría de Arquitectura & Rendimiento Distribuido":
+        "Distributed Architecture & Performance Consulting",
+      "Oportunidad Profesional (Staff / Senior Engineer)":
+        "Career Opportunity (Staff / Senior Engineer)",
+      "Seguridad & DevSecOps": "Security Hardening & DevSecOps",
+      "Hardening de Seguridad & DevSecOps": "Security Hardening & DevSecOps",
+      "Colaboración General & Asesoría": "General Collaboration & Advisory",
+    };
+    const subject =
+      subjectMap[rawSubject] ||
+      rawSubject ||
+      "Distributed Architecture & Performance Consulting";
     const message = (data.message || "").toString().trim().slice(0, 4000);
     const honeypot = (data.website || data.honeypot || "").toString().trim();
     const turnstileToken = (
@@ -675,7 +698,6 @@ export async function handleContactFormSubmission(
       }
 
       try {
-        const clientIp = request.headers.get("cf-connecting-ip") || undefined;
         const captchaAdapter = createCaptchaAdapter({
           env: {
             APP_CAPTCHA_DRIVER: env.APP_CAPTCHA_DRIVER,
@@ -688,10 +710,9 @@ export async function handleContactFormSubmission(
           () =>
             captchaAdapter.verify({
               token: turnstileToken,
-              remoteIp: clientIp,
             }),
           { success: true },
-          1000,
+          2500,
           "turnstile-verify",
         );
 
@@ -712,22 +733,34 @@ export async function handleContactFormSubmission(
       }
     }
 
-    // Format body for D1 contact_leads: include name, phone + metadata
+    // Format legacy body representation for fallback logging
     let formattedBody = `Name: ${name}\nEmail: ${email}`;
     if (phone) {
       formattedBody += `\nPhone: ${phone}`;
     }
-    formattedBody += `\n\nMessage:\n${message}`;
+    formattedBody += `\nLocale: ${locale}\n\nMessage:\n${message}`;
 
-    // Persist in D1 contact_leads
+    // Persist in D1 contact_leads (Migration 0007 includes name, phone, locale)
     if (env.DB) {
       try {
         const stmt = env.DB.prepare(
-          "INSERT INTO contact_leads (from_email, subject, body, created_at) VALUES (?, ?, ?, datetime('now'))",
-        ).bind(email, `[Web] ${subject}`, formattedBody);
+          "INSERT INTO contact_leads (from_email, subject, body, name, phone, locale, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+        ).bind(
+          email,
+          `[Web] ${subject}`,
+          formattedBody,
+          name,
+          phone || null,
+          locale,
+        );
         await stmt.run();
-      } catch {
-        // Fail-open logging
+      } catch (err) {
+        try {
+          const fallbackStmt = env.DB.prepare(
+            "INSERT INTO contact_leads (from_email, subject, body, created_at) VALUES (?, ?, ?, datetime('now'))",
+          ).bind(email, `[Web] ${subject}`, formattedBody);
+          await fallbackStmt.run();
+        } catch {}
       }
     }
 
@@ -741,7 +774,7 @@ export async function handleContactFormSubmission(
           embeds: [
             {
               title: `New Direct Lead: [Web] ${subject}`,
-              description: `**From:** ${name} (\`${email}\`${phone ? ` · 📞 \`${phone}\`` : ""})\n\n**Message:**\n${message.slice(0, 500)}`,
+              description: `**From:** ${name} (\`${email}\`${phone ? ` · 📞 \`${phone}\`` : ""} · 🌐 \`${locale.toUpperCase()}\`)\n\n**Message:**\n${message.slice(0, 500)}`,
               color: 0xd4af37, // Gold accent
               timestamp: new Date().toISOString(),
             },
@@ -1045,7 +1078,7 @@ export async function handleAdminDashboardRequest(
     if (env.DB) {
       try {
         const stmt = env.DB.prepare(
-          "SELECT id, from_email, subject, body, created_at FROM contact_leads ORDER BY created_at DESC LIMIT 50",
+          "SELECT id, name, from_email, phone, subject, body, locale, created_at FROM contact_leads ORDER BY created_at DESC LIMIT 50",
         );
         const q =
           typeof (stmt as any).all === "function"
@@ -1936,12 +1969,10 @@ export async function handleAdminDashboardRequest(
           <span>Arturo Nava</span>
         </a>
         <nav class="nav-links">
-          <a href="/#about">About</a>
-          <a href="/projects/">Projects</a>
-          <a href="/experience/">Experience</a>
-          <a href="/services/">Services</a>
-          <a href="/blog/">Blog</a>
-          <a href="/resume/">Resume</a>
+          <a href="https://arturonavax.dev/#about">About</a>
+          <a href="https://arturonavax.dev/projects/">Projects</a>
+          <a href="https://arturonavax.dev/blog/">Blog</a>
+          <a href="https://arturonavax.dev/resume/">Resume</a>
         </nav>
       </div>
 
@@ -2198,14 +2229,16 @@ export async function handleAdminDashboardRequest(
               <thead>
                 <tr>
                   <th>Fecha</th>
-                  <th>Remitente</th>
+                  <th>Nombre / Empresa</th>
+                  <th>Email &amp; Teléfono</th>
+                  <th>Idioma</th>
                   <th>Asunto</th>
                   <th>Mensaje</th>
                 </tr>
               </thead>
               <tbody id="leads-tbody">
                 <tr>
-                  <td colspan="4" style="text-align: center; padding: 1.5rem; color: var(--text-dim); font-style: italic;">
+                  <td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-dim); font-style: italic;">
                     Consultando buzón de leads...
                   </td>
                 </tr>
@@ -2521,20 +2554,26 @@ export async function handleAdminDashboardRequest(
       if (!tbody) return;
 
       if (!cachedLeads.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 1.5rem; color: var(--text-dim); font-style: italic;">Sin leads registrados aún en el búfer D1.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-dim); font-style: italic;">Sin leads registrados aún en el búfer D1.</td></tr>';
         return;
       }
 
-      tbody.innerHTML = cachedLeads.slice(0, 10).map(lead => {
+      tbody.innerHTML = cachedLeads.slice(0, 15).map(lead => {
         const dt = formatTime(lead.created_at);
+        const name = escapeHtml(lead.name || '--');
         const email = escapeHtml(lead.from_email || '--');
+        const phone = lead.phone ? '<br><small style="color:var(--text-dim); font-family:var(--font-mono)">📞 ' + escapeHtml(lead.phone) + '</small>' : '';
+        const loc = escapeHtml((lead.locale || 'en').toUpperCase());
         const subj = escapeHtml(lead.subject || '--');
-        const msg = escapeHtml((lead.body || '').replace(/[\r\n]+/g, ' ').slice(0, 60));
+        const rawBody = lead.body || '';
+        const msg = escapeHtml(rawBody.replace(/[\\r\\n]+/g, ' ').slice(0, 80));
         return '<tr>' +
           '<td>' + dt + '</td>' +
-          '<td style="color: var(--gold);">' + email + '</td>' +
+          '<td><strong style="color: var(--text-primary);">' + name + '</strong></td>' +
+          '<td><span style="color: var(--gold);">' + email + '</span>' + phone + '</td>' +
+          '<td><span class="tag tag-country">' + loc + '</span></td>' +
           '<td>' + subj + '</td>' +
-          '<td style="color: var(--text-dim); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + msg + '</td>' +
+          '<td style="color: var(--text-dim); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' + escapeHtml(rawBody) + '">' + msg + '</td>' +
         '</tr>';
       }).join('');
     }

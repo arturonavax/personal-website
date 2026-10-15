@@ -91,6 +91,8 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
     expect(html).toContain("kpi-unique");
     expect(html).toContain("kpi-prefetch");
     expect(html).toContain("kpi-leads");
+    expect(html).not.toContain('<a href="/experience/">Experience</a>');
+    expect(html).not.toContain('<a href="/services/">Services</a>');
   });
 
   it("provides /api/leads endpoint in Cloudflare Worker", async () => {
@@ -464,6 +466,42 @@ describe("ODD Task: Refined Contact Container, Form Modal & Cloudflare Free Tier
     expect(res.status).toBe(200);
     expect(insertedParams[2]).toContain("Phone: +57 300 123 4567");
     expect(insertedParams[2]).toContain("Alice Engineer");
+  });
+
+  it("normalizes contact form subject to English and stores name, phone, and locale", async () => {
+    const mockCtx = { waitUntil: () => {} } as any;
+    let insertedParams: any[] = [];
+    const mockEnv = {
+      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+      DB: {
+        prepare: () => ({
+          bind: (...args: any[]) => {
+            insertedParams = args;
+            return { run: async () => ({ success: true }) };
+          },
+        }),
+      },
+    } as any;
+
+    const req = new Request("https://arturonavax.dev/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Carlos Developer",
+        email: "carlos@empresa.es",
+        phone: "+34 600 123 456",
+        subject: "Consultoría de Arquitectura y Rendimiento",
+        locale: "es",
+        message: "Necesitamos asesoría técnica urgente para nuestro sistema.",
+      }),
+    });
+
+    const res = await worker.fetch(req, mockEnv, mockCtx);
+    expect(res.status).toBe(200);
+    expect(insertedParams[1]).toBe("[Web] Distributed Architecture & Performance Consulting");
+    expect(insertedParams[3]).toBe("Carlos Developer");
+    expect(insertedParams[4]).toBe("+34 600 123 456");
+    expect(insertedParams[5]).toBe("es");
   });
 
   it("requires turnstile token when TURNSTILE_SECRET_KEY is configured", async () => {

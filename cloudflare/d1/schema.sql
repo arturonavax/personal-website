@@ -60,16 +60,20 @@ CREATE TABLE IF NOT EXISTS pageviews_daily_summary (
 
 CREATE INDEX IF NOT EXISTS idx_summary_date ON pageviews_daily_summary(summary_date);
 
--- Contact Leads for Serverless Corporate Email Ingestion (SPEC-003)
+-- Contact Leads for Serverless Corporate Email Ingestion (SPEC-003, Migration 0007)
 CREATE TABLE IF NOT EXISTS contact_leads (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
   from_email TEXT NOT NULL,
+  phone TEXT,
   subject TEXT NOT NULL,
   body TEXT NOT NULL,
+  locale TEXT NOT NULL DEFAULT 'en',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_contact_leads_created ON contact_leads(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_contact_leads_locale ON contact_leads(locale);
 
 -- Isolated Prefetch Telemetry (SPEC-010, Migration 0004)
 CREATE TABLE IF NOT EXISTS prefetch_analytics_events (

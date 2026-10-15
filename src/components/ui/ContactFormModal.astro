@@ -196,22 +196,22 @@ const turnstileSiteKey =
             name="subject"
             class="w-full rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none transition-colors cursor-pointer"
           >
-            <option value="Consultoría de Arquitectura y Rendimiento">
+            <option value="Distributed Architecture & Performance Consulting">
               {isEs
                 ? "Consultoría de Arquitectura & Rendimiento Distribuido"
                 : "Distributed Architecture & Performance Consulting"}
             </option>
-            <option value="Oportunidad Profesional (Staff / Senior Engineer)">
+            <option value="Career Opportunity (Staff / Senior Engineer)">
               {isEs
                 ? "Oportunidad Profesional (Staff / Senior Engineer)"
                 : "Career Opportunity (Staff / Senior Engineer)"}
             </option>
-            <option value="Seguridad & DevSecOps">
+            <option value="Security Hardening & DevSecOps">
               {isEs
                 ? "Hardening de Seguridad & DevSecOps"
                 : "Security Hardening & DevSecOps"}
             </option>
-            <option value="Colaboración General & Asesoría">
+            <option value="General Collaboration & Advisory">
               {isEs
                 ? "Colaboración General & Asesoría"
                 : "General Collaboration & Advisory"}
@@ -253,7 +253,7 @@ const turnstileSiteKey =
         <div class="space-y-1">
           <div
             id="cf-turnstile-container"
-            class="my-1 min-h-[65px] flex items-center justify-center rounded border border-[var(--color-surface-border)]/50 p-1 bg-[var(--color-bg-primary)]/40"
+            class="my-1 min-h-[66px] w-full flex items-center justify-center rounded border border-[var(--color-surface-border)]/50 p-1 bg-[var(--color-bg-primary)]/40 overflow-hidden"
             data-sitekey={turnstileSiteKey}
           ></div>
         </div>
@@ -313,31 +313,52 @@ const turnstileSiteKey =
     var turnstileWidgetId = null;
     var turnstileToken = "";
 
-    function renderTurnstileWidget() {
+    function ensureTurnstileWidget() {
+      var dialog = document.getElementById("contact-form-dialog");
       var container = document.getElementById("cf-turnstile-container");
-      if (!container || !window.turnstile || turnstileWidgetId !== null) return;
+      if (!dialog || !container || !window.turnstile) return;
+
+      // Crucial for incognito & mobile: Turnstile cannot initialize in a closed (display: none) dialog
+      var isDialogOpen = dialog.open || dialog.hasAttribute("open");
+      if (!isDialogOpen) return;
+
       var sitekey =
-        container.getAttribute("data-sitekey") || "1x00000000000000000000AA";
-      try {
-        turnstileWidgetId = window.turnstile.render(container, {
-          sitekey: sitekey,
-          theme: "dark",
-          size: "flexible",
-          callback: function (token) {
-            turnstileToken = token;
-          },
-          "expired-callback": function () {
-            turnstileToken = "";
-          },
-          "error-callback": function () {
-            // Fail-open or retry
-          },
-        });
-      } catch (_) {}
+        container.getAttribute("data-sitekey") || "0x4AAAAAAFXF8_ssaTgdpBV-";
+
+      if (turnstileWidgetId === null) {
+        try {
+          turnstileWidgetId = window.turnstile.render(container, {
+            sitekey: sitekey,
+            theme: "dark",
+            size: "normal",
+            appearance: "always",
+            callback: function (token) {
+              turnstileToken = token;
+              var fb = document.getElementById("contact-form-feedback");
+              if (fb && fb.classList.contains("border-amber-500/40")) {
+                fb.classList.add("hidden");
+              }
+            },
+            "expired-callback": function () {
+              turnstileToken = "";
+            },
+            "error-callback": function (err) {
+              console.warn("Turnstile challenge error", err);
+              turnstileToken = "";
+            },
+          });
+        } catch (e) {
+          console.warn("Turnstile render error", e);
+        }
+      } else {
+        try {
+          window.turnstile.reset(turnstileWidgetId);
+        } catch (_) {}
+      }
     }
 
     window.onTurnstileLoaded = function () {
-      renderTurnstileWidget();
+      ensureTurnstileWidget();
     };
 
     function setupContactModal() {
@@ -358,7 +379,11 @@ const turnstileSiteKey =
         } else {
           dialog.setAttribute("open", "");
         }
-        renderTurnstileWidget();
+
+        // Delay 50ms so browser executes layout before Turnstile measures parent container
+        setTimeout(function () {
+          ensureTurnstileWidget();
+        }, 50);
         var firstInput = document.getElementById("contact-name");
         if (firstInput) {
           requestAnimationFrame(function () {
@@ -488,12 +513,26 @@ const turnstileSiteKey =
               ? window.turnstile.getResponse(turnstileWidgetId)
               : "");
 
+          if (!currentToken && window.turnstile && turnstileWidgetId !== null) {
+            showError(
+              isSpanish
+                ? "Por favor completa la verificación de seguridad arriba."
+                : "Please complete the security check above.",
+            );
+            var tContainer = document.getElementById("cf-turnstile-container");
+            if (tContainer) {
+              tContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+            return;
+          }
+
           var payload = {
             name: name,
             email: email,
             phone: fullPhone,
             subject: formData.get("subject"),
             message: message,
+            locale: isSpanish ? "es" : "en",
             website: formData.get("website") || "",
             turnstileToken: currentToken,
           };
