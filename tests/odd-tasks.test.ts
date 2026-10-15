@@ -504,6 +504,63 @@ describe("ODD Task: Refined Contact Container, Form Modal & Cloudflare Free Tier
     expect(insertedParams[5]).toBe("es");
   });
 
+  it("persists comprehensive legal, geo, and network telemetry on contact form submissions", async () => {
+    const mockCtx = { waitUntil: () => {} } as any;
+    let insertedParams: any[] = [];
+    const mockEnv = {
+      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+      DB: {
+        prepare: () => ({
+          bind: (...args: any[]) => {
+            insertedParams = args;
+            return { run: async () => ({ success: true }) };
+          },
+        }),
+      },
+    } as any;
+
+    const req = new Request("https://arturonavax.dev/api/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "cf-connecting-ip": "198.51.100.42",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        referer: "https://arturonavax.dev/projects/",
+      },
+      body: JSON.stringify({
+        name: "Elena Rostova",
+        email: "elena@distributed-systems.io",
+        phone: "+49 30 123456",
+        subject: "Distributed Architecture & Performance Consulting",
+        locale: "en",
+        message: "We need an assessment on our high-throughput payment gateway.",
+      }),
+    });
+    // Attach simulated Cloudflare request.cf properties
+    (req as any).cf = {
+      country: "DE",
+      city: "Berlin",
+      region: "BE",
+      timezone: "Europe/Berlin",
+      asn: 13335,
+      asOrganization: "Cloudflare, Inc.",
+    };
+
+    const res = await worker.fetch(req, mockEnv, mockCtx);
+    expect(res.status).toBe(200);
+
+    // Verify legal telemetry storage
+    expect(insertedParams[6]).toBe("198.51.100.42"); // ip
+    expect(insertedParams[7]).toBe("DE"); // country
+    expect(insertedParams[8]).toBe("Berlin"); // city
+    expect(insertedParams[9]).toBe("BE"); // region
+    expect(insertedParams[10]).toBe("Europe/Berlin"); // timezone
+    expect(insertedParams[11]).toBe(13335); // asn
+    expect(insertedParams[12]).toBe("Cloudflare, Inc."); // as_organization
+    expect(insertedParams[13]).toContain("Mozilla/5.0"); // user_agent
+    expect(insertedParams[14]).toBe("https://arturonavax.dev/projects/"); // referer
+  });
+
   it("requires turnstile token when TURNSTILE_SECRET_KEY is configured", async () => {
     const mockCtx = { waitUntil: () => {} } as any;
     const mockEnv = {
