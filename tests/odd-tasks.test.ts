@@ -588,6 +588,108 @@ describe("ODD Task: Refined Contact Container, Form Modal & Cloudflare Free Tier
     expect(data.error).toContain("Turnstile");
   });
 
+  it("accepts legitimate contact submissions via Edge Shield fallback when Turnstile is blocked by client privacy/ad-blockers", async () => {
+    const mockCtx = { waitUntil: () => {} } as any;
+    let insertedParams: any[] = [];
+    const mockEnv = {
+      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+      TURNSTILE_SECRET_KEY: "0x4AAAAAAABbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      DB: {
+        prepare: () => ({
+          bind: (...args: any[]) => {
+            insertedParams = args;
+            return { run: async () => ({ success: true }) };
+          },
+        }),
+      },
+    } as any;
+
+    const reqFallback = new Request("https://arturonavax.dev/api/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "cf-connecting-ip": "198.51.100.99",
+        origin: "https://arturonavax.dev",
+      },
+      body: JSON.stringify({
+        name: "AdBlock User",
+        email: "adblock@privacy.net",
+        message: "This is a legitimate user whose browser blocked challenge domains.",
+        turnstileToken: "fallback_adblock",
+        t_sig: Date.now() - 4000,
+      }),
+    });
+
+    const res = await worker.fetch(reqFallback, mockEnv, mockCtx);
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.status).toBe("ok");
+    // Verify lead stored with turnstile_verified = 0 (Edge Shield mode)
+    expect(insertedParams[15]).toBe(0);
+  });
+
+  it("drops rapid automated bot submissions silently using time-to-submit verification (t_sig < 1500ms)", async () => {
+    const mockCtx = { waitUntil: () => {} } as any;
+    let dbCalled = false;
+    const mockEnv = {
+      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+      DB: {
+        prepare: () => ({
+          bind: () => {
+            dbCalled = true;
+            return { run: async () => ({ success: true }) };
+          },
+        }),
+      },
+    } as any;
+
+    const botRapidReq = new Request("https://arturonavax.dev/api/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "cf-connecting-ip": "198.51.100.77",
+      },
+      body: JSON.stringify({
+        name: "Lightning Fast Bot",
+        email: "bot@spammer.org",
+        message: "Automated submission completing form in 200 milliseconds.",
+        t_sig: Date.now() - 200,
+      }),
+    });
+
+    const res = await worker.fetch(botRapidReq, mockEnv, mockCtx);
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.status).toBe("ok");
+    // Database insert was bypassed (silent drop trap)
+    expect(dbCalled).toBe(false);
+  });
+
+  it("rejects cross-origin submissions to protect /api/contact from direct third-party exploitation", async () => {
+    const mockCtx = { waitUntil: () => {} } as any;
+    const mockEnv = {
+      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+    } as any;
+
+    const crossOriginReq = new Request("https://arturonavax.dev/api/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        origin: "https://malicious-spam-spoofer.xyz",
+      },
+      body: JSON.stringify({
+        name: "Remote Attacker",
+        email: "remote@spammer.com",
+        message: "Attempting to POST to contact API from foreign domain.",
+      }),
+    });
+
+    const res = await worker.fetch(crossOriginReq, mockEnv, mockCtx);
+    expect(res.status).toBe(403);
+    const json = (await res.json()) as any;
+    expect(json.error).toContain("Cross-origin submission rejected");
+  });
+
   it("integrates ContactFormModal with accessible dialog and trigger button in ContactSection", () => {
     const modalPath = path.join(
       ROOT_DIR,
@@ -602,12 +704,15 @@ describe("ODD Task: Refined Contact Container, Form Modal & Cloudflare Free Tier
     expect(modalContent).toContain('fetch("/api/contact"');
     expect(modalContent).toContain("close-contact-modal-btn");
     expect(modalContent).toContain("cf-turnstile-container");
+    expect(modalContent).toContain("cf-turnstile-loading");
+    expect(modalContent).toContain("cf-turnstile-fallback");
     expect(modalContent).toContain("challenges.cloudflare.com/turnstile");
     expect(modalContent).toContain("contact-country-code");
     expect(modalContent).toContain("contact-phone");
     expect(modalContent).toContain("Staff / Senior Engineer");
     expect(modalContent).not.toContain("Senior / Staff Backend");
     expect(modalContent).toContain('minlength="20"');
+    expect(modalContent).toContain("mailto:arturo@arturonavax.dev");
 
     const contactPath = path.join(
       ROOT_DIR,
@@ -939,9 +1044,51 @@ describe("ODD Task: Real-Time Admin Telemetry Dashboard Overhaul", () => {
     expect(html).toContain("leads-tbody");
     expect(html).toContain("telemetry-tbody");
 
+    // Server-side pagination controls
+    expect(html).toContain("pagination-info");
+    expect(html).toContain("btn-page-first");
+    expect(html).toContain("btn-page-prev");
+    expect(html).toContain("btn-page-next");
+    expect(html).toContain("btn-page-last");
+    expect(html).toContain("select-limit");
+
     // Live polling default option
     expect(html).toContain('value="5000" selected');
     expect(html).toContain('value="3000"');
+  });
+
+  it("supports server-side pagination, aggregations, and filtering in /api/telemetry", async () => {
+    const mockCtx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as any;
+    const mockEnv = {
+      DB: {
+        prepare: () => ({
+          bind: () => ({ all: async () => ({ results: [] }) }),
+          all: async () => ({ results: [] }),
+        }),
+      },
+    } as any;
+
+    const req = new Request(
+      "https://admin.arturonavax.dev/api/telemetry?page=2&limit=25&range=7d&segment=human&path=/blog/",
+    );
+    const res = await worker.fetch(req, mockEnv, mockCtx);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as any;
+
+    expect(data.pagination).toBeDefined();
+    expect(data.pagination.page).toBe(2);
+    expect(data.pagination.limit).toBe(25);
+    expect(data.filters).toBeDefined();
+    expect(data.filters.range).toBe("7d");
+    expect(data.filters.segment).toBe("human");
+    expect(data.filters.path).toBe("/blog/");
+    expect(data.stats).toBeDefined();
+    expect(data.top_pages).toBeDefined();
+    expect(data.top_countries).toBeDefined();
+    expect(data.top_referrers).toBeDefined();
   });
 });
 

@@ -27,6 +27,8 @@ export interface Env {
   TURNSTILE_SECRET_KEY?: string;
   DISCORD_WEBHOOK_URL?: string;
   SLACK_WEBHOOK_URL?: string;
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_CHAT_ID?: string;
   APP_STORAGE_DRIVER?: string;
   APP_SEARCH_DRIVER?: string;
   APP_TELEMETRY_DRIVER?: string;
@@ -679,6 +681,47 @@ export async function handleContactFormSubmission(
       );
     }
 
+    // Prevent direct automated API exploitation: enforce same-origin or known host
+    const origin = request.headers.get("origin") || "";
+    const reqHost = new URL(request.url).host;
+    if (
+      origin &&
+      !origin.includes(reqHost) &&
+      !origin.includes("localhost") &&
+      !origin.includes("127.0.0.1") &&
+      !origin.includes("arturonavax.dev")
+    ) {
+      return new Response(
+        JSON.stringify({
+          status: "error",
+          error: "Cross-origin submission rejected.",
+        }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Time-to-submit verification (trap automated bot speed < 1.5 seconds)
+    const tSig = Number(data.t_sig || 0);
+    if (tSig > 0 && Date.now() - tSig < 1500) {
+      // Rapid bot submission dropped silently
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          message: "Message received successfully",
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store, private",
+          },
+        },
+      );
+    }
+
     // Cloudflare Turnstile Captcha verification when configured
     let isTurnstileVerified = !env.TURNSTILE_SECRET_KEY;
     if (env.TURNSTILE_SECRET_KEY) {
@@ -698,40 +741,49 @@ export async function handleContactFormSubmission(
         );
       }
 
-      try {
-        const captchaAdapter = createCaptchaAdapter({
-          env: {
-            APP_CAPTCHA_DRIVER: env.APP_CAPTCHA_DRIVER,
-            TURNSTILE_SECRET_KEY: env.TURNSTILE_SECRET_KEY,
-          },
-          executionCtx: ctx,
-        });
-
-        const turnstileResult = await circuitBreaker.executeWithFallback(
-          () =>
-            captchaAdapter.verify({
-              token: turnstileToken,
-            }),
-          { success: true },
-          2500,
-          "turnstile-verify",
-        );
-
-        if (!turnstileResult.success) {
-          return new Response(
-            JSON.stringify({
-              status: "error",
-              error: "Captcha verification failed. Please try again.",
-            }),
-            {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
+      if (
+        turnstileToken === "fallback_adblock" ||
+        turnstileToken === "fallback_network"
+      ) {
+        // Legitimate client with ad-blocker or protected network where Turnstile was blocked.
+        // Protected by Edge Shield (Honeypot + strict IP rate-limiting + time-to-submit verification).
+        isTurnstileVerified = false;
+      } else {
+        try {
+          const captchaAdapter = createCaptchaAdapter({
+            env: {
+              APP_CAPTCHA_DRIVER: env.APP_CAPTCHA_DRIVER,
+              TURNSTILE_SECRET_KEY: env.TURNSTILE_SECRET_KEY,
             },
+            executionCtx: ctx,
+          });
+
+          const turnstileResult = await circuitBreaker.executeWithFallback(
+            () =>
+              captchaAdapter.verify({
+                token: turnstileToken,
+              }),
+            { success: true },
+            2500,
+            "turnstile-verify",
           );
+
+          if (!turnstileResult.success) {
+            return new Response(
+              JSON.stringify({
+                status: "error",
+                error: "Captcha verification failed. Please try again.",
+              }),
+              {
+                status: 400,
+                headers: { "Content-Type": "application/json" },
+              },
+            );
+          }
+          isTurnstileVerified = true;
+        } catch (_) {
+          // Fail-open on timeout or internal adapter failure
         }
-        isTurnstileVerified = true;
-      } catch (_) {
-        // Fail-open on timeout or internal adapter failure
       }
     }
 
@@ -796,11 +848,13 @@ export async function handleContactFormSubmission(
       }
     }
 
-    // Webhook dispatch if configured (Discord/Slack)
+    // Webhook & Push dispatch if configured (Discord/Slack/Telegram)
     const webhookUrl = env.DISCORD_WEBHOOK_URL || env.SLACK_WEBHOOK_URL;
+    const geoSummary = [city, country].filter(Boolean).join(", ");
+    const networkSummary = [asOrganization, asn ? `AS${asn}` : ""].filter(Boolean).join(" · ");
+    const shieldStatus = isTurnstileVerified ? "✅ Verified" : "🛡️ Fallback (Ad-blocker / Shield)";
+
     if (webhookUrl && ctx && typeof ctx.waitUntil === "function") {
-      const geoSummary = [city, country].filter(Boolean).join(", ");
-      const networkSummary = [asOrganization, asn ? `AS${asn}` : ""].filter(Boolean).join(" · ");
       const webhookPromise = fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -808,14 +862,43 @@ export async function handleContactFormSubmission(
           embeds: [
             {
               title: `New Direct Lead: [Web] ${subject}`,
-              description: `**From:** ${name} (\`${email}\`${phone ? ` · 📞 \`${phone}\`` : ""} · 🌐 \`${locale.toUpperCase()}\`)\n📍 ${geoSummary || "Unknown"} (IP: \`${ip}\`${networkSummary ? ` · ${networkSummary}` : ""})\n\n**Message:**\n${message.slice(0, 500)}`,
-              color: 0xd4af37, // Gold accent
+              description: `**From:** ${name} (\`${email}\`${phone ? ` · 📞 \`${phone}\`` : ""} · 🌐 \`${locale.toUpperCase()}\`)\n📍 ${geoSummary || "Unknown"} (IP: \`${ip}\`${networkSummary ? ` · ${networkSummary}` : ""})\n🛡️ **Shield:** ${shieldStatus}\n\n**Message:**\n${message.slice(0, 500)}`,
+              color: isTurnstileVerified ? 0xd4af37 : 0x22d3ee,
               timestamp: new Date().toISOString(),
             },
           ],
         }),
       }).catch(() => {});
       ctx.waitUntil(webhookPromise);
+    }
+
+    if (
+      env.TELEGRAM_BOT_TOKEN &&
+      env.TELEGRAM_CHAT_ID &&
+      ctx &&
+      typeof ctx.waitUntil === "function"
+    ) {
+      const tgText =
+        `🚀 *New Direct Lead: [Web] ${subject}*\n\n` +
+        `👤 *From:* ${name}\n` +
+        `📧 *Email:* \`${email}\`${phone ? `\n📞 *Phone:* \`${phone}\`` : ""}\n` +
+        `🌐 *Locale:* \`${locale.toUpperCase()}\` | *Shield:* ${isTurnstileVerified ? "✅ Turnstile" : "🛡️ Fallback"}\n` +
+        `📍 *Location:* ${geoSummary || "Unknown"} (IP: \`${ip}\`${networkSummary ? ` · ${networkSummary}` : ""})\n\n` +
+        `💬 *Message:*\n${message.slice(0, 1000)}`;
+
+      const tgPromise = fetch(
+        `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: env.TELEGRAM_CHAT_ID,
+            text: tgText,
+            parse_mode: "Markdown",
+          }),
+        },
+      ).catch(() => {});
+      ctx.waitUntil(tgPromise);
     }
 
     return new Response(
@@ -1150,6 +1233,12 @@ export async function handleAdminDashboardRequest(
     const searchParam = url.searchParams.get("search")?.trim() || "";
     const fromParam = url.searchParams.get("from");
     const toParam = url.searchParams.get("to");
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+    const limit = Math.min(
+      250,
+      Math.max(10, parseInt(url.searchParams.get("limit") || "50", 10)),
+    );
+    const offset = (page - 1) * limit;
 
     let pageviews: any[] = [];
     let edgeEvents: any[] = [];
@@ -1301,8 +1390,12 @@ export async function handleAdminDashboardRequest(
         const refSql = `SELECT referrer, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${refWhere} GROUP BY referrer ORDER BY count DESC LIMIT 15`;
         topReferrers = await runQuery(refSql, bindValues);
 
-        const pageviewsSql = `SELECT id, path, visitor_hash, referrer, country, utm_source, utm_medium, utm_campaign, utm_content, utm_term, is_bot, created_at FROM pageviews ${whereSql} ORDER BY id DESC LIMIT 100`;
-        pageviews = await runQuery(pageviewsSql, bindValues);
+        const pageviewsSql = `SELECT id, path, visitor_hash, referrer, country, utm_source, utm_medium, utm_campaign, utm_content, utm_term, is_bot, created_at FROM pageviews ${whereSql} ORDER BY id DESC LIMIT ? OFFSET ?`;
+        pageviews = await runQuery(pageviewsSql, [
+          ...bindValues,
+          limit,
+          offset,
+        ]);
 
         const prefSql = `SELECT id, path, visitor_hash, referrer, country, purpose, created_at FROM prefetch_analytics_events ${prefetchWhere} ORDER BY id DESC LIMIT 50`;
         prefetches = await runQuery(prefSql, prefetchBinds);
@@ -1314,6 +1407,7 @@ export async function handleAdminDashboardRequest(
         console.warn("D1 telemetry query error:", err);
       }
     }
+
 
     // Mock fallback when D1 is unavailable or empty (e.g. local development)
     if (pageviews.length === 0 && stats.total_pageviews === 0) {
@@ -1521,11 +1615,20 @@ export async function handleAdminDashboardRequest(
       }));
     }
 
+    const totalFiltered = stats.total_pageviews;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
+
     return new Response(
       JSON.stringify({
         status: "ok",
         surface: "admin-isolated",
         timestamp: new Date().toISOString(),
+        pagination: {
+          page,
+          limit,
+          total_filtered: totalFiltered,
+          total_pages: totalPages,
+        },
         filters: {
           range,
           country: countryParam,
@@ -2315,6 +2418,25 @@ export async function handleAdminDashboardRequest(
           </tbody>
         </table>
       </div>
+
+      <!-- Server-side Pagination Bar -->
+      <div class="panel-header" style="border-top: 1px solid var(--border); border-bottom: none; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; padding: 0.75rem 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 0.75rem; color: var(--text-dim);" id="pagination-info">Página 1 de 1 (0 eventos)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+          <button type="button" id="btn-page-first" onclick="goToPage(1)" title="Primera página">&laquo; Primero</button>
+          <button type="button" id="btn-page-prev" onclick="goToPage(currentPage - 1)" title="Página anterior">&lsaquo; Anterior</button>
+          <span id="page-indicator" style="font-size: 0.75rem; font-weight: 700; color: var(--gold); padding: 0 0.5rem;">1 / 1</span>
+          <button type="button" id="btn-page-next" onclick="goToPage(currentPage + 1)" title="Página siguiente">Siguiente &rsaquo;</button>
+          <button type="button" id="btn-page-last" onclick="goToPage(totalPages)" title="Última página">Último &raquo;</button>
+          <select id="select-limit" onchange="setLimit(this.value)" style="margin-left: 0.5rem;" title="Filas por página">
+            <option value="25">25 / pág</option>
+            <option value="50" selected>50 / pág</option>
+            <option value="100">100 / pág</option>
+          </select>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -2336,17 +2458,26 @@ export async function handleAdminDashboardRequest(
   <script>
     let pollInterval = null;
     let pollDelay = 5000;
+    let currentRange = '7d';
     let currentSegment = 'all';
     let currentPathFilter = 'all';
-    let excludeBots = false;
-    let includePrefetch = true;
+    let currentCountry = 'all';
     let searchQuery = '';
+    let currentPage = 1;
+    let currentLimit = 50;
+    let totalPages = 1;
+    let totalFiltered = 0;
     let lastSyncTimestamp = Date.now();
+    let searchDebounceTimer = null;
 
     let cachedPageviews = [];
     let cachedPrefetches = [];
     let cachedDaily = [];
     let cachedLeads = [];
+    let cachedStats = null;
+    let cachedTopPages = [];
+    let cachedTopCountries = [];
+    let cachedTopReferrers = [];
     let cachedCircuitBreakers = null;
 
     // Live Sync Elapsed Timer (every 1s)
@@ -2391,35 +2522,49 @@ export async function handleAdminDashboardRequest(
 
     function setSegmentFilter(seg) {
       currentSegment = seg;
+      currentPage = 1;
       ['all', 'human', 'bot', 'prefetch'].forEach(k => {
         const btn = document.getElementById('btn-filter-' + k);
         if (btn) btn.classList.toggle('active', k === seg);
       });
-      renderAll();
+      fetchTelemetry(true);
     }
 
-    function onRangeChange() {
+    function onRangeChange(val) {
+      currentRange = val;
+      currentPage = 1;
       fetchTelemetry(true);
     }
 
     function onPathFilterChange(val) {
       currentPathFilter = val;
-      renderAll();
+      currentPage = 1;
+      fetchTelemetry(true);
     }
 
     function toggleExcludeBots(val) {
-      excludeBots = val;
-      renderAll();
+      currentSegment = val ? 'human' : 'all';
+      currentPage = 1;
+      ['all', 'human', 'bot', 'prefetch'].forEach(k => {
+        const btn = document.getElementById('btn-filter-' + k);
+        if (btn) btn.classList.toggle('active', k === currentSegment);
+      });
+      fetchTelemetry(true);
     }
 
     function toggleIncludePrefetch(val) {
-      includePrefetch = val;
-      renderAll();
+      if (!val && currentSegment === 'prefetch') {
+        setSegmentFilter('all');
+      }
     }
 
     function onSearchInput(val) {
       searchQuery = val;
-      renderAll();
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        currentPage = 1;
+        fetchTelemetry(true);
+      }, 300);
     }
 
     function onPollIntervalChange(val) {
@@ -2430,30 +2575,16 @@ export async function handleAdminDashboardRequest(
       }
     }
 
-    function getFiltered() {
-      let items = [...cachedPageviews];
-      if (currentSegment === 'human') items = items.filter(i => !i.is_bot);
-      if (currentSegment === 'bot') items = items.filter(i => i.is_bot);
-      if (currentSegment === 'prefetch') {
-        items = cachedPrefetches.map(p => ({ ...p, is_prefetch: true, is_bot: 0 }));
-      }
-      if (currentPathFilter !== 'all') {
-        items = items.filter(i => i.path && i.path.startsWith(currentPathFilter));
-      }
-      if (excludeBots && currentSegment !== 'bot') {
-        items = items.filter(i => !i.is_bot);
-      }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        items = items.filter(i =>
-          (i.path && i.path.toLowerCase().includes(q)) ||
-          (i.country && i.country.toLowerCase().includes(q)) ||
-          (i.referrer && i.referrer.toLowerCase().includes(q)) ||
-          (i.utm_source && i.utm_source.toLowerCase().includes(q)) ||
-          (i.visitor_hash && i.visitor_hash.toLowerCase().includes(q))
-        );
-      }
-      return items;
+    function goToPage(p) {
+      if (p < 1 || p > totalPages || p === currentPage) return;
+      currentPage = p;
+      fetchTelemetry(true);
+    }
+
+    function setLimit(l) {
+      currentLimit = parseInt(l, 10);
+      currentPage = 1;
+      fetchTelemetry(true);
     }
 
     function renderCircuitBreakers() {
@@ -2501,30 +2632,24 @@ export async function handleAdminDashboardRequest(
     function renderTopPaths() {
       const container = document.getElementById('top-paths');
       if (!container) return;
+      const list = (cachedTopPages && cachedTopPages.length > 0) ? cachedTopPages : [];
 
-      const pathCounts = {};
-      const humanCounts = {};
-      cachedPageviews.forEach(p => {
-        if (!p.path) return;
-        pathCounts[p.path] = (pathCounts[p.path] || 0) + 1;
-        if (!p.is_bot) humanCounts[p.path] = (humanCounts[p.path] || 0) + 1;
-      });
-
-      const sorted = Object.entries(pathCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
-      const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
-
-      if (!sorted.length) {
+      if (!list.length) {
         container.innerHTML = '<p style="color: var(--text-dim); text-align: center; font-style: italic;">Sin datos de rutas</p>';
         return;
       }
 
-      container.innerHTML = sorted.map(([pth, count]) => {
+      const maxCount = list[0].total_views || list[0].views || 1;
+
+      container.innerHTML = list.slice(0, 5).map(item => {
+        const pth = item.path || '--';
+        const count = item.total_views || item.views || 0;
+        const hCount = item.human_views || 0;
         const pct = Math.round((count / maxCount) * 100);
-        const hCount = humanCounts[pth] || 0;
         return '<div style="margin-bottom: 0.65rem;">' +
           '<div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom: 0.2rem;">' +
             '<span class="tag-path" style="max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHtml(pth) + '</span>' +
-            '<span style="color:var(--text-dim)"><strong>' + count + '</strong> total (' + hCount + ' H)</span>' +
+            '<span style="color:var(--text-dim)"><strong>' + count.toLocaleString() + '</strong> total (' + hCount.toLocaleString() + ' H)</span>' +
           '</div>' +
           '<div style="width:100%; height:5px; background:var(--bg-surface); border-radius:3px; overflow:hidden;">' +
             '<div style="width:' + pct + '%; height:100%; background:var(--gold); border-radius:3px; transition: width 0.3s ease;"></div>' +
@@ -2536,24 +2661,23 @@ export async function handleAdminDashboardRequest(
     function renderCountries() {
       const container = document.getElementById('countries-list');
       if (!container) return;
-      const counts = {};
-      cachedPageviews.forEach(p => {
-        const c = p.country || 'XX';
-        counts[c] = (counts[c] || 0) + 1;
-      });
-      const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
-      const total = cachedPageviews.length || 1;
+      const list = (cachedTopCountries && cachedTopCountries.length > 0) ? cachedTopCountries : [];
 
-      if (!sorted.length) {
+      if (!list.length) {
         container.innerHTML = '<p style="color: var(--text-dim); text-align: center; font-style: italic;">Sin datos geográficos</p>';
         return;
       }
-      container.innerHTML = sorted.map(([c, count]) => {
+
+      const total = (cachedStats && cachedStats.total_pageviews) || list.reduce((acc, c) => acc + (c.views || 0), 0) || 1;
+
+      container.innerHTML = list.slice(0, 5).map(item => {
+        const c = item.country || 'XX';
+        const count = item.views || 0;
         const pct = Math.round((count / total) * 100);
         return '<div style="margin-bottom: 0.65rem;">' +
           '<div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom: 0.2rem;">' +
             '<strong>' + escapeHtml(c) + '</strong>' +
-            '<span style="color:var(--text-dim)">' + count + ' visitas (' + pct + '%)</span>' +
+            '<span style="color:var(--text-dim)">' + count.toLocaleString() + ' visitas (' + pct + '%)</span>' +
           '</div>' +
           '<div style="width:100%; height:5px; background:var(--bg-surface); border-radius:3px; overflow:hidden;">' +
             '<div style="width:' + pct + '%; height:100%; background:var(--cyan); border-radius:3px; transition: width 0.3s ease;"></div>' +
@@ -2565,20 +2689,21 @@ export async function handleAdminDashboardRequest(
     function renderAggregates() {
       const refsEl = document.getElementById('top-referrers');
       if (!refsEl) return;
+      const list = (cachedTopReferrers && cachedTopReferrers.length > 0) ? cachedTopReferrers : [];
 
-      const refCounts = {};
-      cachedPageviews.forEach(p => {
-        const ref = p.utm_source !== 'direct' && p.utm_source ? p.utm_source : (p.referrer || 'Direct');
-        if (ref) refCounts[ref] = (refCounts[ref] || 0) + 1;
-      });
+      if (!list.length) {
+        refsEl.innerHTML = '<p style="color: var(--text-dim); font-style: italic;">Sin datos de referentes</p>';
+        return;
+      }
 
-      const sRefs = Object.entries(refCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
-      refsEl.innerHTML = sRefs.map(([rf, count]) =>
-        '<div style="display:flex; justify-content:space-between; padding:0.35rem 0; border-bottom:1px solid var(--border-subtle);">' +
+      refsEl.innerHTML = list.slice(0, 5).map(item => {
+        const rf = item.referrer || 'Direct';
+        const count = item.count || 0;
+        return '<div style="display:flex; justify-content:space-between; padding:0.35rem 0; border-bottom:1px solid var(--border-subtle);">' +
           '<span style="max-width:200px; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(rf) + '</span>' +
-          '<strong style="color:var(--gold);">' + count + '</strong>' +
-        '</div>'
-      ).join('') || '<p style="color: var(--text-dim); font-style: italic;">Sin datos</p>';
+          '<strong style="color:var(--gold);">' + count.toLocaleString() + '</strong>' +
+        '</div>';
+      }).join('');
     }
 
     function renderLeads() {
@@ -2624,7 +2749,7 @@ export async function handleAdminDashboardRequest(
         return;
       }
 
-      tbody.innerHTML = items.slice(0, 35).map(item => {
+      tbody.innerHTML = items.map(item => {
         const isBot = Boolean(item.is_bot);
         const isPrefetch = Boolean(item.is_prefetch || item.purpose);
         let tagClass = 'tag-human';
@@ -2656,35 +2781,64 @@ export async function handleAdminDashboardRequest(
     }
 
     function renderAll() {
-      const filtered = getFiltered();
-      const total = cachedPageviews.length;
-      const human = cachedPageviews.filter(p => !p.is_bot).length;
-      const bot = cachedPageviews.filter(p => p.is_bot).length;
-      const unique = new Set(cachedPageviews.map(p => p.visitor_hash)).size;
+      const stats = cachedStats || {
+        total_pageviews: cachedPageviews.length,
+        human_views: cachedPageviews.filter(p => !p.is_bot).length,
+        bot_views: cachedPageviews.filter(p => p.is_bot).length,
+        unique_visitors: new Set(cachedPageviews.map(p => p.visitor_hash)).size,
+        prefetches_count: cachedPrefetches.length,
+        all_time_pageviews: cachedPageviews.length,
+      };
+
+      const total = stats.total_pageviews;
+      const human = stats.human_views;
+      const bot = stats.bot_views;
+      const unique = stats.unique_visitors;
 
       document.getElementById('kpi-total').textContent = total.toLocaleString();
-      document.getElementById('kpi-total-sub').textContent = human + ' H · ' + bot + ' B';
+      document.getElementById('kpi-total-sub').textContent = stats.all_time_pageviews
+        ? stats.all_time_pageviews.toLocaleString() + ' histórico total'
+        : human + ' H · ' + bot + ' B';
       document.getElementById('kpi-human').textContent = human.toLocaleString();
-      document.getElementById('kpi-human-sub').textContent = (total > 0 ? Math.round((human/total)*100) : 0) + '% del total';
+      document.getElementById('kpi-human-sub').textContent = (total > 0 ? Math.round((human/total)*100) : 0) + '% del rango';
       document.getElementById('kpi-bot').textContent = bot.toLocaleString();
-      document.getElementById('kpi-bot-sub').textContent = (total > 0 ? Math.round((bot/total)*100) : 0) + '% del total';
+      document.getElementById('kpi-bot-sub').textContent = (total > 0 ? Math.round((bot/total)*100) : 0) + '% del rango';
       document.getElementById('kpi-unique').textContent = unique.toLocaleString();
-      document.getElementById('kpi-prefetch').textContent = cachedPrefetches.length.toLocaleString();
+      document.getElementById('kpi-prefetch').textContent = (stats.prefetches_count || cachedPrefetches.length).toLocaleString();
       document.getElementById('kpi-leads').textContent = cachedLeads.length.toLocaleString();
 
-      document.getElementById('table-count').textContent = 'Mostrando ' + filtered.length + ' de ' + total + ' eventos';
-      document.getElementById('search-counter').textContent = filtered.length + ' items';
+      const startItem = totalFiltered === 0 ? 0 : (currentPage - 1) * currentLimit + 1;
+      const endItem = Math.min(totalFiltered, currentPage * currentLimit);
+      document.getElementById('table-count').textContent = 'Mostrando ' + startItem + ' - ' + endItem + ' de ' + totalFiltered.toLocaleString() + ' eventos';
+      document.getElementById('search-counter').textContent = totalFiltered.toLocaleString() + ' en total';
+
+      const pagInfo = document.getElementById('pagination-info');
+      if (pagInfo) {
+        pagInfo.textContent = 'Página ' + currentPage + ' de ' + totalPages + ' (' + totalFiltered.toLocaleString() + ' eventos)';
+      }
+      const pageInd = document.getElementById('page-indicator');
+      if (pageInd) {
+        pageInd.textContent = currentPage + ' / ' + totalPages;
+      }
+      const btnFirst = document.getElementById('btn-page-first');
+      const btnPrev = document.getElementById('btn-page-prev');
+      const btnNext = document.getElementById('btn-page-next');
+      const btnLast = document.getElementById('btn-page-last');
+      if (btnFirst) btnFirst.disabled = currentPage <= 1;
+      if (btnPrev) btnPrev.disabled = currentPage <= 1;
+      if (btnNext) btnNext.disabled = currentPage >= totalPages;
+      if (btnLast) btnLast.disabled = currentPage >= totalPages;
 
       renderCircuitBreakers();
       renderTopPaths();
       renderCountries();
       renderAggregates();
       renderLeads();
-      renderTable(filtered);
+      renderTable(cachedPageviews);
     }
 
     window.exportData = function(fmt) {
-      const items = getFiltered();
+      const items = cachedPageviews;
       if (!items.length) return;
       if (fmt === 'json') {
         const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
@@ -2723,8 +2877,18 @@ export async function handleAdminDashboardRequest(
 
     async function fetchTelemetry(isManual) {
       try {
+        const params = new URLSearchParams({
+          range: currentRange,
+          segment: currentSegment,
+          path: currentPathFilter,
+          country: currentCountry,
+          search: searchQuery,
+          page: String(currentPage),
+          limit: String(currentLimit),
+        });
+
         const [telRes, leadsRes, metRes] = await Promise.allSettled([
-          fetch('/api/telemetry', { cache: 'no-store' }),
+          fetch('/api/telemetry?' + params.toString(), { cache: 'no-store' }),
           fetch('/api/leads', { cache: 'no-store' }),
           fetch('/api/metrics', { cache: 'no-store' }),
         ]);
@@ -2734,6 +2898,15 @@ export async function handleAdminDashboardRequest(
           cachedPageviews = data.pageviews || [];
           cachedPrefetches = data.prefetches || [];
           cachedDaily = data.daily_summaries || [];
+          cachedStats = data.stats || null;
+          cachedTopPages = data.top_pages || [];
+          cachedTopCountries = data.top_countries || [];
+          cachedTopReferrers = data.top_referrers || [];
+          if (data.pagination) {
+            currentPage = data.pagination.page;
+            totalPages = data.pagination.total_pages || 1;
+            totalFiltered = data.pagination.total_filtered || 0;
+          }
           if (data.circuit_breakers) {
             cachedCircuitBreakers = data.circuit_breakers;
           }
