@@ -48,6 +48,11 @@
   "ai": {
     "binding": "AI",
   },
+  "send_email": [
+    {
+      "name": "EMAIL",
+    },
+  ],
   "observability": {
     "enabled": true,
   },

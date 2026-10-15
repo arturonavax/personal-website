@@ -1052,9 +1052,9 @@ describe("ODD Task: Real-Time Admin Telemetry Dashboard Overhaul", () => {
     expect(html).toContain("btn-page-last");
     expect(html).toContain("select-limit");
 
-    // Live polling default option
-    expect(html).toContain('value="5000" selected');
-    expect(html).toContain('value="3000"');
+    // Live polling default option (paused by default to protect D1 daily quota)
+    expect(html).toContain('value="0" selected');
+    expect(html).toContain('value="30000"');
   });
 
   it("supports server-side pagination, aggregations, and filtering in /api/telemetry", async () => {
