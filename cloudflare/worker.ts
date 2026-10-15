@@ -680,6 +680,7 @@ export async function handleContactFormSubmission(
     }
 
     // Cloudflare Turnstile Captcha verification when configured
+    let isTurnstileVerified = !env.TURNSTILE_SECRET_KEY;
     if (env.TURNSTILE_SECRET_KEY) {
       if (!turnstileToken) {
         return new Response(
@@ -728,23 +729,37 @@ export async function handleContactFormSubmission(
             },
           );
         }
+        isTurnstileVerified = true;
       } catch (_) {
         // Fail-open on timeout or internal adapter failure
       }
     }
+
+    // Extract Cloudflare Edge Legal Telemetry (GDPR-compliant security & legitimate interest logging)
+    const ip = request.headers.get("cf-connecting-ip") || "127.0.0.1";
+    const userAgent = (request.headers.get("user-agent") || "").slice(0, 500);
+    const referer = (request.headers.get("referer") || "").slice(0, 500);
+
+    const cf = (request as unknown as { cf?: Record<string, any> }).cf;
+    const country = (cf?.country || "").toString().slice(0, 10);
+    const city = (cf?.city || "").toString().slice(0, 100);
+    const region = (cf?.region || cf?.regionCode || "").toString().slice(0, 100);
+    const timezone = (cf?.timezone || "").toString().slice(0, 100);
+    const asn = typeof cf?.asn === "number" ? cf.asn : null;
+    const asOrganization = (cf?.asOrganization || "").toString().slice(0, 150);
 
     // Format legacy body representation for fallback logging
     let formattedBody = `Name: ${name}\nEmail: ${email}`;
     if (phone) {
       formattedBody += `\nPhone: ${phone}`;
     }
-    formattedBody += `\nLocale: ${locale}\n\nMessage:\n${message}`;
+    formattedBody += `\nLocale: ${locale}\nIP: ${ip}\nLocation: ${[city, country].filter(Boolean).join(", ") || "Unknown"}\n\nMessage:\n${message}`;
 
-    // Persist in D1 contact_leads (Migration 0007 includes name, phone, locale)
+    // Persist in D1 contact_leads (Migration 0008 includes legal, network & geo telemetry)
     if (env.DB) {
       try {
         const stmt = env.DB.prepare(
-          "INSERT INTO contact_leads (from_email, subject, body, name, phone, locale, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+          "INSERT INTO contact_leads (from_email, subject, body, name, phone, locale, ip, country, city, region, timezone, asn, as_organization, user_agent, referer, turnstile_verified, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
         ).bind(
           email,
           `[Web] ${subject}`,
@@ -752,13 +767,30 @@ export async function handleContactFormSubmission(
           name,
           phone || null,
           locale,
+          ip,
+          country || null,
+          city || null,
+          region || null,
+          timezone || null,
+          asn,
+          asOrganization || null,
+          userAgent || null,
+          referer || null,
+          isTurnstileVerified ? 1 : 0,
         );
         await stmt.run();
       } catch (err) {
         try {
           const fallbackStmt = env.DB.prepare(
-            "INSERT INTO contact_leads (from_email, subject, body, created_at) VALUES (?, ?, ?, datetime('now'))",
-          ).bind(email, `[Web] ${subject}`, formattedBody);
+            "INSERT INTO contact_leads (from_email, subject, body, name, phone, locale, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+          ).bind(
+            email,
+            `[Web] ${subject}`,
+            formattedBody,
+            name,
+            phone || null,
+            locale,
+          );
           await fallbackStmt.run();
         } catch {}
       }
@@ -767,6 +799,8 @@ export async function handleContactFormSubmission(
     // Webhook dispatch if configured (Discord/Slack)
     const webhookUrl = env.DISCORD_WEBHOOK_URL || env.SLACK_WEBHOOK_URL;
     if (webhookUrl && ctx && typeof ctx.waitUntil === "function") {
+      const geoSummary = [city, country].filter(Boolean).join(", ");
+      const networkSummary = [asOrganization, asn ? `AS${asn}` : ""].filter(Boolean).join(" · ");
       const webhookPromise = fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -774,7 +808,7 @@ export async function handleContactFormSubmission(
           embeds: [
             {
               title: `New Direct Lead: [Web] ${subject}`,
-              description: `**From:** ${name} (\`${email}\`${phone ? ` · 📞 \`${phone}\`` : ""} · 🌐 \`${locale.toUpperCase()}\`)\n\n**Message:**\n${message.slice(0, 500)}`,
+              description: `**From:** ${name} (\`${email}\`${phone ? ` · 📞 \`${phone}\`` : ""} · 🌐 \`${locale.toUpperCase()}\`)\n📍 ${geoSummary || "Unknown"} (IP: \`${ip}\`${networkSummary ? ` · ${networkSummary}` : ""})\n\n**Message:**\n${message.slice(0, 500)}`,
               color: 0xd4af37, // Gold accent
               timestamp: new Date().toISOString(),
             },
@@ -1078,7 +1112,7 @@ export async function handleAdminDashboardRequest(
     if (env.DB) {
       try {
         const stmt = env.DB.prepare(
-          "SELECT id, name, from_email, phone, subject, body, locale, created_at FROM contact_leads ORDER BY created_at DESC LIMIT 50",
+          "SELECT id, name, from_email, phone, subject, body, locale, ip, country, city, region, timezone, asn, as_organization, user_agent, referer, turnstile_verified, created_at FROM contact_leads ORDER BY created_at DESC LIMIT 50",
         );
         const q =
           typeof (stmt as any).all === "function"
@@ -2564,6 +2598,9 @@ export async function handleAdminDashboardRequest(
         const email = escapeHtml(lead.from_email || '--');
         const phone = lead.phone ? '<br><small style="color:var(--text-dim); font-family:var(--font-mono)">📞 ' + escapeHtml(lead.phone) + '</small>' : '';
         const loc = escapeHtml((lead.locale || 'en').toUpperCase());
+        const geoParts = [lead.city, lead.country].filter(Boolean);
+        const geoText = geoParts.length ? '<br><small style="color:var(--text-primary); font-weight:600;">📍 ' + escapeHtml(geoParts.join(', ')) + '</small>' : '';
+        const ipText = lead.ip ? '<br><small style="color:var(--text-dim); font-family:var(--font-mono); font-size:10px;">IP: ' + escapeHtml(lead.ip) + (lead.as_organization ? ' · ' + escapeHtml(lead.as_organization) : '') + '</small>' : '';
         const subj = escapeHtml(lead.subject || '--');
         const rawBody = lead.body || '';
         const msg = escapeHtml(rawBody.replace(/[\\r\\n]+/g, ' ').slice(0, 80));
@@ -2571,7 +2608,7 @@ export async function handleAdminDashboardRequest(
           '<td>' + dt + '</td>' +
           '<td><strong style="color: var(--text-primary);">' + name + '</strong></td>' +
           '<td><span style="color: var(--gold);">' + email + '</span>' + phone + '</td>' +
-          '<td><span class="tag tag-country">' + loc + '</span></td>' +
+          '<td><span class="tag tag-country">' + loc + '</span>' + geoText + ipText + '</td>' +
           '<td>' + subj + '</td>' +
           '<td style="color: var(--text-dim); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' + escapeHtml(rawBody) + '">' + msg + '</td>' +
         '</tr>';
