@@ -9,7 +9,7 @@ location: "Miami, FL, Estados Unidos (Remoto)"
 employmentType: "Jornada completa"
 startDate: 2018-11-01
 endDate: 2019-06-01
-order: 5
+order: 6
 locale: "es"
 translationKey: "cobuild-lab"
 skills:

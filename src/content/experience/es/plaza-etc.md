@@ -9,7 +9,7 @@ location: "Perú (Remoto)"
 employmentType: "Contrato"
 startDate: 2018-10-01
 endDate: 2018-12-01
-order: 6
+order: 7
 locale: "es"
 translationKey: "plaza-etc"
 skills:

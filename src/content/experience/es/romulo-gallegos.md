@@ -9,7 +9,7 @@ location: "Venezuela (Presencial)"
 employmentType: "Jornada completa"
 startDate: 2017-12-01
 endDate: 2018-03-01
-order: 8
+order: 9
 locale: "es"
 translationKey: "romulo-gallegos"
 skills:

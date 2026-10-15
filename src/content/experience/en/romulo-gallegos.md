@@ -9,7 +9,7 @@ location: "Venezuela (On-site)"
 employmentType: "Full-time"
 startDate: 2017-12-01
 endDate: 2018-03-01
-order: 8
+order: 9
 locale: "en"
 translationKey: "romulo-gallegos"
 skills:

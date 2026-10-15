@@ -817,6 +817,18 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
       }
 
       function scrollToTarget(targetId, explicitIdx) {
+        if (
+          targetId === "contact" &&
+          typeof window.__smoothScrollToContact === "function"
+        ) {
+          if (typeof explicitIdx === "number") {
+            navTargetIdx = explicitIdx;
+          } else {
+            navTargetIdx = sectionIds.indexOf(targetId);
+          }
+          window.__smoothScrollToContact();
+          return;
+        }
         var targetEl = document.getElementById(targetId);
         if (!targetEl) return;
 

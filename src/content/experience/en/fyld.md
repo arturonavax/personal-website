@@ -9,7 +9,7 @@ location: "United States (Remote)"
 employmentType: "Full-time"
 startDate: 2019-05-01
 endDate: 2023-09-01
-order: 4
+order: 5
 locale: "en"
 translationKey: "fyld"
 skills:

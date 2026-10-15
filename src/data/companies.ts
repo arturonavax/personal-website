@@ -46,6 +46,17 @@ export const companiesData: Record<string, CompanyInfo> = {
     descriptionEs:
       "Plataforma empresarial de testimonio de datos (data witnessing) y pistas de auditoría criptográfica a prueba de manipulaciones mediante protocolos de anclaje de estado y árboles de Merkle.",
   },
+  "latam airlines": {
+    name: "LATAM Airlines",
+    url: "https://www.latamairlines.com",
+    domain: "latamairlines.com",
+    industry: "Commercial Aviation & Airline Operations",
+    industryEs: "Aviación Comercial & Operaciones Aéreas",
+    description:
+      "The leading airline holding company in Latin America, engineering mission-critical airline platforms, high-concurrency booking, and global flight operations.",
+    descriptionEs:
+      "El mayor grupo aerolínea de América Latina, con plataformas de misión crítica de alta concurrencia para reservas, logística y operaciones de vuelo a escala global.",
+  },
   leal: {
     name: "Leal",
     url: "https://leal.co",

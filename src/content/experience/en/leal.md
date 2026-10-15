@@ -9,7 +9,7 @@ location: "Bogota, D.C., Colombia (Hybrid / Remote)"
 employmentType: "Full-time"
 startDate: 2025-09-01
 endDate: 2026-06-01
-order: 1
+order: 2
 locale: "en"
 translationKey: "leal"
 skills:

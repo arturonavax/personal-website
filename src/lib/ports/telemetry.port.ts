@@ -70,6 +70,13 @@ export interface CircuitBreakerStatus {
   readonly tripReason: CircuitBreakerTripReason;
 }
 
+export interface BotCircuitBreakerStatus {
+  readonly state: "CLOSED" | "OPEN" | "HALF_OPEN";
+  readonly dailyBotCount: number;
+  readonly maxBotBudget: number;
+  readonly tripReason: CircuitBreakerTripReason;
+}
+
 export interface PrefetchCircuitBreakerPort {
   canRecordPrefetch(env?: Record<string, unknown>): boolean;
   canRecordVisit?(env?: Record<string, unknown>): boolean;
@@ -79,6 +86,16 @@ export interface PrefetchCircuitBreakerPort {
   recordVisit(): void;
   recordPrefetch(): void;
   getStatus(): CircuitBreakerStatus;
+  reset(): void;
+}
+
+export interface BotCircuitBreakerPort {
+  canRecordBot(env?: Record<string, unknown>): boolean;
+  getTripReason(): CircuitBreakerTripReason;
+  shouldLogIncident(dateString: string): boolean;
+  markIncidentLogged(dateString: string): void;
+  recordBot(): void;
+  getStatus(): BotCircuitBreakerStatus;
   reset(): void;
 }
 
