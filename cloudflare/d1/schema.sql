@@ -19,6 +19,10 @@ CREATE INDEX IF NOT EXISTS idx_pageviews_visitor ON pageviews(visitor_hash, crea
 CREATE INDEX IF NOT EXISTS idx_pageviews_attribution ON pageviews(utm_source, utm_medium, utm_campaign, created_at);
 CREATE INDEX IF NOT EXISTS idx_pageviews_content ON pageviews(utm_content, created_at);
 CREATE INDEX IF NOT EXISTS idx_pageviews_referrer ON pageviews(is_bot, referrer, created_at);
+CREATE INDEX IF NOT EXISTS idx_pageviews_created_at ON pageviews(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pageviews_perf_composite ON pageviews(created_at DESC, is_bot, country, path);
+CREATE INDEX IF NOT EXISTS idx_pageviews_path_created ON pageviews(path, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pageviews_country_created ON pageviews(country, created_at DESC);
 
 -- Edge Telemetry Table for Zero-Tracking Analytics (SPEC-001)
 CREATE TABLE IF NOT EXISTS edge_telemetry_events (
