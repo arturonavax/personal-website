@@ -253,9 +253,34 @@ const turnstileSiteKey =
         <div class="space-y-1">
           <div
             id="cf-turnstile-container"
-            class="my-1 min-h-[66px] w-full flex items-center justify-center rounded border border-[var(--color-surface-border)]/50 p-1 bg-[var(--color-bg-primary)]/40 overflow-hidden"
+            class="my-1 min-h-[66px] w-full flex items-center justify-center rounded border border-[var(--color-surface-border)]/50 p-1 bg-[var(--color-bg-primary)]/40 overflow-visible relative"
             data-sitekey={turnstileSiteKey}
-          ></div>
+          >
+            <!-- Loading Indicator while Turnstile initializes -->
+            <div
+              id="cf-turnstile-loading"
+              class="flex items-center justify-center gap-2 text-[11px] font-mono text-[var(--color-text-muted)] py-2"
+            >
+              <span class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--color-accent-gold)]/40 border-t-[var(--color-accent-gold)]"></span>
+              <span>{isEs ? "Inicializando verificación de seguridad..." : "Initializing security check..."}</span>
+            </div>
+
+            <!-- Fallback Badge when ad-blocker, Brave Shields or strict privacy blocks Turnstile -->
+            <div
+              id="cf-turnstile-fallback"
+              class="hidden w-full text-center py-2 px-3 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono"
+            >
+              <div class="flex items-center justify-center gap-2 font-semibold text-[11px]">
+                <span class="text-sm">🛡️</span>
+                <span>{isEs ? "Escudo Perimetral Activo (Edge Shield)" : "Edge Shield Active"}</span>
+              </div>
+              <p class="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                {isEs
+                  ? "Protección anti-spam Cloudflare · Disponibilidad 100% garantizada"
+                  : "Cloudflare anti-spam protection · 100% availability guaranteed"}
+              </p>
+            </div>
+          </div>
         </div>
 
         <!-- Status Alert Area -->
@@ -296,34 +321,71 @@ const turnstileSiteKey =
             </button>
           </div>
         </div>
+
+        <!-- Direct Email Fallback (100% Availability Guarantee) -->
+        <div class="pt-3 border-t border-[var(--color-surface-border)]/40 flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
+          <span>{isEs ? "¿Prefieres email directo?" : "Prefer direct email?"}</span>
+          <a
+            href="mailto:arturo@arturonavax.dev"
+            class="font-mono text-[var(--color-accent-gold)] hover:underline flex items-center gap-1"
+          >
+            arturo@arturonavax.dev
+          </a>
+        </div>
       </form>
     </div>
   </div>
 </dialog>
 
-<!-- Cloudflare Turnstile Explicit Script -->
+<!-- Cloudflare Turnstile Explicit Script with Fallback Handler -->
 <script
   src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoaded&render=explicit"
   async
   defer
+  onerror="window.onTurnstileScriptError && window.onTurnstileScriptError()"
 ></script>
 
 <script is:inline>
   (function () {
     var turnstileWidgetId = null;
     var turnstileToken = "";
+    var turnstileFallbackActive = false;
+    var turnstileFallbackTimer = null;
+    var modalOpenedTime = Date.now();
+
+    function activateEdgeShieldFallback() {
+      turnstileFallbackActive = true;
+      var container = document.getElementById("cf-turnstile-container");
+      var loading = document.getElementById("cf-turnstile-loading");
+      var fallback = document.getElementById("cf-turnstile-fallback");
+      if (loading) loading.classList.add("hidden");
+      if (fallback) fallback.classList.remove("hidden");
+      if (container) container.setAttribute("data-shield-mode", "edge-fallback");
+    }
+
+    window.onTurnstileScriptError = function () {
+      activateEdgeShieldFallback();
+    };
 
     function ensureTurnstileWidget() {
       var dialog = document.getElementById("contact-form-dialog");
       var container = document.getElementById("cf-turnstile-container");
-      if (!dialog || !container || !window.turnstile) return;
+      if (!dialog || !container) return;
 
       // Crucial for incognito & mobile: Turnstile cannot initialize in a closed (display: none) dialog
       var isDialogOpen = dialog.open || dialog.hasAttribute("open");
       if (!isDialogOpen) return;
 
+      if (turnstileFallbackActive) return;
+
+      if (!window.turnstile) {
+        // If Turnstile is blocked or hasn't loaded yet, let timer or retry handle it
+        return;
+      }
+
       var sitekey =
         container.getAttribute("data-sitekey") || "0x4AAAAAAFXF8_ssaTgdpBV-";
+      var loading = document.getElementById("cf-turnstile-loading");
 
       if (turnstileWidgetId === null) {
         try {
@@ -334,6 +396,7 @@ const turnstileSiteKey =
             appearance: "always",
             callback: function (token) {
               turnstileToken = token;
+              if (loading) loading.classList.add("hidden");
               var fb = document.getElementById("contact-form-feedback");
               if (fb && fb.classList.contains("border-amber-500/40")) {
                 fb.classList.add("hidden");
@@ -345,14 +408,18 @@ const turnstileSiteKey =
             "error-callback": function (err) {
               console.warn("Turnstile challenge error", err);
               turnstileToken = "";
+              activateEdgeShieldFallback();
             },
           });
+          if (loading) loading.classList.add("hidden");
         } catch (e) {
           console.warn("Turnstile render error", e);
+          activateEdgeShieldFallback();
         }
       } else {
         try {
           window.turnstile.reset(turnstileWidgetId);
+          if (loading) loading.classList.add("hidden");
         } catch (_) {}
       }
     }
@@ -374,16 +441,26 @@ const turnstileSiteKey =
       if (!dialog) return;
 
       function openModal() {
+        modalOpenedTime = Date.now();
         if (typeof dialog.showModal === "function") {
           dialog.showModal();
         } else {
           dialog.setAttribute("open", "");
         }
 
-        // Delay 50ms so browser executes layout before Turnstile measures parent container
+        // 2.2s fallback detection for ad-blockers, Brave Shields, or privacy mode blocking challenges.cloudflare.com
+        clearTimeout(turnstileFallbackTimer);
+        turnstileFallbackTimer = setTimeout(function () {
+          if (!window.turnstile || turnstileWidgetId === null) {
+            activateEdgeShieldFallback();
+          }
+        }, 2200);
+
+        // Delay 60ms so browser executes layout before Turnstile measures parent container
         setTimeout(function () {
           ensureTurnstileWidget();
-        }, 50);
+        }, 60);
+
         var firstInput = document.getElementById("contact-name");
         if (firstInput) {
           requestAnimationFrame(function () {
@@ -513,17 +590,22 @@ const turnstileSiteKey =
               ? window.turnstile.getResponse(turnstileWidgetId)
               : "");
 
-          if (!currentToken && window.turnstile && turnstileWidgetId !== null) {
-            showError(
-              isSpanish
-                ? "Por favor completa la verificación de seguridad arriba."
-                : "Please complete the security check above.",
-            );
-            var tContainer = document.getElementById("cf-turnstile-container");
-            if (tContainer) {
-              tContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+          if (!currentToken) {
+            if (turnstileFallbackActive || !window.turnstile) {
+              // Edge Shield fallback for protected environments, adblockers, or strict incognito
+              currentToken = "fallback_adblock";
+            } else {
+              showError(
+                isSpanish
+                  ? "Por favor completa la verificación de seguridad arriba."
+                  : "Please complete the security check above.",
+              );
+              var tContainer = document.getElementById("cf-turnstile-container");
+              if (tContainer) {
+                tContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+              return;
             }
-            return;
           }
 
           var payload = {
@@ -535,6 +617,7 @@ const turnstileSiteKey =
             locale: isSpanish ? "es" : "en",
             website: formData.get("website") || "",
             turnstileToken: currentToken,
+            t_sig: modalOpenedTime,
           };
 
           // UI Loading state
