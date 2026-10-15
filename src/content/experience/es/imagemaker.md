@@ -9,7 +9,7 @@ location: "Remoto / Santiago, Chile"
 employmentType: "Jornada completa"
 startDate: 2023-12-01
 endDate: 2024-08-01
-order: 3
+order: 4
 locale: "es"
 translationKey: "imagemaker"
 skills:

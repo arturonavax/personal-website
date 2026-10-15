@@ -9,7 +9,7 @@ location: "Bogotá, D.C., Colombia"
 employmentType: "Jornada completa"
 startDate: 2024-08-01
 endDate: 2025-09-01
-order: 2
+order: 3
 locale: "es"
 translationKey: "mercado-libre"
 skills:

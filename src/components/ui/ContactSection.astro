@@ -2,6 +2,7 @@
 import type { Locale } from "@/i18n/ui";
 import { useTranslations } from "@/i18n/utils";
 import ScheduleButton from "@/components/ScheduleButton.astro";
+import ContactFormModal from "@/components/ui/ContactFormModal.astro";
 
 interface Props {
   locale: Locale;
@@ -17,30 +18,34 @@ const email = "arturo@arturonavax.dev";
 <section
   id="contact"
   aria-labelledby="contact-heading"
-  class="scroll-mt-20 geometric-box no-corner-accents relative p-6 sm:p-10 rounded-sm overflow-hidden"
+  class="scroll-mt-28 geometric-box no-corner-accents relative p-5 sm:p-7 lg:p-8 rounded-sm overflow-hidden mb-16 sm:mb-24 lg:mb-32"
 >
-  <div class="space-y-8">
+  <div class="space-y-6 sm:space-y-8">
     <!-- Header -->
-    <div class="border-b border-[var(--color-surface-border-subtle)] pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-      <div>
+    <div class="border-b border-[var(--color-surface-border-subtle)] pb-6 space-y-3">
+      <!-- Top Meta Bar: Section Tag & Live Availability Indicator -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <span class="font-mono text-xs text-[var(--color-accent-gold)] tracking-wide uppercase">
           {t("section.contact")}
         </span>
+        <!-- Live Availability Indicator -->
+        <div class="inline-flex items-center gap-2 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs font-mono text-[var(--color-text-secondary)] shrink-0">
+          <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent-status)]"></span>
+          <span>{t("hero.badge")}</span>
+        </div>
+      </div>
+
+      <!-- Heading & Subtitle spanning natural width -->
+      <div class="max-w-3xl">
         <h2
           id="contact-heading"
-          class="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)] mt-1.5"
+          class="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)]"
         >
           {t("contact.title")}
         </h2>
-        <p class="mt-2 text-base sm:text-lg leading-relaxed text-[var(--color-text-secondary)] max-w-xl">
+        <p class="mt-2 text-base sm:text-lg leading-relaxed text-[var(--color-text-secondary)]">
           {t("contact.subtitle")}
         </p>
-      </div>
-
-      <!-- Live Availability Indicator -->
-      <div class="inline-flex items-center gap-2 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs font-mono text-[var(--color-text-secondary)] shrink-0 self-start sm:self-auto">
-        <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent-status)]"></span>
-        <span>{t("hero.badge")}</span>
       </div>
     </div>
 
@@ -89,21 +94,44 @@ const email = "arturo@arturonavax.dev";
         <!--/email_off-->
 
         <!-- Action CTAs -->
-        <div class="flex flex-wrap items-center gap-3 font-mono text-xs sm:text-sm">
+        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 font-mono text-xs sm:text-sm">
+          <!-- Direct Message Form Modal (Cloudflare Free Tier) -->
+          <button
+            type="button"
+            data-open-contact-modal
+            aria-haspopup="dialog"
+            class="btn-gold px-4 py-2.5 inline-flex items-center gap-2 shadow-sm font-semibold tracking-wide focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+          >
+            <svg
+              class="h-4 w-4 stroke-current fill-none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span>
+              {isEs ? "Enviar mensaje directo" : "Send direct message"}
+            </span>
+          </button>
+
           <ScheduleButton
             calLink="arturonavax"
             variant="direct"
             label={isEs ? "Agendar videollamada" : "Schedule a video call"}
             locale={locale}
-            class="btn-gold px-5 py-2.5 inline-flex items-center gap-2 shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+            class="btn-secondary px-4 py-2.5 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
           />
 
-          <!-- Telegram Direct Link (Task 6) -->
+          <!-- Telegram Direct Link -->
           <a
             href="https://t.me/arturonavax"
             target="_blank"
             rel="noopener noreferrer"
-            class="btn-secondary px-4 py-2.5 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+            class="btn-secondary px-3.5 py-2.5 inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
           >
             <svg
               class="h-4 w-4 stroke-current fill-none"
@@ -115,7 +143,7 @@ const email = "arturo@arturonavax.dev";
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
             </svg>
-            <span>Telegram Direct</span>
+            <span>Telegram</span>
           </a>
 
           <!-- LinkedIn Direct Link -->
@@ -123,7 +151,7 @@ const email = "arturo@arturonavax.dev";
             href="https://www.linkedin.com/in/arturonavax"
             target="_blank"
             rel="noopener noreferrer"
-            class="btn-secondary px-4 py-2.5 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+            class="btn-secondary px-3.5 py-2.5 inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
           >
             <svg
               class="h-4 w-4 stroke-current fill-none"
@@ -136,7 +164,7 @@ const email = "arturo@arturonavax.dev";
               <rect x="2" y="9" width="4" height="12"></rect>
               <circle cx="4" cy="4" r="2"></circle>
             </svg>
-            <span>LinkedIn Direct</span>
+            <span>LinkedIn</span>
           </a>
         </div>
 
@@ -208,7 +236,7 @@ const email = "arturo@arturonavax.dev";
       </div>
 
       <!-- Right Column: Recruiter Telemetry Factsheet -->
-      <div class="lg:col-span-5 rounded-sm border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-5 space-y-4 font-mono text-xs">
+      <div class="lg:col-span-5 rounded-sm border border-[var(--color-surface-border-subtle)] bg-[var(--color-bg-primary)]/40 p-4 sm:p-5 space-y-3 font-mono text-xs h-full flex flex-col justify-between">
         <div class="text-xs uppercase tracking-wider text-[var(--color-accent-gold)] font-semibold border-b border-[var(--color-surface-border-subtle)] pb-2 flex items-center justify-between gap-2">
           <span>
             {isEs
@@ -224,18 +252,18 @@ const email = "arturo@arturonavax.dev";
           </span>
         </div>
 
-        <div class="space-y-3 text-[var(--color-text-secondary)]">
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-[var(--color-text-muted)]">
+        <div class="space-y-2.5 text-[var(--color-text-secondary)]">
+          <div class="flex items-baseline justify-between gap-2 border-b border-[var(--color-surface-border-subtle)]/40 pb-2">
+            <span class="text-[var(--color-text-muted)] shrink-0">
               {isEs ? "Ubicación / Zona" : "Location / Timezone"}
             </span>
             <span class="text-right text-[var(--color-text-primary)] font-medium">
-              Bogotá, Colombia (UTC-5 · US-Aligned)
+              Bogotá, Colombia (UTC-5)
             </span>
           </div>
 
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-[var(--color-text-muted)]">
+          <div class="flex items-baseline justify-between gap-2 border-b border-[var(--color-surface-border-subtle)]/40 pb-2">
+            <span class="text-[var(--color-text-muted)] shrink-0">
               {isEs ? "Modalidad" : "Modality"}
             </span>
             <span class="text-right text-[var(--color-text-primary)] font-medium">
@@ -243,8 +271,8 @@ const email = "arturo@arturonavax.dev";
             </span>
           </div>
 
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-[var(--color-text-muted)]">
+          <div class="flex items-baseline justify-between gap-2 border-b border-[var(--color-surface-border-subtle)]/40 pb-2">
+            <span class="text-[var(--color-text-muted)] shrink-0">
               {isEs ? "Roles Objetivo" : "Target Roles"}
             </span>
             <span class="text-right text-[var(--color-accent-gold)] font-medium">
@@ -252,17 +280,17 @@ const email = "arturo@arturonavax.dev";
             </span>
           </div>
 
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-[var(--color-text-muted)]">
+          <div class="flex items-baseline justify-between gap-2 border-b border-[var(--color-surface-border-subtle)]/40 pb-2">
+            <span class="text-[var(--color-text-muted)] shrink-0">
               {isEs ? "Especialidad Core" : "Core Specialty"}
             </span>
             <span class="text-right text-[var(--color-accent-gold)] font-medium">
-              Go · Rust · Distributed Systems · AI · AppSec
+              Go · Rust · Distributed Systems · AppSec
             </span>
           </div>
 
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-[var(--color-text-muted)]">
+          <div class="flex items-baseline justify-between gap-2 pt-0.5">
+            <span class="text-[var(--color-text-muted)] shrink-0">
               {isEs ? "Respuesta SLA" : "Response SLA"}
             </span>
             <span class="text-right text-[var(--color-accent-status)] font-medium">
@@ -274,6 +302,8 @@ const email = "arturo@arturonavax.dev";
     </div>
   </div>
 </section>
+
+<ContactFormModal locale={locale} />
 
 <script
   is:inline
@@ -395,15 +425,17 @@ const email = "arturo@arturonavax.dev";
       }
 
       window.__isProgrammaticNav = true;
-      try {
-        sec.scrollIntoView({ behavior: "smooth", block: "start" });
-      } catch (_) {
+
+      // Native, fluid scroll to center the contact container cleanly without layout hacks
+      if ("scrollIntoView" in sec) {
+        sec.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
         var header = document.getElementById("site-header");
         var headerHeight = header ? header.offsetHeight : 56;
         var secRect = sec.getBoundingClientRect();
         var currentY =
           window.pageYOffset || document.documentElement.scrollTop || 0;
-        var targetY = Math.max(0, currentY + secRect.top - headerHeight - 24);
+        var targetY = Math.max(0, currentY + secRect.top - headerHeight - 20);
         window.scrollTo({ top: targetY, behavior: "smooth" });
       }
 
@@ -471,10 +503,13 @@ const email = "arturo@arturonavax.dev";
       if (!window.__contactClickBound) {
         window.__contactClickBound = true;
         document.addEventListener("click", function (e) {
+          if (e.defaultPrevented) return;
           var target = e.target;
           var link =
             target && target.closest
-              ? target.closest('a[href$="#contact"], a[href="#contact"]')
+              ? target.closest(
+                  'a[href$="#contact"], a[href="#contact"], [data-contact-scroll]',
+                )
               : null;
           if (link) {
             var href = link.getAttribute("href") || "";
@@ -489,14 +524,8 @@ const email = "arturo@arturonavax.dev";
             if (isSamePage) {
               var s = getContactSec();
               if (s) {
-                // Si el enlace está dentro del header o tiene data-contact-scroll, el listener directo maneja el scroll
-                if (
-                  !link.closest("header, #mobile-nav-details") &&
-                  !link.hasAttribute("data-contact-scroll")
-                ) {
-                  e.preventDefault();
-                  smoothScrollToContact();
-                }
+                e.preventDefault();
+                smoothScrollToContact();
               }
             } else {
               highlightContact();

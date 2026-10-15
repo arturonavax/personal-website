@@ -17,27 +17,27 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
           ? "Language recommendation"
           : "Recomendación de idioma"
       }
-      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 hidden max-w-sm w-[calc(100vw-2rem)] sm:w-auto items-center gap-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/95 px-3.5 py-2.5 shadow-xl shadow-black/50 backdrop-blur-md transition-all duration-300 ease-out translate-y-3 -translate-x-1/2 opacity-0 text-xs font-mono"
+      class="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 hidden w-[calc(100vw-1.5rem)] max-w-sm sm:w-auto sm:max-w-md items-center justify-between gap-2 sm:gap-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/75 px-3 py-2 sm:px-4 sm:py-2.5 shadow-2xl shadow-black/60 backdrop-blur-xl transition-all duration-300 ease-out translate-y-3 -translate-x-1/2 opacity-0 text-xs font-mono"
       data-current-locale={currentLocale}
       data-target-locale={targetLocale}
       data-target-url={counterpartUrl}
     >
-      <div class="flex items-center gap-2 text-[var(--color-text-primary)] shrink-0 font-sans">
-        <span class="text-base select-none" aria-hidden="true">
+      <div class="flex items-center gap-2 text-[var(--color-text-primary)] min-w-0 flex-1 font-sans">
+        <span class="text-base select-none shrink-0" aria-hidden="true">
           🌐
         </span>
-        <span class="text-xs font-normal">
+        <span class="text-[11px] sm:text-xs font-normal leading-tight min-w-0">
           {currentLocale === "en" ? (
             <>
               Contenido disponible en{" "}
-              <strong class="font-semibold text-[var(--color-accent-gold)]">
+              <strong class="font-semibold text-[var(--color-accent-gold)] whitespace-nowrap">
                 Español
               </strong>
             </>
           ) : (
             <>
               Also available in{" "}
-              <strong class="font-semibold text-[var(--color-accent-gold)]">
+              <strong class="font-semibold text-[var(--color-accent-gold)] whitespace-nowrap">
                 English
               </strong>
             </>
@@ -45,7 +45,7 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
         </span>
       </div>
 
-      <div class="flex items-center gap-1.5 shrink-0 ml-auto">
+      <div class="flex items-center gap-1.5 shrink-0 ml-1.5 sm:ml-auto">
         <a
           href={counterpartUrl}
           hreflang={targetLocale}
@@ -53,7 +53,7 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
           data-astro-prefetch="hover"
           data-lang-switch={targetLocale}
           id="lang-suggestion-accept"
-          class="inline-flex h-7 items-center justify-center rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2.5 text-[11px] font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+          class="inline-flex h-7 items-center justify-center rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2.5 text-[11px] font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer whitespace-nowrap"
         >
           {currentLocale === "en" ? "Cambiar" : "Switch"} &rarr;
         </a>
@@ -66,7 +66,7 @@ const targetLocale = currentLocale === "en" ? "es" : "en";
               ? "Dismiss language suggestion"
               : "Descartar sugerencia de idioma"
           }
-          class="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)]/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+          class="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)]/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shrink-0"
         >
           <svg
             class="h-3.5 w-3.5 stroke-current fill-none"

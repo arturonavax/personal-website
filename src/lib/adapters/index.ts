@@ -6,6 +6,7 @@ export * from "./cloudflare/cache-api.adapter";
 export * from "./cloudflare/edge-routing-policy.adapter";
 export * from "./cloudflare/circuit-breaker.adapter";
 export * from "./cloudflare/prefetch-circuit-breaker.adapter";
+export * from "./cloudflare/bot-circuit-breaker.adapter";
 export * from "./cloudflare/deployment-registry.adapter";
 
 export * from "./fallback/local-filesystem-storage.adapter";

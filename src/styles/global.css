@@ -914,8 +914,7 @@ html.lang-text-reacting .copy-feedback,
 
 /* CSS Rendering Virtualization for Extensive Feeds (SPEC-010 Subsystem E) */
 .virtualized-feed-item {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 420px;
+  content-visibility: visible;
 }
 
 /* Terminal Block Cursor: compositor-only opacity (SPEC-007 REQ-EXP-TYPEWRITER) */

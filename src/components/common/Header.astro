@@ -721,7 +721,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
 
       document
         .querySelectorAll(
-          "header a, #mobile-nav-details a, [data-nav-reset-scroll], [data-contact-scroll]",
+          "header a, #mobile-nav-details a, [data-nav-reset-scroll], [data-contact-scroll], a[href='#contact'], a[href$='#contact']",
         )
         .forEach(function (link) {
           if (!boundElements.has(link)) {
@@ -729,10 +729,16 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
             link.addEventListener("click", function (e) {
               var currentPath =
                 window.location.pathname.replace(/\/+$/, "") || "/";
+              var rawHref = link.getAttribute("href") || "";
               var linkPath = (link.pathname || "").replace(/\/+$/, "") || "/";
-              var isContact = link.hash === "#contact";
+              var isHashOnly = rawHref.startsWith("#");
+              var isContact =
+                link.hash === "#contact" ||
+                rawHref === "#contact" ||
+                rawHref.endsWith("#contact") ||
+                link.hasAttribute("data-contact-scroll");
 
-              if (linkPath !== currentPath) {
+              if (!isHashOnly && linkPath !== currentPath) {
                 if (!isContact) {
                   try {
                     sessionStorage.setItem("nav_reset_scroll", "1");
@@ -778,20 +784,24 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                   var contactSec = document.getElementById("contact");
                   if (contactSec) {
                     window.__isProgrammaticNav = true;
-                    try {
+                    if ("scrollIntoView" in contactSec) {
                       contactSec.scrollIntoView({
                         behavior: "smooth",
-                        block: "start",
+                        block: "center",
                       });
-                    } catch (_) {
+                    } else {
                       var siteHeader = document.getElementById("site-header");
-                      var headerOffset =
-                        (siteHeader ? siteHeader.offsetHeight : 56) + 24;
+                      var headerOffset = siteHeader
+                        ? siteHeader.offsetHeight
+                        : 56;
+                      var secRect = contactSec.getBoundingClientRect();
+                      var currentY =
+                        window.pageYOffset ||
+                        document.documentElement.scrollTop ||
+                        0;
                       var targetY = Math.max(
                         0,
-                        contactSec.getBoundingClientRect().top +
-                          window.pageYOffset -
-                          headerOffset,
+                        currentY + secRect.top - headerOffset - 20,
                       );
                       window.scrollTo({ top: targetY, behavior: "smooth" });
                     }

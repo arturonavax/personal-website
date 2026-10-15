@@ -50,6 +50,9 @@ const {
   keyAchievements,
 } = experience.data;
 
+const hasBodyContent = Boolean(
+  experience.body && experience.body.trim().length > 0,
+);
 const isEs = currentLocale === "es";
 const basePath = isEs ? "/es" : "";
 const [_, ...slugParts] = experience.id.replace(/\.md$/, "").split("/");
@@ -489,9 +492,31 @@ const jobIndexItems: IndexItem[] = [
               : companyInfo.description}
           </p>
         </div>
-        <div class="mt-4 [&>p]:leading-8">
-          <Content />
-        </div>
+        {hasBodyContent ? (
+          <div class="mt-4 [&>p]:leading-8">
+            <Content />
+          </div>
+        ) : (
+          <div class="mt-4 p-4 sm:p-5 rounded-lg border border-dashed border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/50 flex items-center gap-3 font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">
+            <span class="h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse shrink-0"></span>
+            <TypewriterTicker
+              phrases={
+                isEs
+                  ? [
+                      `Escribiendo la historia en ${company}...`,
+                      "Diseñando arquitecturas distribuidas de alta concurrencia...",
+                      "Consolidando nuevos hitos de ingeniería...",
+                    ]
+                  : [
+                      `Writing history at ${company}...`,
+                      "Engineering high-concurrency distributed architectures...",
+                      "Establishing new engineering milestones...",
+                    ]
+              }
+              class="text-xs sm:text-sm text-[var(--color-text-secondary)]"
+            />
+          </div>
+        )}
       </section>
 
       <!-- Key Architectural Achievements -->
@@ -504,16 +529,38 @@ const jobIndexItems: IndexItem[] = [
             ? "Principales Hitos de Ingeniería y Arquitectura"
             : "Key Architectural & Engineering Achievements"}
         </h2>
-        <ul class="space-y-3.5 text-sm sm:text-base text-[var(--color-text-secondary)] leading-relaxed">
-          {keyAchievements.map((achievement) => (
-            <li class="flex items-start gap-3">
-              <span class="text-[var(--color-accent-gold)] font-bold text-sm select-none shrink-0 mt-0.5">
-                &bull;
-              </span>
-              <span>{achievement}</span>
-            </li>
-          ))}
-        </ul>
+        {keyAchievements.length > 0 ? (
+          <ul class="space-y-3.5 text-sm sm:text-base text-[var(--color-text-secondary)] leading-relaxed">
+            {keyAchievements.map((achievement) => (
+              <li class="flex items-start gap-3">
+                <span class="text-[var(--color-accent-gold)] font-bold text-sm select-none shrink-0 mt-0.5">
+                  &bull;
+                </span>
+                <span>{achievement}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div class="p-4 sm:p-5 rounded-lg border border-dashed border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]/50 flex items-center gap-3 font-mono text-xs sm:text-sm text-[var(--color-text-secondary)]">
+            <span class="h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse shrink-0"></span>
+            <TypewriterTicker
+              phrases={
+                isEs
+                  ? [
+                      `Escribiendo la historia en ${company}...`,
+                      "Diseñando arquitecturas distribuidas de alta concurrencia...",
+                      "Consolidando nuevos hitos de ingeniería...",
+                    ]
+                  : [
+                      `Writing history at ${company}...`,
+                      "Engineering high-concurrency distributed architectures...",
+                      "Establishing new engineering milestones...",
+                    ]
+              }
+              class="text-xs sm:text-sm text-[var(--color-text-secondary)]"
+            />
+          </div>
+        )}
 
         {!endDate && (
           <div class="mt-6 pt-4 border-t border-[var(--color-surface-border-subtle)] flex flex-wrap items-center justify-between gap-3 font-mono text-xs">

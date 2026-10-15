@@ -9,7 +9,7 @@ location: "Miami, FL, United States (Remote)"
 employmentType: "Full-time"
 startDate: 2018-11-01
 endDate: 2019-06-01
-order: 5
+order: 6
 locale: "en"
 translationKey: "cobuild-lab"
 skills:

@@ -1,0 +1,575 @@
+---
+import type { Locale } from "@/i18n/ui";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const isEs = locale === "es";
+const turnstileSiteKey =
+  import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAAFXF8_ssaTgdpBV-";
+---
+
+<!-- Native Accessible Dialog (Direct Message Submission) -->
+<dialog
+  id="contact-form-dialog"
+  aria-labelledby="contact-form-title"
+  aria-modal="true"
+  class="m-auto rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] text-[var(--color-text-primary)] p-0 shadow-2xl backdrop:bg-black/75 backdrop:backdrop-blur-sm max-w-xl w-[94vw] sm:w-[520px] max-h-[92vh] overflow-hidden"
+>
+  <div class="flex flex-col h-full max-h-[92vh]">
+    <!-- Dialog Header -->
+    <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] px-5 py-4 bg-[var(--color-bg-primary)]/50 shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="flex h-9 w-9 shrink-0 aspect-square items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-2 text-[var(--color-accent-gold)] shadow-xs">
+          <svg
+            class="h-4 w-4 stroke-current fill-none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h3
+            id="contact-form-title"
+            class="text-sm sm:text-base font-bold font-mono text-[var(--color-text-primary)] tracking-tight"
+          >
+            {isEs ? "Enviar Mensaje Directo" : "Direct Message Channel"}
+          </h3>
+          <p class="text-[11px] font-mono text-[var(--color-text-muted)] flex items-center gap-1.5">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)]"></span>
+            <span>
+              {isEs
+                ? "Canal Directo Cifrado · Entrega Inmediata"
+                : "Encrypted Direct Channel · Immediate Delivery"}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Close Button with Esc keycap -->
+      <button
+        type="button"
+        id="close-contact-modal-btn"
+        aria-label={isEs ? "Cerrar modal" : "Close modal"}
+        class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-1 text-xs font-mono text-[var(--color-text-muted)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+      >
+        <span class="text-[10px] hidden sm:inline">Esc</span>
+        <svg
+          class="h-3.5 w-3.5 stroke-current fill-none"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Form Content -->
+    <div class="p-5 sm:p-6 overflow-y-auto">
+      <form id="contact-direct-form" class="space-y-4 font-mono text-xs">
+        <!-- Anti-spam Honeypot Field (invisible to humans) -->
+        <div class="hidden" aria-hidden="true">
+          <label for="contact-website-field">Website</label>
+          <input
+            type="text"
+            id="contact-website-field"
+            name="website"
+            tabindex="-1"
+            autocomplete="off"
+          />
+        </div>
+
+        <!-- Name & Organization -->
+        <div class="space-y-1">
+          <label
+            for="contact-name"
+            class="block text-[11px] uppercase tracking-wider text-[var(--color-text-muted)] font-semibold"
+          >
+            {isEs ? "Nombre o Empresa" : "Name or Organization"}
+            <span class="text-[var(--color-accent-gold)]">*</span>
+          </label>
+          <input
+            type="text"
+            id="contact-name"
+            name="name"
+            required
+            maxlength="100"
+            placeholder={isEs ? "Ej. Ada Lovelace" : "e.g. Ada Lovelace"}
+            class="w-full rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]/60 focus:border-[var(--color-accent-gold)] focus:outline-none transition-colors"
+          />
+        </div>
+
+        <!-- Email Address -->
+        <div class="space-y-1">
+          <label
+            for="contact-email"
+            class="block text-[11px] uppercase tracking-wider text-[var(--color-text-muted)] font-semibold"
+          >
+            {isEs ? "Correo Electrónico" : "Email Address"}
+            <span class="text-[var(--color-accent-gold)]">*</span>
+          </label>
+          <input
+            type="email"
+            id="contact-email"
+            name="email"
+            required
+            maxlength="120"
+            placeholder="name@domain.com"
+            class="w-full rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]/60 focus:border-[var(--color-accent-gold)] focus:outline-none transition-colors"
+          />
+        </div>
+
+        <!-- Optional Phone / WhatsApp with Country Code -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between">
+            <label
+              for="contact-phone"
+              class="block text-[11px] uppercase tracking-wider text-[var(--color-text-muted)] font-semibold"
+            >
+              {isEs ? "Teléfono / WhatsApp" : "Phone / WhatsApp"}
+            </label>
+            <span class="text-[10px] text-[var(--color-text-muted)]/80">
+              {isEs ? "(Opcional)" : "(Optional)"}
+            </span>
+          </div>
+          <div class="flex gap-2">
+            <div class="w-32 shrink-0">
+              <label for="contact-country-code" class="sr-only">
+                {isEs ? "Código de país" : "Country code"}
+              </label>
+              <select
+                id="contact-country-code"
+                name="country_code"
+                aria-label={isEs ? "Código de área telefónico" : "Phone country code"}
+                class="w-full rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-2 text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none transition-colors cursor-pointer"
+              >
+                <option value="+1">+1 (US/CA)</option>
+                <option value="+57" selected={isEs ? true : false}>+57 (CO)</option>
+                <option value="+34">+34 (ES)</option>
+                <option value="+52">+52 (MX)</option>
+                <option value="+54">+54 (AR)</option>
+                <option value="+56">+56 (CL)</option>
+                <option value="+51">+51 (PE)</option>
+                <option value="+44">+44 (UK)</option>
+                <option value="+49">+49 (DE)</option>
+                <option value="+33">+33 (FR)</option>
+                <option value="+55">+55 (BR)</option>
+                <option value="+351">+351 (PT)</option>
+                <option value="+41">+41 (CH)</option>
+                <option value="+61">+61 (AU)</option>
+                <option value="+81">+81 (JP)</option>
+                <option value="+91">+91 (IN)</option>
+                <option value="">{isEs ? "Otro" : "Other"}</option>
+              </select>
+            </div>
+            <input
+              type="tel"
+              id="contact-phone"
+              name="phone"
+              maxlength="25"
+              placeholder={isEs ? "300 123 4567" : "555-0199"}
+              class="flex-1 min-w-0 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]/60 focus:border-[var(--color-accent-gold)] focus:outline-none transition-colors"
+            />
+          </div>
+        </div>
+
+        <!-- Subject Topic -->
+        <div class="space-y-1">
+          <label
+            for="contact-subject"
+            class="block text-[11px] uppercase tracking-wider text-[var(--color-text-muted)] font-semibold"
+          >
+            {isEs ? "Área de Interés / Asunto" : "Topic / Inquiry"}
+          </label>
+          <select
+            id="contact-subject"
+            name="subject"
+            class="w-full rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none transition-colors cursor-pointer"
+          >
+            <option value="Consultoría de Arquitectura y Rendimiento">
+              {isEs
+                ? "Consultoría de Arquitectura & Rendimiento Distribuido"
+                : "Distributed Architecture & Performance Consulting"}
+            </option>
+            <option value="Oportunidad Profesional (Staff / Senior Engineer)">
+              {isEs
+                ? "Oportunidad Profesional (Staff / Senior Engineer)"
+                : "Career Opportunity (Staff / Senior Engineer)"}
+            </option>
+            <option value="Seguridad & DevSecOps">
+              {isEs
+                ? "Hardening de Seguridad & DevSecOps"
+                : "Security Hardening & DevSecOps"}
+            </option>
+            <option value="Colaboración General & Asesoría">
+              {isEs
+                ? "Colaboración General & Asesoría"
+                : "General Collaboration & Advisory"}
+            </option>
+          </select>
+        </div>
+
+        <!-- Message -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between">
+            <label
+              for="contact-message"
+              class="block text-[11px] uppercase tracking-wider text-[var(--color-text-muted)] font-semibold"
+            >
+              {isEs ? "Mensaje" : "Message"}
+              <span class="text-[var(--color-accent-gold)]">*</span>
+            </label>
+            <span class="text-[10px] text-[var(--color-text-muted)]/70">
+              {isEs ? "Mínimo 20 caracteres" : "Minimum 20 characters"}
+            </span>
+          </div>
+          <textarea
+            id="contact-message"
+            name="message"
+            required
+            minlength="20"
+            rows="4"
+            maxlength="4000"
+            placeholder={
+              isEs
+                ? "Describe brevemente tus requerimientos o la oportunidad..."
+                : "Briefly describe your project requirements or opportunity..."
+            }
+            class="w-full rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]/60 focus:border-[var(--color-accent-gold)] focus:outline-none transition-colors resize-none"
+          ></textarea>
+        </div>
+
+        <!-- Cloudflare Turnstile Verification -->
+        <div class="space-y-1">
+          <div
+            id="cf-turnstile-container"
+            class="my-1 min-h-[65px] flex items-center justify-center rounded border border-[var(--color-surface-border)]/50 p-1 bg-[var(--color-bg-primary)]/40"
+            data-sitekey={turnstileSiteKey}
+          ></div>
+        </div>
+
+        <!-- Status Alert Area -->
+        <div
+          id="contact-form-feedback"
+          class="hidden p-3 rounded-sm font-mono text-xs border"
+          role="status"
+          aria-live="polite"
+        ></div>
+
+        <!-- Form Actions -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <span class="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1.5 self-start sm:self-auto">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent-status)]"></span>
+            <span>
+              {isEs ? "Respuesta promedio < 24h" : "Average response < 24h"}
+            </span>
+          </span>
+
+          <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              id="cancel-contact-form-btn"
+              class="px-3.5 py-2 rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer text-xs"
+            >
+              {isEs ? "Cancelar" : "Cancel"}
+            </button>
+
+            <button
+              type="submit"
+              id="submit-contact-form-btn"
+              class="btn-gold px-4 py-2 inline-flex items-center gap-2 text-xs font-semibold tracking-wide cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+            >
+              <span id="submit-btn-text">
+                {isEs ? "Enviar Mensaje" : "Send Message"}
+              </span>
+              <span id="submit-btn-arrow">&rarr;</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</dialog>
+
+<!-- Cloudflare Turnstile Explicit Script -->
+<script
+  src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoaded&render=explicit"
+  async
+  defer
+></script>
+
+<script is:inline>
+  (function () {
+    var turnstileWidgetId = null;
+    var turnstileToken = "";
+
+    function renderTurnstileWidget() {
+      var container = document.getElementById("cf-turnstile-container");
+      if (!container || !window.turnstile || turnstileWidgetId !== null) return;
+      var sitekey =
+        container.getAttribute("data-sitekey") || "1x00000000000000000000AA";
+      try {
+        turnstileWidgetId = window.turnstile.render(container, {
+          sitekey: sitekey,
+          theme: "dark",
+          size: "flexible",
+          callback: function (token) {
+            turnstileToken = token;
+          },
+          "expired-callback": function () {
+            turnstileToken = "";
+          },
+          "error-callback": function () {
+            // Fail-open or retry
+          },
+        });
+      } catch (_) {}
+    }
+
+    window.onTurnstileLoaded = function () {
+      renderTurnstileWidget();
+    };
+
+    function setupContactModal() {
+      var dialog = document.getElementById("contact-form-dialog");
+      var closeBtn = document.getElementById("close-contact-modal-btn");
+      var cancelBtn = document.getElementById("cancel-contact-form-btn");
+      var form = document.getElementById("contact-direct-form");
+      var feedback = document.getElementById("contact-form-feedback");
+      var submitBtn = document.getElementById("submit-contact-form-btn");
+      var submitText = document.getElementById("submit-btn-text");
+      var submitArrow = document.getElementById("submit-btn-arrow");
+
+      if (!dialog) return;
+
+      function openModal() {
+        if (typeof dialog.showModal === "function") {
+          dialog.showModal();
+        } else {
+          dialog.setAttribute("open", "");
+        }
+        renderTurnstileWidget();
+        var firstInput = document.getElementById("contact-name");
+        if (firstInput) {
+          requestAnimationFrame(function () {
+            firstInput.focus();
+          });
+        }
+      }
+
+      function closeModal() {
+        if (typeof dialog.close === "function") {
+          dialog.close();
+        } else {
+          dialog.removeAttribute("open");
+        }
+      }
+
+      window.openContactModal = openModal;
+      window.closeContactModal = closeModal;
+
+      if (closeBtn && !closeBtn.__bound) {
+        closeBtn.__bound = true;
+        closeBtn.addEventListener("click", closeModal);
+      }
+
+      if (cancelBtn && !cancelBtn.__bound) {
+        cancelBtn.__bound = true;
+        cancelBtn.addEventListener("click", closeModal);
+      }
+
+      // Close on backdrop click
+      if (!dialog.__backdropBound) {
+        dialog.__backdropBound = true;
+        dialog.addEventListener("click", function (e) {
+          if (e.target === dialog) {
+            closeModal();
+          }
+        });
+      }
+
+      // Bind all trigger buttons
+      document
+        .querySelectorAll("[data-open-contact-modal]")
+        .forEach(function (btn) {
+          if (!btn.__boundModalTrigger) {
+            btn.__boundModalTrigger = true;
+            btn.addEventListener("click", function (e) {
+              e.preventDefault();
+              openModal();
+            });
+          }
+        });
+
+      // Handle Form Submit
+      if (form && !form.__boundSubmit) {
+        form.__boundSubmit = true;
+        form.addEventListener("submit", async function (e) {
+          e.preventDefault();
+          if (!submitBtn || !submitText) return;
+
+          var formData = new FormData(form);
+          var name = (formData.get("name") || "").toString().trim();
+          var email = (formData.get("email") || "").toString().trim();
+          var message = (formData.get("message") || "").toString().trim();
+          var isSpanish =
+            document.documentElement.lang === "es" ||
+            window.location.pathname.startsWith("/es");
+
+          function showError(msg) {
+            if (feedback) {
+              feedback.textContent = msg;
+              feedback.className =
+                "p-3 rounded-sm font-mono text-xs border border-red-500/40 bg-red-500/10 text-red-400 block";
+            }
+          }
+
+          if (!name) {
+            showError(
+              isSpanish
+                ? "Por favor ingresa tu nombre u organización."
+                : "Please enter your name or organization.",
+            );
+            var nameInput = document.getElementById("contact-name");
+            if (nameInput) nameInput.focus();
+            return;
+          }
+
+          var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!email || !emailRegex.test(email)) {
+            showError(
+              isSpanish
+                ? "Por favor ingresa un correo electrónico válido."
+                : "Please enter a valid email address.",
+            );
+            var emailInput = document.getElementById("contact-email");
+            if (emailInput) emailInput.focus();
+            return;
+          }
+
+          if (message.length < 20) {
+            showError(
+              isSpanish
+                ? "El mensaje debe tener al menos 20 caracteres (" +
+                    message.length +
+                    "/20)."
+                : "Message must be at least 20 characters long (" +
+                    message.length +
+                    "/20).",
+            );
+            var msgInput = document.getElementById("contact-message");
+            if (msgInput) msgInput.focus();
+            return;
+          }
+
+          var rawPhone = (formData.get("phone") || "").toString().trim();
+          var countryCode = (formData.get("country_code") || "")
+            .toString()
+            .trim();
+          var fullPhone = rawPhone
+            ? countryCode && !rawPhone.startsWith("+")
+              ? countryCode + " " + rawPhone
+              : rawPhone
+            : "";
+
+          var currentToken =
+            turnstileToken ||
+            (window.turnstile && turnstileWidgetId !== null
+              ? window.turnstile.getResponse(turnstileWidgetId)
+              : "");
+
+          var payload = {
+            name: name,
+            email: email,
+            phone: fullPhone,
+            subject: formData.get("subject"),
+            message: message,
+            website: formData.get("website") || "",
+            turnstileToken: currentToken,
+          };
+
+          // UI Loading state
+          submitBtn.disabled = true;
+          var originalText = submitText.textContent;
+          submitText.textContent = isSpanish ? "Enviando..." : "Sending...";
+          if (submitArrow) submitArrow.classList.add("hidden");
+
+          if (feedback) {
+            feedback.classList.add("hidden");
+            feedback.className =
+              "hidden p-3 rounded-sm font-mono text-xs border";
+          }
+
+          try {
+            var response = await fetch("/api/contact", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            var result = await response.json().catch(function () {
+              return {};
+            });
+
+            if (response.ok && result.status !== "error") {
+              if (feedback) {
+                feedback.textContent =
+                  result.message ||
+                  (isSpanish
+                    ? "¡Mensaje recibido con éxito!"
+                    : "Message received successfully!");
+                feedback.className =
+                  "p-3 rounded-sm font-mono text-xs border border-[var(--color-accent-status)]/40 bg-[var(--color-accent-status)]/10 text-[var(--color-accent-status)] block";
+              }
+              form.reset();
+              if (window.turnstile && turnstileWidgetId !== null) {
+                try {
+                  window.turnstile.reset(turnstileWidgetId);
+                } catch (_) {}
+              }
+              turnstileToken = "";
+              setTimeout(function () {
+                closeModal();
+                if (feedback) feedback.classList.add("hidden");
+              }, 2200);
+            } else {
+              showError(
+                result.error ||
+                  (isSpanish
+                    ? "Error al enviar. Por favor escribe directamente a arturo@arturonavax.dev"
+                    : "Submission error. Please write directly to arturo@arturonavax.dev"),
+              );
+            }
+          } catch (_) {
+            showError(
+              isSpanish
+                ? "Error de conexión. Puedes escribir directamente a arturo@arturonavax.dev"
+                : "Connection error. You can write directly to arturo@arturonavax.dev",
+            );
+          } finally {
+            submitBtn.disabled = false;
+            submitText.textContent = originalText;
+            if (submitArrow) submitArrow.classList.remove("hidden");
+          }
+        });
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupContactModal);
+    } else {
+      setupContactModal();
+    }
+    document.addEventListener("astro:page-load", setupContactModal);
+  })();
+</script>
