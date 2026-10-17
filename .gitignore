@@ -42,9 +42,11 @@ prompt-perf.json
 yo2.jpg
 
 
-# Ignored remote content synced from R2
-src/content/posts/**
-!src/content/posts/.gitkeep
-public/CV.pdf
+# Content synced from Cloudflare R2 (source of truth: bucket personal-website-content).
+# Only the .gitkeep placeholders are versioned. See README "Content & R2".
+src/content/*/**
+!src/content/*/.gitkeep
+public/downloads/**
+!public/downloads/.gitkeep
 public/remote-assets/**
 !public/remote-assets/.gitkeep

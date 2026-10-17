@@ -96,8 +96,7 @@
   Link: </llms.txt>; rel="describedby"
   X-Llms-Txt: /llms.txt
 
-# Static CV synced from R2
-/CV.pdf
+# Downloadable CVs synced from R2 (public/downloads/)
+/downloads/*
   Cache-Control: public, max-age=3600, must-revalidate
-  Content-Type: application/pdf
   X-Content-Type-Options: nosniff

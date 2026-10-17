@@ -68,8 +68,8 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
 
         <div class="mt-6 no-print flex justify-center">
           <a
-            href="/CV.pdf"
-            download="ArturoNava-CV.pdf"
+            href={`/downloads/ArturoNava-CV-${locale}.pdf`}
+            download={`ArturoNava-CV-${locale}.pdf`}
             rel="noopener noreferrer"
             class="inline-flex items-center gap-2 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-5 py-2.5 font-mono text-xs font-semibold text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
             aria-label={isEs ? "Descargar CV de Arturo Nava en PDF" : "Download Arturo Nava Resume PDF"}

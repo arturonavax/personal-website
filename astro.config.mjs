@@ -57,6 +57,8 @@ export default defineConfig({
   site: "https://arturonavax.dev",
   output: "static",
   trailingSlash: "always",
+  // Expose dev/preview servers on the LAN (0.0.0.0) for multi-device testing.
+  server: { host: true },
   build: {
     inlineStylesheets: "auto",
     format: "directory",
