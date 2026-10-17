@@ -1437,27 +1437,32 @@ export async function handleAdminDashboardRequest(
         const countriesSql = `SELECT country, COUNT(*) AS views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql} GROUP BY country ORDER BY views DESC LIMIT 15`;
         topCountries = await runQuery(countriesSql, bindValues);
 
-        // 5. Exact Top Referrers (1:1 with D1)
+        // 5. Exact Top Referrers (1:1 with D1, sanitizing legacy Invalid entries)
         const refWhere = whereClauses.length > 0
-          ? `${whereSql} AND referrer IS NOT NULL AND referrer != 'direct'`
-          : "WHERE referrer IS NOT NULL AND referrer != 'direct'";
+          ? `${whereSql} AND referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''`
+          : "WHERE referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''";
         const refSql = `SELECT referrer, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${refWhere} GROUP BY referrer ORDER BY count DESC LIMIT 15`;
         topReferrers = await runQuery(refSql, bindValues);
 
-        // 6. Exact Top UTM Attributions (1:1 with D1)
+        // 6. Exact Top UTM Attributions (1:1 with D1, sanitizing legacy Invalid entries)
         const utmWhere = whereClauses.length > 0
-          ? `${whereSql} AND utm_source != 'direct'`
-          : "WHERE utm_source != 'direct'";
+          ? `${whereSql} AND utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''`
+          : "WHERE utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''";
         const utmSql = `SELECT utm_source, utm_medium, utm_campaign, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${utmWhere} GROUP BY utm_source, utm_medium, utm_campaign ORDER BY count DESC LIMIT 15`;
         utmAttributions = await runQuery(utmSql, bindValues);
 
-        // 7. Paginated Pageviews Batch (bounded LIMIT and OFFSET)
+        // 7. Paginated Pageviews Batch (bounded LIMIT and OFFSET, sanitizing legacy Invalid rows)
         const pageviewsSql = `SELECT id, path, visitor_hash, referrer, country, utm_source, utm_medium, utm_campaign, utm_content, utm_term, is_bot, created_at FROM pageviews ${whereSql} ORDER BY id DESC LIMIT ? OFFSET ?`;
-        pageviews = await runQuery(pageviewsSql, [
+        const rawPageviews = await runQuery(pageviewsSql, [
           ...bindValues,
           limit,
           offset,
         ]);
+        pageviews = (rawPageviews || []).map((p: any) => ({
+          ...p,
+          referrer: (!p.referrer || p.referrer.toLowerCase() === "invalid") ? "Direct" : p.referrer,
+          utm_source: (!p.utm_source || p.utm_source.toLowerCase() === "invalid") ? "direct" : p.utm_source,
+        }));
 
         // 8. Prefetches
         prefetches = await runQuery(
@@ -1857,12 +1862,31 @@ export async function handleAdminDashboardRequest(
       border: 1px solid var(--border);
       border-radius: 4px;
       background: var(--bg-surface);
-      padding: 0.25rem 0.5rem;
+      padding: 0.15rem 0.35rem;
       font-size: 0.7rem;
-      gap: 0.4rem;
+      gap: 0.25rem;
       color: var(--text-dim);
     }
-    .lang-switcher a:hover { color: var(--gold); }
+    .lang-toggle-btn {
+      background: none;
+      border: none;
+      padding: 0.2rem 0.4rem;
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.15s ease;
+    }
+    .lang-toggle-btn:hover {
+      color: var(--gold);
+    }
+    .lang-toggle-btn.active {
+      color: var(--gold);
+      background: var(--gold-subtle);
+      font-weight: 700;
+    }
     .theme-toggle-btn {
       display: flex;
       align-items: center;
@@ -2286,6 +2310,35 @@ export async function handleAdminDashboardRequest(
       color: #000;
     }
     
+    /* Zero Group Morphing & WAAPI Circular Theme Transition (1:1 with global.css) */
+    ::view-transition-group(root) {
+      animation: none !important;
+    }
+    :root[data-theme-transitioning]::view-transition-group(root),
+    html.theme-transitioning::view-transition-group(root) {
+      animation: none !important;
+    }
+    :root[data-theme-transitioning]::view-transition-old(root),
+    :root[data-theme-transitioning]::view-transition-new(root),
+    html.theme-transitioning::view-transition-old(root),
+    html.theme-transitioning::view-transition-new(root) {
+      animation: none !important;
+      mix-blend-mode: normal !important;
+      height: 100% !important;
+      width: 100% !important;
+      object-fit: cover !important;
+    }
+    :root[data-theme-transitioning]::view-transition-old(root),
+    html.theme-transitioning::view-transition-old(root) {
+      z-index: 1 !important;
+      opacity: 1 !important;
+    }
+    :root[data-theme-transitioning]::view-transition-new(root),
+    html.theme-transitioning::view-transition-new(root) {
+      z-index: 9999 !important;
+      opacity: 1 !important;
+    }
+    
     /* Footer */
     .site-footer {
       margin-top: auto;
@@ -2316,18 +2369,18 @@ export async function handleAdminDashboardRequest(
           <span>Arturo Nava</span>
         </a>
         <nav class="nav-links">
-          <a href="https://arturonavax.dev/#about">About</a>
-          <a href="https://arturonavax.dev/projects/">Projects</a>
-          <a href="https://arturonavax.dev/blog/">Blog</a>
-          <a href="https://arturonavax.dev/resume/">Resume</a>
+          <a href="https://arturonavax.dev/#about" data-i18n="nav_about">About</a>
+          <a href="https://arturonavax.dev/projects/" data-i18n="nav_projects">Projects</a>
+          <a href="https://arturonavax.dev/blog/" data-i18n="nav_blog">Blog</a>
+          <a href="https://arturonavax.dev/resume/" data-i18n="nav_resume">Resume</a>
         </nav>
       </div>
 
       <div class="header-actions">
-        <div class="lang-switcher">
-          <a href="/admin" style="font-weight: 700; color: var(--gold);">ES</a>
+        <div class="lang-switcher" role="group" aria-label="Language Selector">
+          <button type="button" id="lang-btn-es" class="lang-toggle-btn active" onclick="setAdminLanguage('es')">ES</button>
           <span>/</span>
-          <a href="/admin">EN</a>
+          <button type="button" id="lang-btn-en" class="lang-toggle-btn" onclick="setAdminLanguage('en')">EN</button>
         </div>
 
         <button type="button" id="theme-btn" class="theme-toggle-btn" aria-label="Toggle theme" title="Cambiar tema">
@@ -2355,18 +2408,18 @@ export async function handleAdminDashboardRequest(
     <!-- Surface Identity Banner -->
     <div class="surface-banner">
       <div class="surface-title-group">
-        <h1>⚡ Admin Management Surface // Telemetría</h1>
-        <p class="surface-sub">
+        <h1 data-i18n="surface_title">⚡ Admin Management Surface // Telemetría</h1>
+        <p class="surface-sub" id="surface-sub" data-i18n="surface_sub">
           Host: <code>admin.arturonavax.dev</code> &bull; Isolated Zero Trust Surface &bull; Cloudflare Access &bull; D1 Distributed Database
         </p>
       </div>
 
       <div class="badges">
-        <span class="badge live"><span class="pulse-dot"></span> EN VIVO</span>
+        <span class="badge live"><span class="pulse-dot"></span> <span id="badge-live-text" data-i18n="badge_live">EN VIVO</span></span>
         <span id="badge-sync-time" class="badge">Sincronizado: manual (Pausado)</span>
         <span id="badge-cache-mode" class="badge" style="color: var(--cyan);">● Caché Edge (120s)</span>
-        <span class="badge">Zero Trust Surface</span>
-        <span class="badge" style="color: var(--gold-light);">Cloudflare Access</span>
+        <span class="badge" data-i18n="badge_zero_trust">Zero Trust Surface</span>
+        <span class="badge" style="color: var(--gold-light);" data-i18n="badge_cf_access">Cloudflare Access</span>
         <span class="badge" id="badge-rel">Rel: v1.4.3 (ultra-efficient)</span>
       </div>
     </div>
@@ -2375,7 +2428,7 @@ export async function handleAdminDashboardRequest(
     <div class="kpis">
       <div class="kpi-card">
         <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Eventos Recientes (D1)</span>
+          <span data-i18n="kpi_total_title">Eventos Recientes (D1)</span>
           <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-total')" title="Ver consulta SQL equivalente">i</button>
         </div>
         <div class="kpi-value" id="kpi-total">--</div>
@@ -2383,7 +2436,7 @@ export async function handleAdminDashboardRequest(
       </div>
       <div class="kpi-card">
         <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Visitas Humanas (P0)</span>
+          <span data-i18n="kpi_human_title">Visitas Humanas (P0)</span>
           <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-human')" title="Ver consulta SQL equivalente">i</button>
         </div>
         <div class="kpi-value" id="kpi-human" style="color: var(--green);">--</div>
@@ -2391,23 +2444,23 @@ export async function handleAdminDashboardRequest(
       </div>
       <div class="kpi-card">
         <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Bots &amp; Crawlers</span>
+          <span data-i18n="kpi_bot_title">Bots &amp; Crawlers</span>
           <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-bot')" title="Ver consulta SQL equivalente">i</button>
         </div>
         <div class="kpi-value" id="kpi-bot" style="color: var(--gold-light);">--</div>
-        <div class="kpi-sub" id="kpi-bot-sub">Indexadores &amp; IA</div>
+        <div class="kpi-sub" id="kpi-bot-sub" data-i18n="kpi_bot_sub">Indexadores &amp; IA</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Visitantes Únicos</span>
+          <span data-i18n="kpi_unique_title">Visitantes Únicos</span>
           <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-unique')" title="Ver consulta SQL equivalente">i</button>
         </div>
         <div class="kpi-value" id="kpi-unique">--</div>
-        <div class="kpi-sub">Hashes GDPR anonimizados</div>
+        <div class="kpi-sub" data-i18n="kpi_unique_sub">Hashes GDPR anonimizados</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Prefetches (P1)</span>
+          <span data-i18n="kpi_prefetch_title">Prefetches (P1)</span>
           <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-prefetch')" title="Ver consulta SQL equivalente">i</button>
         </div>
         <div class="kpi-value" id="kpi-prefetch" style="color: var(--cyan);">--</div>
@@ -2415,11 +2468,11 @@ export async function handleAdminDashboardRequest(
       </div>
       <div class="kpi-card">
         <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Contact Leads</span>
+          <span data-i18n="kpi_leads_title">Contact Leads</span>
           <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-leads')" title="Ver consulta SQL equivalente">i</button>
         </div>
         <div class="kpi-value" id="kpi-leads" style="color: var(--amber);">--</div>
-        <div class="kpi-sub">Inbound pipeline</div>
+        <div class="kpi-sub" data-i18n="kpi_leads_sub">Inbound pipeline</div>
       </div>
     </div>
 
@@ -2427,10 +2480,10 @@ export async function handleAdminDashboardRequest(
     <div class="toolbar">
       <div class="toolbar-row">
         <div class="btn-group">
-          <button type="button" id="btn-filter-all" class="active" onclick="setSegmentFilter('all')">Todos los Eventos</button>
-          <button type="button" id="btn-filter-human" onclick="setSegmentFilter('human')">Solo Humanos (P0)</button>
-          <button type="button" id="btn-filter-bot" onclick="setSegmentFilter('bot')">Bots &amp; Indexers</button>
-          <button type="button" id="btn-filter-prefetch" onclick="setSegmentFilter('prefetch')">Prefetches (P1)</button>
+          <button type="button" id="btn-filter-all" class="active" onclick="setSegmentFilter('all')" data-i18n="filter_all">Todos los Eventos</button>
+          <button type="button" id="btn-filter-human" onclick="setSegmentFilter('human')" data-i18n="filter_human">Solo Humanos (P0)</button>
+          <button type="button" id="btn-filter-bot" onclick="setSegmentFilter('bot')" data-i18n="filter_bot">Bots &amp; Indexers</button>
+          <button type="button" id="btn-filter-prefetch" onclick="setSegmentFilter('prefetch')" data-i18n="filter_prefetch">Prefetches (P1)</button>
         </div>
 
         <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
@@ -2452,12 +2505,12 @@ export async function handleAdminDashboardRequest(
           </select>
 
           <select id="select-poll" onchange="onPollIntervalChange(this.value)">
-            <option value="0" selected>Pausado (manual - preserva cuota D1)</option>
+            <option value="0" selected id="opt-poll-0">Pausado (manual - preserva cuota D1)</option>
             <option value="30000">Auto: 30s</option>
             <option value="60000">Auto: 60s</option>
           </select>
 
-          <button type="button" onclick="fetchTelemetry(true)">↻ Refrescar</button>
+          <button type="button" onclick="fetchTelemetry(true)" data-i18n="btn_refresh">↻ Refrescar</button>
         </div>
       </div>
 
@@ -2465,11 +2518,11 @@ export async function handleAdminDashboardRequest(
         <div class="checks-row">
           <label>
             <input type="checkbox" id="chk-exclude-bots" onchange="toggleExcludeBots(this.checked)" />
-            <span>Excluir Bots de Gráficos</span>
+            <span data-i18n="chk_exclude_bots">Excluir Bots de Gráficos</span>
           </label>
           <label>
             <input type="checkbox" id="chk-include-prefetch" checked onchange="toggleIncludePrefetch(this.checked)" />
-            <span>Incluir Prefetch Especulativo</span>
+            <span data-i18n="chk_include_prefetch">Incluir Prefetch Especulativo</span>
           </label>
         </div>
 
@@ -2487,7 +2540,7 @@ export async function handleAdminDashboardRequest(
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title" style="display: flex; align-items: center;">
-          <span>⚡ Resiliencia Edge // Estado de Circuit Breakers (D1 Quota Protection)</span>
+          <span data-i18n="cb_panel_title">⚡ Resiliencia Edge // Estado de Circuit Breakers (D1 Quota Protection)</span>
           <button type="button" class="btn-sql-info" onclick="showSqlModal('circuit-breakers')" title="Ver consulta SQL equivalente">i</button>
         </div>
         <span style="font-size: 0.7rem; color: var(--text-dim);" id="cb-summary">P0 Human Priority: GARANTIZADA</span>
@@ -2496,14 +2549,14 @@ export async function handleAdminDashboardRequest(
         <!-- Card 1: Prefetch Circuit Breaker -->
         <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-            <strong style="font-size: 0.75rem; color: var(--cyan);">PREFETCH TELEMETRY (P1)</strong>
+            <strong style="font-size: 0.75rem; color: var(--cyan);" data-i18n="cb_prefetch_title">PREFETCH TELEMETRY (P1)</strong>
             <span id="cb-prefetch-badge" class="badge" style="color: var(--green); border-color: rgba(16, 185, 129, 0.4);">CLOSED (OK)</span>
           </div>
-          <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" id="cb-prefetch-desc">
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" id="cb-prefetch-desc" data-i18n="cb_prefetch_desc">
             Presupuesto D1: máx 25,000 / día (25% quota). Ratio límite: 3.0x visitas.
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.2rem;">
-            <span>Consumo hoy:</span>
+            <span data-i18n="cb_usage_today">Consumo hoy:</span>
             <strong id="cb-prefetch-stats">0 / 25,000</strong>
           </div>
           <div style="width: 100%; height: 6px; background: var(--card); border-radius: 3px; overflow: hidden;">
@@ -2514,14 +2567,14 @@ export async function handleAdminDashboardRequest(
         <!-- Card 2: Bot Telemetry Circuit Breaker -->
         <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-            <strong style="font-size: 0.75rem; color: var(--gold);">BOT TELEMETRY (P2)</strong>
+            <strong style="font-size: 0.75rem; color: var(--gold);" data-i18n="cb_bot_title">BOT TELEMETRY (P2)</strong>
             <span id="cb-bot-badge" class="badge" style="color: var(--green); border-color: rgba(16, 185, 129, 0.4);">CLOSED (OK)</span>
           </div>
-          <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" id="cb-bot-desc">
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" id="cb-bot-desc" data-i18n="cb_bot_desc">
             Presupuesto D1: máx 15,000 / día (15% quota). Shedding automático si quota baja.
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.2rem;">
-            <span>Consumo hoy:</span>
+            <span data-i18n="cb_usage_today">Consumo hoy:</span>
             <strong id="cb-bot-stats">0 / 15,000</strong>
           </div>
           <div style="width: 100%; height: 6px; background: var(--card); border-radius: 3px; overflow: hidden;">
@@ -2532,15 +2585,15 @@ export async function handleAdminDashboardRequest(
         <!-- Card 3: P0 Human Quota Guarantee -->
         <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-            <strong style="font-size: 0.75rem; color: var(--green);">HUMAN VISITS (P0)</strong>
-            <span class="badge live"><span class="pulse-dot"></span> PRIORIDAD MÁXIMA</span>
+            <strong style="font-size: 0.75rem; color: var(--green);" data-i18n="cb_human_title">HUMAN VISITS (P0)</strong>
+            <span class="badge live"><span class="pulse-dot"></span> <span data-i18n="cb_human_badge">PRIORIDAD MÁXIMA</span></span>
           </div>
-          <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;">
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" data-i18n="cb_human_desc">
             60% cuota reservada exclusivamente para visitas humanas reales. Cero pérdida de datos.
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.2rem;">
-            <span>Integridad de datos:</span>
-            <strong style="color: var(--green);">100% GARANTIZADA</strong>
+            <span data-i18n="cb_human_integrity">Integridad de datos:</span>
+            <strong style="color: var(--green);" data-i18n="cb_human_guaranteed">100% GARANTIZADA</strong>
           </div>
           <div style="width: 100%; height: 6px; background: var(--card); border-radius: 3px; overflow: hidden;">
             <div style="width: 100%; height: 100%; background: var(--green);"></div>
@@ -2555,13 +2608,13 @@ export async function handleAdminDashboardRequest(
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title" style="display: flex; align-items: center;">
-            <span>Rutas Más Demandadas (Proporción &amp; Visitas Reales)</span>
+            <span data-i18n="panel_top_paths_title">Rutas Más Demandadas (Proporción &amp; Visitas Reales)</span>
             <button type="button" class="btn-sql-info" onclick="showSqlModal('top-paths')" title="Ver consulta SQL equivalente">i</button>
           </div>
-          <span style="font-size: 0.7rem; color: var(--text-dim);" id="top-paths-count">Top 5</span>
+          <span style="font-size: 0.7rem; color: var(--text-dim);" id="top-paths-count" data-i18n="panel_top_paths_badge">Top 5</span>
         </div>
         <div class="panel-body" id="top-paths">
-          <p style="color: var(--text-dim); text-align: center; font-style: italic;">Cargando rutas...</p>
+          <p style="color: var(--text-dim); text-align: center; font-style: italic;" data-i18n="panel_top_paths_loading">Cargando rutas...</p>
         </div>
       </div>
 
@@ -2569,13 +2622,13 @@ export async function handleAdminDashboardRequest(
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title" style="display: flex; align-items: center;">
-            <span>Distribución Geográfica (Países)</span>
+            <span data-i18n="panel_countries_title">Distribución Geográfica (Países)</span>
             <button type="button" class="btn-sql-info" onclick="showSqlModal('countries')" title="Ver consulta SQL equivalente">i</button>
           </div>
-          <span style="font-size: 0.7rem; color: var(--text-dim);">Top Orígenes</span>
+          <span style="font-size: 0.7rem; color: var(--text-dim);" data-i18n="panel_countries_badge">Top Orígenes</span>
         </div>
         <div class="panel-body" id="countries-list">
-          <p style="color: var(--text-dim); text-align: center; font-style: italic;">Cargando geolocalización...</p>
+          <p style="color: var(--text-dim); text-align: center; font-style: italic;" data-i18n="panel_countries_loading">Cargando geolocalización...</p>
         </div>
       </div>
     </div>
@@ -2585,20 +2638,20 @@ export async function handleAdminDashboardRequest(
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title" style="display: flex; align-items: center;">
-            <span>Fuentes de Atribución &amp; UTMs</span>
+            <span data-i18n="panel_referrers_title">Fuentes de Atribución &amp; UTMs</span>
             <button type="button" class="btn-sql-info" onclick="showSqlModal('referrers')" title="Ver consulta SQL equivalente">i</button>
           </div>
-          <span style="font-size: 0.7rem; color: var(--text-dim);">Canales</span>
+          <span style="font-size: 0.7rem; color: var(--text-dim);" data-i18n="panel_referrers_badge">Canales</span>
         </div>
         <div class="panel-body" id="top-referrers">
-          <p style="color: var(--text-dim); text-align: center; font-style: italic;">Cargando canales...</p>
+          <p style="color: var(--text-dim); text-align: center; font-style: italic;" data-i18n="panel_referrers_loading">Cargando canales...</p>
         </div>
       </div>
 
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title" style="display: flex; align-items: center;">
-            <span>Mensajes Recientes // Inbound Leads (D1)</span>
+            <span data-i18n="panel_leads_title">Mensajes Recientes // Inbound Leads (D1)</span>
             <button type="button" class="btn-sql-info" onclick="showSqlModal('leads-table')" title="Ver consulta SQL equivalente">i</button>
           </div>
           <span style="font-size: 0.7rem; color: var(--text-dim);" id="leads-count-badge">0 leads</span>
@@ -2608,17 +2661,17 @@ export async function handleAdminDashboardRequest(
             <table>
               <thead>
                 <tr>
-                  <th>Fecha</th>
-                  <th>Nombre / Empresa</th>
-                  <th>Email &amp; Teléfono</th>
-                  <th>Idioma</th>
-                  <th>Asunto</th>
-                  <th>Mensaje</th>
+                  <th data-i18n="th_date">Fecha</th>
+                  <th data-i18n="th_name">Nombre / Empresa</th>
+                  <th data-i18n="th_contact">Email &amp; Teléfono</th>
+                  <th data-i18n="th_locale">Idioma</th>
+                  <th data-i18n="th_subject">Asunto</th>
+                  <th data-i18n="th_message">Mensaje</th>
                 </tr>
               </thead>
               <tbody id="leads-tbody">
                 <tr>
-                  <td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-dim); font-style: italic;">
+                  <td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-dim); font-style: italic;" data-i18n="panel_leads_loading">
                     Consultando buzón de leads...
                   </td>
                 </tr>
@@ -2633,7 +2686,7 @@ export async function handleAdminDashboardRequest(
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title" style="display: flex; align-items: center;">
-          <span>Registro Perimetral de Telemetría en Tiempo Real</span>
+          <span data-i18n="panel_telemetry_title">Registro Perimetral de Telemetría en Tiempo Real</span>
           <button type="button" class="btn-sql-info" onclick="showSqlModal('telemetry-table')" title="Ver consulta SQL equivalente">i</button>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -2646,18 +2699,18 @@ export async function handleAdminDashboardRequest(
         <table>
           <thead>
             <tr>
-              <th>Hora (UTC)</th>
-              <th>Clasificación</th>
-              <th>Ruta</th>
-              <th>País</th>
-              <th>Referente / Canal</th>
-              <th>Campaña UTM</th>
-              <th>Hash Visitante</th>
+              <th data-i18n="th_time">Hora (UTC)</th>
+              <th data-i18n="th_classification">Clasificación</th>
+              <th data-i18n="th_path">Ruta</th>
+              <th data-i18n="th_country">País</th>
+              <th data-i18n="th_referrer">Referente / Canal</th>
+              <th data-i18n="th_campaign">Campaña UTM</th>
+              <th data-i18n="th_hash">Hash Visitante</th>
             </tr>
           </thead>
           <tbody id="telemetry-tbody">
             <tr>
-              <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-dim); font-style: italic;">
+              <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-dim); font-style: italic;" data-i18n="panel_telemetry_loading">
                 Conectando con el router perimetral D1...
               </td>
             </tr>
@@ -2692,7 +2745,7 @@ export async function handleAdminDashboardRequest(
       <div class="sql-modal-header">
         <div class="sql-modal-title" id="sql-modal-title">
           <span>🔍</span>
-          <span id="sql-modal-heading">Consulta SQL Equivalente</span>
+          <span id="sql-modal-heading" data-i18n="sql_heading_default">Consulta SQL Equivalente</span>
         </div>
         <button type="button" class="sql-modal-close" onclick="closeSqlModal()" aria-label="Cerrar modal">&times;</button>
       </div>
@@ -2761,15 +2814,16 @@ export async function handleAdminDashboardRequest(
     setInterval(function() {
       const badge = document.getElementById('badge-sync-time');
       if (!badge) return;
+      const dict = I18N[currentLang] || I18N.en;
       if (pollDelay === 0) {
-        badge.textContent = 'Sincronizado: manual (Pausado)';
+        badge.textContent = dict.badge_sync_manual;
         return;
       }
       const elapsed = Math.floor((Date.now() - lastSyncTimestamp) / 1000);
-      badge.textContent = elapsed < 3 ? 'Sincronizado: justo ahora' : ('Sincronizado: hace ' + elapsed + 's');
+      badge.textContent = elapsed < 3 ? dict.badge_sync_now : dict.badge_sync_ago.replace('{s}', elapsed);
     }, 1000);
 
-    // Theme Toggle Controller
+    // WAAPI Circular Theme Reveal Controller (1:1 with ThemeToggle.astro & global.css)
     const themeBtn = document.getElementById('theme-btn');
     const sunIcon = document.getElementById('theme-sun');
     const moonIcon = document.getElementById('theme-moon');
@@ -2793,13 +2847,328 @@ export async function handleAdminDashboardRequest(
       localStorage.setItem('theme', t);
     }
 
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-        const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-        applyTheme(cur === 'dark' ? 'light' : 'dark');
+    function toggleThemeWithAnimation(event) {
+      const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = cur === 'dark' ? 'light' : 'dark';
+
+      const isReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!document.startViewTransition || isReduced) {
+        applyTheme(next);
+        return;
+      }
+
+      const rect = themeBtn ? themeBtn.getBoundingClientRect() : { left: window.innerWidth / 2, top: 0, width: 0, height: 0 };
+      const x = event && typeof event.clientX === 'number' && event.clientX > 0 ? event.clientX : (rect.left + rect.width / 2);
+      const y = event && typeof event.clientY === 'number' && event.clientY > 0 ? event.clientY : (rect.top + rect.height / 2);
+      const endRadius = Math.hypot(
+        Math.max(x, window.innerWidth - x),
+        Math.max(y, window.innerHeight - y)
+      );
+
+      document.documentElement.setAttribute('data-theme-transitioning', 'true');
+      document.documentElement.classList.add('theme-transitioning');
+
+      const transition = document.startViewTransition(() => {
+        applyTheme(next);
       });
+
+      const cleanUp = () => {
+        requestAnimationFrame(() => {
+          document.documentElement.classList.remove('theme-transitioning');
+          document.documentElement.removeAttribute('data-theme-transitioning');
+        });
+      };
+
+      transition.ready.then(() => {
+        const anim = document.documentElement.animate({
+          clipPath: [
+            'circle(0px at ' + x + 'px ' + y + 'px)',
+            'circle(' + endRadius + 'px at ' + x + 'px ' + y + 'px)'
+          ]
+        }, {
+          duration: 420,
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          pseudoElement: '::view-transition-new(root)'
+        });
+        anim.onfinish = cleanUp;
+        anim.oncancel = cleanUp;
+      }).catch(cleanUp);
+
+      transition.finished.then(cleanUp).catch(cleanUp);
+    }
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', toggleThemeWithAnimation);
     }
     initTheme();
+
+    // Admin Internationalization Engine with Device Language Detection
+    const I18N = {
+      es: {
+        nav_about: 'Sobre mí',
+        nav_projects: 'Proyectos',
+        nav_blog: 'Blog',
+        nav_resume: 'Currículum',
+        theme_toggle_title: 'Cambiar tema',
+        surface_title: '⚡ Admin Management Surface // Telemetría',
+        surface_sub: 'Host: admin.arturonavax.dev • Aislamiento Zero Trust • Cloudflare Access • Base de Datos D1 Distribuida',
+        badge_live: 'EN VIVO',
+        badge_sync_manual: 'Sincronizado: manual (Pausado)',
+        badge_sync_now: 'Sincronizado: justo ahora',
+        badge_sync_ago: 'Sincronizado: hace {s}s',
+        badge_edge_cache: '● Caché Edge (120s)',
+        badge_d1_fresh: '● D1 Directo (1:1 Fresh)',
+        badge_d1_consistent: '● D1 Consistente (1:1)',
+        badge_zero_trust: 'Zero Trust Surface',
+        badge_cf_access: 'Cloudflare Access',
+        kpi_total_title: 'Eventos Recientes (D1)',
+        kpi_total_sub: 'Búfer perimetral D1',
+        kpi_total_all_time: '{n} histórico total',
+        kpi_human_title: 'Visitas Humanas (P0)',
+        kpi_human_sub: '{pct}% del rango',
+        kpi_bot_title: 'Bots & Crawlers',
+        kpi_bot_sub: 'Indexadores & IA',
+        kpi_unique_title: 'Visitantes Únicos',
+        kpi_unique_sub: 'Hashes GDPR anonimizados',
+        kpi_prefetch_title: 'Prefetches (P1)',
+        kpi_prefetch_sub: 'Circuit Breaker: OK',
+        kpi_leads_title: 'Contact Leads',
+        kpi_leads_sub: 'Inbound pipeline',
+        filter_all: 'Todos los Eventos',
+        filter_human: 'Solo Humanos (P0)',
+        filter_bot: 'Bots & Indexers',
+        filter_prefetch: 'Prefetches (P1)',
+        opt_range_24h: 'Últimas 24h',
+        opt_range_7d: 'Últimos 7 días',
+        opt_range_30d: 'Últimos 30 días',
+        opt_range_all: 'Histórico total',
+        opt_path_all: 'Todas las rutas',
+        opt_path_home: 'Portada (/)',
+        opt_poll_0: 'Pausado (manual - preserva cuota D1)',
+        btn_refresh: '↻ Refrescar',
+        chk_exclude_bots: 'Excluir Bots de Gráficos',
+        chk_include_prefetch: 'Incluir Prefetch Especulativo',
+        search_placeholder: 'Filtrar por ruta, país, UTM, referrer o hash...',
+        cb_panel_title: '⚡ Resiliencia Edge // Estado de Circuit Breakers (D1 Quota Protection)',
+        cb_prefetch_title: 'PREFETCH TELEMETRY (P1)',
+        cb_prefetch_desc: 'Presupuesto D1: máx 25,000 / día (25% quota). Ratio límite: 3.0x visitas.',
+        cb_usage_today: 'Consumo hoy:',
+        cb_bot_title: 'BOT TELEMETRY (P2)',
+        cb_bot_desc: 'Presupuesto D1: máx 15,000 / día (15% quota). Shedding automático si quota baja.',
+        cb_human_title: 'HUMAN VISITS (P0)',
+        cb_human_badge: 'PRIORIDAD MÁXIMA',
+        cb_human_desc: '60% cuota reservada exclusivamente para visitas humanas reales. Cero pérdida de datos.',
+        cb_human_integrity: 'Integridad de datos:',
+        cb_human_guaranteed: '100% GARANTIZADA',
+        panel_top_paths_title: 'Rutas Más Demandadas (Proporción & Visitas Reales)',
+        panel_top_paths_badge: 'Top 5',
+        panel_top_paths_loading: 'Cargando rutas...',
+        panel_top_paths_empty: 'Sin datos para este filtro',
+        panel_countries_title: 'Distribución Geográfica (Países)',
+        panel_countries_badge: 'Top Orígenes',
+        panel_countries_loading: 'Cargando geolocalización...',
+        panel_countries_empty: 'Sin datos de geolocalización',
+        panel_referrers_title: 'Fuentes de Atribución & UTMs',
+        panel_referrers_badge: 'Canales',
+        panel_referrers_loading: 'Cargando canales...',
+        panel_referrers_empty: 'Sin datos de referentes',
+        panel_leads_title: 'Mensajes Recientes // Inbound Leads (D1)',
+        panel_leads_loading: 'Consultando buzón de leads...',
+        panel_leads_empty: 'Sin leads registrados aún en el búfer D1.',
+        panel_telemetry_title: 'Registro Perimetral de Telemetría en Tiempo Real',
+        panel_telemetry_loading: 'Conectando con el router perimetral D1...',
+        panel_telemetry_empty: 'No se registraron eventos para este filtro.',
+        th_date: 'Fecha',
+        th_name: 'Nombre / Empresa',
+        th_contact: 'Email & Teléfono',
+        th_locale: 'Idioma',
+        th_subject: 'Asunto',
+        th_message: 'Mensaje',
+        th_time: 'Hora (UTC)',
+        th_classification: 'Clasificación',
+        th_path: 'Ruta',
+        th_country: 'País',
+        th_referrer: 'Referente / Canal',
+        th_campaign: 'Campaña UTM',
+        th_hash: 'Hash Visitante',
+        sql_heading_default: 'Consulta SQL Equivalente',
+        sql_section_label: 'Sección / Métrica:',
+        sql_table_label: 'Tabla D1 Primaria:',
+        sql_filters_label: 'Filtros Activos:',
+        sql_guarantee: '⚡ Garantía de Consistencia 1:1: Esta consulta refleja exactamente la lógica relacional evaluada en SQLite/D1.',
+        sql_copied: '✓ ¡Copiado al portapapeles!',
+        sql_copy_btn: '📋 Copiar SQL',
+        sql_close_btn: 'Cerrar',
+        footer_text: '© 2026 Arturo Nava. High-Performance Edge Architecture • 0 KB Baseline Client JS',
+        footer_scroll: 'Scroll navigation: ',
+        views_suffix: ' visitas (',
+        events_suffix: ' eventos',
+        total_suffix: ' en total'
+      },
+      en: {
+        nav_about: 'About',
+        nav_projects: 'Projects',
+        nav_blog: 'Blog',
+        nav_resume: 'Resume',
+        theme_toggle_title: 'Toggle theme',
+        surface_title: '⚡ Admin Management Surface // Telemetry',
+        surface_sub: 'Host: admin.arturonavax.dev • Isolated Zero Trust Surface • Cloudflare Access • D1 Distributed Database',
+        badge_live: 'LIVE',
+        badge_sync_manual: 'Synced: manual (Paused)',
+        badge_sync_now: 'Synced: just now',
+        badge_sync_ago: 'Synced: {s}s ago',
+        badge_edge_cache: '● Edge Cache (120s)',
+        badge_d1_fresh: '● Direct D1 (1:1 Fresh)',
+        badge_d1_consistent: '● Consistent D1 (1:1)',
+        badge_zero_trust: 'Zero Trust Surface',
+        badge_cf_access: 'Cloudflare Access',
+        kpi_total_title: 'Recent Events (D1)',
+        kpi_total_sub: 'D1 edge buffer',
+        kpi_total_all_time: '{n} all-time total',
+        kpi_human_title: 'Human Visits (P0)',
+        kpi_human_sub: '{pct}% of range',
+        kpi_bot_title: 'Bots & Crawlers',
+        kpi_bot_sub: 'Indexers & AI',
+        kpi_unique_title: 'Unique Visitors',
+        kpi_unique_sub: 'Anonymized GDPR hashes',
+        kpi_prefetch_title: 'Prefetches (P1)',
+        kpi_prefetch_sub: 'Circuit Breaker: OK',
+        kpi_leads_title: 'Contact Leads',
+        kpi_leads_sub: 'Inbound pipeline',
+        filter_all: 'All Events',
+        filter_human: 'Humans Only (P0)',
+        filter_bot: 'Bots & Indexers',
+        filter_prefetch: 'Prefetches (P1)',
+        opt_range_24h: 'Last 24h',
+        opt_range_7d: 'Last 7 days',
+        opt_range_30d: 'Last 30 days',
+        opt_range_all: 'All time',
+        opt_path_all: 'All routes',
+        opt_path_home: 'Homepage (/)',
+        opt_poll_0: 'Paused (manual - preserves D1 quota)',
+        btn_refresh: '↻ Refresh',
+        chk_exclude_bots: 'Exclude Bots from Charts',
+        chk_include_prefetch: 'Include Speculative Prefetches',
+        search_placeholder: 'Filter by path, country, UTM, referrer or hash...',
+        cb_panel_title: '⚡ Edge Resilience // Circuit Breakers Status (D1 Quota Protection)',
+        cb_prefetch_title: 'PREFETCH TELEMETRY (P1)',
+        cb_prefetch_desc: 'D1 Budget: max 25,000 / day (25% quota). Ratio limit: 3.0x visits.',
+        cb_usage_today: 'Usage today:',
+        cb_bot_title: 'BOT TELEMETRY (P2)',
+        cb_bot_desc: 'D1 Budget: max 15,000 / day (15% quota). Automatic shedding under quota pressure.',
+        cb_human_title: 'HUMAN VISITS (P0)',
+        cb_human_badge: 'MAXIMUM PRIORITY',
+        cb_human_desc: '60% quota reserved exclusively for verified human traffic. Zero data loss.',
+        cb_human_integrity: 'Data integrity:',
+        cb_human_guaranteed: '100% GUARANTEED',
+        panel_top_paths_title: 'Top Requested Routes (Proportion & Real Visits)',
+        panel_top_paths_badge: 'Top 5',
+        panel_top_paths_loading: 'Loading routes...',
+        panel_top_paths_empty: 'No data for this filter',
+        panel_countries_title: 'Geographic Distribution (Countries)',
+        panel_countries_badge: 'Top Origins',
+        panel_countries_loading: 'Loading geolocation...',
+        panel_countries_empty: 'No geolocation data available',
+        panel_referrers_title: 'Attribution Sources & UTMs',
+        panel_referrers_badge: 'Channels',
+        panel_referrers_loading: 'Loading channels...',
+        panel_referrers_empty: 'No referrer data available',
+        panel_leads_title: 'Recent Inquiries // Inbound Leads (D1)',
+        panel_leads_loading: 'Querying leads mailbox...',
+        panel_leads_empty: 'No leads registered yet in D1 buffer.',
+        panel_telemetry_title: 'Real-Time Edge Telemetry Event Log',
+        panel_telemetry_loading: 'Connecting to edge router D1...',
+        panel_telemetry_empty: 'No events recorded for this filter.',
+        th_date: 'Date',
+        th_name: 'Name / Company',
+        th_contact: 'Email & Phone',
+        th_locale: 'Locale',
+        th_subject: 'Subject',
+        th_message: 'Message',
+        th_time: 'Time (UTC)',
+        th_classification: 'Classification',
+        th_path: 'Path',
+        th_country: 'Country',
+        th_referrer: 'Referrer / Channel',
+        th_campaign: 'UTM Campaign',
+        th_hash: 'Visitor Hash',
+        sql_heading_default: 'Equivalent SQL Query',
+        sql_section_label: 'Section / Metric:',
+        sql_table_label: 'Primary D1 Table:',
+        sql_filters_label: 'Active Filters:',
+        sql_guarantee: '⚡ 1:1 Consistency Guarantee: This query exactly reflects the relational logic executed in SQLite/D1.',
+        sql_copied: '✓ Copied to clipboard!',
+        sql_copy_btn: '📋 Copy SQL',
+        sql_close_btn: 'Close',
+        footer_text: '© 2026 Arturo Nava. High-Performance Edge Architecture • 0 KB Baseline Client JS',
+        footer_scroll: 'Scroll navigation: ',
+        views_suffix: ' views (',
+        events_suffix: ' events',
+        total_suffix: ' in total'
+      }
+    };
+
+    function getInitialAdminLang() {
+      try {
+        const saved = localStorage.getItem('admin_lang');
+        if (saved === 'es' || saved === 'en') return saved;
+      } catch (_) {}
+      const navLang = (navigator.language || (navigator.languages && navigator.languages[0]) || 'en').toLowerCase();
+      return navLang.startsWith('es') ? 'es' : 'en';
+    }
+
+    let currentLang = getInitialAdminLang();
+
+    function setAdminLanguage(lang) {
+      if (lang !== 'es' && lang !== 'en') return;
+      currentLang = lang;
+      try {
+        localStorage.setItem('admin_lang', lang);
+      } catch (_) {}
+      applyLanguage();
+    }
+    window.setAdminLanguage = setAdminLanguage;
+
+    function applyLanguage() {
+      document.documentElement.lang = currentLang;
+      const dict = I18N[currentLang] || I18N.en;
+
+      document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        const k = el.getAttribute('data-i18n');
+        if (dict[k]) {
+          el.textContent = dict[k];
+        }
+      });
+
+      const searchInput = document.getElementById('input-search');
+      if (searchInput) {
+        searchInput.placeholder = dict.search_placeholder;
+      }
+
+      const opt24h = document.querySelector('#select-range option[value="24h"]');
+      if (opt24h) opt24h.textContent = dict.opt_range_24h;
+      const opt7d = document.querySelector('#select-range option[value="7d"]');
+      if (opt7d) opt7d.textContent = dict.opt_range_7d;
+      const opt30d = document.querySelector('#select-range option[value="30d"]');
+      if (opt30d) opt30d.textContent = dict.opt_range_30d;
+      const optAll = document.querySelector('#select-range option[value="all"]');
+      if (optAll) optAll.textContent = dict.opt_range_all;
+
+      const optPathAll = document.querySelector('#select-path option[value="all"]');
+      if (optPathAll) optPathAll.textContent = dict.opt_path_all;
+      const optPathHome = document.querySelector('#select-path option[value="/"]');
+      if (optPathHome) optPathHome.textContent = dict.opt_path_home;
+
+      const optPoll0 = document.getElementById('opt-poll-0');
+      if (optPoll0) optPoll0.textContent = dict.opt_poll_0;
+
+      const btnEs = document.getElementById('lang-btn-es');
+      const btnEn = document.getElementById('lang-btn-en');
+      if (btnEs) btnEs.classList.toggle('active', currentLang === 'es');
+      if (btnEn) btnEn.classList.toggle('active', currentLang === 'en');
+
+      renderAll();
+    }
 
     function setSegmentFilter(seg) {
       currentSegment = seg;
@@ -3025,7 +3394,8 @@ export async function handleAdminDashboardRequest(
       }
 
       refsEl.innerHTML = list.slice(0, 5).map(item => {
-        const rf = item.referrer || 'Direct';
+        let rf = item.referrer || 'Direct';
+        if (rf.toLowerCase() === 'invalid') rf = 'Direct';
         const count = item.count || 0;
         return '<div style="display:flex; justify-content:space-between; padding:0.35rem 0; border-bottom:1px solid var(--border-subtle);">' +
           '<span style="max-width:200px; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(rf) + '</span>' +
@@ -3092,7 +3462,8 @@ export async function handleAdminDashboardRequest(
         }
 
         const country = item.country || 'XX';
-        const ref = item.utm_source !== 'direct' && item.utm_source ? item.utm_source : (item.referrer || 'Direct');
+        let ref = item.utm_source !== 'direct' && item.utm_source ? item.utm_source : (item.referrer || 'Direct');
+        if (typeof ref === 'string' && ref.toLowerCase() === 'invalid') ref = 'Direct';
         const campaign = item.utm_campaign ? escapeHtml(item.utm_campaign) : '--';
         const hash = item.visitor_hash ? item.visitor_hash.slice(0, 10) + '...' : '--';
 
@@ -3579,6 +3950,7 @@ export async function handleAdminDashboardRequest(
       }
     });
 
+    applyLanguage();
     fetchTelemetry();
     if (pollDelay > 0) {
       pollInterval = setInterval(fetchTelemetry, pollDelay);
@@ -3599,6 +3971,300 @@ export async function handleAdminDashboardRequest(
   });
 }
 
+export interface AttributionResult {
+  source: string;
+  medium: string;
+  campaign: string;
+  content: string;
+  term: string;
+  referrer: string;
+}
+
+/**
+ * Universal Attribution & Visit Ingress Normalizer
+ * Robustly parses standard UTMs, alternate campaign aliases, advertising click IDs (Google, FB, Bing, etc.),
+ * mobile Android application URIs (android-app://), search engines, and social platforms.
+ * Invariant: NEVER returns "Invalid" under any malformed or unexpected ingress pattern.
+ */
+export function parseAttribution(
+  rawUrl: string | URL,
+  rawReferrerHeader: string | null | undefined,
+): AttributionResult {
+  let url: URL;
+  try {
+    url = typeof rawUrl === "string" ? new URL(rawUrl) : rawUrl;
+  } catch {
+    url = new URL("https://arturonavax.dev/");
+  }
+
+  // 1. Extraer Parámetros de Búsqueda (Case-Insensitive)
+  const params: Record<string, string> = {};
+  for (const [k, v] of url.searchParams.entries()) {
+    if (v && v.trim()) {
+      params[k.toLowerCase()] = v.trim();
+    }
+  }
+
+  let utmSource =
+    params["utm_source"] ||
+    params["source"] ||
+    params["ref"] ||
+    params["origin"] ||
+    params["channel"] ||
+    "";
+  let utmMedium = params["utm_medium"] || params["medium"] || "";
+  let utmCampaign = params["utm_campaign"] || params["campaign"] || "";
+  let utmContent = params["utm_content"] || params["content"] || "";
+  let utmTerm = params["utm_term"] || params["term"] || "";
+
+  // Detección de Click IDs de Campañas Pagadas y Plataformas
+  if (params["gclid"] || params["gbraid"] || params["wbraid"] || params["dclid"]) {
+    if (!utmSource) utmSource = "google";
+    if (!utmMedium) utmMedium = "cpc";
+    if (!utmContent) utmContent = params["gclid"] || params["gbraid"] || "google-ads";
+  } else if (params["fbclid"]) {
+    if (!utmSource) utmSource = "facebook";
+    if (!utmMedium) utmMedium = utmCampaign ? "paid-social" : "social";
+    if (!utmContent) utmContent = params["fbclid"];
+  } else if (params["msclkid"]) {
+    if (!utmSource) utmSource = "bing";
+    if (!utmMedium) utmMedium = "cpc";
+    if (!utmContent) utmContent = params["msclkid"];
+  } else if (params["ttclid"]) {
+    if (!utmSource) utmSource = "tiktok";
+    if (!utmMedium) utmMedium = "social";
+  } else if (params["twclid"]) {
+    if (!utmSource) utmSource = "x";
+    if (!utmMedium) utmMedium = "social";
+  } else if (params["li_fat_id"]) {
+    if (!utmSource) utmSource = "linkedin";
+    if (!utmMedium) utmMedium = "social";
+  } else if (params["igshid"]) {
+    if (!utmSource) utmSource = "instagram";
+    if (!utmMedium) utmMedium = "social";
+  } else if (params["mc_cid"]) {
+    if (!utmSource) utmSource = "mailchimp";
+    if (!utmMedium) utmMedium = "email";
+  }
+
+  // 2. Normalización de Referrer HTTP
+  let referrer = "Direct";
+  const refHeader = (rawReferrerHeader || "").trim();
+
+  if (
+    refHeader &&
+    refHeader.toLowerCase() !== "direct" &&
+    refHeader.toLowerCase() !== "invalid" &&
+    refHeader.toLowerCase() !== "null" &&
+    refHeader.toLowerCase() !== "undefined" &&
+    refHeader.toLowerCase() !== "none"
+  ) {
+    if (refHeader.startsWith("android-app://")) {
+      const pkg = refHeader.replace("android-app://", "").split("/")[0]?.toLowerCase() || "";
+      if (pkg.includes("google")) {
+        referrer = "google.com";
+        if (!utmSource) utmSource = "google";
+        if (!utmMedium) utmMedium = "organic";
+      } else if (pkg.includes("linkedin")) {
+        referrer = "linkedin.com";
+        if (!utmSource) utmSource = "linkedin";
+        if (!utmMedium) utmMedium = "social";
+      } else if (pkg.includes("twitter") || pkg.includes(".x.")) {
+        referrer = "x.com";
+        if (!utmSource) utmSource = "x";
+        if (!utmMedium) utmMedium = "social";
+      } else if (pkg.includes("facebook") || pkg.includes("katana")) {
+        referrer = "facebook.com";
+        if (!utmSource) utmSource = "facebook";
+        if (!utmMedium) utmMedium = "social";
+      } else if (pkg.includes("instagram")) {
+        referrer = "instagram.com";
+        if (!utmSource) utmSource = "instagram";
+        if (!utmMedium) utmMedium = "social";
+      } else if (pkg.includes("slack")) {
+        referrer = "slack.com";
+        if (!utmSource) utmSource = "slack";
+        if (!utmMedium) utmMedium = "chat";
+      } else if (pkg.includes("telegram")) {
+        referrer = "telegram.org";
+        if (!utmSource) utmSource = "telegram";
+        if (!utmMedium) utmMedium = "chat";
+      } else if (pkg.includes("whatsapp")) {
+        referrer = "whatsapp.com";
+        if (!utmSource) utmSource = "whatsapp";
+        if (!utmMedium) utmMedium = "chat";
+      } else if (pkg.includes("reddit")) {
+        referrer = "reddit.com";
+        if (!utmSource) utmSource = "reddit";
+        if (!utmMedium) utmMedium = "social";
+      } else if (pkg) {
+        referrer = pkg;
+      }
+    } else {
+      try {
+        const fullRef = refHeader.includes("://") ? refHeader : `https://${refHeader}`;
+        const refParsed = new URL(fullRef);
+        const cleanRefHost = refParsed.hostname.toLowerCase().replace(/^www\./, "");
+        const cleanReqHost = url.hostname.toLowerCase().replace(/^www\./, "");
+
+        // Excluir navegación interna
+        if (
+          cleanRefHost &&
+          cleanRefHost !== cleanReqHost &&
+          cleanRefHost !== "arturonavax.dev" &&
+          cleanRefHost !== "localhost" &&
+          cleanRefHost !== "127.0.0.1" &&
+          !cleanRefHost.endsWith(".arturonavax.dev")
+        ) {
+          referrer = cleanRefHost;
+        }
+      } catch {
+        // Blindaje fail-open: Jamás emitir "Invalid"
+        referrer = "Direct";
+      }
+    }
+  }
+
+  // 3. Fallback exhaustivo de Motores de Búsqueda, Redes y Plataformas
+  if (!utmSource) {
+    const ref = referrer.toLowerCase();
+    if (
+      ref.includes("google.") ||
+      ref.includes("bing.") ||
+      ref.includes("duckduckgo.") ||
+      ref.includes("yahoo.") ||
+      ref.includes("ecosia.") ||
+      ref.includes("baidu.") ||
+      ref.includes("yandex.") ||
+      ref.includes("brave.com") ||
+      ref.includes("kagi.com")
+    ) {
+      utmSource = ref.split(".")[0] || "search";
+      utmMedium = utmMedium || "organic";
+    } else if (
+      ref.includes("perplexity.ai") ||
+      ref.includes("chatgpt.com") ||
+      ref.includes("openai.com") ||
+      ref.includes("claude.ai") ||
+      ref.includes("anthropic.com")
+    ) {
+      utmSource = ref.includes("perplexity")
+        ? "perplexity"
+        : ref.includes("chatgpt") || ref.includes("openai")
+          ? "chatgpt"
+          : "claude";
+      utmMedium = utmMedium || "ai-search";
+    } else if (ref.includes("linkedin.com") || ref.includes("lnkd.in")) {
+      utmSource = "linkedin";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("github.com") || ref.includes("github.io")) {
+      utmSource = "github";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("gitlab.com")) {
+      utmSource = "gitlab";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("huggingface.co")) {
+      utmSource = "huggingface";
+      utmMedium = utmMedium || "community";
+    } else if (ref.includes("leetcode.com")) {
+      utmSource = "leetcode";
+      utmMedium = utmMedium || "referral";
+    } else if (ref.includes("kaggle.com")) {
+      utmSource = "kaggle";
+      utmMedium = utmMedium || "community";
+    } else if (
+      ref.includes("t.co") ||
+      ref.includes("x.com") ||
+      ref.includes("twitter.com")
+    ) {
+      utmSource = "x";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("facebook.com") || ref.includes("fb.com") || ref.includes("fb.me")) {
+      utmSource = "facebook";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("instagram.com")) {
+      utmSource = "instagram";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("youtube.com") || ref.includes("youtu.be")) {
+      utmSource = "youtube";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("tiktok.com")) {
+      utmSource = "tiktok";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("twitch.tv")) {
+      utmSource = "twitch";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("reddit.com") || ref.includes("redd.it")) {
+      utmSource = "reddit";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("news.ycombinator.com")) {
+      utmSource = "hackernews";
+      utmMedium = utmMedium || "community";
+    } else if (ref.includes("medium.com")) {
+      utmSource = "medium";
+      utmMedium = utmMedium || "article";
+    } else if (ref.includes("dev.to")) {
+      utmSource = "devto";
+      utmMedium = utmMedium || "community";
+    } else if (ref.includes("hashnode.")) {
+      utmSource = "hashnode";
+      utmMedium = utmMedium || "community";
+    } else if (ref.includes("substack.com")) {
+      utmSource = "substack";
+      utmMedium = utmMedium || "newsletter";
+    } else if (ref.includes("threads.net")) {
+      utmSource = "threads";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("bluesky.app") || ref.includes("bsky.app")) {
+      utmSource = "bluesky";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("mastodon.")) {
+      utmSource = "mastodon";
+      utmMedium = utmMedium || "social";
+    } else if (ref.includes("notion.so") || ref.includes("notion.site")) {
+      utmSource = "notion";
+      utmMedium = utmMedium || "referral";
+    } else if (ref.includes("whatsapp.com") || ref.includes("wa.me")) {
+      utmSource = "whatsapp";
+      utmMedium = utmMedium || "chat";
+    } else if (ref.includes("telegram.org") || ref.includes("t.me")) {
+      utmSource = "telegram";
+      utmMedium = utmMedium || "chat";
+    } else if (ref.includes("discord.com") || ref.includes("discord.gg")) {
+      utmSource = "discord";
+      utmMedium = utmMedium || "chat";
+    } else if (ref.includes("slack.com")) {
+      utmSource = "slack";
+      utmMedium = utmMedium || "chat";
+    } else if (ref.includes("teams.microsoft.com")) {
+      utmSource = "teams";
+      utmMedium = utmMedium || "chat";
+    } else if (ref.includes("chat.google.com")) {
+      utmSource = "google-chat";
+      utmMedium = utmMedium || "chat";
+    } else if (referrer !== "Direct") {
+      utmSource = referrer;
+      utmMedium = utmMedium || "referral";
+    } else {
+      utmSource = "direct";
+      utmMedium = utmMedium || "none";
+    }
+  }
+
+  // 4. Invariante: Jamás persistir "invalid" en ningún campo
+  if (utmSource.toLowerCase() === "invalid") utmSource = "direct";
+  if (referrer.toLowerCase() === "invalid") referrer = "Direct";
+
+  return {
+    source: utmSource.slice(0, 100).toLowerCase(),
+    medium: (utmMedium || "none").slice(0, 50).toLowerCase(),
+    campaign: utmCampaign.slice(0, 100),
+    content: utmContent.slice(0, 100),
+    term: utmTerm.slice(0, 100),
+    referrer: referrer.slice(0, 100),
+  };
+}
+
 /**
  * Asynchronous Non-Blocking Analytics Logger (REQ-PCD-04, REQ-PCD-05)
  * Runs strictly within ctx.waitUntil without adding any latency to the critical response path.
@@ -3610,7 +4276,6 @@ export async function recordAnalyticsNonBlocking(
   env?: Env,
 ): Promise<void> {
   try {
-    const url = new URL(request.url);
     const ip = request.headers.get("cf-connecting-ip") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "";
     const referrerHeader = request.headers.get("referer") || "";
@@ -3618,124 +4283,14 @@ export async function recordAnalyticsNonBlocking(
     const cf = (request as unknown as { cf?: { country?: string } }).cf;
     const country = cf?.country || "XX";
 
-    // 1. Extraer Parámetros de Atribución
-    let utmSource =
-      url.searchParams.get("utm_source") || url.searchParams.get("ref");
-    let utmMedium = url.searchParams.get("utm_medium");
-    let utmCampaign = url.searchParams.get("utm_campaign");
-    const utmContent = url.searchParams.get("utm_content") || "";
-    const utmTerm = url.searchParams.get("utm_term") || "";
-
-    // 2. Normalizar Referrer HTTP
-    let referrer = "Direct";
-    if (referrerHeader) {
-      try {
-        const refUrl = new URL(referrerHeader);
-        const reqUrl = new URL(request.url);
-        const cleanRefHost = refUrl.hostname.replace(/^www\./, "");
-        const cleanReqHost = reqUrl.hostname.replace(/^www\./, "");
-
-        if (cleanRefHost !== cleanReqHost) {
-          referrer = cleanRefHost;
-        }
-      } catch {
-        referrer = "Invalid";
-      }
-    }
-
-    // 3. Fallback exhaustivo de Plataformas y Buscadores
-    if (!utmSource) {
-      const ref = referrer.toLowerCase();
-
-      if (
-        ref.includes("google.") ||
-        ref.includes("bing.") ||
-        ref.includes("duckduckgo.") ||
-        ref.includes("yahoo.") ||
-        ref.includes("ecosia.") ||
-        ref.includes("baidu.") ||
-        ref.includes("yandex.")
-      ) {
-        utmSource = ref.split(".")[0];
-        utmMedium = utmMedium || "organic";
-      } else if (ref.includes("linkedin.com") || ref.includes("lnkd.in")) {
-        utmSource = "linkedin";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("github.com")) {
-        utmSource = "github";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("gitlab.com")) {
-        utmSource = "gitlab";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("huggingface.co")) {
-        utmSource = "huggingface";
-        utmMedium = utmMedium || "community";
-      } else if (ref.includes("leetcode.com")) {
-        utmSource = "leetcode";
-        utmMedium = utmMedium || "referral";
-      } else if (ref.includes("kaggle.com")) {
-        utmSource = "kaggle";
-        utmMedium = utmMedium || "community";
-      } else if (
-        ref.includes("t.co") ||
-        ref.includes("x.com") ||
-        ref.includes("twitter.com")
-      ) {
-        utmSource = "x";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("facebook.com") || ref.includes("fb.com")) {
-        utmSource = "facebook";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("instagram.com")) {
-        utmSource = "instagram";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("youtube.com") || ref.includes("youtu.be")) {
-        utmSource = "youtube";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("tiktok.com")) {
-        utmSource = "tiktok";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("twitch.tv")) {
-        utmSource = "twitch";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("reddit.com") || ref.includes("redd.it")) {
-        utmSource = "reddit";
-        utmMedium = utmMedium || "social";
-      } else if (ref.includes("news.ycombinator.com")) {
-        utmSource = "hackernews";
-        utmMedium = utmMedium || "community";
-      } else if (ref.includes("medium.com")) {
-        utmSource = "medium";
-        utmMedium = utmMedium || "article";
-      } else if (ref.includes("notion.so") || ref.includes("notion.site")) {
-        utmSource = "notion";
-        utmMedium = utmMedium || "referral";
-      } else if (ref.includes("whatsapp.com") || ref.includes("wa.me")) {
-        utmSource = "whatsapp";
-        utmMedium = utmMedium || "chat";
-      } else if (ref.includes("telegram.org") || ref.includes("t.me")) {
-        utmSource = "telegram";
-        utmMedium = utmMedium || "chat";
-      } else if (ref.includes("discord.com") || ref.includes("discord.gg")) {
-        utmSource = "discord";
-        utmMedium = utmMedium || "chat";
-      } else if (ref.includes("slack.com")) {
-        utmSource = "slack";
-        utmMedium = utmMedium || "chat";
-      } else if (ref.includes("teams.microsoft.com")) {
-        utmSource = "teams";
-        utmMedium = utmMedium || "chat";
-      } else if (ref.includes("chat.google.com")) {
-        utmSource = "google-chat";
-        utmMedium = utmMedium || "chat";
-      } else if (referrer !== "Direct" && referrer !== "Invalid") {
-        utmSource = referrer;
-        utmMedium = utmMedium || "referral";
-      } else {
-        utmSource = "direct";
-        utmMedium = utmMedium || "none";
-      }
-    }
+    // Extraer y Normalizar Atribución & Ingress
+    const attribution = parseAttribution(request.url, referrerHeader);
+    const utmSource = attribution.source;
+    const utmMedium = attribution.medium;
+    const utmCampaign = attribution.campaign;
+    const utmContent = attribution.content;
+    const utmTerm = attribution.term;
+    const referrer = attribution.referrer;
 
     const isBot = BOT_REGEX.test(userAgent) ? 1 : 0;
     const today = new Date().toISOString().slice(0, 10);
@@ -3846,20 +4401,8 @@ export async function recordPrefetchAnalyticsNonBlocking(
     const cf = (request as unknown as { cf?: { country?: string } }).cf;
     const country = cf?.country || "XX";
 
-    let referrer = "Direct";
-    if (referrerHeader) {
-      try {
-        const refUrl = new URL(referrerHeader);
-        const reqUrl = new URL(request.url);
-        const cleanRefHost = refUrl.hostname.replace(/^www\./, "");
-        const cleanReqHost = reqUrl.hostname.replace(/^www\./, "");
-        if (cleanRefHost !== cleanReqHost) {
-          referrer = cleanRefHost;
-        }
-      } catch {
-        referrer = "Invalid";
-      }
-    }
+    const attribution = parseAttribution(request.url, referrerHeader);
+    const referrer = attribution.referrer;
 
     const today = new Date().toISOString().slice(0, 10);
     const signature = `${ip}-${userAgent}-${today}`;

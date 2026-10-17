@@ -41,7 +41,9 @@ const description = isEs
               ⚡
             </span>
             <h1 class="text-xl sm:text-2xl font-bold font-mono tracking-tight text-[var(--color-text-primary)]">
-              Admin Management Surface // Telemetría
+              {isEs
+                ? "Admin Management Surface // Telemetría"
+                : "Admin Management Surface // Telemetry"}
             </h1>
           </div>
           <p class="mt-1 text-xs font-mono text-[var(--color-text-dim)]">
@@ -650,11 +652,11 @@ const description = isEs
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
-                <th class="py-2 px-3">Fecha</th>
-                <th class="py-2 px-3">Subsistema</th>
-                <th class="py-2 px-3">Motivo Trip</th>
-                <th class="py-2 px-3">Eventos Mitigados</th>
-                <th class="py-2 px-3">Completitud Datos</th>
+                <th class="py-2 px-3">{isEs ? "Fecha" : "Date"}</th>
+                <th class="py-2 px-3">{isEs ? "Subsistema" : "Subsystem"}</th>
+                <th class="py-2 px-3">{isEs ? "Motivo Trip" : "Trip Reason"}</th>
+                <th class="py-2 px-3">{isEs ? "Eventos Mitigados" : "Mitigated Events"}</th>
+                <th class="py-2 px-3">{isEs ? "Completitud Datos" : "Data Completeness"}</th>
               </tr>
             </thead>
             <tbody id="cb-tbody">
@@ -679,11 +681,11 @@ const description = isEs
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
-                <th class="py-2 px-3">Versión</th>
+                <th class="py-2 px-3">{isEs ? "Versión" : "Version"}</th>
                 <th class="py-2 px-3">Git Commit</th>
-                <th class="py-2 px-3">Fecha Despliegue</th>
-                <th class="py-2 px-3">Entorno</th>
-                <th class="py-2 px-3">Estado</th>
+                <th class="py-2 px-3">{isEs ? "Fecha Despliegue" : "Deploy Date"}</th>
+                <th class="py-2 px-3">{isEs ? "Entorno" : "Environment"}</th>
+                <th class="py-2 px-3">{isEs ? "Estado" : "Status"}</th>
               </tr>
             </thead>
             <tbody id="deploy-tbody">
@@ -708,10 +710,10 @@ const description = isEs
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
-                <th class="py-2 px-3">Fecha</th>
-                <th class="py-2 px-3">Remitente</th>
-                <th class="py-2 px-3">Asunto</th>
-                <th class="py-2 px-3">Mensaje</th>
+                <th class="py-2 px-3">{isEs ? "Fecha" : "Date"}</th>
+                <th class="py-2 px-3">{isEs ? "Remitente" : "Sender"}</th>
+                <th class="py-2 px-3">{isEs ? "Asunto" : "Subject"}</th>
+                <th class="py-2 px-3">{isEs ? "Mensaje" : "Message"}</th>
               </tr>
             </thead>
             <tbody id="leads-tbody">
@@ -747,7 +749,7 @@ const description = isEs
           </p>
         </div>
         <div class="font-mono text-xs text-[var(--color-text-muted)]">
-          <span id="events-count-label">-- eventos</span>
+          <span id="events-count-label">--</span>
         </div>
       </div>
 
@@ -755,12 +757,12 @@ const description = isEs
         <table class="w-full text-left font-mono text-xs border-collapse">
           <thead>
             <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
-              <th class="py-2 px-2.5">Hora (UTC)</th>
-              <th class="py-2 px-2.5">Tipo</th>
-              <th class="py-2 px-2.5">Ruta</th>
-              <th class="py-2 px-2.5">País</th>
-              <th class="py-2 px-2.5">Referrer / Origen</th>
-              <th class="py-2 px-2.5">Campaña UTM</th>
+              <th class="py-2 px-2.5">{isEs ? "Hora (UTC)" : "Time (UTC)"}</th>
+              <th class="py-2 px-2.5">{isEs ? "Tipo" : "Type"}</th>
+              <th class="py-2 px-2.5">{isEs ? "Ruta" : "Path"}</th>
+              <th class="py-2 px-2.5">{isEs ? "País" : "Country"}</th>
+              <th class="py-2 px-2.5">{isEs ? "Referrer / Origen" : "Referrer / Source"}</th>
+              <th class="py-2 px-2.5">{isEs ? "Campaña UTM" : "UTM Campaign"}</th>
               <th class="py-2 px-2.5">Hash GDPR</th>
             </tr>
           </thead>
@@ -784,6 +786,22 @@ const description = isEs
 
 <script is:inline>
   (function () {
+    var isEs = document.documentElement.lang === "es";
+
+    // Automatic device/saved language detection for root /admin
+    if (window.location.pathname === "/admin" || window.location.pathname === "/admin/") {
+      try {
+        var savedAdminLang = localStorage.getItem("preferred_locale") || localStorage.getItem("admin_lang");
+        var userLangs = (navigator.languages || [navigator.language || ""]).map(function (l) {
+          return (l || "").toLowerCase().split("-")[0];
+        });
+        if (savedAdminLang === "es" || (!savedAdminLang && userLangs[0] === "es")) {
+          window.location.replace("/es/admin/" + window.location.search + window.location.hash);
+          return;
+        }
+      } catch (_) {}
+    }
+
     var currentRange = "7d";
     var currentCountry = "all";
     var currentSegment = "all";
@@ -813,9 +831,9 @@ const description = isEs
       if (!badge) return;
       var elapsedSec = Math.floor((Date.now() - lastSyncTimestamp) / 1000);
       if (elapsedSec < 3) {
-        badge.textContent = "Sincronizado: justo ahora";
+        badge.textContent = isEs ? "Sincronizado: justo ahora" : "Synced: just now";
       } else {
-        badge.textContent = "Sincronizado: hace " + elapsedSec + "s";
+        badge.textContent = isEs ? "Sincronizado: hace " + elapsedSec + "s" : "Synced: " + elapsedSec + "s ago";
       }
     }, 1000);
 
@@ -909,19 +927,19 @@ const description = isEs
       var kpiTotalSub = document.getElementById("kpi-total-sub");
       if (kpiTotalSub) {
         kpiTotalSub.textContent = stats.all_time_pageviews
-          ? "Histórico acumulado: " + stats.all_time_pageviews.toLocaleString()
-          : "Tráfico del período";
+          ? (isEs ? "Histórico acumulado: " : "All-time total: ") + stats.all_time_pageviews.toLocaleString()
+          : (isEs ? "Tráfico del período" : "Period traffic");
       }
 
       var kpiHuman = document.getElementById("kpi-human");
       if (kpiHuman) kpiHuman.textContent = humanViews.toLocaleString();
       var kpiHumanSub = document.getElementById("kpi-human-sub");
-      if (kpiHumanSub) kpiHumanSub.textContent = humanPct + "% del total";
+      if (kpiHumanSub) kpiHumanSub.textContent = humanPct + (isEs ? "% del total" : "% of total");
 
       var kpiBot = document.getElementById("kpi-bot");
       if (kpiBot) kpiBot.textContent = botViews.toLocaleString();
       var kpiBotSub = document.getElementById("kpi-bot-sub");
-      if (kpiBotSub) kpiBotSub.textContent = botPct + "% del total";
+      if (kpiBotSub) kpiBotSub.textContent = botPct + (isEs ? "% del total" : "% of total");
 
       var kpiUnique = document.getElementById("kpi-unique");
       if (kpiUnique) kpiUnique.textContent = uniqueVisitors.toLocaleString();
@@ -989,11 +1007,13 @@ const description = isEs
       var countLabel = document.getElementById("top-pages-count");
       if (!tbody) return;
 
-      if (countLabel) countLabel.textContent = pages.length + " rutas";
+      if (countLabel) countLabel.textContent = pages.length + (isEs ? " rutas" : " routes");
 
       if (!pages.length) {
         tbody.innerHTML =
-          '<tr><td colspan="6" class="py-6 text-center text-[var(--color-text-muted)] italic">Sin datos para este filtro</td></tr>';
+          '<tr><td colspan="6" class="py-6 text-center text-[var(--color-text-muted)] italic">' +
+          (isEs ? "Sin datos para este filtro" : "No data for this filter") +
+          "</td></tr>";
         return;
       }
 
@@ -1048,7 +1068,9 @@ const description = isEs
 
       if (!countries.length) {
         container.innerHTML =
-          '<p class="py-6 text-center text-[var(--color-text-muted)] italic">Sin datos de geolocalización</p>';
+          '<p class="py-6 text-center text-[var(--color-text-muted)] italic">' +
+          (isEs ? "Sin datos de geolocalización" : "No geolocation data") +
+          "</p>";
         return;
       }
 
@@ -1106,15 +1128,19 @@ const description = isEs
 
       if (utms.length) {
         html +=
-          '<div class="space-y-1.5"><div class="text-[10px] uppercase text-[var(--color-text-muted)] tracking-wider font-semibold">Campañas UTM</div>';
+          '<div class="space-y-1.5"><div class="text-[10px] uppercase text-[var(--color-text-muted)] tracking-wider font-semibold">' +
+          (isEs ? "Campañas UTM" : "UTM Campaigns") +
+          "</div>";
         html += utms
           .slice(0, 5)
           .map(function (u) {
+            var utmSrc = u.utm_source || "direct";
+            if (utmSrc.toLowerCase() === "invalid") utmSrc = "direct";
             return (
               '<div class="flex items-center justify-between p-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]">' +
               '<div class="truncate max-w-xs">' +
               '<span class="text-[var(--color-accent-gold)] font-bold">' +
-              escapeHtml(u.utm_source) +
+              escapeHtml(utmSrc) +
               "</span>" +
               (u.utm_campaign && u.utm_campaign !== "-"
                 ? ' <span class="text-[var(--color-text-dim)]">/ ' +
@@ -1134,14 +1160,18 @@ const description = isEs
 
       if (referrers.length) {
         html +=
-          '<div class="space-y-1.5 mt-3"><div class="text-[10px] uppercase text-[var(--color-text-muted)] tracking-wider font-semibold">Top Referrers Externos</div>';
+          '<div class="space-y-1.5 mt-3"><div class="text-[10px] uppercase text-[var(--color-text-muted)] tracking-wider font-semibold">' +
+          (isEs ? "Top Referrers Externos" : "Top External Referrers") +
+          "</div>";
         html += referrers
           .slice(0, 5)
           .map(function (r) {
+            var rf = r.referrer || "Direct";
+            if (rf.toLowerCase() === "invalid") rf = "Direct";
             return (
               '<div class="flex items-center justify-between p-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]">' +
               '<span class="truncate max-w-xs text-[var(--color-text-secondary)]">' +
-              escapeHtml(r.referrer) +
+              escapeHtml(rf) +
               "</span>" +
               '<span class="font-bold text-emerald-400">' +
               r.count.toLocaleString() +
@@ -1155,7 +1185,11 @@ const description = isEs
 
       if (!utms.length && !referrers.length) {
         html =
-          '<p class="py-4 text-center text-[var(--color-text-muted)] italic">Sin atribución o referrers externos (Tráfico directo)</p>';
+          '<p class="py-4 text-center text-[var(--color-text-muted)] italic">' +
+          (isEs
+            ? "Sin atribución o referrers externos (Tráfico directo)"
+            : "No attribution or external referrers (Direct traffic)") +
+          "</p>";
       }
 
       container.innerHTML = html;
@@ -1166,11 +1200,15 @@ const description = isEs
       var badge = document.getElementById("prefetch-ratio-badge");
       if (!container) return;
 
-      if (badge) badge.textContent = totalCount + " precargas";
+      if (badge) badge.textContent = totalCount + (isEs ? " precargas" : " prefetches");
 
       if (!prefetches.length) {
         container.innerHTML =
-          '<p class="py-4 text-center text-[var(--color-text-muted)] italic">Sin eventos de prefetch registrados</p>';
+          '<p class="py-4 text-center text-[var(--color-text-muted)] italic">' +
+          (isEs
+            ? "Sin eventos de prefetch registrados"
+            : "No prefetch events recorded") +
+          "</p>";
         return;
       }
 
@@ -1206,12 +1244,16 @@ const description = isEs
       var searchCounter = document.getElementById("search-counter");
       if (!tbody) return;
 
-      if (counter) counter.textContent = items.length + " eventos";
+      if (counter) counter.textContent = items.length + (isEs ? " eventos" : " events");
       if (searchCounter) searchCounter.textContent = items.length + " hits";
 
       if (!items.length) {
         tbody.innerHTML =
-          '<tr><td colspan="7" class="py-6 text-center text-[var(--color-text-muted)] italic">No se encontraron eventos coincidentes.</td></tr>';
+          '<tr><td colspan="7" class="py-6 text-center text-[var(--color-text-muted)] italic">' +
+          (isEs
+            ? "No se encontraron eventos coincidentes."
+            : "No matching events found.") +
+          "</td></tr>";
         return;
       }
 
@@ -1231,6 +1273,9 @@ const description = isEs
             item.utm_source && item.utm_source !== "direct"
               ? item.utm_source
               : item.referrer || "Direct";
+          if (typeof ref === "string" && ref.toLowerCase() === "invalid") {
+            ref = "Direct";
+          }
           var campaign = item.utm_campaign
             ? escapeHtml(item.utm_campaign)
             : "--";
@@ -1275,7 +1320,11 @@ const description = isEs
       if (cbTbody) {
         if (!rawIncidents.length) {
           cbTbody.innerHTML =
-            '<tr><td colspan="5" class="py-4 text-center text-[var(--color-text-muted)] italic">Sin incidentes de circuit breaker (100% integridad de datos)</td></tr>';
+            '<tr><td colspan="5" class="py-4 text-center text-[var(--color-text-muted)] italic">' +
+            (isEs
+              ? "Sin incidentes de circuit breaker (100% integridad de datos)"
+              : "No circuit breaker incidents (100% data integrity)") +
+            "</td></tr>";
         } else {
           cbTbody.innerHTML = rawIncidents
             .map(function (inc) {
@@ -1345,7 +1394,11 @@ const description = isEs
       if (leadsTbody) {
         if (!rawLeads.length) {
           leadsTbody.innerHTML =
-            '<tr><td colspan="4" class="py-4 text-center text-[var(--color-text-muted)] italic">Sin leads corporativos registrados aún.</td></tr>';
+            '<tr><td colspan="4" class="py-4 text-center text-[var(--color-text-muted)] italic">' +
+            (isEs
+              ? "Sin leads corporativos registrados aún."
+              : "No corporate leads recorded yet.") +
+            "</td></tr>";
         } else {
           leadsTbody.innerHTML = rawLeads
             .map(function (l) {
