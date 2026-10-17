@@ -30,9 +30,13 @@ async function main() {
   for (const input of await inputs()) {
     const out = path.join(outDir, path.basename(input));
     await run("qpdf", [
-      "--object-streams=generate", "--compress-streams=y", "--recompress-flate",
-      "--compression-level=9", "--remove-unreferenced-resources=yes", "--linearize",
-      input, out,
+      "--object-streams=generate",
+      "--compress-streams=y",
+      "--recompress-flate",
+      "--compression-level=9",
+      "--linearize",
+      input,
+      out,
     ]);
     const [a, b] = [(await stat(input)).size, (await stat(out)).size];
     if (b >= a) await copyFile(input, out);

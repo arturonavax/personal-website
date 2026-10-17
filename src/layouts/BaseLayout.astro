@@ -342,8 +342,10 @@ const hasShortcuts = Boolean(shortcuts?.length);
       let beaconShownTime = 0;
       let beaconShowTimeout: ReturnType<typeof setTimeout> | null = null;
       let beaconHideTimeout: ReturnType<typeof setTimeout> | null = null;
+      let beaconSafetyTimeout: ReturnType<typeof setTimeout> | null = null;
       const DEBOUNCE_SHOW_MS = 120;
       const MIN_VISIBLE_MS = 120;
+      const BEACON_MAX_DURATION_MS = 6000;
 
       function renderBeaconVisible(customText?: string) {
         const beacon = document.getElementById("page-navigation-beacon");
@@ -362,6 +364,13 @@ const hasShortcuts = Boolean(shortcuts?.length);
         }
         isBeaconShown = true;
         beaconShownTime = performance.now();
+
+        // Safety timeout to prevent stuck beacon if navigation is cancelled or file is downloaded
+        if (beaconSafetyTimeout) clearTimeout(beaconSafetyTimeout);
+        beaconSafetyTimeout = setTimeout(() => {
+          hideBeacon();
+          beaconSafetyTimeout = null;
+        }, BEACON_MAX_DURATION_MS);
       }
 
       function showBeacon(customText?: string, immediate = false) {
@@ -385,6 +394,11 @@ const hasShortcuts = Boolean(shortcuts?.length);
       }
 
       function hideBeacon() {
+        if (beaconSafetyTimeout) {
+          clearTimeout(beaconSafetyTimeout);
+          beaconSafetyTimeout = null;
+        }
+
         if (beaconShowTimeout) {
           clearTimeout(beaconShowTimeout);
           beaconShowTimeout = null;
@@ -444,7 +458,13 @@ const hasShortcuts = Boolean(shortcuts?.length);
             href.startsWith("#") ||
             href.startsWith("mailto:") ||
             href.startsWith("tel:") ||
-            anchor.target === "_blank"
+            href.startsWith("javascript:") ||
+            anchor.target === "_blank" ||
+            anchor.hasAttribute("download") ||
+            anchor.getAttribute("download") !== null ||
+            anchor.hasAttribute("data-no-beacon") ||
+            Boolean(anchor.closest("[data-no-beacon]")) ||
+            /\.(?:pdf|zip|tar|gz|epub|docx|xlsx|pptx)$/i.test(anchor.pathname)
           )
             return;
 

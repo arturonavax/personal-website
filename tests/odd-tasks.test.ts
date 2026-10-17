@@ -293,6 +293,47 @@ describe("ODD Task 4: Removal of Top Loading Bar in Favor of Fetching Beacon", (
     expect(layoutContent).toContain("showBeacon");
     expect(layoutContent).toContain("hideBeacon");
   });
+
+  it("shields file downloads, data-no-beacon anchors and static documents from triggering the navigation beacon", () => {
+    const layoutPath = path.join(
+      ROOT_DIR,
+      "src",
+      "layouts",
+      "BaseLayout.astro",
+    );
+    const layoutContent = fs.readFileSync(layoutPath, "utf8");
+
+    // Must ignore download attribute, data-no-beacon, and non-navigational file extensions
+    expect(layoutContent).toContain('anchor.hasAttribute("download")');
+    expect(layoutContent).toContain('anchor.hasAttribute("data-no-beacon")');
+    expect(layoutContent).toContain('BEACON_MAX_DURATION_MS');
+    expect(layoutContent).toContain('beaconSafetyTimeout');
+  });
+
+  it("ensures CV download buttons in PageIndexNav and /resume/ index declare data-no-beacon", () => {
+    const pageIndexNavPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
+    const pageIndexNavContent = fs.readFileSync(pageIndexNavPath, "utf8");
+    expect(pageIndexNavContent).toContain('id="desktop-cv-download-btn"');
+    expect(pageIndexNavContent).toContain('id="mobile-cv-download-btn"');
+    expect(pageIndexNavContent).toContain('data-no-beacon="true"');
+
+    const resumeIndexPath = path.join(
+      ROOT_DIR,
+      "src",
+      "pages",
+      "[...lang]",
+      "resume",
+      "index.astro",
+    );
+    const resumeIndexContent = fs.readFileSync(resumeIndexPath, "utf8");
+    expect(resumeIndexContent).toContain('data-no-beacon="true"');
+  });
 });
 
 describe("ODD Task: Refined Contact Container, Form Modal & Cloudflare Free Tier Integration", () => {

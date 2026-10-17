@@ -249,6 +249,7 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           {showPdfDownload && (
             <a
               id="desktop-cv-download-btn"
+              data-no-beacon="true"
               href={downloadUrl || (isEs ? "/downloads/ArturoNava-CV-es.pdf" : "/downloads/ArturoNava-CV-en.pdf")}
               download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
               aria-label={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
@@ -470,6 +471,7 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         {showPdfDownload && (
           <a
             id="mobile-cv-download-btn"
+            data-no-beacon="true"
             href={downloadUrl || (isEs ? "/downloads/ArturoNava-CV-es.pdf" : "/downloads/ArturoNava-CV-en.pdf")}
             download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
             aria-label={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
