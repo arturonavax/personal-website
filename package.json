@@ -27,7 +27,8 @@
     "format:check": "prettier --check .",
     "deploy": "wrangler deploy -c wrangler.jsonc",
     "dev-prod": "pnpm check && pnpm build && wrangler dev -c wrangler.jsonc --port 8788 --ip 0.0.0.0",
-    "audit:mobile": "pnpm dlx lighthouse http://127.0.0.1:8788 --output=json --output-path=./lh-raw.json --chrome-flags=\"--headless\" --quiet && node scripts/filter-lh.mjs"
+    "audit:mobile": "pnpm dlx lighthouse http://127.0.0.1:8788 --output=json --output-path=./lh-raw.json --chrome-flags=\"--headless\" --quiet && node scripts/filter-lh.mjs",
+    "predeploy": "node scripts/r2-pull.mjs && pnpm run build"
   },
   "dependencies": {
     "@astrojs/rss": "4.0.19",

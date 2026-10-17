@@ -15,8 +15,9 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createReadStream, existsSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile, stat, rm } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile, stat, rm, mkdtemp } from "node:fs/promises";
 import path from "node:path";
+import { tmpdir } from "node:os";
 
 const run = promisify(execFile);
 
@@ -113,21 +114,85 @@ export async function readManifest(driver) {
   return buf ? JSON.parse(buf.toString("utf8")) : null;
 }
 
-/** Picks the transport: S3 when API tokens exist, otherwise the authenticated `cf` CLI. */
+
+/** Picks the transport: S3 if credentials exist, cf CLI if available, or wrangler as fallback. */
 export async function createDriver() {
   const { CLOUDFLARE_ACCOUNT_ID: acc, R2_ACCESS_KEY_ID: id, R2_SECRET_ACCESS_KEY: secret } =
     process.env;
-  if (process.env.R2_DRIVER !== "cf" && acc && id && secret) return createS3Driver(acc, id, secret);
+  if (
+    process.env.R2_DRIVER === "s3" ||
+    (process.env.R2_DRIVER !== "cf" && process.env.R2_DRIVER !== "wrangler" && acc && id && secret)
+  ) {
+    return createS3Driver(acc, id, secret);
+  }
+  if (process.env.R2_DRIVER !== "wrangler") {
+    try {
+      await run("cf", ["--version"]);
+      return createCfDriver();
+    } catch {
+      // cf not available on PATH; fall through to wrangler
+    }
+  }
   try {
-    await run("cf", ["--version"]);
+    const wrBin = existsSync(path.join(ROOT, "node_modules/.bin/wrangler"))
+      ? path.join(ROOT, "node_modules/.bin/wrangler")
+      : "wrangler";
+    await run(wrBin, ["--version"]);
+    return createWranglerDriver();
   } catch {
     throw new Error(
-      "No R2 transport available. Install `cf` (npm i -g cf@latest) and run `cf auth login`, " +
-        "or set CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.",
+      "No R2 transport available. Install `cf` (npm i -g cf@latest), or install dependencies (`pnpm install`), " +
+        "or provide CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.",
     );
   }
-  return createCfDriver();
 }
+
+
+function createWranglerDriver() {
+  const wrBin = existsSync(path.join(ROOT, "node_modules/.bin/wrangler"))
+    ? path.join(ROOT, "node_modules/.bin/wrangler")
+    : "wrangler";
+  const wr = (args) =>
+    run(wrBin, args, { cwd: ROOT, maxBuffer: 128 * 1024 * 1024, env: process.env });
+  return {
+    name: "wrangler",
+    async getBuffer(key) {
+      const dir = await mkdtemp(path.join(tmpdir(), "r2-wr-"));
+      const file = path.join(dir, "temp");
+      try {
+        await wr(["r2", "object", "get", `${BUCKET}/${key}`, "--remote", "--file", file]);
+        return await readFile(file);
+      } catch {
+        return null;
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    },
+    async getFile(key, target) {
+      await mkdir(path.dirname(target), { recursive: true });
+      await wr(["r2", "object", "get", `${BUCKET}/${key}`, "--remote", "--file", target]);
+    },
+    async put(key, file) {
+      await wr([
+        "r2",
+        "object",
+        "put",
+        `${BUCKET}/${key}`,
+        "--remote",
+        "--file",
+        file,
+        "--content-type",
+        contentTypeFor(file),
+      ]);
+    },
+    async deleteMany(keys) {
+      for (const k of keys) {
+        await wr(["r2", "object", "delete", `${BUCKET}/${k}`, "--remote"]);
+      }
+    },
+  };
+}
+
 
 function createCfDriver() {
   const base = ["--bucket-name", BUCKET];

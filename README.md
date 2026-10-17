@@ -39,6 +39,7 @@ are committed; everything else there is ignored by `.gitignore`.
 | Dev fully offline with what is on disk            | `pnpm dev:local`                |
 | Local Worker (D1/R2 bindings), exposed on the LAN | `pnpm dev:worker`               |
 | Production build + Worker preview                 | `pnpm dev-prod`                 |
+| Deploy to Cloudflare (auto-pulls R2 + builds)     | `pnpm run deploy`               |
 | Build (auto-pulls if content missing or `CONTENT_SOURCE=r2`) | `pnpm build`         |
 | Download changes from R2                          | `pnpm content:pull`             |
 | See what a push would upload                      | `pnpm content:push:dry`         |

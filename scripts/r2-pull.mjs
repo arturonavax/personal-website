@@ -19,12 +19,22 @@ const force = args.has("--force");
 
 async function main() {
   if (args.has("--auto")) {
-    const wantsR2 = process.env.CONTENT_SOURCE === "r2";
+    const isCI = Boolean(
+      process.env.CI ||
+      process.env.CF_PAGES ||
+      process.env.CLOUDFLARE_BUILD ||
+      process.env.GITHUB_ACTIONS
+    );
+    const wantsR2 = process.env.CONTENT_SOURCE === "r2" || isCI;
     if (!wantsR2 && !(await isContentMissing())) {
       console.log("[sync:pull] Local content present (CONTENT_SOURCE != r2); skipping.");
       return;
     }
-    if (!wantsR2) console.log("[sync:pull] Local content missing; pulling from R2.");
+    if (isCI) {
+      console.log("[sync:pull] CI/Cloudflare environment detected; pulling fresh content from R2.");
+    } else if (!wantsR2) {
+      console.log("[sync:pull] Local content missing; pulling from R2.");
+    }
   }
 
   const t0 = Date.now();
