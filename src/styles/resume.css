@@ -16,7 +16,7 @@
 
 /* ==========================================================================
    SCOPED RESUME TYPOGRAPHY & DOCUMENT STYLING
-   Used identically across /resume and /resume/maker
+   Used identically across /resume and /tools/resume-maker
    ========================================================================== */
 .cv-document,
 .resume-document {
@@ -283,7 +283,7 @@
   line-height: 1.38;
 }
 
-/* Cross-engine print normalization (Chromium + Firefox): identical metrics for /resume/ and /resume/maker/,
+/* Cross-engine print normalization (Chromium + Firefox): identical metrics for /resume/ and /tools/resume-maker/,
    and plain selectable text (no ligature/contextual glyph substitution that Firefox exports as non-selectable). */
 @media print {
   .cv-document,

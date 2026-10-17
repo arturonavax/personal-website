@@ -70,14 +70,14 @@
     }
   },
   {
-    "description": "Redirect thematic subdomain maker.arturonavax.dev to apex canonical /resume/maker",
+    "description": "Redirect thematic subdomain maker.arturonavax.dev to apex canonical /tools/resume-maker",
     "expression": "http.host eq \"maker.arturonavax.dev\"",
     "action": "redirect",
     "action_parameters": {
       "from_value": {
         "status_code": 308,
         "target_url": {
-          "expression": "concat(\"https://arturonavax.dev/resume/maker\", http.request.uri.path, (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
+          "expression": "concat(\"https://arturonavax.dev/tools/resume-maker\", http.request.uri.path, (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
         },
         "preserve_query_string": true
       }

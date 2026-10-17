@@ -43,8 +43,8 @@ Flujo estándar ODD: Authorize → Explore (CodeGraph + skills) → Resolve Unce
    - _Root Cause_: Coincidencia de ruta ambigua en el dropdown "More" que evalúa positivamente rutas bajo `/services`, a pesar de que "Services" es un elemento visible de primer nivel en el menú principal.
 5. **Matrix Background Reset & Non-SPA Transition on Experience Arrow Navigation**:
    - _Root Cause_: La navegación por teclado en experiencias utiliza asignación directa `window.location.href`, forzando un ciclo MPA completo en lugar de invocar `navigate()` del `ClientRouter`. El canvas no cuenta con `transition:persist`.
-6. **Print Margin Asymmetry between `/resume/` and `/resume/maker/`**:
-   - _Root Cause_: Disparidad de márgenes `@page` y paddings residuales de los contenedores interactivos entre la vista estática y la vista interactiva de `/resume/maker/`.
+6. **Print Margin Asymmetry between `/resume/` and `/tools/resume-maker/`**:
+   - _Root Cause_: Disparidad de márgenes `@page` y paddings residuales de los contenedores interactivos entre la vista estática y la vista interactiva de `/tools/resume-maker/`.
 
 ---
 
@@ -156,7 +156,7 @@ const isMoreActive =
 - **Supresión de Chrome en Firefox & Padding Idéntico a la Previsualización HTML**:
   - Para eliminar completamente cabeceras y pies de página nativos de Firefox (título, URL, timestamp y paginación fea), `@page` debe forzarse a `margin: 0mm !important`.
   - Reseteo total de contenedores ancestros (`main`, `#cv-sheet-container`, `#resume-maker-workspace`, `#preview-pane-container`) a `padding: 0 !important; margin: 0 !important;` para evitar sangrados fantasma en print.
-  - El sangrado visual real del documento (A4) se fija de forma exacta e idéntica a la previsualización HTML (`md:p-12` = 48px) en el contenedor de la hoja tanto en `/resume/` (`#cv-document-sheet`) como en `/resume/maker/` (`#resume-live-preview`):
+  - El sangrado visual real del documento (A4) se fija de forma exacta e idéntica a la previsualización HTML (`md:p-12` = 48px) en el contenedor de la hoja tanto en `/resume/` (`#cv-document-sheet`) como en `/tools/resume-maker/` (`#resume-live-preview`):
 
 ```css
 @page {
@@ -209,7 +209,7 @@ const isMoreActive =
 
 ### Component 7: Print CV Fidelity: Selectable Text, Header-Only Underlined Links, Parity (`src/styles/resume.css`)
 
-**Invariantes (REQ-PRINT-1..6), válidos para `/resume/` y `/resume/maker/` en Chromium y Firefox:**
+**Invariantes (REQ-PRINT-1..6), válidos para `/resume/` y `/tools/resume-maker/` en Chromium y Firefox:**
 
 1. **Texto 100% seleccionable (REQ-PRINT-1):** el CV usa EXCLUSIVAMENTE las familias estáticas `Geist Static` / `Geist Mono Static` (`Geist-{Regular,Medium,SemiBold,Bold}.woff2`, `GeistMono-{Regular,Medium,Bold}.woff2`). Las fuentes variables (`*-Variable.woff2`) están PROHIBIDAS dentro de `.cv-document`/`.resume-document`: Firefox exporta su texto a PDF como contornos (no seleccionable: h1-h4, negritas, cursivas, `code`). Ligaduras desactivadas (`font-variant-ligatures: none`) y `user-select: text` en impresión.
 2. **Paridad de estilos (REQ-PRINT-2):** ambas rutas comparten `resume.css`; bloque `@media print` fija `font-size`, `line-height`, `letter-spacing`, `word-spacing`, `text-rendering: geometricPrecision`, `text-size-adjust: none`.
@@ -298,7 +298,7 @@ describe("SPEC-007: Frontend Glitches & UX Verification", () => {
   describe('Requirement 4: Nav "More" vs "Services" Active State', () => {
     function getActiveNav(pathname: string) {
       const isServices = pathname.includes("/services");
-      const moreRoutes = ["/resume/maker", "/links"];
+      const moreRoutes = ["/tools/resume-maker", "/links"];
       const isMore =
         moreRoutes.some((r) => pathname.includes(r)) && !isServices;
       return { isServices, isMore };
@@ -354,10 +354,10 @@ describe("SPEC-007: Frontend Glitches & UX Verification", () => {
 - [x] **Banner Session Storage**: El aviso de idioma aparece en la home, se cierra definitivamente con la `X` durante la sesión y no reaparece si el usuario conmutó manualmente de idioma.
 - [x] **Menú More Aislado**: `/services/*` activa exclusivamente el enlace `Services`; `More` permanece inactivo.
 - [x] **Persistencia SPA en Matrix**: Navegar entre experiencias con flechas mantiene el fondo de Matrix sin reiniciar el canvas ni recargar la página completa.
-- [x] **Márgenes de Impresión Idénticos**: La vista de impresión en `/resume/` y `/resume/maker/` comparte márgenes `@page` exactos y elimina espaciados residuales de contenedor.
+- [x] **Márgenes de Impresión Idénticos**: La vista de impresión en `/resume/` y `/tools/resume-maker/` comparte márgenes `@page` exactos y elimina espaciados residuales de contenedor.
 - [x] **Tests Verificados**: `pnpm test tests/spec-007/spec-007.test.ts` pasa en verde.
 
-- [x] **Print PDF idéntico en `/resume/` y `/resume/maker/`** (REQ-PRINT-2/3): mismas métricas y encabezado de un solo párrafo.
+- [x] **Print PDF idéntico en `/resume/` y `/tools/resume-maker/`** (REQ-PRINT-2/3): mismas métricas y encabezado de un solo párrafo.
 - [x] **Solo enlaces del encabezado, subrayados** en pantalla, previsualización y PDF (REQ-PRINT-4).
 - [x] **Todo el texto del PDF seleccionable en Firefox y Chromium** mediante fuentes estáticas (REQ-PRINT-1).
 - [x] **Toast de copiado sobre el banner de idioma** (REQ-PRINT-5) y **Matrix cae desde arriba al primer render** (REQ-PRINT-6).

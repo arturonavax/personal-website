@@ -59,14 +59,14 @@ Tras la consolidación de la infraestructura perimetral de alto rendimiento en C
 13. **Vulnerabilidad de Términos Técnicos a Traductores de Navegador:**
     Identificadores técnicos, librerías y tipos de lenguaje (ej. `sync.Pool`, `Zero-Allocation`, `etcd`) son traducidos indebidamente por herramientas automáticas como Google Translate. Se requiere una solución estandarizada con atributo `translate="no"` y control tipográfico (monospace vs sans).
 14. **Incompatibilidad del Motor de Impresión en Firefox:**
-    Al imprimir el currículum en `/resume/` y `/resume/maker/` bajo Mozilla Firefox, se imprimen las cabeceras de navegador (título, URL) y pies de página (hora, fecha, paginación nativa). Debe lograrse paridad visual idéntica a Chromium mediante `@page { margin: 0; }`.
-15. **Evolución Funcional de Resume Maker Studio (`/resume/maker/`):**
+    Al imprimir el currículum en `/resume/` y `/tools/resume-maker/` bajo Mozilla Firefox, se imprimen las cabeceras de navegador (título, URL) y pies de página (hora, fecha, paginación nativa). Debe lograrse paridad visual idéntica a Chromium mediante `@page { margin: 0; }`.
+15. **Evolución Funcional de Resume Maker Studio (`/tools/resume-maker/`):**
     - Falta un botón de reinicio para recuperar el Markdown original del CV.
     - El selector `<select>` de teléfono debe reemplazarse por un switch checkbox que exponga 2 inputs (número y etiqueta Markdown) e inyecte inteligentemente el dato al final de la cabecera de contacto detectando el delimitador existente (`•`, `|`).
     - La acción "Strip Links" debe ser un toggle reversible.
     - Se debe incluir la barra de atribución de reclutadores con ID personalizado (presente en `/resume/`).
-    - Al imprimir tanto `/resume/` como `/resume/maker/`, se deben purgar los hipervínculos del cuerpo conservando únicamente los de la cabecera.
-    - En `/resume/` se requiere un acceso directo hacia `/resume/maker/`.
+    - Al imprimir tanto `/resume/` como `/tools/resume-maker/`, se deben purgar los hipervínculos del cuerpo conservando únicamente los de la cabecera.
+    - En `/resume/` se requiere un acceso directo hacia `/tools/resume-maker/`.
     - Viabilidad técnica de syntax highlighting Markdown en el editor.
 16. **Carencia de Cabecera Sticky Contextual en `/experience/*`:**
     Las páginas de detalle de experiencia carecen de una barra pegajosa superior al hacer scroll que recuerde la empresa y el cargo, con mayor amplitud de datos que la home pero con una estética más sobria.
@@ -107,7 +107,7 @@ Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Class
 ### 1.4. Matriz de Trazabilidad y Referencias Cruzadas
 
 - **Conexión con [`SPEC-001`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-001-big-refactor.md):** Optimiza las rutas `[...lang]/` garantizando que las navegaciones con `ClientRouter` no rompan la máquina de estados de teclado ni causen fugas en observadores de scroll.
-- **Conexión con [`SPEC-002`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** Evoluciona `/resume/maker/` e introduce paridad estricta en el motor de impresión cross-browser para Firefox.
+- **Conexión con [`SPEC-002`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** Evoluciona `/tools/resume-maker/` e introduce paridad estricta en el motor de impresión cross-browser para Firefox.
 - **Conexión con [`SPEC-004`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md):** Mantiene las compuertas de calidad extrema (0 errores en consola, 0 saltos de layout CLS, respeto riguroso a `prefers-reduced-motion`).
 - **Conexión con [`SPEC-005`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-005-performance-content-delivery.md):** Ajusta las cabeceras perimetrales `Content-Security-Policy` en `public/_headers` sin comprometer la latencia de borde.
 
@@ -133,15 +133,15 @@ Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Class
 | **REQ-UXE-12** | **Motor de Relevancia y Puntuación en Búsqueda**                | `searchIndex.ts`, `UniversalSearchModal.astro`          | Sistema de ponderación por prioridad (`searchPriority`, peso de entidad). Empates léxicos se resuelven deterministamente según relevancia asignada.                             |
 | **REQ-UXE-13** | **Blindaje de Traducción Automática (`translate="no"`)**        | `TechTerm.astro`, componentes UI                        | Componente o utilidad para términos técnicos que inyecta `translate="no"` con soporte conmutable de tipografía `font-mono` o `font-sans`.                                       |
 | **REQ-UXE-14** | **Normalización de Impresión Firefox para CV**                  | `global.css`, `resume/index.astro`, `maker.astro`       | `@page { margin: 0; }` suprime cabeceras y pies de página nativos de Firefox. El documento replica fielmente la limpieza visual de Chromium.                                    |
-| **REQ-UXE-15** | **Evolución Funcional de Resume Maker Studio**                  | `src/pages/[...lang]/resume/maker.astro`, `index.astro` | Botón refresh original, switch checkbox de teléfono inteligente con 2 inputs, toggle reversible de strip links, barra de reclutador UTM, y botón de acceso en `/resume/`.       |
+| **REQ-UXE-15** | **Evolución Funcional de Resume Maker Studio**                  | `src/pages/[...lang]/tools/resume-maker.astro`, `index.astro` | Botón refresh original, switch checkbox de teléfono inteligente con 2 inputs, toggle reversible de strip links, barra de reclutador UTM, y botón de acceso en `/resume/`.       |
 | **REQ-UXE-16** | **Cabecera Sticky Contextual en `/experience/*`**               | `src/pages/[...lang]/experience/[slug].astro`           | Cada ficha de detalle posee barra sticky sobria con empresa y cargo al hacer scroll, manteniendo legibilidad sin saturar la pantalla.                                           |
 | **REQ-UXE-17** | **Botón Flotante Global "Back to Top"**                         | `BaseLayout.astro`, `src/components/ui/`                | Botón accesible que aparece suavemente al superar umbral de scroll en todas las páginas y conduce al tope con scroll fluido.                                                    |
 | **REQ-UXE-18** | **Remediación de Content Security Policy (`script-src`)**       | `public/_headers`                                       | Se incluye `data:` en `script-src` / `script-src-elem`. Cero errores de violación CSP en consola al navegar con `ClientRouter`.                                                 |
 | **REQ-UXE-19** | **Precisión de Navegación J/K y Supresión de Jitter en TOC**    | `src/components/ui/PageIndexNav.astro`                  | Mantiene `navTargetIdx` explícito; evita recálculo inestable de `currentIdx` durante scroll; evento `scrollend` reafirma sección destino; umbral coordinado con offset.         |
 | **REQ-UXE-20** | **Confiabilidad del Banner de Sugerencia de Idioma**            | `src/components/ui/LanguageSuggestionBanner.astro`      | Despliegue garantizado cuando idioma del dispositivo difiere de la página; descarte restringido a `sessionStorage`; respeta override manual por página sin bloqueo permanente.  |
 | **REQ-UXE-21** | **Erradicación del Indicador Flotante Solitario "Scroll j k"**  | `src/layouts/BaseLayout.astro`                          | Eliminación de `#global-vim-hint`, `updateVimHint` y `setupVimObserver`. Los atajos residen exclusivamente en `PageIndexNav.astro`.                                             |
-| **REQ-UXE-22** | **Entrada Telefónica Unificada en Resume Maker**                | `src/pages/[...lang]/resume/maker.astro`                | Sustitución de inputs dobles por campo único `phone-input`. Conserva espacios en markdown y purga espacios en la URI `tel:`.                                                    |
-| **REQ-UXE-23** | **Scroll Sincronizado y Compactación Vertical en Resume Maker** | `src/pages/[...lang]/resume/maker.astro`                | Desplazamiento sincronizado bidireccional entre editor y preview. Botones toggle con chevrons para compactar/expandir verticalmente ambos paneles.                              |
+| **REQ-UXE-22** | **Entrada Telefónica Unificada en Resume Maker**                | `src/pages/[...lang]/tools/resume-maker.astro`                | Sustitución de inputs dobles por campo único `phone-input`. Conserva espacios en markdown y purga espacios en la URI `tel:`.                                                    |
+| **REQ-UXE-23** | **Scroll Sincronizado y Compactación Vertical en Resume Maker** | `src/pages/[...lang]/tools/resume-maker.astro`                | Desplazamiento sincronizado bidireccional entre editor y preview. Botones toggle con chevrons para compactar/expandir verticalmente ambos paneles.                              |
 | **REQ-UXE-24** | **Corriente Continua Matrix y Supresión de Flicker de Título**  | `MatrixBackground.astro`, `experience/[slug].astro`     | `ResizeObserver` no resetea gotas si delta $\le 50\text{px}$. Estado duradero en singleton `__matrixDrops`. Actualización no destructiva de `document.title` en `navigateTo()`. |
 | **REQ-UXE-25** | **Rejilla Adaptable de Sistemas Destacados (Grid Layout)**      | `src/pages/[...lang]/index.astro`                       | Si hay 2 elementos destacados, se utiliza `grid-cols-1 md:grid-cols-2` ocupando todo el ancho. Para 3+ elementos se utiliza `lg:grid-cols-3`.                                   |
 | **REQ-UXE-26** | **Supresión de Indicador "+0 más" en Catálogos**                | `src/pages/[...lang]/index.astro`                       | La insignia `+{remaining} más en catálogo / archivo` se renderiza condicionalmente solo cuando `remaining > 0`. Cero renderizado de "+0 más".                                   |
@@ -601,7 +601,7 @@ En `src/styles/global.css`:
 
 ---
 
-### 3.13. Evolución Funcional de Resume Maker Studio (`/resume/maker/`)
+### 3.13. Evolución Funcional de Resume Maker Studio (`/tools/resume-maker/`)
 
 1. **Botón Reset:** Restaura el valor del editor textarea a `initialBody`.
 2. **Switch de Teléfono Dinámico con Inserción Inteligente:**
@@ -609,8 +609,8 @@ En `src/styles/global.css`:
    - Al marcarlo, localiza la línea de contacto (ej. `[email] • [linkedin] • [github]`) mediante regex sobre el markdown, detecta el separador predominante (`•`, `|`, `/`), e inserta al final el enlace Markdown del teléfono `• [label](tel:number)`.
    - Al desmarcarlo, purga la entrada telefónica y restaura la línea de contacto intacta.
 3. **Toggle "Strip Links":** Permite conmutar entre la versión con enlaces Markdown `[Texto](url)` y texto plano `Texto`, preservando un caché en memoria para revertir la acción sin pérdida de datos.
-4. **Atribución de Reclutador (UTM Tagging):** Integra el componente `ResumeAttributionBar.astro` en la barra lateral de `/resume/maker/`.
-5. **Acceso Cruzado en `/resume/`:** Botón destacado en el pie de página de `/resume/` hacia `/resume/maker/`.
+4. **Atribución de Reclutador (UTM Tagging):** Integra el componente `ResumeAttributionBar.astro` en la barra lateral de `/tools/resume-maker/`.
+5. **Acceso Cruzado en `/resume/`:** Botón destacado en el pie de página de `/resume/` hacia `/tools/resume-maker/`.
 6. **Viabilidad de Syntax Highlighting:**
    - Se concluye inviable integrar editores pesados tipo Monaco (5 MB) o CodeMirror (400 KB) por violar la directiva de 0 KB JS base.
    - **Solución Adoptada:** Highlighter micro-tokenizador ultraligero (< 1.2 KB) mediante superposición CSS de capas (`<pre><code>` sincronizado debajo de un `<textarea>` transparente), manteniendo 0 KB de librerías externas.
@@ -794,8 +794,8 @@ Se desarrollará una suite con Bun y Playwright cubriendo:
     [x] Botón de restauración del Markdown original en el editor.
     [x] Toggle de teléfono inteligente con 2 inputs y detección automática de separador.
     [x] Toggle reversible para Strip Links.
-    [x] Barra de reclutador UTM integrada en /resume/maker/.
-    [x] Acceso destacado a /resume/maker/ al pie de /resume/.
+    [x] Barra de reclutador UTM integrada en /tools/resume-maker/.
+    [x] Acceso destacado a /tools/resume-maker/ al pie de /resume/.
     [x] Impresión en Firefox sin cabeceras/pies de navegador feos (@page margin: 0).
     [x] Impresión sin hipervínculos en el cuerpo (solo cabecera de contacto).
 
@@ -848,7 +848,7 @@ Se desarrollará una suite con Bun y Playwright cubriendo:
   - Crear utilidad `TechTerm.astro` para términos no traducibles.
 - **Fase 5: Resume Maker Studio y Motor de Impresión Firefox**
   - Implementar `@page { margin: 0; }` y supresión de enlaces en `@media print`.
-  - Integrar botón reset, toggle de teléfono inteligente, strip links reversible y barra UTM en `/resume/maker/`.
-  - Añadir botón de acceso a `/resume/maker/` en `/resume/`.
+  - Integrar botón reset, toggle de teléfono inteligente, strip links reversible y barra UTM en `/tools/resume-maker/`.
+  - Añadir botón de acceso a `/tools/resume-maker/` en `/resume/`.
 - **Fase 6: Suite de Pruebas ODD y Certificación Final**
   - Ejecutar suite de pruebas de regresión visual y funcional en Bun y certificar Scorecard.

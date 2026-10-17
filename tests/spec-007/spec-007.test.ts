@@ -330,7 +330,7 @@ describe("SPEC-007 REQ-5: Matrix persistence & SPA navigation", () => {
 describe("SPEC-007 REQ-6: Print CV margin synchronization & Firefox chrome suppression", () => {
   const resumeCss = read("src/styles/resume.css");
   const globalCss = read("src/styles/global.css");
-  const makerAstro = read("src/pages/[...lang]/resume/maker.astro");
+  const makerAstro = read("src/pages/[...lang]/tools/resume-maker.astro");
 
   it("global.css defines @page with margin: 0mm !important to suppress Firefox headers/footers", () => {
     expect(globalCss).toMatch(/@page\s*\{[^}]*margin:\s*0mm\s*!important/i);
@@ -384,7 +384,7 @@ describe("Component 7: Print CV Fidelity (REQ-PRINT-1..6)", () => {
     );
     for (const f of [
       "src/pages/[...lang]/resume/index.astro",
-      "src/pages/[...lang]/resume/maker.astro",
+      "src/pages/[...lang]/tools/resume-maker.astro",
     ]) {
       const code = read(f);
       expect(code).not.toMatch(

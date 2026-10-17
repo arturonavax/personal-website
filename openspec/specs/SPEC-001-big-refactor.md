@@ -58,7 +58,7 @@ Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Class
 
 Esta especificación actúa como el **cimiento estructural** de toda la plataforma web, conectándose bidireccionalmente con el resto de las especificaciones:
 
-- **Hacia [SPEC-002: Refactorización General y Resume Studio](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** SPEC-001 provee el sistema de rutas unificadas `[...lang]` sobre el cual SPEC-002 monta la división modular de `/resume/` y `/resume/maker/`, el protocolo de portapapeles accesible y la exclusión de peticiones especulativas de prefetch.
+- **Hacia [SPEC-002: Refactorización General y Resume Studio](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** SPEC-001 provee el sistema de rutas unificadas `[...lang]` sobre el cual SPEC-002 monta la división modular de `/resume/` y `/tools/resume-maker/`, el protocolo de portapapeles accesible y la exclusión de peticiones especulativas de prefetch.
 - **Hacia [SPEC-003: Arquitectura Hexagonal y Cloudflare Edge Desacoplado](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md):** SPEC-001 define las interfaces iniciales de repositorio y telemetría que SPEC-003 formaliza integralmente en puertos de dominio puros (`StoragePort`, `TelemetryPort`, `SearchEnginePort`) y adaptadores perimetrales para R2, D1 y Vectorize.
 - **Hacia [SPEC-004: Auditoría Arquitectónica Global y Verificación Extrema](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md):** SPEC-004 somete los invariantes de SPEC-001 (presupuesto de 0 KB JS cliente, transiciones SPA sin layout shifts, headers inmutables) a compuertas de análisis estático automatizado (`scripts/audit-codebase.ts`) y pruebas Playwright.
 
@@ -537,7 +537,7 @@ El comportamiento en tiempo de ejecución se valida mediante un ciclo continuo d
 
 ### 5.2. Mapeo Bidireccional de Referencias Cruzadas
 
-- **Base de [SPEC-002](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** La consolidación de rutas paramétricas `[...lang]` permite a SPEC-002 modularizar el estudio `/resume/maker` y estructurar exportaciones multi-formato sin bifurcar plantillas en carpetas de idioma.
+- **Base de [SPEC-002](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** La consolidación de rutas paramétricas `[...lang]` permite a SPEC-002 modularizar el estudio `/tools/resume-maker` y estructurar exportaciones multi-formato sin bifurcar plantillas en carpetas de idioma.
 - **Base de [SPEC-003](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md):** El modelo de telemetría y desacoplamiento de almacenamiento de SPEC-001 se formaliza en la Arquitectura Hexagonal de puertos (`StoragePort`, `TelemetryPort`) y adaptadores perimetrales en Cloudflare Workers y D1.
 - **Sometido a [SPEC-004](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md):** Todos los artefactos de SPEC-001 son auditados matemáticamente por SPEC-004 para garantizar 0 KB JS en rutas estáticas, CLS = 0.000 e inmutabilidad estricta de headers.
 

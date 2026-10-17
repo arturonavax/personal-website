@@ -1,0 +1,82 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import BackToHomeButton from "@/components/ui/BackToHomeButton.astro";
+import { SUPPORTED_LOCALES, type Locale } from "@/i18n/locales";
+
+export function getStaticPaths() {
+  return SUPPORTED_LOCALES.map((locale) => ({
+    params: { lang: locale === "en" ? undefined : locale },
+    props: { locale },
+  }));
+}
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const isEs = locale === "es";
+const prefix = isEs ? "/es" : "";
+
+const tools = [
+  {
+    href: `${prefix}/tools/resume-maker/`,
+    name: "Resume Maker",
+    description: isEs
+      ? "Edita el currículum en markdown con vista previa en vivo y exporta a PDF, JSON, TOML o XML."
+      : "Edit the resume in markdown with a live preview and export to PDF, JSON, TOML or XML.",
+  },
+  {
+    href: `${prefix}/links/`,
+    name: isEs ? "Generador de enlaces" : "Link Generator",
+    description: isEs
+      ? "Crea enlaces con parámetros UTM para medir campañas y procedencia del tráfico."
+      : "Build UTM-tagged links to measure campaigns and referral sources.",
+  },
+];
+---
+
+<BaseLayout
+  title={isEs ? "Arturo Nava - Herramientas" : "Arturo Nava - Tools"}
+  description={isEs
+    ? "Herramientas ligeras y sin dependencias: creador de currículum y generador de enlaces de atribución."
+    : "Lightweight, dependency-free tools: resume maker and attribution link generator."}
+  locale={locale}
+>
+  <div
+    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-6 sm:space-y-8"
+  >
+    <BackToHomeButton locale={locale} />
+    <header class="border-b border-[var(--color-surface-border-subtle)] pb-4">
+      <h1
+        class="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)]"
+      >
+        {isEs ? "Herramientas" : "Tools"}
+      </h1>
+      <p class="mt-2 text-[var(--color-text-secondary)]">
+        {isEs
+          ? "Utilidades que uso a diario, abiertas para cualquiera."
+          : "Utilities I use daily, open to everyone."}
+      </p>
+    </header>
+    <ul class="grid gap-3 sm:grid-cols-2">
+      {
+        tools.map((tool) => (
+          <li>
+            <a
+              href={tool.href}
+              class="block h-full rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 transition-colors hover:border-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+            >
+              <span class="font-mono text-sm font-semibold text-[var(--color-accent-gold)]">
+                {tool.name}
+              </span>
+              <span class="mt-1.5 block text-sm leading-relaxed text-[var(--color-text-secondary)]">
+                {tool.description}
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</BaseLayout>

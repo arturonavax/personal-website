@@ -158,10 +158,10 @@ describe("SPEC-005 REQ-PCD-03: Subdomain Canonicalization Engine", () => {
       "/resume/",
     );
     expect(resolveSubdomainPath("maker.arturonavax.dev", "/")).toBe(
-      "/resume/maker/",
+      "/tools/resume-maker/",
     );
     expect(resolveSubdomainPath("maker.arturonavax.dev", "/designer")).toBe(
-      "/resume/maker/designer",
+      "/tools/resume-maker/designer",
     );
     expect(resolveSubdomainPath("arturonavax.dev", "/blog/")).toBeNull();
   });
@@ -181,7 +181,7 @@ describe("SPEC-005 REQ-PCD-03: Subdomain Canonicalization Engine", () => {
     );
   });
 
-  it("normalizes maker.arturonavax.dev to /resume/maker/ with 308", async () => {
+  it("normalizes maker.arturonavax.dev to /tools/resume-maker/ with 308", async () => {
     const ctx = createMockCtx();
     const env: Env = { ASSETS: dummyAssets, DB: createMockDb() };
 
@@ -190,7 +190,7 @@ describe("SPEC-005 REQ-PCD-03: Subdomain Canonicalization Engine", () => {
 
     expect(res.status).toBe(308);
     expect(res.headers.get("Location")).toBe(
-      "https://arturonavax.dev/resume/maker/?utm_campaign=hire",
+      "https://arturonavax.dev/tools/resume-maker/?utm_campaign=hire",
     );
   });
 });

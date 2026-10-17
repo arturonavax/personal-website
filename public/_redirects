@@ -10,3 +10,9 @@
 /instagram  https://instagram.com/arturonavax         302
 /x          https://x.com/arturonavax                 302
 /telegram   https://t.me/arturonavax                  302
+
+# Resume Maker migration: /resume/maker/ -> /tools/resume-maker/
+/resume/maker      /tools/resume-maker/     301
+/resume/maker/     /tools/resume-maker/     301
+/es/resume/maker   /es/tools/resume-maker/  301
+/es/resume/maker/  /es/tools/resume-maker/  301

@@ -70,7 +70,7 @@ No obstante, la ejecución de dicho plan mediante instrucciones destructivas de 
    - Para intentar parchar los errores 404 introducidos por la re-arquitectura, se elaboró un conjunto de tareas erróneas que amputó componentes de presentación:
      - `Header.astro`: Reducido de 1118 líneas a un menú rígido, perdiendo resolución de rutas activas (`/services/*` vs "Más"), soporte de idiomas y colapso responsivo dinámico.
      - `ExperienceTimeline.astro`: Reemplazado por datos estáticos fijos, desconectándolo de las colecciones de contenido de Astro.
-     - `resume/maker.astro`: El editor avanzado de CV (Resume Maker Studio con sincronización de scroll, alternador de teléfono y filtros ATS) fue reemplazado por un marcador de posición de 20 líneas.
+     - `tools/resume-maker.astro`: El editor avanzado de CV (Resume Maker Studio con sincronización de scroll, alternador de teléfono y filtros ATS) fue reemplazado por un marcador de posición de 20 líneas.
      - `resume/index.astro`: Mutilado y desalineado de los estándares de impresión unificada A4 de SPEC-007.
      - `MatrixBackground.astro`: Se eliminó la persistencia de transiciones SPA y la animación desde el borde superior (`next[i] = -Math.floor(Math.random() * 24)`).
 

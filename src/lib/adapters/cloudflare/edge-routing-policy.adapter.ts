@@ -10,7 +10,7 @@ export const THEMATIC_SUBDOMAINS: Record<string, string> = {
   "services.arturonavax.dev": "/services",
   "experience.arturonavax.dev": "/experience",
   "resume.arturonavax.dev": "/resume",
-  "maker.arturonavax.dev": "/resume/maker",
+  "maker.arturonavax.dev": "/tools/resume-maker",
 };
 
 export const ADMIN_HOSTNAMES = new Set([

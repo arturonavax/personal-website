@@ -80,7 +80,7 @@ Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Class
 ### 1.4. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
 
 - **Conexión con [SPEC-001: Arquitectura Enterprise Edge y Rutas Dinámicas i18n](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-001-big-refactor.md):** SPEC-005 blinda la entrega de las 14 rutas dinámicas parametrizadas bajo `src/pages/[...lang]/`, asegurando que la resolución estática no sufra retrasos de procesamiento de cabeceras en el Edge.
-- **Conexión con [SPEC-002: Refactorización General y Resume Studio](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** SPEC-005 garantiza que las descargas de PDFs compilados y llamadas a `/resume/maker/` aprovechen la caché perimetral sin que la telemetría síncrona afecte la fluidez del usuario.
+- **Conexión con [SPEC-002: Refactorización General y Resume Studio](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** SPEC-005 garantiza que las descargas de PDFs compilados y llamadas a `/tools/resume-maker/` aprovechen la caché perimetral sin que la telemetría síncrona afecte la fluidez del usuario.
 - **Conexión con [SPEC-003: Arquitectura Hexagonal y Cloudflare Edge Desacoplado](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md):** SPEC-005 refactoriza los adaptadores de D1, R2 y Vectorize introducidos en SPEC-003 para imponerles políticas estrictas de _Fail-Open_, presupuestos de sub-solicitudes perimetrales y ejecución asíncrona desacoplada del hilo de respuesta.
 - **Conexión con [SPEC-004: Auditoría Arquitectónica Global y Verificación Extrema](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md):** SPEC-005 complementa el scorecard de auditoría de SPEC-004 con compuertas de tiempo de ejecución perimetral (TTFB, presupuesto de CPU del Worker, comprobación de ausencia de cookies de Access en rutas públicas).
 
@@ -354,7 +354,7 @@ Para garantizar que Cloudflare Access jamás interfiera en el tráfico de visita
    - `services.arturonavax.dev/*` $\to$ `https://arturonavax.dev/services/*` (HTTP 308)
    - `experience.arturonavax.dev/*` $\to$ `https://arturonavax.dev/experience/*` (HTTP 308)
    - `resume.arturonavax.dev/*` $\to$ `https://arturonavax.dev/resume/*` (HTTP 308)
-   - `maker.arturonavax.dev/*` $\to$ `https://arturonavax.dev/resume/maker/*` (HTTP 308)
+   - `maker.arturonavax.dev/*` $\to$ `https://arturonavax.dev/tools/resume-maker/*` (HTTP 308)
 
 Estas redirecciones se implementarán preferentemente en **Cloudflare Edge Redirect Rules** (Reglas de Enrutamiento CDN gestionadas en la zona DNS) para que se resuelvan en $< 5\text{ ms}$ sin ejecutar código Worker. El Worker mantendrá la lógica como fallback perimetral.
 

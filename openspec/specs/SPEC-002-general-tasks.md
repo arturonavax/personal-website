@@ -36,7 +36,7 @@ Esta especificación técnica consolida la refactorización integral, la higiene
 4. **Degradación de Cuotas Edge por Prefetching Especulativo:** Las solicitudes especulativas de Astro y motores Chromium (`Purpose: prefetch` / `Sec-Purpose: prefetch`) impactaban los endpoints de telemetría, disparando escrituras innecesarias en Cloudflare D1.
 5. **Inconsistencias en el Motor de Impresión (@media print):** Discrepancias visuales y saltos de página inapropiados en Safari, Firefox y Chrome al generar el PDF del currículum, sumado a títulos de documento no sincronizados con el idioma activo.
 6. **Deuda de Nomenclatura de Dominio (`cv` vs `resume`):** Desalineación conceptual en esquemas de datos, nombres de carpetas (`src/content/cv` vs estándar internacional `resume`) y componentes asociados.
-7. **Ausencia de un Estudio Monospace de Personalización:** Carencia de un entorno en vivo (`/resume/maker`) que permita modificar Markdown en tiempo real, alternar selectores de teléfono para ofertas internacionales y serializar exportaciones a JSON-LD, TOML y XML estructurado con atribución UTM.
+7. **Ausencia de un Estudio Monospace de Personalización:** Carencia de un entorno en vivo (`/tools/resume-maker`) que permita modificar Markdown en tiempo real, alternar selectores de teléfono para ofertas internacionales y serializar exportaciones a JSON-LD, TOML y XML estructurado con atribución UTM.
 
 ### 1.2. Metodología ODD (Organic/Operational-Driven Development)
 
@@ -50,7 +50,7 @@ Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Class
 
 ### 1.3. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
 
-- **Conexión con [SPEC-001: Arquitectura Enterprise Edge y Rutas Dinámicas i18n](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-001-big-refactor.md):** SPEC-002 consume la infraestructura de rutas dinámicas `src/pages/[...lang]/` establecida por SPEC-001 para estructurar modularmente `/resume/index.astro` y `/resume/maker.astro` sin duplicar plantillas entre idiomas.
+- **Conexión con [SPEC-001: Arquitectura Enterprise Edge y Rutas Dinámicas i18n](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-001-big-refactor.md):** SPEC-002 consume la infraestructura de rutas dinámicas `src/pages/[...lang]/` establecida por SPEC-001 para estructurar modularmente `/resume/index.astro` y `/tools/resume-maker.astro` sin duplicar plantillas entre idiomas.
 - **Conexión con [SPEC-003: Arquitectura Hexagonal y Cloudflare Edge Desacoplado](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md):** SPEC-002 implementa el blindaje perimetral contra prefetch especulativo que protege las cuotas del adaptador `D1TelemetryAdapter` formalizado en SPEC-003, y alinea los exportadores de datos con los puertos de serialización.
 - **Conexión con [SPEC-004: Auditoría Arquitectónica Global y Verificación Extrema](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md):** SPEC-004 audita las compuertas de rendimiento introducidas en SPEC-002 (CLS = 0.000 durante la impresión, canónicos sanitizados sin polución UTM, y aislamiento de animaciones WAAPI).
 
@@ -73,7 +73,7 @@ Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Class
 | **REQ-09** | **Scroll-Margin Offset Normalization** | `src/styles/global.css`, `PageIndexNav.astro`  | Anclas y encabezados con `scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem)`. Cero oclusiones con sticky header.                    |
 | **REQ-10** | **WAAPI Circular Reveal Hardening**    | `src/components/common/ThemeToggle.astro`      | Aislamiento en `::view-transition-group(root)` con contención explícita. Cero parpadeos en Firefox 129+ y Safari iOS.                          |
 | **REQ-11** | **Multi-Format Serializers**           | `src/utils/resumeExporters.ts`                 | Serialización reactiva a Markdown puro, JSON tipado (Schema.org), TOML y XML estructurado con inyección dinámica de UTM.                       |
-| **REQ-12** | **Resume Maker Studio Route**          | `src/pages/[...lang]/resume/maker.astro`       | Editor monospace en tiempo real, selector de teléfono, sanitización de enlaces y vista previa idéntica a `/resume`.                            |
+| **REQ-12** | **Resume Maker Studio Route**          | `src/pages/[...lang]/tools/resume-maker.astro`       | Editor monospace en tiempo real, selector de teléfono, sanitización de enlaces y vista previa idéntica a `/resume`.                            |
 
 ### 2.2. Criterios de Aceptación Cuantitativos y Umbrales de Rendimiento
 
@@ -95,7 +95,7 @@ Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Class
 Se reestructura la ruta `src/pages/[...lang]/resume.astro` hacia un subdirectorio modular:
 
 - `src/pages/[...lang]/resume/index.astro` (Vista principal del currículum para lectura e impresión).
-- `src/pages/[...lang]/resume/maker.astro` (Estudio de personalización y edición interactiva).
+- `src/pages/[...lang]/tools/resume-maker.astro` (Estudio de personalización y edición interactiva).
 
 #### Esquema de Colección de Contenido (`src/content.config.ts`)
 
@@ -761,7 +761,7 @@ export function serializeResumeToXML(
 
 ---
 
-### 4.11. Estudio Monospace Resume Maker (`src/pages/[...lang]/resume/maker.astro`) (REQ-12)
+### 4.11. Estudio Monospace Resume Maker (`src/pages/[...lang]/tools/resume-maker.astro`) (REQ-12)
 
 Ruta interactiva que combina edición en tiempo real de Markdown, selector de prefijo telefónico y botones de sanitización/impresión directa:
 
@@ -918,7 +918,7 @@ const initialBody = activeEntry?.body || "";
 | **VAL-05** | Filtro Exclusivo         | Clic alternado entre empresas en Timeline               | Máximo 1 empresa activa; retorno a "All" al presionar botón activo.                             |
 | **VAL-06** | Router SPA en Búsqueda   | Seleccionar resultado en modal y presionar `Enter`      | Cambio de ruta instantáneo mediante `ClientRouter` sin flash de recarga.                        |
 | **VAL-07** | Límites de Impresión     | `window.print()` en Chrome, Firefox y Safari            | Nombre `ArturoNava-CV-{lang}.pdf`, cero elementos UI visibles, sin saltos de página en bloques. |
-| **VAL-08** | Paridad de Estudio Maker | Edición de markdown en `/resume/maker`                  | Renderizado sub-16 ms en DOM preview; estilos tipográficos 1:1 con `/resume`.                   |
+| **VAL-08** | Paridad de Estudio Maker | Edición de markdown en `/tools/resume-maker`                  | Renderizado sub-16 ms en DOM preview; estilos tipográficos 1:1 con `/resume`.                   |
 
 ---
 
@@ -940,6 +940,6 @@ const initialBody = activeEntry?.body || "";
 [x] REQ-09: scroll-margin-top configurado con offset del header en todas las anclas con ID.
 [x] REQ-10: WAAPI Circular Reveal contenido y validado en Firefox 129+, Chromium y Safari.
 [x] REQ-11: resumeExporters.ts serializa JSON-LD (@id unificado), TOML y XML con UTM.
-[x] REQ-12 / VAL-08: /resume/maker y /es/resume/maker completamente operativos y verificados.
+[x] REQ-12 / VAL-08: /tools/resume-maker y /es/tools/resume-maker completamente operativos y verificados.
 ================================================================================
 ```

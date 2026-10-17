@@ -51,7 +51,7 @@ Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Class
 ### 1.3. Matriz de Trazabilidad y Referencias Cruzadas entre Especificaciones
 
 - **Conexión con [SPEC-001: Arquitectura Enterprise Edge y Rutas Dinámicas i18n](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-001-big-refactor.md):** SPEC-003 implementa las abstracciones de repositorio formalizadas por SPEC-001 y amplía el motor dinámico de rutas `[...lang]` integrando el registro centralizado de locales y la cadena de fallback.
-- **Conexión con [SPEC-002: Refactorización General y Resume Studio](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** SPEC-003 provee los adaptadores de almacenamiento y telemetría que blindan las rutas de `/resume/` y `/resume/maker/` contra consumo excesivo de cuotas y garantizan la persistencia de contactos y eventos.
+- **Conexión con [SPEC-002: Refactorización General y Resume Studio](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md):** SPEC-003 provee los adaptadores de almacenamiento y telemetría que blindan las rutas de `/resume/` y `/tools/resume-maker/` contra consumo excesivo de cuotas y garantizan la persistencia de contactos y eventos.
 - **Conexión con [SPEC-004: Auditoría Arquitectónica Global y Verificación Extrema](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md):** SPEC-004 audita las compuertas perimetrales de SPEC-003 (inmutabilidad de encabezados HTTP, aislamiento de esquemas JSON-LD monobilingües con `@id` invariable y tiempo de respuesta TTFB < 25ms).
 
 ---

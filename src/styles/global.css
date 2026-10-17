@@ -718,7 +718,7 @@ header {
   z-index: 50;
 }
 
-/* Sub-headers and content banners in /links/, /resume/maker/, and article sections must remain non-sticky */
+/* Sub-headers and content banners in /links/, /tools/resume-maker/, and article sections must remain non-sticky */
 header:not(#site-header) {
   position: static;
   top: auto;
@@ -937,5 +937,24 @@ html.lang-text-reacting .copy-feedback,
   .typewriter-cursor {
     animation: none !important;
     opacity: 1 !important;
+  }
+}
+
+/* Floating actions (Index, Shortcuts, Back to top) rise above the language
+   suggestion toast while it is visible and drop back once it is dismissed. */
+#floating-actions-stack,
+#mobile-page-index-root {
+  transition-property: transform;
+  transition-duration: 300ms;
+  transition-timing-function: ease-out;
+}
+#lang-suggestion-banner.opacity-100 ~ #floating-actions-stack,
+#lang-suggestion-banner.opacity-100 ~ #mobile-page-index-root {
+  transform: translateY(-4.25rem);
+}
+@media (prefers-reduced-motion: reduce) {
+  #floating-actions-stack,
+  #mobile-page-index-root {
+    transition: none;
   }
 }

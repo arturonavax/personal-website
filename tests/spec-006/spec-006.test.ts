@@ -477,7 +477,7 @@ describe("SPEC-006 REQ-UXE-15: Functional Evolution of Resume Maker Studio", () 
   it("maker.astro incorporates markdown reset, smart phone checkbox, strip links toggle, and UTM bar", () => {
     const makerPath = path.join(
       ROOT_DIR,
-      "src/pages/[...lang]/resume/maker.astro",
+      "src/pages/[...lang]/tools/resume-maker.astro",
     );
     const content = fs.readFileSync(makerPath, "utf-8");
 
@@ -488,14 +488,14 @@ describe("SPEC-006 REQ-UXE-15: Functional Evolution of Resume Maker Studio", () 
     expect(content).toContain("ResumeAttributionBar");
   });
 
-  it("resume/index.astro includes link to /resume/maker/", () => {
+  it("resume/index.astro includes link to /tools/resume-maker/", () => {
     const resumePath = path.join(
       ROOT_DIR,
       "src/pages/[...lang]/resume/index.astro",
     );
     const content = fs.readFileSync(resumePath, "utf-8");
 
-    expect(content).toMatch(/\/resume\/maker\/?/);
+    expect(content).toMatch(/\/tools\/resume-maker\/?/);
   });
 });
 
@@ -590,7 +590,7 @@ describe("SPEC-006 REQ-UXE-22: Resume Maker Single Phone Input", () => {
   it("uses single phone-input preserving spaces in markdown label and stripping them in tel: URL", () => {
     const makerPath = path.join(
       ROOT_DIR,
-      "src/pages/[...lang]/resume/maker.astro",
+      "src/pages/[...lang]/tools/resume-maker.astro",
     );
     const content = fs.readFileSync(makerPath, "utf-8");
 
@@ -608,7 +608,7 @@ describe("SPEC-006 REQ-UXE-23: Resume Maker Synchronized Scroll & Vertical Toggl
   it("implements bidirectional synchronized scroll between editor and preview", () => {
     const makerPath = path.join(
       ROOT_DIR,
-      "src/pages/[...lang]/resume/maker.astro",
+      "src/pages/[...lang]/tools/resume-maker.astro",
     );
     const content = fs.readFileSync(makerPath, "utf-8");
 
@@ -621,7 +621,7 @@ describe("SPEC-006 REQ-UXE-23: Resume Maker Synchronized Scroll & Vertical Toggl
   it("provides collapse/compact toggle buttons for both editor and preview panes", () => {
     const makerPath = path.join(
       ROOT_DIR,
-      "src/pages/[...lang]/resume/maker.astro",
+      "src/pages/[...lang]/tools/resume-maker.astro",
     );
     const content = fs.readFileSync(makerPath, "utf-8");
 
@@ -743,7 +743,7 @@ describe("SPEC-006 REQ-UXE-29: Preserve Contact Header Links in Resume Print and
 
   it("maker.astro strip links toggle preserves contact header links", () => {
     const makerContent = fs.readFileSync(
-      path.join(ROOT_DIR, "src/pages/[...lang]/resume/maker.astro"),
+      path.join(ROOT_DIR, "src/pages/[...lang]/tools/resume-maker.astro"),
       "utf-8",
     );
 

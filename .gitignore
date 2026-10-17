@@ -41,3 +41,10 @@ prompt-perf.json
 .cv/
 yo2.jpg
 
+
+# Ignored remote content synced from R2
+src/content/posts/**
+!src/content/posts/.gitkeep
+public/CV.pdf
+public/remote-assets/**
+!public/remote-assets/.gitkeep
