@@ -36,6 +36,25 @@ export function resolveSubdomainPath(
     return `${base}/`;
   }
 
+  // Handle multilingual locale prefixes (e.g., /es, /es/, /es/post)
+  if (cleanPath === "es") {
+    return `/es${base}/`;
+  }
+  if (cleanPath.startsWith("es/")) {
+    const afterLocale = cleanPath.slice(3).replace(/^\/+/, "");
+    const baseWithoutSlash = base.replace(/^\/+/, "");
+    if (!afterLocale) {
+      return `/es${base}/`;
+    }
+    if (
+      afterLocale === baseWithoutSlash ||
+      afterLocale.startsWith(`${baseWithoutSlash}/`)
+    ) {
+      return `/es/${afterLocale}`;
+    }
+    return `/es${base}/${afterLocale}`;
+  }
+
   const baseWithoutSlash = base.replace(/^\/+/, "");
   if (
     cleanPath === baseWithoutSlash ||

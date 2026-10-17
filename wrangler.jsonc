@@ -17,6 +17,10 @@
       "pattern": "admin.arturonavax.dev",
       "custom_domain": true,
     },
+    {
+      "pattern": "blog.arturonavax.dev",
+      "custom_domain": true,
+    },
   ],
   "assets": {
     "directory": "./dist",

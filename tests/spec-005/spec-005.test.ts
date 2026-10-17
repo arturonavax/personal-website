@@ -163,6 +163,14 @@ describe("SPEC-005 REQ-PCD-03: Subdomain Canonicalization Engine", () => {
     expect(resolveSubdomainPath("maker.arturonavax.dev", "/designer")).toBe(
       "/tools/resume-maker/designer",
     );
+    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es")).toBe("/es/blog/");
+    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es/")).toBe("/es/blog/");
+    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es/sub-50ms-fraud")).toBe(
+      "/es/blog/sub-50ms-fraud",
+    );
+    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es/blog/sub-50ms-fraud")).toBe(
+      "/es/blog/sub-50ms-fraud",
+    );
     expect(resolveSubdomainPath("arturonavax.dev", "/blog/")).toBeNull();
   });
 

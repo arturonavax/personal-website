@@ -2,7 +2,7 @@
 
 [] (Human) Rediseño total de el banner de About y Contact con Impecable skill.
 
-[] (Human) Subir el PDF de mi CV a R2 y agregar boton de descarga a la pagina de /resume/
+[x] (Human) Subir el PDF de mi CV a R2 y agregar boton de descarga a la pagina de /resume/
 
 [x] El "Available for Senior" de el contenedor de Contact no se ajusta con responsive a pantallas pequeñas, arreglalo.
 
