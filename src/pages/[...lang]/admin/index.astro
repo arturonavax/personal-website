@@ -34,6 +34,24 @@ const description = isEs
   hideFooter={true}
 >
   <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- Admin Auth Notice (shown when 401 Unauthorized occurs) -->
+    <div id="admin-auth-notice" class="hidden p-4 rounded-sm border border-red-500/40 bg-red-950/20 text-red-300 font-mono text-xs space-y-2">
+      <div class="flex items-center gap-2 font-bold text-red-400">
+        <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+        {isEs ? "401 ACCESO RESTRINGIDO // AUTENTICACIÓN ZERO TRUST REQUERIDA" : "401 UNAUTHORIZED // ZERO TRUST AUTHENTICATION REQUIRED"}
+      </div>
+      <p class="text-xs text-[var(--color-text-secondary)]">
+        {isEs 
+          ? "Esta superficie administrativa está protegida por Cloudflare Access Zero Trust. Inicie sesión para ver la telemetría perimetral."
+          : "This administrative surface is protected by Cloudflare Access Zero Trust. Please sign in to access edge telemetry."}
+      </p>
+      <div class="flex flex-wrap items-center gap-3 pt-2">
+        <a href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/admin.arturonavax.dev" class="px-3 py-1.5 rounded-xs bg-[var(--color-accent-gold)] text-[var(--color-bg-primary)] font-bold text-xs hover:bg-[var(--color-accent-gold-hover)] transition-colors">
+          {isEs ? "Autenticar con Cloudflare Access" : "Authenticate with Cloudflare Access"}
+        </a>
+      </div>
+    </div>
+
     <!-- Master Filter Toolbar (Banner with selectors at the very top of dashboard) -->
     <div class="geometric-box rounded-sm p-4 shadow-sm space-y-3">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 font-mono text-xs">
@@ -607,6 +625,33 @@ const description = isEs
           </div>
         </div>
 
+        <!-- Quota 3B: D1 Database Writes -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              {isEs ? "D1 Escrituras (Diario)" : "D1 Writes (Daily)"}
+            </span>
+            <span class="text-emerald-400 font-bold">100k / día</span>
+          </div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-d1-writes"
+          >
+            -- / 100,000
+          </div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div
+              id="quota-d1-writes-bar"
+              class="h-full bg-emerald-400 transition-all duration-300"
+              style="width: 1%;"
+            ></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>{isEs ? "Degradación:" : "Tier:"} <span id="quota-d1-writes-status" class="text-emerald-400 font-semibold">NOMINAL</span></span>
+            <span>00:00 UTC</span>
+          </div>
+        </div>
+
         <!-- Quota 4: D1 Storage -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
@@ -766,6 +811,33 @@ const description = isEs
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>Inferencia Edge</span>
             <span class="text-emerald-400 font-semibold">Disponible</span>
+          </div>
+        </div>
+
+        <!-- Quota 10: Vectorize Semantic Embeddings -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              {isEs ? "Vectorize (Mensual)" : "Vectorize (Monthly)"}
+            </span>
+            <span class="text-emerald-400 font-bold">5M / mes</span>
+          </div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-vectorize"
+          >
+            0 / 5,000,000 dims
+          </div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div
+              id="quota-vectorize-bar"
+              class="h-full bg-cyan-400 transition-all duration-300"
+              style="width: 1%;"
+            ></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>{isEs ? "Búsqueda Semántica" : "Semantic Search"}</span>
+            <span class="text-emerald-400 font-semibold">{isEs ? "Disponible" : "Ready"}</span>
           </div>
         </div>
       </div>
@@ -1753,6 +1825,17 @@ const description = isEs
         var deployRes = results[2];
         var leadsRes = results[3];
 
+        if (telemetryRes.status === "fulfilled" && telemetryRes.value.status === 401) {
+          var authNotice = document.getElementById("admin-auth-notice");
+          if (authNotice) authNotice.classList.remove("hidden");
+          var cacheBadge = document.getElementById("badge-cache-mode");
+          if (cacheBadge) {
+            cacheBadge.textContent = "● 401 No Autorizado (Zero Trust Requerido)";
+            cacheBadge.style.color = "#ef4444";
+          }
+          return;
+        }
+
         if (telemetryRes.status === "fulfilled" && telemetryRes.value.ok) {
           var tData = await telemetryRes.value.json();
           cachedTelemetryData = tData;
@@ -1844,6 +1927,35 @@ const description = isEs
               100,
               Math.round(((q3.used || 0) / (q3.limit || 5000000)) * 100),
             ) + "%";
+      }
+      if (cachedQuotas.d1_writes_daily) {
+        var qw = cachedQuotas.d1_writes_daily;
+        var elw = document.getElementById("quota-d1-writes");
+        var barw = document.getElementById("quota-d1-writes-bar");
+        var statusw = document.getElementById("quota-d1-writes-status");
+        var limitw = qw.limit || 100000;
+        var usedw = qw.used || 0;
+        if (elw)
+          elw.textContent =
+            usedw.toLocaleString() + " / " + limitw.toLocaleString() + " filas";
+        var pctw = Math.min(100, Math.round((usedw / limitw) * 100));
+        if (barw) {
+          barw.style.width = Math.max(1, pctw) + "%";
+          if (pctw >= 95) barw.className = "h-full bg-red-500 transition-all duration-300";
+          else if (pctw >= 85) barw.className = "h-full bg-orange-500 transition-all duration-300";
+          else if (pctw >= 70) barw.className = "h-full bg-amber-400 transition-all duration-300";
+          else if (pctw >= 50) barw.className = "h-full bg-cyan-400 transition-all duration-300";
+          else barw.className = "h-full bg-emerald-400 transition-all duration-300";
+        }
+        if (statusw) {
+          var tierw = cachedQuotas.degradation_tier_name || "NOMINAL";
+          statusw.textContent = tierw;
+          if (tierw === "NOMINAL") statusw.className = "text-emerald-400 font-semibold";
+          else if (tierw === "CONSERVATIVE") statusw.className = "text-cyan-400 font-semibold";
+          else if (tierw === "COMPACT_ROLLUP") statusw.className = "text-amber-400 font-semibold";
+          else if (tierw === "CRITICAL_SURVIVAL") statusw.className = "text-orange-400 font-semibold";
+          else statusw.className = "text-red-400 font-semibold";
+        }
       }
       if (cachedQuotas.d1_storage) {
         var q4 = cachedQuotas.d1_storage;
@@ -1942,6 +2054,22 @@ const description = isEs
             Math.min(
               100,
               Math.round(((q9.used || 0) / (q9.limit || 10000)) * 100),
+            ) + "%";
+      }
+      if (cachedQuotas.vectorize_monthly) {
+        var qv = cachedQuotas.vectorize_monthly;
+        var elv = document.getElementById("quota-vectorize");
+        var barv = document.getElementById("quota-vectorize-bar");
+        var limitv = qv.limit || 5000000;
+        var usedv = qv.used || 0;
+        if (elv)
+          elv.textContent =
+            usedv.toLocaleString() + " / " + limitv.toLocaleString() + " dims";
+        if (barv)
+          barv.style.width =
+            Math.min(
+              100,
+              Math.max(1, Math.round((usedv / limitv) * 100)),
             ) + "%";
       }
     }

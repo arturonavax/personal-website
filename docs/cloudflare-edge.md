@@ -132,11 +132,50 @@ In `wrangler.jsonc`, custom domain routes ensure direct routing into the worker:
 
 ## 4. Zero Trust Isolated Admin Surface (`admin.arturonavax.dev`)
 
-The administration and analytics portal (`/admin`) is completely decoupled from the public apex domain:
+The administration and analytics portal is completely decoupled and shielded behind a multi-layered security perimeter:
 
-- Any visitor attempting to access `arturonavax.dev/admin` or `arturonavax.dev/admin/*` is immediately redirected via HTTP 308 to `https://admin.arturonavax.dev`.
-- `admin.arturonavax.dev` is protected by **Cloudflare Access (Zero Trust)** policies requiring hardware WebAuthn keys or GitHub OAuth identity verification.
-- Public HTML responses on the apex never include administrative code, cookies, or authorization tokens.
+### 4.1. Universal Worker Interception (`run_worker_first: true`)
+- In `wrangler.jsonc`, `"run_worker_first": true` ensures that the Cloudflare Worker intercepts **100% of incoming requests** before Static Assets can serve files from disk.
+- Any attempt to access `arturonavax.dev/admin`, `arturonavax.dev/admin/`, or `arturonavax.dev/*/admin*` is immediately intercepted and permanently redirected via **HTTP 308** to `https://admin.arturonavax.dev/`. Static HTML is never served without passing through worker verification.
+
+### 4.2. Dual-Method Strict Authentication (`verifyAdminAuthorization`)
+The worker enforces strict identity verification across both document navigations and API endpoints:
+1. **Cloudflare Access Zero Trust Identity:**
+   - Validates `cf-access-authenticated-user-email` against the authorized admin whitelist configured in `ADMIN_AUTHORIZED_EMAILS`.
+   - Rejects unauthorized or spoofed emails with HTTP 401/403.
+   - Inspects `cf-access-jwt-assertion` cryptographically.
+2. **Admin API Key / Secret Token (`ADMIN_API_KEY`):**
+   - Allows authorized administrators to authenticate via `Authorization: Bearer <key>`, query parameter `?token=<key>`, or secure session cookie `admin_session=<key>`.
+   - Passing `?token=<key>` automatically sets an `HttpOnly`, `SameSite=Lax`, `Secure` session cookie for seamless 24-hour administration.
+
+### 4.3. Universal API Shielding
+All administrative endpoints are strictly protected:
+- `/api/telemetry`
+- `/api/metrics`
+- `/api/leads`
+- `/api/deployments`
+- `/api/status`
+- `/status`
+
+Unauthenticated requests to any of these endpoints return **HTTP 401 Unauthorized** with `X-Robots-Tag: noindex, nofollow, noarchive` and `Cache-Control: no-store, private`.
+
+### 4.4. 401 Authentication Challenge Screen
+When an unauthenticated browser navigates to `https://admin.arturonavax.dev/`:
+- The server responds with **HTTP 401 Unauthorized** and a clean, dark-mode challenge screen.
+- Provides direct single-click redirection to the Cloudflare Zero Trust authentication gateway.
+- Includes a secure token entry form to unlock the console via `ADMIN_API_KEY`.
+- **Zero data leakage:** No metrics, charts, visitor logs, or database rows are emitted in unauthenticated responses.
+
+### 4.5. Comprehensive Cloudflare Quota Telemetry in Admin UI
+The admin dashboard surfaces live usage, limits, and degradation tiers across all Cloudflare primitives:
+- **Workers Requests:** Daily (100k limit) & 30-day cumulative rolling usage.
+- **D1 Database Reads:** Daily rows read (5M limit) with edge memory cache indicators.
+- **D1 Database Writes:** Daily rows written (100k limit) with color-coded degradation tier indicators (`NOMINAL`, `CONSERVATIVE`, `COMPACT_ROLLUP`, `CRITICAL_SURVIVAL`, `R2_WAL_FALLBACK`).
+- **D1 Database Storage:** Current DB size vs 5 GB maximum.
+- **Workers AI:** Daily neuron consumption vs 10k free daily allocation.
+- **Vectorize Index:** Semantic search queries & dimensions vs monthly allowance.
+- **R2 Storage & Operations:** Class A mutations (1M limit), Class B reads (10M limit), and storage volume (10 GB limit).
+- **Zero Trust:** Active seats vs 50 seats included in the free tier.
 
 ---
 

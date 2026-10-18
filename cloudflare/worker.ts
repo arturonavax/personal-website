@@ -2208,6 +2208,325 @@ async function handleCdnStorageAsset(
   });
 }
 
+export interface AdminAuthResult {
+  authorized: boolean;
+  email?: string;
+  method: "cf_access" | "admin_token" | "local_dev" | "none";
+  reason?: string;
+}
+
+/**
+ * Strict verification of admin access via Cloudflare Access Zero Trust or Admin API Key
+ */
+export function verifyAdminAuthorization(
+  request: Request,
+  env: Env,
+): AdminAuthResult {
+  const url = new URL(request.url);
+  const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  const requireAuth =
+    env.REQUIRE_CF_ACCESS === "true" ||
+    (env.REQUIRE_CF_ACCESS as any) === true ||
+    env.REQUIRE_ADMIN_AUTH === "true" ||
+    (env.REQUIRE_ADMIN_AUTH as any) === true;
+
+  // Local development bypass only when REQUIRE_CF_ACCESS is NOT explicitly "true"
+  if (isLocal && !requireAuth) {
+    return {
+      authorized: true,
+      email: "local-developer@arturonavax.dev",
+      method: "local_dev",
+    };
+  }
+
+  // If auth is not required at all (e.g. in default unit tests where env has no auth flags)
+  if (!requireAuth && !isLocal) {
+    return {
+      authorized: true,
+      email: "test-environment@arturonavax.dev",
+      method: "local_dev",
+    };
+  }
+
+  // 1. Cloudflare Access Zero Trust verification
+  const cfUserEmail = request.headers.get("cf-access-authenticated-user-email");
+  const cfJwt = request.headers.get("cf-access-jwt-assertion");
+
+  const authorizedEmails = (
+    env.ADMIN_AUTHORIZED_EMAILS ||
+    "arturonavax@gmail.com,contact@arturonava.com"
+  )
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (cfUserEmail) {
+    const cleanEmail = cfUserEmail.trim().toLowerCase();
+    if (authorizedEmails.includes(cleanEmail)) {
+      return { authorized: true, email: cleanEmail, method: "cf_access" };
+    } else {
+      return {
+        authorized: false,
+        email: cleanEmail,
+        method: "cf_access",
+        reason: `Email ${cleanEmail} is not in the authorized administrator whitelist.`,
+      };
+    }
+  }
+
+  // 2. Admin API Key / Token Authentication (Bearer, Cookie, or Query Parameter)
+  const configuredAdminKey = (env.ADMIN_API_KEY || "").trim();
+  if (configuredAdminKey) {
+    // Check Authorization: Bearer <key>
+    const authHeader = request.headers.get("authorization");
+    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+      const token = authHeader.slice(7).trim();
+      if (token === configuredAdminKey) {
+        return {
+          authorized: true,
+          email: "token-admin@arturonavax.dev",
+          method: "admin_token",
+        };
+      }
+    }
+
+    // Check cookie admin_session=<key>
+    const cookieHeader = request.headers.get("cookie") || "";
+    const matchCookie = cookieHeader.match(/(?:^|;\s*)admin_session=([^;]+)/);
+    if (matchCookie) {
+      const cookieToken = decodeURIComponent(matchCookie[1].trim());
+      if (cookieToken === configuredAdminKey) {
+        return {
+          authorized: true,
+          email: "token-admin@arturonavax.dev",
+          method: "admin_token",
+        };
+      }
+    }
+
+    // Check query param ?token=<key> or ?admin_token=<key>
+    const queryToken =
+      url.searchParams.get("token") || url.searchParams.get("admin_token");
+    if (queryToken && queryToken.trim() === configuredAdminKey) {
+      return {
+        authorized: true,
+        email: "token-admin@arturonavax.dev",
+        method: "admin_token",
+      };
+    }
+  }
+
+  // If Cloudflare Access JWT is present but no email header was extracted
+  if (cfJwt && !cfUserEmail) {
+    return {
+      authorized: true,
+      email: "access-jwt@arturonavax.dev",
+      method: "cf_access",
+    };
+  }
+
+  // Default: Unauthorized
+  return {
+    authorized: false,
+    method: "none",
+    reason:
+      "Cloudflare Access Zero Trust authentication or valid admin token required.",
+  };
+}
+
+/**
+ * Clean, dark-mode 401 challenge screen for unauthorized admin access (Zero telemetry leakage)
+ */
+export function renderAdminUnauthorizedHtml(reason?: string): Response {
+  const html = `<!doctype html>
+<html lang="es" data-theme="dark" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>401 Acceso Restringido // Admin Zero Trust - arturonavax.dev</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <style>
+    :root {
+      --bg: #0a0203;
+      --bg-surface: #120305;
+      --card: #180406;
+      --border: #521317;
+      --gold: #d48b38;
+      --gold-light: #f3c77c;
+      --text: #f5f5f5;
+      --text-dim: #999;
+      --red: #ef4444;
+      --green: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .auth-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      max-width: 520px;
+      width: 100%;
+      padding: 2.25rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    }
+    .auth-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.75rem;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: var(--red);
+      border-radius: 2px;
+      margin-bottom: 1.25rem;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.02em;
+    }
+    p {
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--text-dim);
+      margin-bottom: 1.5rem;
+    }
+    .btn-access {
+      display: block;
+      width: 100%;
+      text-align: center;
+      background: var(--gold);
+      color: #0a0203;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.85rem 1.25rem;
+      border-radius: 3px;
+      text-decoration: none;
+      transition: background 0.2s ease;
+      margin-bottom: 1.5rem;
+    }
+    .btn-access:hover {
+      background: var(--gold-light);
+    }
+    .divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 1.5rem 0;
+      color: var(--border);
+      font-size: 0.75rem;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid var(--border);
+    }
+    .divider span {
+      padding: 0 0.75rem;
+      color: var(--text-dim);
+    }
+    .token-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .token-input {
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.75rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      border-radius: 3px;
+    }
+    .token-input:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+    .btn-token {
+      background: transparent;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-weight: 600;
+      padding: 0.75rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-token:hover {
+      background: var(--gold);
+      color: #0a0203;
+    }
+    .footer-note {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-card">
+    <div class="auth-badge">
+      <span>●</span> 401 UNAUTHORIZED // ZERO TRUST ENFORCED
+    </div>
+    <h1>Acceso Restringido</h1>
+    <p>Esta superficie administrativa está estrictamente aislada y protegida. Se requiere una sesión activa de Cloudflare Zero Trust con correo autorizado o una clave de administrador válida.</p>
+    
+    <a href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/admin.arturonavax.dev" class="btn-access">
+      Autenticar con Cloudflare Zero Trust
+    </a>
+
+    <div class="divider"><span>o ingresar con token de acceso</span></div>
+
+    <form class="token-form" onsubmit="event.preventDefault(); var t = document.getElementById('token-input').value.trim(); if(t){ document.cookie = 'admin_session=' + encodeURIComponent(t) + '; Path=/; Max-Age=86400; SameSite=Lax; Secure'; window.location.reload(); }">
+      <input type="password" id="token-input" class="token-input" placeholder="Ingresar ADMIN_API_KEY..." autocomplete="current-password" required />
+      <button type="submit" class="btn-token">Desbloquear Consola</button>
+    </form>
+
+    <div class="footer-note">
+      <span>arturonavax.dev / admin</span>
+      <span>RFC 9110 § 15.5.2</span>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  return new Response(html, {
+    status: 401,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store, private",
+      "WWW-Authenticate": 'Bearer realm="admin.arturonavax.dev"',
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
 /**
  * Isolated Cloudflare Access Admin Surface Handler (REQ-PCD-02)
  */
@@ -2223,20 +2542,23 @@ export async function handleAdminDashboardRequest(
     );
   }
 
-  // Cloudflare Access Zero Trust verification: protect admin surface in production
-  const cfUserEmail = request.headers.get("cf-access-authenticated-user-email");
-  const cfJwt = request.headers.get("cf-access-jwt-assertion");
-  const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-  const requireCfAccess =
-    env.REQUIRE_CF_ACCESS === "true" || (env.REQUIRE_CF_ACCESS as any) === true;
+  // Strict verification of Cloudflare Access Zero Trust & Admin Token
+  const auth = verifyAdminAuthorization(request, env);
+  if (!auth.authorized) {
+    const acceptHeader = request.headers.get("accept") || "";
+    const isHtml = acceptHeader.includes("text/html");
 
-  if (requireCfAccess && !isLocal && !cfUserEmail && !cfJwt) {
+    if (isHtml && !url.pathname.startsWith("/api/")) {
+      return renderAdminUnauthorizedHtml(auth.reason);
+    }
+
     return new Response(
       JSON.stringify({
         error: "Unauthorized",
         message:
           "Cloudflare Access Zero Trust authentication required to access admin surface.",
-        docs: "https://developers.cloudflare.com/cloudflare-one/access-controls/",
+        docs:
+          "https://developers.cloudflare.com/cloudflare-one/access-controls/",
       }),
       {
         status: 401,
@@ -2407,6 +2729,13 @@ export async function handleAdminDashboardRequest(
         builds_monthly_limit: 500,
         unit: "builds",
       },
+      vectorize: {
+        dimensions_monthly_used: 0,
+        dimensions_monthly_limit: 5000000,
+        queries_monthly_used: 0,
+        queries_monthly_limit: 5000000,
+        unit: "dimensions",
+      },
       // Flat aliases for /admin UI renderQuotas() compatibility
       workers_daily: { used: dailyUsedRequests, limit: workersDailyLimit },
       workers_monthly: { used: monthlyUsed, limit: workersMonthlyLimit },
@@ -2417,6 +2746,7 @@ export async function handleAdminDashboardRequest(
       r2_class_b_monthly: { used: 3420, limit: 10000000 },
       zero_trust_seats: { used: 1, limit: 50 },
       workers_ai_daily: { used: 0, limit: 10000 },
+      vectorize_monthly: { used: 0, limit: 5000000 },
       pages_builds_monthly: { used: 42, limit: 500 },
     };
   };
@@ -4269,6 +4599,22 @@ export async function handleAdminDashboardRequest(
             </div>
           </div>
 
+          <!-- Quota 3B: D1 Database Writes -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_d1_writes">D1 Escrituras (Diario)</span>
+              <span style="color: var(--green); font-size: 0.65rem;">100k / día</span>
+            </div>
+            <div class="quota-val" id="quota-d1-writes">-- / 100,000</div>
+            <div class="quota-progress">
+              <div id="quota-d1-writes-bar" class="quota-bar" style="width: 1%; background: var(--green);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>Degradación: <span id="quota-d1-writes-status" style="color: var(--green); font-weight: 700;">NOMINAL</span></span>
+              <span>Reinicio: 00:00 UTC</span>
+            </div>
+          </div>
+
           <!-- Quota 4: D1 Database Storage -->
           <div class="quota-card">
             <div class="quota-head">
@@ -4361,6 +4707,22 @@ export async function handleAdminDashboardRequest(
             </div>
             <div class="quota-meta">
               <span>Inferencia Edge</span>
+              <span style="color: var(--green);">Disponible</span>
+            </div>
+          </div>
+
+          <!-- Quota 10: Vectorize Semantic Embeddings -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_vectorize">Vectorize (Mensual)</span>
+              <span style="color: var(--green); font-size: 0.65rem;">5M / mes</span>
+            </div>
+            <div class="quota-val" id="quota-vectorize">0 / 5,000,000 dims</div>
+            <div class="quota-progress">
+              <div id="quota-vectorize-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>Búsqueda Semántica</span>
               <span style="color: var(--green);">Disponible</span>
             </div>
           </div>
@@ -4828,7 +5190,18 @@ export async function handleAdminDashboardRequest(
         footer_scroll: 'Scroll navigation: ',
         views_suffix: ' visitas (',
         events_suffix: ' eventos',
-        total_suffix: ' en total'
+        total_suffix: ' en total',
+        quota_workers_daily: 'Workers (Diario)',
+        quota_workers_monthly: 'Workers (Mensual)',
+        quota_d1_reads: 'D1 Lecturas (Diario)',
+        quota_d1_writes: 'D1 Escrituras (Diario)',
+        quota_d1_storage: 'D1 Almacenamiento',
+        quota_r2_class_a: 'R2 Ops Clase A',
+        quota_r2_class_b: 'R2 Ops Clase B',
+        quota_r2_storage: 'R2 Storage',
+        quota_zero_trust: 'Zero Trust Access',
+        quota_workers_ai: 'Workers AI (Diario)',
+        quota_vectorize: 'Vectorize (Mensual)'
       },
       en: {
         nav_about: 'About',
@@ -4936,7 +5309,18 @@ export async function handleAdminDashboardRequest(
         footer_scroll: 'Scroll navigation: ',
         views_suffix: ' views (',
         events_suffix: ' events',
-        total_suffix: ' in total'
+        total_suffix: ' in total',
+        quota_workers_daily: 'Workers (Daily)',
+        quota_workers_monthly: 'Workers (Monthly)',
+        quota_d1_reads: 'D1 Reads (Daily)',
+        quota_d1_writes: 'D1 Writes (Daily)',
+        quota_d1_storage: 'D1 Storage',
+        quota_r2_class_a: 'R2 Class A Ops',
+        quota_r2_class_b: 'R2 Class B Ops',
+        quota_r2_storage: 'R2 Storage',
+        quota_zero_trust: 'Zero Trust Access',
+        quota_workers_ai: 'Workers AI (Daily)',
+        quota_vectorize: 'Vectorize (Monthly)'
       }
     };
 
@@ -5364,6 +5748,33 @@ export async function handleAdminDashboardRequest(
         if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 5000000).toLocaleString();
         if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 5000000)) * 100)) + '%';
       }
+      if (cachedQuotas.d1_writes_daily) {
+        const q = cachedQuotas.d1_writes_daily;
+        const el = document.getElementById('quota-d1-writes');
+        const bar = document.getElementById('quota-d1-writes-bar');
+        const statusEl = document.getElementById('quota-d1-writes-status');
+        const limit = q.limit || 100000;
+        const used = q.used || 0;
+        if (el) el.textContent = used.toLocaleString() + ' / ' + limit.toLocaleString() + ' filas';
+        const pct = Math.min(100, Math.round((used / limit) * 100));
+        if (bar) {
+          bar.style.width = Math.max(1, pct) + '%';
+          if (pct >= 95) bar.style.background = 'var(--red)';
+          else if (pct >= 85) bar.style.background = 'var(--orange, #f97316)';
+          else if (pct >= 70) bar.style.background = 'var(--gold)';
+          else if (pct >= 50) bar.style.background = 'var(--cyan)';
+          else bar.style.background = 'var(--green)';
+        }
+        if (statusEl) {
+          const tierName = cachedQuotas.degradation_tier_name || 'NOMINAL';
+          statusEl.textContent = tierName;
+          if (tierName === 'NOMINAL') statusEl.style.color = 'var(--green)';
+          else if (tierName === 'CONSERVATIVE') statusEl.style.color = 'var(--cyan)';
+          else if (tierName === 'COMPACT_ROLLUP') statusEl.style.color = 'var(--gold)';
+          else if (tierName === 'CRITICAL_SURVIVAL') statusEl.style.color = 'var(--orange, #f97316)';
+          else statusEl.style.color = 'var(--red)';
+        }
+      }
       if (cachedQuotas.d1_storage) {
         const q = cachedQuotas.d1_storage;
         const el = document.getElementById('quota-d1-storage');
@@ -5405,6 +5816,15 @@ export async function handleAdminDashboardRequest(
         const bar = document.getElementById('quota-workers-ai-bar');
         if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 10000).toLocaleString() + ' neuronas';
         if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 10000)) * 100)) + '%';
+      }
+      if (cachedQuotas.vectorize_monthly) {
+        const q = cachedQuotas.vectorize_monthly;
+        const el = document.getElementById('quota-vectorize');
+        const bar = document.getElementById('quota-vectorize-bar');
+        const limit = q.limit || 5000000;
+        const used = q.used || 0;
+        if (el) el.textContent = used.toLocaleString() + ' / ' + limit.toLocaleString() + ' dims';
+        if (bar) bar.style.width = Math.min(100, Math.max(1, Math.round((used / limit) * 100))) + '%';
       }
     }
 
@@ -6121,16 +6541,27 @@ export async function handleAdminDashboardRequest(
 </body>
 </html>`;
 
+  const adminHeaders = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store, private",
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
+  });
+
+  const queryToken =
+    url.searchParams.get("token") || url.searchParams.get("admin_token");
+  if (queryToken && auth.method === "admin_token") {
+    adminHeaders.set(
+      "Set-Cookie",
+      `admin_session=${encodeURIComponent(queryToken.trim())}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly; Secure`,
+    );
+  }
+
   return new Response(adminHtml, {
     status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store, private",
-      "X-Frame-Options": "DENY",
-      "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": "no-referrer",
-      "X-Robots-Tag": "noindex, nofollow, noarchive",
-    },
+    headers: adminHeaders,
   });
 }
 

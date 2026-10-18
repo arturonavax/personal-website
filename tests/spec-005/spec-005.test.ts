@@ -294,6 +294,106 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     const apexDeployRes = await worker.fetch(apexDeployReq, env, ctx);
     expect(apexDeployRes.status).toBe(200);
   });
+
+  it("strictly blocks unauthenticated access to admin UI and APIs when REQUIRE_CF_ACCESS is true", async () => {
+    const ctx = createMockCtx();
+    const env: Env = {
+      ASSETS: dummyAssets,
+      DB: createMockDb(),
+      REQUIRE_CF_ACCESS: "true",
+      REQUIRE_ADMIN_AUTH: "true",
+      ADMIN_AUTHORIZED_EMAILS: "arturonavax@gmail.com,contact@arturonava.com",
+    };
+
+    // 1. Unauthenticated HTML request to admin subdomain returns HTTP 401 with challenge HTML
+    const htmlReq = new Request("https://admin.arturonavax.dev/", {
+      headers: { Accept: "text/html" },
+    });
+    const htmlRes = await worker.fetch(htmlReq, env, ctx);
+    expect(htmlRes.status).toBe(401);
+    const html = await htmlRes.text();
+    expect(html).toContain("401 UNAUTHORIZED // ZERO TRUST ENFORCED");
+    expect(html).toContain("Acceso Restringido");
+    expect(htmlRes.headers.get("X-Robots-Tag")).toBe("noindex, nofollow, noarchive");
+
+    // 2. Unauthenticated API request returns HTTP 401 JSON
+    const telReq = new Request("https://admin.arturonavax.dev/api/telemetry");
+    const telRes = await worker.fetch(telReq, env, ctx);
+    expect(telRes.status).toBe(401);
+    const telData = (await telRes.json()) as any;
+    expect(telData.error).toBe("Unauthorized");
+    expect(telData.message).toContain("Cloudflare Access Zero Trust authentication required");
+
+    // 3. Unauthenticated API request on apex domain returns HTTP 401 JSON
+    const apexReq = new Request("https://arturonavax.dev/api/telemetry");
+    const apexRes = await worker.fetch(apexReq, env, ctx);
+    expect(apexRes.status).toBe(401);
+
+    // 4. Request with unauthorized email returns HTTP 401
+    const unauthEmailReq = new Request("https://admin.arturonavax.dev/api/telemetry", {
+      headers: { "cf-access-authenticated-user-email": "malicious@attacker.com" },
+    });
+    const unauthEmailRes = await worker.fetch(unauthEmailReq, env, ctx);
+    expect(unauthEmailRes.status).toBe(401);
+
+    // 5. Request with authorized email returns HTTP 200 OK
+    const authEmailReq = new Request("https://admin.arturonavax.dev/api/telemetry", {
+      headers: { "cf-access-authenticated-user-email": "arturonavax@gmail.com" },
+    });
+    const authEmailRes = await worker.fetch(authEmailReq, env, ctx);
+    expect(authEmailRes.status).toBe(200);
+    const authTelData = (await authEmailRes.json()) as any;
+    expect(authTelData.status).toBe("ok");
+    expect(authTelData.quotas.d1_writes_daily).toBeDefined();
+    expect(authTelData.quotas.d1_writes_daily.limit).toBe(100000);
+    expect(authTelData.quotas.workers_ai_daily).toBeDefined();
+    expect(authTelData.quotas.vectorize_monthly).toBeDefined();
+
+    // 6. Request with secondary authorized email returns HTTP 200 OK
+    const authEmail2Req = new Request("https://admin.arturonavax.dev/api/metrics", {
+      headers: { "cf-access-authenticated-user-email": "contact@arturonava.com" },
+    });
+    const authEmail2Res = await worker.fetch(authEmail2Req, env, ctx);
+    expect(authEmail2Res.status).toBe(200);
+  });
+
+  it("authenticates via ADMIN_API_KEY (Bearer header, query parameter, or session cookie)", async () => {
+    const ctx = createMockCtx();
+    const env: Env = {
+      ASSETS: dummyAssets,
+      DB: createMockDb(),
+      REQUIRE_CF_ACCESS: "true",
+      REQUIRE_ADMIN_AUTH: "true",
+      ADMIN_API_KEY: "super-secret-admin-token-xyz",
+    };
+
+    // Bearer header
+    const bearerReq = new Request("https://admin.arturonavax.dev/api/status", {
+      headers: { Authorization: "Bearer super-secret-admin-token-xyz" },
+    });
+    const bearerRes = await worker.fetch(bearerReq, env, ctx);
+    expect(bearerRes.status).toBe(200);
+
+    // Query token on document request sets cookie and returns 200
+    const queryReq = new Request("https://admin.arturonavax.dev/?token=super-secret-admin-token-xyz");
+    const queryRes = await worker.fetch(queryReq, env, ctx);
+    expect(queryRes.status).toBe(200);
+    expect(queryRes.headers.get("Set-Cookie")).toContain("admin_session=super-secret-admin-token-xyz");
+
+    // Cookie session
+    const cookieReq = new Request("https://admin.arturonavax.dev/api/telemetry", {
+      headers: { Cookie: "admin_session=super-secret-admin-token-xyz" },
+    });
+    const cookieRes = await worker.fetch(cookieReq, env, ctx);
+    expect(cookieRes.status).toBe(200);
+
+    // Invalid token rejected
+    const invalidTokenReq = new Request("https://admin.arturonavax.dev/api/telemetry", {
+      headers: { Authorization: "Bearer wrong-token" },
+    });
+    const invalidTokenRes = await worker.fetch(invalidTokenReq, env, ctx);
+    expect(invalidTokenRes.status).toBe(401);
+  });
 });
 
 describe("SPEC-005 REQ-PCD-01 & REQ-PCD-06: Zero-Compute Static Fast-Path & Cache Invariants", () => {
