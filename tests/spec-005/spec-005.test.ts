@@ -271,6 +271,29 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     expect(data.status).toBe("healthy");
     expect(data.surface).toBe("admin-isolated");
   });
+
+  it("serves admin APIs on both apex domain and admin subdomain for dual-surface resilience", async () => {
+    const ctx = createMockCtx();
+    const env: Env = { ASSETS: dummyAssets, DB: createMockDb() };
+
+    const apexTelReq = new Request("https://arturonavax.dev/api/telemetry?range=all");
+    const apexTelRes = await worker.fetch(apexTelReq, env, ctx);
+    expect(apexTelRes.status).toBe(200);
+    const telData = (await apexTelRes.json()) as any;
+    expect(telData.status).toBe("ok");
+
+    const apexMetricsReq = new Request("https://arturonavax.dev/api/metrics");
+    const apexMetricsRes = await worker.fetch(apexMetricsReq, env, ctx);
+    expect(apexMetricsRes.status).toBe(200);
+
+    const apexLeadsReq = new Request("https://arturonavax.dev/api/leads");
+    const apexLeadsRes = await worker.fetch(apexLeadsReq, env, ctx);
+    expect(apexLeadsRes.status).toBe(200);
+
+    const apexDeployReq = new Request("https://arturonavax.dev/api/deployments");
+    const apexDeployRes = await worker.fetch(apexDeployReq, env, ctx);
+    expect(apexDeployRes.status).toBe(200);
+  });
 });
 
 describe("SPEC-005 REQ-PCD-01 & REQ-PCD-06: Zero-Compute Static Fast-Path & Cache Invariants", () => {

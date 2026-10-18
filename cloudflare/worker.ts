@@ -399,14 +399,27 @@ export default {
       return Response.redirect(redirect.targetUrl, redirect.statusCode);
     }
 
-    // Isolated Admin Surface on Dedicated Subdomain (Cloudflare Access Zero Trust)
-    if (host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev") {
+    const isAdminApi =
+      pathname === "/api/telemetry" ||
+      pathname === "/api/metrics" ||
+      pathname === "/api/leads" ||
+      pathname === "/api/deployments" ||
+      pathname === "/api/status" ||
+      pathname === "/status";
+
+    // Isolated Admin Surface & Admin APIs (Subdomain + Dual-Surface Support)
+    if (
+      host === "admin.arturonavax.dev" ||
+      host === "dash.arturonavax.dev" ||
+      isAdminApi
+    ) {
       if (
-        pathname === "/favicon.ico" ||
-        pathname === "/favicon.svg" ||
-        pathname.startsWith("/favicon-") ||
-        STATIC_PREFIX_REGEX.test(pathname) ||
-        STATIC_EXT_REGEX.test(pathname)
+        (host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev") &&
+        (pathname === "/favicon.ico" ||
+          pathname === "/favicon.svg" ||
+          pathname.startsWith("/favicon-") ||
+          STATIC_PREFIX_REGEX.test(pathname) ||
+          STATIC_EXT_REGEX.test(pathname))
       ) {
         return withNoIndexHeaders(await env.ASSETS.fetch(request));
       }
