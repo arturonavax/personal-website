@@ -1,7 +1,10 @@
 import { describe, it, expect } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
-import worker, { handleAdminDashboardRequest } from "../cloudflare/worker";
+import worker, {
+  handleAdminDashboardRequest,
+  classifyVisitor,
+} from "../cloudflare/worker";
 
 const ROOT_DIR = process.cwd();
 
@@ -1212,5 +1215,155 @@ describe("ODD Task: Comprehensive Security Audit Hardening", () => {
     expect(data.message).toContain(
       "Cloudflare Access Zero Trust authentication required",
     );
+  });
+
+  it("Task 15: detects vulnerability scanning and exploit probe paths as automated bots", () => {
+    const probePaths = [
+      "https://arturonavax.dev/.env",
+      "https://arturonavax.dev/.git/config",
+      "https://arturonavax.dev/.aws/credentials",
+      "https://arturonavax.dev/wp-admin/setup-config.php",
+      "https://arturonavax.dev/phpmyadmin/index.php",
+      "https://arturonavax.dev/actuator/health",
+      "https://arturonavax.dev/solr/admin",
+      "https://arturonavax.dev/shell?cmd=whoami",
+    ];
+
+    for (const url of probePaths) {
+      const req = new Request(url, {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          accept: "text/html",
+        },
+      });
+      const classification = classifyVisitor(req);
+      expect(classification.isBot).toBe(true);
+      expect(classification.classification).toBe("automated_client");
+      expect(classification.reason).toBe("vulnerability_scanner_path_probe");
+    }
+
+    // Legitimate navigation path must remain human
+    const normalReq = new Request("https://arturonavax.dev/experience/", {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        accept: "text/html",
+      },
+    });
+    const normalClassification = classifyVisitor(normalReq);
+    expect(normalClassification.isBot).toBe(false);
+    expect(normalClassification.classification).toBe("human");
+  });
+
+  it("Task 13: aggregates and renders unique human visitors in /api/telemetry and admin template", async () => {
+    const mockCtx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as any;
+    const mockEnv = {
+      DB: {
+        prepare: (sql: string) => {
+          const handler = {
+            all: async () => {
+              if (sql.includes("total_views")) {
+                return {
+                  results: [
+                    {
+                      total_views: 100,
+                      human_views: 80,
+                      bot_views: 20,
+                      unique_visitors: 50,
+                      unique_human_visitors: 40,
+                    },
+                  ],
+                };
+              }
+              return { results: [] };
+            },
+          };
+          return {
+            ...handler,
+            bind: () => handler,
+          };
+        },
+      },
+    } as any;
+
+    const req = new Request("https://admin.arturonavax.dev/api/telemetry?range=24h");
+    const res = await worker.fetch(req, mockEnv, mockCtx);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.stats).toBeDefined();
+    expect(data.stats.unique_visitors).toBe(50);
+    expect(data.stats.unique_human_visitors).toBe(40);
+
+    const adminAstroPath = path.join(
+      ROOT_DIR,
+      "src",
+      "pages",
+      "[...lang]",
+      "admin",
+      "index.astro",
+    );
+    const adminContent = fs.readFileSync(adminAstroPath, "utf8");
+    expect(adminContent).toContain('id="kpi-unique-sub"');
+    expect(adminContent).toContain("unique_human_visitors");
+  });
+
+  it("Task 5: stacks floating Print and Download buttons vertically in PageIndexNav.astro", () => {
+    const pageIndexNavPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
+    const content = fs.readFileSync(pageIndexNavPath, "utf8");
+    expect(content).toContain('flex flex-col items-end gap-2.5 self-end');
+    expect(content).toContain('id="mobile-cv-print-btn"');
+    expect(content).toContain('id="mobile-cv-download-btn"');
+  });
+
+  it("Task 7: resets page filters when clicking nav link of current page in Header.astro", () => {
+    const headerPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "common",
+      "Header.astro",
+    );
+    const content = fs.readFileSync(headerPath, "utf8");
+    expect(content).toContain('reset-page-filters');
+    expect(content).toContain('reset-exp-filter-btn');
+    expect(content).toContain('navSection');
+  });
+
+  it("Task 9: dynamically aligns desktop Page Index with alignTargetId in PageIndexNav.astro", () => {
+    const pageIndexNavPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
+    const content = fs.readFileSync(pageIndexNavPath, "utf8");
+    expect(content).toContain("function alignDesktopIndex");
+    expect(content).toContain("getBoundingClientRect");
+    expect(content).toContain("desiredTop");
+  });
+
+  it("Task 11: shows beacon on timeline navigation request start and hides on arrival", () => {
+    const slugPath = path.join(
+      ROOT_DIR,
+      "src",
+      "pages",
+      "[...lang]",
+      "experience",
+      "[slug].astro",
+    );
+    const content = fs.readFileSync(slugPath, "utf8");
+    expect(content).toContain("window.__showBeacon(undefined, true)");
+    expect(content).toContain("window.__hideBeacon()");
   });
 });

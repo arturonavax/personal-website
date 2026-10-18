@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import BrandLogo from "@/components/common/BrandLogo.astro";
 import type { SupportedLocale } from "@/i18n/config";
 
 export function getStaticPaths() {
@@ -30,16 +31,284 @@ const description = isEs
   description={description}
   locale={locale}
   noindex={true}
+  hideFooter={true}
 >
   <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-6 space-y-6">
-    <!-- Header & Surface Identity Strip -->
+    <!-- Master Filter Toolbar (Banner with selectors at the very top of dashboard) -->
+    <div class="geometric-box rounded-sm p-4 shadow-sm space-y-3">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 font-mono text-xs">
+        <!-- Segment Filter Tabs -->
+        <div
+          class="flex flex-wrap items-center gap-1.5"
+          role="tablist"
+          aria-label="Filtro de segmento"
+        >
+          <button
+            type="button"
+            id="tab-all"
+            class="filter-tab active rounded-xs px-3 py-1.5 border border-[var(--color-accent-gold)] bg-[var(--color-bg-primary)] text-[var(--color-accent-gold)] font-semibold cursor-pointer transition-colors"
+            onclick="setSegmentFilter('all')"
+          >
+            {isEs ? "Todos los Eventos" : "All Events"}
+          </button>
+          <button
+            type="button"
+            id="tab-human"
+            class="filter-tab rounded-xs px-3 py-1.5 border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)] transition-colors"
+            onclick="setSegmentFilter('human')"
+          >
+            {isEs ? "Solo Humanos (P0)" : "Humans Only (P0)"}
+          </button>
+          <button
+            type="button"
+            id="tab-bot"
+            class="filter-tab rounded-xs px-3 py-1.5 border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)] transition-colors"
+            onclick="setSegmentFilter('bot')"
+          >
+            {isEs ? "Solo Robots" : "Bots & Indexers"}
+          </button>
+          <button
+            type="button"
+            id="tab-prefetch"
+            class="filter-tab rounded-xs px-3 py-1.5 border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)] transition-colors"
+            onclick="setSegmentFilter('prefetch')"
+          >
+            {isEs ? "Prefetches (P1)" : "Prefetches (P1)"}
+          </button>
+        </div>
+
+        <!-- Dropdown Controls: Range, Country, Path, Refresh Rate -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <!-- Time Range Select -->
+          <div class="flex items-center gap-1.5">
+            <label
+              for="select-range"
+              class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
+            >
+              {isEs ? "Plazo:" : "Range:"}
+            </label>
+            <select
+              id="select-range"
+              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
+              onchange="onRangeChange(this.value)"
+            >
+              <option value="24h">
+                {isEs ? "Hace 1 día (24h)" : "Past 1 Day (24h)"}
+              </option>
+              <option value="7d" selected>
+                {isEs ? "1 semana (7d)" : "Past 1 Week (7d)"}
+              </option>
+              <option value="30d">
+                {isEs ? "1 mes (30d)" : "Past 1 Month (30d)"}
+              </option>
+              <option value="all">
+                {isEs ? "Todo el tiempo" : "All Time"}
+              </option>
+              <option value="custom">
+                {isEs ? "Personalizado..." : "Custom..."}
+              </option>
+            </select>
+          </div>
+
+          <!-- Country Filter Select -->
+          <div class="flex items-center gap-1.5">
+            <label
+              for="select-country"
+              class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
+            >
+              {isEs ? "País:" : "Country:"}
+            </label>
+            <select
+              id="select-country"
+              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
+              onchange="onCountryChange(this.value)"
+            >
+              <option value="all">
+                {isEs ? "Todos los Países" : "All Countries"}
+              </option>
+            </select>
+          </div>
+
+          <!-- Section / Path Select -->
+          <div class="flex items-center gap-1.5">
+            <label
+              for="select-path"
+              class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
+            >
+              {isEs ? "Ruta:" : "Path:"}
+            </label>
+            <select
+              id="select-path"
+              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
+              onchange="onPathFilterChange(this.value)"
+            >
+              <option value="all">
+                {isEs ? "Todas las Rutas" : "All Routes"}
+              </option>
+              <option value="/">{isEs ? "Portada (/)" : "Homepage (/)"}</option>
+              <option value="/blog/">/blog/*</option>
+              <option value="/projects/">/projects/*</option>
+              <option value="/experience/">/experience/*</option>
+              <option value="/services/">/services/*</option>
+              <option value="/resume/">/resume/*</option>
+              <option value="/case-studies/">/case-studies/*</option>
+            </select>
+          </div>
+
+          <!-- Polling Select -->
+          <div class="flex items-center gap-1.5">
+            <label
+              for="select-poll"
+              class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
+            >
+              {isEs ? "Refresco:" : "Polling:"}
+            </label>
+            <select
+              id="select-poll"
+              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
+              onchange="onPollIntervalChange(this.value)"
+            >
+              <option value="0" selected id="opt-poll-0">{isEs ? "Pausado (manual)" : "Paused (manual)"}</option>
+              <option value="15000">15s</option>
+              <option value="30000">30s</option>
+              <option value="60000">60s</option>
+            </select>
+          </div>
+
+          <!-- Explicit Apply Filters Button -->
+          <button
+            type="button"
+            id="btn-apply-filters"
+            class="btn-apply-filters rounded-xs px-3.5 py-1 font-semibold text-xs transition-all cursor-pointer flex items-center gap-1.5"
+            onclick="applyFilters()"
+          >
+            {isEs ? "✓ Aplicar Filtros" : "✓ Apply Filters"}
+          </button>
+
+          <!-- Manual Refresh Button -->
+          <button
+            type="button"
+            id="btn-refresh"
+            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-1 text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer flex items-center gap-1 font-semibold"
+            onclick="fetchDashboardData(true)"
+            title="Refrescar datos ahora"
+          >
+            <span id="refresh-icon">↻</span>
+            <span>{isEs ? "Recargar" : "Refresh"}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Custom Date Range Sub-Bar (Visible when select-range === 'custom') -->
+      <div
+        id="custom-range-bar"
+        class="hidden pt-3 border-t border-[var(--color-surface-border)] flex flex-wrap items-center gap-3 font-mono text-xs"
+      >
+        <span class="text-[var(--color-accent-gold)] font-semibold">
+          {isEs ? "Plazo Personalizado:" : "Custom Date Range:"}
+        </span>
+        <div class="flex items-center gap-1.5">
+          <label
+            for="custom-from"
+            class="text-[var(--color-text-muted)] text-[11px]"
+          >
+            {isEs ? "Desde:" : "From:"}
+          </label>
+          <input
+            type="date"
+            id="custom-from"
+            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-primary)] text-xs focus:border-[var(--color-accent-gold)] focus:outline-none"
+          />
+        </div>
+        <div class="flex items-center gap-1.5">
+          <label
+            for="custom-to"
+            class="text-[var(--color-text-muted)] text-[11px]"
+          >
+            {isEs ? "Hasta:" : "To:"}
+          </label>
+          <input
+            type="date"
+            id="custom-to"
+            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-primary)] text-xs focus:border-[var(--color-accent-gold)] focus:outline-none"
+          />
+        </div>
+        <button
+          type="button"
+          class="rounded-xs border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] px-3 py-0.5 font-semibold hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer"
+          onclick="applyCustomDateRange()"
+        >
+          {isEs ? "Aplicar Plazo" : "Apply Range"}
+        </button>
+      </div>
+
+      <!-- Secondary Controls: Timezone, Bots & Search -->
+      <div class="pt-3 border-t border-[var(--color-surface-border)] flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono text-xs">
+        <div class="flex flex-wrap items-center gap-4">
+          <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[var(--color-text-secondary)]">
+            <input type="checkbox" id="chk-exclude-bots" onchange="toggleExcludeBots(this.checked)" class="accent-[var(--color-accent-gold)] cursor-pointer" />
+            <span>{isEs ? "Excluir Bots de Gráficos" : "Exclude Bots from Charts"}</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[var(--color-text-secondary)]">
+            <input type="checkbox" id="chk-include-prefetch" checked onchange="toggleIncludePrefetch(this.checked)" class="accent-[var(--color-accent-gold)] cursor-pointer" />
+            <span>{isEs ? "Incluir Prefetches" : "Include Prefetches"}</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[var(--color-text-secondary)]">
+            <input type="checkbox" id="chk-local-tz" onchange="toggleTimezone(this.checked)" class="accent-[var(--color-accent-gold)] cursor-pointer" />
+            <span>{isEs ? "Zona Horaria Local (Navegador)" : "Local Browser Timezone"}</span>
+          </label>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="relative w-full md:w-80">
+            <input
+              type="text"
+              id="input-search"
+              placeholder={
+                isEs
+                  ? "Filtrar por ruta, país, UTM, referrer o hash..."
+                  : "Filter by path, country, UTM, referrer or hash..."
+              }
+              class="w-full rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent-gold)] focus:outline-none"
+              oninput="onSearchInput(this.value)"
+            />
+            <span
+              id="search-counter"
+              class="absolute right-2.5 top-1.5 text-[10px] text-[var(--color-text-muted)] pointer-events-none"
+            >
+              --
+            </span>
+          </div>
+
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="text-[11px] text-[var(--color-text-muted)]">
+              {isEs ? "Exportar:" : "Export:"}
+            </span>
+            <button
+              type="button"
+              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+              onclick="exportData('json')"
+            >
+              JSON
+            </button>
+            <button
+              type="button"
+              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+              onclick="exportData('csv')"
+            >
+              CSV
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header & Surface Identity Strip with AN Monogram Token -->
     <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-2.5">
-            <span class="flex h-6 w-6 items-center justify-center rounded bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] font-mono text-xs font-bold">
-              ⚡
-            </span>
+            <BrandLogo class="h-6 w-6 shrink-0" />
             <h1 class="text-xl sm:text-2xl font-bold font-mono tracking-tight text-[var(--color-text-primary)]">
               {isEs
                 ? "Admin Management Surface // Telemetría"
@@ -70,7 +339,13 @@ const description = isEs
             id="badge-sync-time"
             class="inline-flex items-center gap-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-muted)]"
           >
-            {isEs ? "Sincronizado: ahora" : "Synced: now"}
+            {isEs ? "Sincronizado: manual" : "Synced: manual"}
+          </span>
+          <span
+            id="badge-cache-mode"
+            class="inline-flex items-center gap-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-cyan-400"
+          >
+            ● Caché Edge (120s)
           </span>
           <span class="inline-flex items-center gap-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)]">
             Zero Trust
@@ -85,7 +360,7 @@ const description = isEs
             id="badge-deployment"
             class="inline-flex items-center gap-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-dim)]"
           >
-            Rel: v1.4.2 (edge)
+            Rel: v1.4.3 (ultra-efficient)
           </span>
         </div>
       </div>
@@ -205,259 +480,177 @@ const description = isEs
       </div>
     </div>
 
-    <!-- Master Filter Toolbar (Segment Buttons, Time Ranges, Country, Path, Search & Polling) -->
-    <div class="geometric-box rounded-sm p-4 shadow-sm space-y-3">
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 font-mono text-xs">
-        <!-- Segment Filter Tabs -->
-        <div
-          class="flex flex-wrap items-center gap-1.5"
-          role="tablist"
-          aria-label="Filtro de segmento"
-        >
-          <button
-            type="button"
-            id="tab-all"
-            class="filter-tab active rounded-xs px-3 py-1.5 border border-[var(--color-accent-gold)] bg-[var(--color-bg-primary)] text-[var(--color-accent-gold)] font-semibold cursor-pointer transition-colors"
-            onclick="setSegmentFilter('all')"
-          >
-            {isEs ? "Todos los Eventos" : "All Events"}
-          </button>
-          <button
-            type="button"
-            id="tab-human"
-            class="filter-tab rounded-xs px-3 py-1.5 border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)] transition-colors"
-            onclick="setSegmentFilter('human')"
-          >
-            {isEs ? "Solo Humanos (P0)" : "Humans Only (P0)"}
-          </button>
-          <button
-            type="button"
-            id="tab-bot"
-            class="filter-tab rounded-xs px-3 py-1.5 border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)] transition-colors"
-            onclick="setSegmentFilter('bot')"
-          >
-            {isEs ? "Solo Robots" : "Bots & Indexers"}
-          </button>
-          <button
-            type="button"
-            id="tab-prefetch"
-            class="filter-tab rounded-xs px-3 py-1.5 border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)] transition-colors"
-            onclick="setSegmentFilter('prefetch')"
-          >
-            {isEs ? "Prefetches (P1)" : "Prefetches (P1)"}
-          </button>
+    <!-- Comprehensive Cloudflare Free Tier Quotas Monitor -->
+    <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-4">
+      <div class="border-b border-[var(--color-surface-border)] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
+            {isEs
+              ? "⚡ Monitoreo de Cuotas Cloudflare // Capa Gratuita"
+              : "⚡ Cloudflare Free Tier Quotas Monitor"}
+          </h2>
+          <p class="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">
+            {isEs
+              ? "Límites diarios y mensuales garantizados para Workers, D1, R2, Zero Trust y AI"
+              : "Daily and monthly usage tracking for Workers, D1, R2, Zero Trust, and Workers AI"}
+          </p>
         </div>
-
-        <!-- Dropdown Controls: Range, Country, Path, Refresh Rate -->
-        <div class="flex flex-wrap items-center gap-2.5">
-          <!-- Time Range Select -->
-          <div class="flex items-center gap-1.5">
-            <label
-              for="select-range"
-              class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
-            >
-              {isEs ? "Plazo:" : "Range:"}
-            </label>
-            <select
-              id="select-range"
-              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
-              onchange="onRangeChange(this.value)"
-            >
-              <option value="1d">
-                {isEs ? "Hace 1 día (24h)" : "Past 1 Day (24h)"}
-              </option>
-              <option value="2d">
-                {isEs ? "Hace 2 días (48h)" : "Past 2 Days (48h)"}
-              </option>
-              <option value="3d">
-                {isEs ? "Hace 3 días (72h)" : "Past 3 Days (72h)"}
-              </option>
-              <option value="7d" selected>
-                {isEs ? "1 semana (7d)" : "Past 1 Week (7d)"}
-              </option>
-              <option value="30d">
-                {isEs ? "1 mes (30d)" : "Past 1 Month (30d)"}
-              </option>
-              <option value="all">
-                {isEs ? "Todo el tiempo" : "All Time"}
-              </option>
-              <option value="custom">
-                {isEs ? "Personalizado..." : "Custom..."}
-              </option>
-            </select>
-          </div>
-
-          <!-- Country Filter Select -->
-          <div class="flex items-center gap-1.5">
-            <label
-              for="select-country"
-              class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
-            >
-              {isEs ? "País:" : "Country:"}
-            </label>
-            <select
-              id="select-country"
-              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
-              onchange="onCountryChange(this.value)"
-            >
-              <option value="all">
-                {isEs ? "Todos los Países" : "All Countries"}
-              </option>
-            </select>
-          </div>
-
-          <!-- Section / Path Select -->
-          <div class="flex items-center gap-1.5">
-            <label
-              for="select-path"
-              class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
-            >
-              {isEs ? "Ruta:" : "Path:"}
-            </label>
-            <select
-              id="select-path"
-              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
-              onchange="onPathFilterChange(this.value)"
-            >
-              <option value="all">
-                {isEs ? "Todas las Rutas" : "All Routes"}
-              </option>
-              <option value="/">{isEs ? "Portada (/)" : "Homepage (/)"}</option>
-              <option value="/blog/">/blog/*</option>
-              <option value="/projects/">/projects/*</option>
-              <option value="/experience/">/experience/*</option>
-              <option value="/services/">/services/*</option>
-              <option value="/resume/">/resume/*</option>
-              <option value="/case-studies/">/case-studies/*</option>
-            </select>
-          </div>
-
-          <!-- Polling Select -->
-          <div class="flex items-center gap-1.5">
-            <label
-              for="select-poll"
-              class="text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider"
-            >
-              {isEs ? "Refresco:" : "Polling:"}
-            </label>
-            <select
-              id="select-poll"
-              class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
-              onchange="onPollIntervalChange(this.value)"
-            >
-              <option value="5000" selected>
-                5s {isEs ? "(En vivo)" : "(Live)"}
-              </option>
-              <option value="15000">15s</option>
-              <option value="30000">30s</option>
-              <option value="0">{isEs ? "Pausado" : "Paused"}</option>
-            </select>
-          </div>
-
-          <!-- Manual Refresh Button -->
-          <button
-            type="button"
-            id="btn-refresh"
-            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-1 text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer flex items-center gap-1 font-semibold"
-            onclick="fetchDashboardData(true)"
-            title="Refrescar datos ahora"
-          >
-            <span id="refresh-icon">↻</span>
-            <span>{isEs ? "Recargar" : "Refresh"}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Custom Date Range Sub-Bar (Visible when select-range === 'custom') -->
-      <div
-        id="custom-range-bar"
-        class="hidden pt-3 border-t border-[var(--color-surface-border)] flex flex-wrap items-center gap-3 font-mono text-xs"
-      >
-        <span class="text-[var(--color-accent-gold)] font-semibold">
-          {isEs ? "Plazo Personalizado:" : "Custom Date Range:"}
+        <span class="font-mono text-[11px] text-emerald-400 font-semibold">
+          100% Free Tier Compliant
         </span>
-        <div class="flex items-center gap-1.5">
-          <label
-            for="custom-from"
-            class="text-[var(--color-text-muted)] text-[11px]"
-          >
-            {isEs ? "Desde:" : "From:"}
-          </label>
-          <input
-            type="date"
-            id="custom-from"
-            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-primary)] text-xs focus:border-[var(--color-accent-gold)] focus:outline-none"
-          />
-        </div>
-        <div class="flex items-center gap-1.5">
-          <label
-            for="custom-to"
-            class="text-[var(--color-text-muted)] text-[11px]"
-          >
-            {isEs ? "Hasta:" : "To:"}
-          </label>
-          <input
-            type="date"
-            id="custom-to"
-            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-primary)] text-xs focus:border-[var(--color-accent-gold)] focus:outline-none"
-          />
-        </div>
-        <button
-          type="button"
-          class="rounded-xs border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] px-3 py-0.5 font-semibold hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer"
-          onclick="applyCustomDateRange()"
-        >
-          {isEs ? "Aplicar Plazo" : "Apply Range"}
-        </button>
       </div>
 
-      <!-- Secondary Controls: Search & Export -->
-      <div class="pt-3 border-t border-[var(--color-surface-border)] flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono text-xs">
-        <div class="relative w-full md:w-96">
-          <input
-            type="text"
-            id="input-search"
-            placeholder={
-              isEs
-                ? "Filtrar por ruta, país, UTM, referrer o hash..."
-                : "Filter by path, country, UTM, referrer or hash..."
-            }
-            class="w-full rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent-gold)] focus:outline-none"
-            oninput="onSearchInput(this.value)"
-          />
-          <span
-            id="search-counter"
-            class="absolute right-2.5 top-1.5 text-[10px] text-[var(--color-text-muted)] pointer-events-none"
-          >
-            --
-          </span>
+      <!-- Quotas Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 font-mono text-xs">
+        <!-- Quota 1: Workers Requests Daily -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">Workers (Diario)</span>
+            <span class="text-emerald-400 font-bold">100k / día</span>
+          </div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-workers-daily">-- / 100,000</div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div id="quota-workers-daily-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 1%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>Reinicio: 00:00 UTC</span>
+            <span class="text-emerald-400 font-semibold">OK</span>
+          </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] text-[var(--color-text-muted)]">
-            {isEs ? "Exportar:" : "Export:"}
-          </span>
-          <button
-            type="button"
-            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
-            onclick="exportData('json')"
-          >
-            JSON
-          </button>
-          <button
-            type="button"
-            class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
-            onclick="exportData('csv')"
-          >
-            CSV
-          </button>
+        <!-- Quota 2: Workers Requests Monthly -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">Workers (Mensual)</span>
+            <span class="text-emerald-400 font-bold">~3M / mes</span>
+          </div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-workers-monthly">-- / 3,000,000</div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div id="quota-workers-monthly-bar" class="h-full bg-[var(--color-accent-gold)] transition-all duration-300" style="width: 1%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>Ventana 30 días</span>
+            <span class="text-emerald-400 font-semibold">Capa Gratuita</span>
+          </div>
+        </div>
+
+        <!-- Quota 3: D1 Database Reads -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">D1 Lecturas (Diario)</span>
+            <span class="text-emerald-400 font-bold">5M / día</span>
+          </div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-d1-reads">-- / 5,000,000</div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div id="quota-d1-reads-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 1%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>Caché Edge: 120s</span>
+            <span class="text-emerald-400 font-semibold">Optimizado</span>
+          </div>
+        </div>
+
+        <!-- Quota 4: D1 Storage -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">D1 Almacenamiento</span>
+            <span class="text-emerald-400 font-bold">5 GB máx</span>
+          </div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-d1-storage">12.4 MB / 5 GB</div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div id="quota-d1-storage-bar" class="h-full bg-emerald-400 transition-all duration-300" style="width: 1%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>SQLite Distribuido</span>
+            <span class="text-emerald-400 font-semibold">&lt; 1% uso</span>
+          </div>
+        </div>
+
+        <!-- Quota 5: R2 Class A Ops -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">R2 Ops Clase A</span>
+            <span class="text-emerald-400 font-bold">1M / mes</span>
+          </div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-r2-class-a">-- / 1,000,000</div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div id="quota-r2-class-a-bar" class="h-full bg-[var(--color-accent-gold)] transition-all duration-300" style="width: 1%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>Mutaciones / Uploads</span>
+            <span class="text-emerald-400 font-semibold">Preservado</span>
+          </div>
+        </div>
+
+        <!-- Quota 6: R2 Class B Ops -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">R2 Ops Clase B</span>
+            <span class="text-emerald-400 font-bold">10M / mes</span>
+          </div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-r2-class-b">-- / 10,000,000</div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div id="quota-r2-class-b-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 1%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>24h Edge Cache</span>
+            <span class="text-cyan-400 font-semibold">0 Class B reads</span>
+          </div>
+        </div>
+
+        <!-- Quota 7: R2 Content Storage -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">R2 Storage</span>
+            <span class="text-emerald-400 font-bold">10 GB / mes</span>
+          </div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-r2-storage">0.18 GB / 10 GB</div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div id="quota-r2-storage-bar" class="h-full bg-emerald-400 transition-all duration-300" style="width: 2%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>PDFs, Assets, R2 Sync</span>
+            <span class="text-emerald-400 font-semibold">1.8% uso</span>
+          </div>
+        </div>
+
+        <!-- Quota 8: Zero Trust Access Seats -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">Zero Trust Access</span>
+            <span class="text-emerald-400 font-bold">50 asientos</span>
+          </div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-zero-trust">1 / 50 asientos</div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div id="quota-zero-trust-bar" class="h-full bg-emerald-400 transition-all duration-300" style="width: 2%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>Cloudflare Access</span>
+            <span class="text-emerald-400 font-semibold">Admin aislado</span>
+          </div>
+        </div>
+
+        <!-- Quota 9: Workers AI Neurons -->
+        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-[var(--color-text-secondary)] font-medium">Workers AI (Diario)</span>
+            <span class="text-emerald-400 font-bold">10k / día</span>
+          </div>
+          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-workers-ai">0 / 10,000 neuronas</div>
+          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+            <div id="quota-workers-ai-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 1%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+            <span>Inferencia Edge</span>
+            <span class="text-emerald-400 font-semibold">Disponible</span>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Data Breakdown Grid (Top Pages + Country Distribution) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Panel 1: Top Pages (Páginas Destacadas) -->
+      <!-- Panel 1: Top Pages (Páginas Destacadas) with Pagination -->
       <div class="lg:col-span-7 geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3">
         <div class="border-b border-[var(--color-surface-border)] pb-3 flex items-center justify-between">
           <div>
@@ -472,12 +665,12 @@ const description = isEs
                 : "Most requested paths with human vs unique breakdown"}
             </p>
           </div>
-          <span
-            id="top-pages-count"
-            class="font-mono text-xs text-[var(--color-text-muted)]"
-          >
-            --
-          </span>
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <span id="top-pages-count" class="text-[var(--color-text-muted)]">--</span>
+            <span id="paths-page-info" class="text-[var(--color-accent-gold)] px-1">1 / 1</span>
+            <button type="button" id="btn-paths-prev" onclick="changePathsPage(-1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&lsaquo;</button>
+            <button type="button" id="btn-paths-next" onclick="changePathsPage(1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&rsaquo;</button>
+          </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -514,7 +707,7 @@ const description = isEs
         </div>
       </div>
 
-      <!-- Panel 2: Geographical Breakdown (Por País) -->
+      <!-- Panel 2: Geographical Breakdown (Por País) with Pagination -->
       <div class="lg:col-span-5 geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3">
         <div class="border-b border-[var(--color-surface-border)] pb-3 flex items-center justify-between">
           <div>
@@ -529,9 +722,11 @@ const description = isEs
                 : "Edge geolocated traffic (CF-IPCountry)"}
             </p>
           </div>
-          <span class="text-[10px] font-mono text-[var(--color-text-muted)]">
-            {isEs ? "Clic para filtrar" : "Click to filter"}
-          </span>
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <span id="countries-page-info" class="text-[var(--color-accent-gold)] px-1">1 / 1</span>
+            <button type="button" id="btn-countries-prev" onclick="changeCountriesPage(-1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&lsaquo;</button>
+            <button type="button" id="btn-countries-next" onclick="changeCountriesPage(1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&rsaquo;</button>
+          </div>
         </div>
 
         <div
@@ -545,9 +740,9 @@ const description = isEs
       </div>
     </div>
 
-    <!-- Secondary Insights Grid: Attribution (UTM & Referrers) + Prefetchs -->
+    <!-- Secondary Insights Grid: Attribution (UTM & Referrers) + Prefetches -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Attribution & Marketing Channels -->
+      <!-- Attribution & Marketing Channels with Pagination -->
       <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3">
         <div class="border-b border-[var(--color-surface-border)] pb-3 flex items-center justify-between">
           <div>
@@ -561,6 +756,11 @@ const description = isEs
                 ? "Fuentes externas de tráfico y campañas"
                 : "Traffic channels, campaigns & external referrers"}
             </p>
+          </div>
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <span id="referrers-page-info" class="text-[var(--color-accent-gold)] px-1">1 / 1</span>
+            <button type="button" id="btn-referrers-prev" onclick="changeReferrersPage(-1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&lsaquo;</button>
+            <button type="button" id="btn-referrers-next" onclick="changeReferrersPage(1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&rsaquo;</button>
           </div>
         </div>
 
@@ -606,7 +806,58 @@ const description = isEs
       </div>
     </div>
 
-    <!-- Resilience Governance & System Health (Incidents, Deployments, Leads) -->
+    <!-- Dedicated Full-Width Row for Inbound Leads with Pagination -->
+    <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3">
+      <div class="border-b border-[var(--color-surface-border)] pb-3 flex items-center justify-between">
+        <div>
+          <h2 class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]">
+            {isEs
+              ? "Mensajes Recientes // Inbound Leads (D1)"
+              : "Recent Inquiries // Inbound Leads (D1)"}
+          </h2>
+          <p class="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">
+            {isEs
+              ? "Buzón de mensajes recibidos y validados por Turnstile en el perímetro"
+              : "Inbound messages validated via Cloudflare Turnstile stored in D1 buffer"}
+          </p>
+        </div>
+        <div class="flex items-center gap-2 font-mono text-xs">
+          <span id="leads-count-badge" class="text-[var(--color-text-muted)]">0 leads</span>
+          <span id="leads-page-info" class="text-[var(--color-accent-gold)] px-1">1 / 1</span>
+          <button type="button" id="btn-leads-prev" onclick="changeLeadsPage(-1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&lsaquo;</button>
+          <button type="button" id="btn-leads-next" onclick="changeLeadsPage(1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&rsaquo;</button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left font-mono text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
+              <th class="py-2 px-3">{isEs ? "Fecha y Hora" : "Date & Time"}</th>
+              <th class="py-2 px-3">{isEs ? "Nombre / Empresa" : "Name / Company"}</th>
+              <th class="py-2 px-3">{isEs ? "Email & Teléfono" : "Email & Phone"}</th>
+              <th class="py-2 px-3">{isEs ? "Ubicación / Idioma" : "Location / Locale"}</th>
+              <th class="py-2 px-3">{isEs ? "Asunto" : "Subject"}</th>
+              <th class="py-2 px-3">{isEs ? "Mensaje" : "Message"}</th>
+            </tr>
+          </thead>
+          <tbody id="leads-tbody">
+            <tr>
+              <td
+                colspan="6"
+                class="py-4 text-center text-[var(--color-text-muted)] italic"
+              >
+                {isEs
+                  ? "Sin leads registrados aún en el búfer D1."
+                  : "No leads received yet in D1 buffer."}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Resilience Governance & System Health (Incidents, Deployments) -->
     <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-4">
       <div class="border-b border-[var(--color-surface-border)] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
@@ -616,8 +867,7 @@ const description = isEs
               : "Edge Governance & System Resilience"}
           </h2>
           <p class="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">
-            Circuit Breaker Incidents &bull; Deployments Registry &bull; Inbound
-            Leads
+            Circuit Breaker Incidents &bull; Deployments Registry
           </p>
         </div>
 
@@ -635,13 +885,6 @@ const description = isEs
             onclick="switchSubtab('deploy', this)"
           >
             Deployments
-          </button>
-          <button
-            type="button"
-            class="subtab-btn px-3 py-1 rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] cursor-pointer hover:border-[var(--color-accent-gold)]"
-            onclick="switchSubtab('leads', this)"
-          >
-            Leads
           </button>
         </div>
       </div>
@@ -703,34 +946,6 @@ const description = isEs
           </table>
         </div>
       </div>
-
-      <!-- Leads Pane -->
-      <div id="subtab-leads" class="subtab-pane hidden font-mono text-xs">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
-                <th class="py-2 px-3">{isEs ? "Fecha" : "Date"}</th>
-                <th class="py-2 px-3">{isEs ? "Remitente" : "Sender"}</th>
-                <th class="py-2 px-3">{isEs ? "Asunto" : "Subject"}</th>
-                <th class="py-2 px-3">{isEs ? "Mensaje" : "Message"}</th>
-              </tr>
-            </thead>
-            <tbody id="leads-tbody">
-              <tr>
-                <td
-                  colspan="4"
-                  class="py-4 text-center text-[var(--color-text-muted)] italic"
-                >
-                  {isEs
-                    ? "Sin leads registrados aún."
-                    : "No leads received yet."}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
 
     <!-- Live Telemetry Stream (High-Density Event Log) -->
@@ -757,7 +972,7 @@ const description = isEs
         <table class="w-full text-left font-mono text-xs border-collapse">
           <thead>
             <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
-              <th class="py-2 px-2.5">{isEs ? "Hora (UTC)" : "Time (UTC)"}</th>
+              <th class="py-2 px-2.5" id="th-time-header">{isEs ? "Fecha y Hora (UTC)" : "Date & Time (UTC)"}</th>
               <th class="py-2 px-2.5">{isEs ? "Tipo" : "Type"}</th>
               <th class="py-2 px-2.5">{isEs ? "Ruta" : "Path"}</th>
               <th class="py-2 px-2.5">{isEs ? "País" : "Country"}</th>
@@ -780,9 +995,87 @@ const description = isEs
           </tbody>
         </table>
       </div>
+
+      <!-- Server-side Pagination Bar -->
+      <div class="border-t border-[var(--color-surface-border)] pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
+        <span id="pagination-info" class="text-[var(--color-text-muted)]">Página 1 de 1 (0 eventos)</span>
+        <div class="flex items-center gap-1.5">
+          <button type="button" id="btn-page-first" onclick="goToPage(1)" class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]">&laquo; Primero</button>
+          <button type="button" id="btn-page-prev" onclick="goToPage(currentPage - 1)" class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]">&lsaquo; Anterior</button>
+          <span id="page-indicator" class="px-2 font-bold text-[var(--color-accent-gold)]">1 / 1</span>
+          <button type="button" id="btn-page-next" onclick="goToPage(currentPage + 1)" class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]">Siguiente &rsaquo;</button>
+          <button type="button" id="btn-page-last" onclick="goToPage(totalPages)" class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]">Último &raquo;</button>
+          <select id="select-limit" onchange="setLimit(this.value)" class="ml-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-primary)]">
+            <option value="25">25 / pág</option>
+            <option value="50" selected>50 / pág</option>
+            <option value="100">100 / pág</option>
+          </select>
+        </div>
+      </div>
     </div>
+
+    <!-- Clean Administrative Surface Footer -->
+    <footer class="mt-8 pt-4 pb-6 border-t border-[var(--color-surface-border)] font-mono text-xs text-[var(--color-text-dim)] flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div>
+        <p>&copy; 2026 Arturo Nava. Isolated Administrative Surface &bull; Cloudflare Access Zero Trust &bull; 0 KB Baseline Client JS</p>
+        <p class="text-[10px] text-[var(--color-text-muted)] mt-0.5">Edge Telemetry &amp; Quota Safeguards &bull; D1 Distributed Database</p>
+      </div>
+      <div class="flex items-center gap-4 text-xs">
+        <a href="https://github.com/arturonavax" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-accent-gold)] transition-colors">GitHub</a>
+        <a href="https://linkedin.com/in/arturonava" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-accent-gold)] transition-colors">LinkedIn</a>
+        <span class="text-[var(--color-text-muted)]">admin.arturonavax.dev</span>
+      </div>
+    </footer>
   </div>
+
+  <!-- Floating Country Tooltip -->
+  <div id="country-tooltip" class="country-tooltip" role="tooltip" aria-hidden="true"></div>
 </BaseLayout>
+
+<style>
+  .btn-apply-filters {
+    background: var(--color-accent-gold-subtle);
+    border: 1px solid var(--color-accent-gold);
+    color: var(--color-accent-gold);
+  }
+  .btn-apply-filters:hover {
+    background: var(--color-accent-gold);
+    color: var(--color-btn-gold-text);
+  }
+  .btn-apply-filters.staged {
+    background: var(--color-accent-gold);
+    color: var(--color-btn-gold-text);
+    box-shadow: 0 0 10px rgba(229, 163, 82, 0.4);
+    animation: pulse-border 1.5s infinite;
+  }
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 4px rgba(229, 163, 82, 0.3); }
+    50% { box-shadow: 0 0 12px rgba(229, 163, 82, 0.7); }
+  }
+  .country-tooltip {
+    position: fixed;
+    display: none;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-accent-gold);
+    color: var(--color-text-primary);
+    padding: 0.35rem 0.65rem;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    border-radius: 4px;
+    z-index: 99999;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  .country-tooltip.active {
+    display: block;
+  }
+  .country-tag {
+    cursor: pointer;
+  }
+  .country-tag:hover {
+    color: var(--color-accent-gold);
+  }
+</style>
 
 <script is:inline>
   (function () {
@@ -802,6 +1095,15 @@ const description = isEs
       } catch (_) {}
     }
 
+    // Filter staging states
+    var stagedRange = "7d";
+    var stagedCountry = "all";
+    var stagedSegment = "all";
+    var stagedPathFilter = "all";
+    var stagedSearchQuery = "";
+    var isFiltersStaged = false;
+
+    // Active filter query states
     var currentRange = "7d";
     var currentCountry = "all";
     var currentSegment = "all";
@@ -809,11 +1111,33 @@ const description = isEs
     var customFrom = "";
     var customTo = "";
     var searchQuery = "";
-    var pollDelay = 5000;
+    var currentPage = 1;
+    var currentLimit = 50;
+    var totalPages = 1;
+    var totalFiltered = 0;
+
+    var pollDelay = 0;
     var pollIntervalId = null;
     var lastSyncTimestamp = Date.now();
 
+    // Local timezone state
+    var useLocalTimezone = false;
+    try {
+      useLocalTimezone = localStorage.getItem("admin_local_tz") === "true";
+    } catch (_) {}
+
+    // Sub-paginations
+    var pathsPage = 1;
+    var PATHS_PAGE_SIZE = 5;
+    var countriesPage = 1;
+    var COUNTRIES_PAGE_SIZE = 5;
+    var referrersPage = 1;
+    var REFERRERS_PAGE_SIZE = 5;
+    var leadsPage = 1;
+    var LEADS_PAGE_SIZE = 5;
+
     var cachedTelemetryData = null;
+    var cachedQuotas = null;
     var rawPageviews = [];
     var rawPrefetches = [];
     var rawTopPages = [];
@@ -825,10 +1149,14 @@ const description = isEs
     var rawLeads = [];
     var knownCountries = new Set();
 
-    // Actualizador del badge de tiempo transcurrido
+    // Live Sync Elapsed Timer
     setInterval(function () {
       var badge = document.getElementById("badge-sync-time");
       if (!badge) return;
+      if (pollDelay === 0) {
+        badge.textContent = isEs ? "Sincronizado: manual (Pausado)" : "Synced: manual (Paused)";
+        return;
+      }
       var elapsedSec = Math.floor((Date.now() - lastSyncTimestamp) / 1000);
       if (elapsedSec < 3) {
         badge.textContent = isEs ? "Sincronizado: justo ahora" : "Synced: just now";
@@ -837,6 +1165,195 @@ const description = isEs
       }
     }, 1000);
 
+    // Initial timezone checkbox setup
+    var tzChk = document.getElementById("chk-local-tz");
+    if (tzChk) tzChk.checked = useLocalTimezone;
+    updateTimeHeader();
+
+    function updateTimeHeader() {
+      var th = document.getElementById("th-time-header");
+      if (!th) return;
+      th.textContent = useLocalTimezone
+        ? (isEs ? "Fecha y Hora (Local)" : "Date & Time (Local)")
+        : (isEs ? "Fecha y Hora (UTC)" : "Date & Time (UTC)");
+    }
+
+    function toggleTimezone(checked) {
+      useLocalTimezone = Boolean(checked);
+      try {
+        localStorage.setItem("admin_local_tz", String(useLocalTimezone));
+      } catch (_) {}
+      updateTimeHeader();
+      renderTable(rawPageviews);
+      renderLeads();
+    }
+
+    function formatDateTime(isoStr) {
+      if (!isoStr) return "--";
+      try {
+        var s = String(isoStr).trim();
+        var cleanIso = s.includes("T")
+          ? ((s.endsWith("Z") || s.includes("+") || (s.lastIndexOf("-") > 10)) ? s : s + "Z")
+          : s.replace(" ", "T") + "Z";
+        var d = new Date(cleanIso);
+        if (isNaN(d.getTime())) return isoStr;
+
+        var opts = {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "numeric",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+          ...(useLocalTimezone ? {} : { timeZone: "UTC" })
+        };
+        return new Intl.DateTimeFormat(isEs ? "es-ES" : "en-US", opts).format(d);
+      } catch (_) {
+        return isoStr;
+      }
+    }
+
+    function formatTime(isoStr) {
+      return formatDateTime(isoStr);
+    }
+
+    // Country Tooltip Support
+    var countryNameCache = {};
+    function getCountryFullName(code) {
+      if (!code || code === "XX" || code === "--") {
+        return isEs ? "País desconocido" : "Unknown country";
+      }
+      var key = (isEs ? "es" : "en") + ":" + code;
+      if (countryNameCache[key]) return countryNameCache[key];
+      try {
+        var dn = new Intl.DisplayNames([isEs ? "es" : "en"], { type: "region" });
+        var name = dn.of(code.toUpperCase()) || code;
+        countryNameCache[key] = name;
+        return name;
+      } catch (_) {
+        return code;
+      }
+    }
+
+    function showCountryTooltip(e, code) {
+      var tooltip = document.getElementById("country-tooltip");
+      if (!tooltip) return;
+      var name = getCountryFullName(code);
+      tooltip.textContent = (code && code !== "XX" ? code.toUpperCase() + " — " : "") + name;
+      tooltip.classList.add("active");
+
+      var x = (e && typeof e.clientX === "number") ? e.clientX : ((e && e.touches && e.touches[0] && e.touches[0].clientX) || 0);
+      var y = (e && typeof e.clientY === "number") ? e.clientY : ((e && e.touches && e.touches[0] && e.touches[0].clientY) || 0);
+
+      var tooltipRect = tooltip.getBoundingClientRect();
+      var left = x + 12;
+      var top = y + 12;
+      if (left + tooltipRect.width > window.innerWidth - 10) {
+        left = x - tooltipRect.width - 12;
+      }
+      if (top + tooltipRect.height > window.innerHeight - 10) {
+        top = y - tooltipRect.height - 12;
+      }
+
+      tooltip.style.left = Math.max(8, left) + "px";
+      tooltip.style.top = Math.max(8, top) + "px";
+    }
+
+    function hideCountryTooltip() {
+      var tooltip = document.getElementById("country-tooltip");
+      if (tooltip) tooltip.classList.remove("active");
+    }
+
+    function attachCountryTooltipEvents() {
+      document.querySelectorAll(".country-tag").forEach(function (el) {
+        var code = el.getAttribute("data-country");
+        el.onmouseenter = function (e) { showCountryTooltip(e, code); };
+        el.onmousemove = function (e) { showCountryTooltip(e, code); };
+        el.onmouseleave = hideCountryTooltip;
+        el.onclick = function (e) {
+          e.stopPropagation();
+          showCountryTooltip(e, code);
+        };
+      });
+    }
+
+    document.addEventListener("click", function (e) {
+      if (!e.target || !e.target.closest || !e.target.closest(".country-tag")) {
+        hideCountryTooltip();
+      }
+    });
+
+    // Staged Filtering Logic
+    function markFiltersStaged(staged) {
+      isFiltersStaged = staged;
+      var btn = document.getElementById("btn-apply-filters");
+      if (!btn) return;
+      if (staged) {
+        btn.classList.add("staged");
+        btn.textContent = isEs ? "✓ Aplicar Filtros *" : "✓ Apply Filters *";
+      } else {
+        btn.classList.remove("staged");
+        btn.textContent = isEs ? "✓ Aplicar Filtros" : "✓ Apply Filters";
+      }
+    }
+
+    function applyFilters() {
+      currentRange = stagedRange;
+      currentSegment = stagedSegment;
+      currentPathFilter = stagedPathFilter;
+      currentCountry = stagedCountry;
+      searchQuery = stagedSearchQuery;
+      currentPage = 1;
+      pathsPage = 1;
+      countriesPage = 1;
+      referrersPage = 1;
+      leadsPage = 1;
+      markFiltersStaged(false);
+      fetchDashboardData(true);
+    }
+
+    // Sub-pagination logic
+    function changePathsPage(delta) {
+      var list = rawTopPages || [];
+      var maxPages = Math.max(1, Math.ceil(list.length / PATHS_PAGE_SIZE));
+      pathsPage = Math.max(1, Math.min(maxPages, pathsPage + delta));
+      renderTopPages(rawTopPages, (cachedTelemetryData && cachedTelemetryData.stats && cachedTelemetryData.stats.total_pageviews) || 0);
+    }
+
+    function changeCountriesPage(delta) {
+      var list = rawTopCountries || [];
+      var maxPages = Math.max(1, Math.ceil(list.length / COUNTRIES_PAGE_SIZE));
+      countriesPage = Math.max(1, Math.min(maxPages, countriesPage + delta));
+      renderCountries(rawTopCountries, (cachedTelemetryData && cachedTelemetryData.stats && cachedTelemetryData.stats.total_pageviews) || 0);
+    }
+
+    function changeReferrersPage(delta) {
+      var list = rawTopReferrers || [];
+      var maxPages = Math.max(1, Math.ceil(list.length / REFERRERS_PAGE_SIZE));
+      referrersPage = Math.max(1, Math.min(maxPages, referrersPage + delta));
+      renderAttribution(rawUtmAttributions, rawTopReferrers);
+    }
+
+    function changeLeadsPage(delta) {
+      var list = rawLeads || [];
+      var maxPages = Math.max(1, Math.ceil(list.length / LEADS_PAGE_SIZE));
+      leadsPage = Math.max(1, Math.min(maxPages, leadsPage + delta));
+      renderLeads();
+    }
+
+    function goToPage(p) {
+      if (p < 1 || p > totalPages || p === currentPage) return;
+      currentPage = p;
+      fetchDashboardData(true);
+    }
+
+    function setLimit(l) {
+      currentLimit = parseInt(l, 10);
+      currentPage = 1;
+      fetchDashboardData(true);
+    }
+
     async function fetchDashboardData(isManual) {
       var refreshIcon = document.getElementById("refresh-icon");
       if (refreshIcon) refreshIcon.classList.add("animate-spin");
@@ -844,22 +1361,21 @@ const description = isEs
       try {
         var queryParams = new URLSearchParams();
         queryParams.set("range", currentRange);
-        if (currentCountry !== "all")
-          queryParams.set("country", currentCountry);
-        if (currentSegment !== "all")
-          queryParams.set("segment", currentSegment);
-        if (currentPathFilter !== "all")
-          queryParams.set("path", currentPathFilter);
+        if (currentCountry !== "all") queryParams.set("country", currentCountry);
+        if (currentSegment !== "all") queryParams.set("segment", currentSegment);
+        if (currentPathFilter !== "all") queryParams.set("path", currentPathFilter);
         if (searchQuery.trim()) queryParams.set("search", searchQuery.trim());
+        queryParams.set("page", String(currentPage));
+        queryParams.set("limit", String(currentLimit));
+        if (isManual) queryParams.set("fresh", "true");
+
         if (currentRange === "custom") {
           if (customFrom) queryParams.set("from", customFrom);
           if (customTo) queryParams.set("to", customTo);
         }
 
         var results = await Promise.allSettled([
-          fetch("/api/telemetry?" + queryParams.toString(), {
-            cache: "no-store",
-          }),
+          fetch("/api/telemetry?" + queryParams.toString(), { cache: "no-store" }),
           fetch("/api/metrics", { cache: "no-store" }),
           fetch("/api/deployments", { cache: "no-store" }),
           fetch("/api/leads", { cache: "no-store" }),
@@ -879,11 +1395,18 @@ const description = isEs
           rawTopCountries = tData.top_countries || [];
           rawUtmAttributions = tData.utm_attributions || [];
           rawTopReferrers = tData.top_referrers || [];
+          if (tData.quotas) cachedQuotas = tData.quotas;
+          if (tData.pagination) {
+            currentPage = tData.pagination.page;
+            totalPages = tData.pagination.total_pages || 1;
+            totalFiltered = tData.pagination.total_filtered || 0;
+          }
         }
 
         if (metricsRes.status === "fulfilled" && metricsRes.value.ok) {
           var mData = await metricsRes.value.json();
           rawIncidents = mData.data_quality_warnings || [];
+          if (mData.quotas) cachedQuotas = mData.quotas;
         }
 
         if (deployRes.status === "fulfilled" && deployRes.value.ok) {
@@ -905,6 +1428,73 @@ const description = isEs
       }
     }
 
+    function renderQuotas() {
+      if (!cachedQuotas) return;
+      if (cachedQuotas.workers_daily) {
+        var q1 = cachedQuotas.workers_daily;
+        var el1 = document.getElementById("quota-workers-daily");
+        var bar1 = document.getElementById("quota-workers-daily-bar");
+        if (el1) el1.textContent = (q1.used || 0).toLocaleString() + " / " + (q1.limit || 100000).toLocaleString();
+        if (bar1) bar1.style.width = Math.min(100, Math.round(((q1.used || 0) / (q1.limit || 100000)) * 100)) + "%";
+      }
+      if (cachedQuotas.workers_monthly) {
+        var q2 = cachedQuotas.workers_monthly;
+        var el2 = document.getElementById("quota-workers-monthly");
+        var bar2 = document.getElementById("quota-workers-monthly-bar");
+        if (el2) el2.textContent = (q2.used || 0).toLocaleString() + " / " + (q2.limit || 3000000).toLocaleString();
+        if (bar2) bar2.style.width = Math.min(100, Math.round(((q2.used || 0) / (q2.limit || 3000000)) * 100)) + "%";
+      }
+      if (cachedQuotas.d1_reads_daily) {
+        var q3 = cachedQuotas.d1_reads_daily;
+        var el3 = document.getElementById("quota-d1-reads");
+        var bar3 = document.getElementById("quota-d1-reads-bar");
+        if (el3) el3.textContent = (q3.used || 0).toLocaleString() + " / " + (q3.limit || 5000000).toLocaleString();
+        if (bar3) bar3.style.width = Math.min(100, Math.round(((q3.used || 0) / (q3.limit || 5000000)) * 100)) + "%";
+      }
+      if (cachedQuotas.d1_storage) {
+        var q4 = cachedQuotas.d1_storage;
+        var el4 = document.getElementById("quota-d1-storage");
+        var bar4 = document.getElementById("quota-d1-storage-bar");
+        if (el4) el4.textContent = (q4.used_mb || 12.4) + " MB / " + (q4.limit_gb || 5) + " GB";
+        if (bar4) bar4.style.width = Math.min(100, Math.max(1, Math.round(((q4.used_mb || 12.4) / ((q4.limit_gb || 5) * 1024)) * 100))) + "%";
+      }
+      if (cachedQuotas.r2_class_a_monthly) {
+        var q5 = cachedQuotas.r2_class_a_monthly;
+        var el5 = document.getElementById("quota-r2-class-a");
+        var bar5 = document.getElementById("quota-r2-class-a-bar");
+        if (el5) el5.textContent = (q5.used || 0).toLocaleString() + " / " + (q5.limit || 1000000).toLocaleString();
+        if (bar5) bar5.style.width = Math.min(100, Math.round(((q5.used || 0) / (q5.limit || 1000000)) * 100)) + "%";
+      }
+      if (cachedQuotas.r2_class_b_monthly) {
+        var q6 = cachedQuotas.r2_class_b_monthly;
+        var el6 = document.getElementById("quota-r2-class-b");
+        var bar6 = document.getElementById("quota-r2-class-b-bar");
+        if (el6) el6.textContent = (q6.used || 0).toLocaleString() + " / " + (q6.limit || 10000000).toLocaleString();
+        if (bar6) bar6.style.width = Math.min(100, Math.round(((q6.used || 0) / (q6.limit || 10000000)) * 100)) + "%";
+      }
+      if (cachedQuotas.r2_storage) {
+        var q7 = cachedQuotas.r2_storage;
+        var el7 = document.getElementById("quota-r2-storage");
+        var bar7 = document.getElementById("quota-r2-storage-bar");
+        if (el7) el7.textContent = (q7.used_gb || 0.18) + " GB / " + (q7.limit_gb || 10) + " GB";
+        if (bar7) bar7.style.width = Math.min(100, Math.max(1, Math.round(((q7.used_gb || 0.18) / (q7.limit_gb || 10)) * 100))) + "%";
+      }
+      if (cachedQuotas.zero_trust_seats) {
+        var q8 = cachedQuotas.zero_trust_seats;
+        var el8 = document.getElementById("quota-zero-trust");
+        var bar8 = document.getElementById("quota-zero-trust-bar");
+        if (el8) el8.textContent = (q8.used || 1) + " / " + (q8.limit || 50) + " asientos";
+        if (bar8) bar8.style.width = Math.min(100, Math.round(((q8.used || 1) / (q8.limit || 50)) * 100)) + "%";
+      }
+      if (cachedQuotas.workers_ai_daily) {
+        var q9 = cachedQuotas.workers_ai_daily;
+        var el9 = document.getElementById("quota-workers-ai");
+        var bar9 = document.getElementById("quota-workers-ai-bar");
+        if (el9) el9.textContent = (q9.used || 0).toLocaleString() + " / " + (q9.limit || 10000).toLocaleString() + " neuronas";
+        if (bar9) bar9.style.width = Math.min(100, Math.round(((q9.used || 0) / (q9.limit || 10000)) * 100)) + "%";
+      }
+    }
+
     function renderDashboard() {
       if (!cachedTelemetryData) return;
 
@@ -916,10 +1506,8 @@ const description = isEs
       var prefetchesCount = stats.prefetches_count || 0;
       var leadsCount = rawLeads.length;
 
-      var humanPct =
-        totalViews > 0 ? Math.round((humanViews / totalViews) * 100) : 0;
-      var botPct =
-        totalViews > 0 ? Math.round((botViews / totalViews) * 100) : 0;
+      var humanPct = totalViews > 0 ? Math.round((humanViews / totalViews) * 100) : 0;
+      var botPct = totalViews > 0 ? Math.round((botViews / totalViews) * 100) : 0;
 
       // 1. KPIs
       var kpiTotal = document.getElementById("kpi-total");
@@ -943,33 +1531,46 @@ const description = isEs
 
       var kpiUnique = document.getElementById("kpi-unique");
       if (kpiUnique) kpiUnique.textContent = uniqueVisitors.toLocaleString();
+      var kpiUniqueSub = document.getElementById("kpi-unique-sub");
+      var uniqueHuman = (stats && stats.unique_human_visitors) || 0;
+      var uniqueHumanPct = uniqueVisitors > 0 ? Math.round((uniqueHuman / uniqueVisitors) * 100) : 0;
+      if (kpiUniqueSub) {
+        kpiUniqueSub.textContent = uniqueHuman.toLocaleString() + " " + (isEs ? "humanos" : "humans") + " (" + uniqueHumanPct + "%)";
+      }
 
       var kpiPrefetch = document.getElementById("kpi-prefetch");
-      if (kpiPrefetch)
-        kpiPrefetch.textContent = prefetchesCount.toLocaleString();
+      if (kpiPrefetch) kpiPrefetch.textContent = prefetchesCount.toLocaleString();
 
       var kpiLeads = document.getElementById("kpi-leads");
       if (kpiLeads) kpiLeads.textContent = leadsCount.toLocaleString();
 
-      // 2. Poblar opciones de país si no se han poblado
+      // Pagination indicators
+      var pagInfo = document.getElementById("pagination-info");
+      if (pagInfo) {
+        pagInfo.textContent = (isEs ? "Página " : "Page ") + currentPage + (isEs ? " de " : " of ") + totalPages + " (" + totalFiltered.toLocaleString() + (isEs ? " eventos)" : " events)");
+      }
+      var pageInd = document.getElementById("page-indicator");
+      if (pageInd) {
+        pageInd.textContent = currentPage + " / " + totalPages;
+      }
+      var btnFirst = document.getElementById("btn-page-first");
+      var btnPrev = document.getElementById("btn-page-prev");
+      var btnNext = document.getElementById("btn-page-next");
+      var btnLast = document.getElementById("btn-page-last");
+      if (btnFirst) btnFirst.disabled = currentPage <= 1;
+      if (btnPrev) btnPrev.disabled = currentPage <= 1;
+      if (btnNext) btnNext.disabled = currentPage >= totalPages;
+      if (btnLast) btnLast.disabled = currentPage >= totalPages;
+
+      // Dropdowns & Renderers
       updateCountryDropdown();
-
-      // 3. Render Top Pages
+      renderQuotas();
       renderTopPages(rawTopPages, totalViews);
-
-      // 4. Render Countries
       renderCountries(rawTopCountries, totalViews);
-
-      // 5. Render Attribution
       renderAttribution(rawUtmAttributions, rawTopReferrers);
-
-      // 6. Render Prefetches
       renderPrefetches(rawPrefetches, prefetchesCount);
-
-      // 7. Render Event Table
+      renderLeads();
       renderTable(rawPageviews);
-
-      // 8. Render Panes
       renderPanes();
     }
 
@@ -994,7 +1595,7 @@ const description = isEs
         if (!existingOptions.has(code)) {
           var opt = document.createElement("option");
           opt.value = code;
-          opt.textContent = code;
+          opt.textContent = code + " (" + getCountryFullName(code) + ")";
           select.appendChild(opt);
         }
       });
@@ -1005,8 +1606,17 @@ const description = isEs
     function renderTopPages(pages, totalViews) {
       var tbody = document.getElementById("top-pages-tbody");
       var countLabel = document.getElementById("top-pages-count");
+      var pageInfo = document.getElementById("paths-page-info");
+      var btnPrev = document.getElementById("btn-paths-prev");
+      var btnNext = document.getElementById("btn-paths-next");
       if (!tbody) return;
 
+      var totalP = Math.max(1, Math.ceil(pages.length / PATHS_PAGE_SIZE));
+      pathsPage = Math.max(1, Math.min(totalP, pathsPage));
+
+      if (pageInfo) pageInfo.textContent = pathsPage + " / " + totalP;
+      if (btnPrev) btnPrev.disabled = pathsPage <= 1;
+      if (btnNext) btnNext.disabled = pathsPage >= totalP;
       if (countLabel) countLabel.textContent = pages.length + (isEs ? " rutas" : " routes");
 
       if (!pages.length) {
@@ -1018,17 +1628,20 @@ const description = isEs
       }
 
       var maxViews = pages[0] ? pages[0].total_views : 1;
+      var start = (pathsPage - 1) * PATHS_PAGE_SIZE;
+      var paged = pages.slice(start, start + PATHS_PAGE_SIZE);
 
-      tbody.innerHTML = pages
-        .slice(0, 10)
+      tbody.innerHTML = paged
         .map(function (p, idx) {
-          var pct =
-            totalViews > 0 ? Math.round((p.total_views / totalViews) * 100) : 0;
-          var barPct = Math.round((p.total_views / maxViews) * 100);
+          var count = p.total_views || 0;
+          var hCount = p.human_views || 0;
+          var uCount = p.unique_visitors || 0;
+          var pct = totalViews > 0 ? Math.round((count / totalViews) * 100) : 0;
+          var barPct = Math.round((count / maxViews) * 100);
           return (
             '<tr class="border-b border-[var(--color-surface-border)] hover:bg-[var(--color-accent-gold-subtle)] transition-colors">' +
             '<td class="py-2 px-2 text-[var(--color-text-dim)]">#' +
-            (idx + 1) +
+            (start + idx + 1) +
             "</td>" +
             '<td class="py-2 px-2 font-semibold text-[var(--color-text-primary)] max-w-xs truncate" title="' +
             escapeHtml(p.path) +
@@ -1036,13 +1649,13 @@ const description = isEs
             escapeHtml(p.path) +
             "</td>" +
             '<td class="py-2 px-2 text-right font-bold text-[var(--color-text-primary)]">' +
-            p.total_views.toLocaleString() +
+            count.toLocaleString() +
             "</td>" +
             '<td class="py-2 px-2 text-right text-emerald-400">' +
-            (p.human_views || 0).toLocaleString() +
+            hCount.toLocaleString() +
             "</td>" +
             '<td class="py-2 px-2 text-right text-[var(--color-text-dim)]">' +
-            (p.unique_visitors || 0).toLocaleString() +
+            uCount.toLocaleString() +
             "</td>" +
             '<td class="py-2 px-2 text-right">' +
             '<div class="flex items-center justify-end gap-1.5">' +
@@ -1064,7 +1677,17 @@ const description = isEs
 
     function renderCountries(countries, totalViews) {
       var container = document.getElementById("countries-list");
+      var pageInfo = document.getElementById("countries-page-info");
+      var btnPrev = document.getElementById("btn-countries-prev");
+      var btnNext = document.getElementById("btn-countries-next");
       if (!container) return;
+
+      var totalP = Math.max(1, Math.ceil(countries.length / COUNTRIES_PAGE_SIZE));
+      countriesPage = Math.max(1, Math.min(totalP, countriesPage));
+
+      if (pageInfo) pageInfo.textContent = countriesPage + " / " + totalP;
+      if (btnPrev) btnPrev.disabled = countriesPage <= 1;
+      if (btnNext) btnNext.disabled = countriesPage >= totalP;
 
       if (!countries.length) {
         container.innerHTML =
@@ -1075,20 +1698,25 @@ const description = isEs
       }
 
       var maxC = countries[0] ? countries[0].views : 1;
+      var start = (countriesPage - 1) * COUNTRIES_PAGE_SIZE;
+      var paged = countries.slice(start, start + COUNTRIES_PAGE_SIZE);
 
-      container.innerHTML = countries
-        .slice(0, 8)
+      container.innerHTML = paged
         .map(function (c) {
-          var pct =
-            totalViews > 0 ? Math.round((c.views / totalViews) * 100) : 0;
+          var pct = totalViews > 0 ? Math.round((c.views / totalViews) * 100) : 0;
           var barPct = Math.round((c.views / maxC) * 100);
-          var isCurrent = currentCountry === c.country;
+          var isCurrent = stagedCountry === c.country;
+          var fullName = getCountryFullName(c.country);
           return (
-            '<div class="p-2 rounded border ' +
+            '<div class="country-tag p-2 rounded border ' +
             (isCurrent
               ? "border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)]"
               : "border-[var(--color-surface-border)] bg-[var(--color-bg-primary)]") +
-            ' hover:border-[var(--color-accent-gold)] cursor-pointer transition-colors" onclick="filterByCountry(\'' +
+            ' hover:border-[var(--color-accent-gold)] transition-colors" data-country="' +
+            escapeHtml(c.country) +
+            '" title="' +
+            escapeHtml(fullName) +
+            '" onclick="filterByCountry(\'' +
             escapeHtml(c.country) +
             "')\">" +
             '<div class="flex items-center justify-between text-xs">' +
@@ -1096,8 +1724,8 @@ const description = isEs
             '<span class="px-1.5 py-0.5 rounded-xs bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] font-bold text-[10px]">' +
             escapeHtml(c.country) +
             "</span>" +
-            '<span class="text-[var(--color-text-primary)] font-semibold">' +
-            escapeHtml(c.country) +
+            '<span class="text-[var(--color-text-primary)] font-semibold truncate max-w-[140px]">' +
+            escapeHtml(fullName) +
             "</span>" +
             "</div>" +
             '<div class="flex items-center gap-2 font-mono">' +
@@ -1118,11 +1746,23 @@ const description = isEs
           );
         })
         .join("");
+
+      attachCountryTooltipEvents();
     }
 
     function renderAttribution(utms, referrers) {
       var container = document.getElementById("attribution-list");
+      var pageInfo = document.getElementById("referrers-page-info");
+      var btnPrev = document.getElementById("btn-referrers-prev");
+      var btnNext = document.getElementById("btn-referrers-next");
       if (!container) return;
+
+      var totalP = Math.max(1, Math.ceil(referrers.length / REFERRERS_PAGE_SIZE));
+      referrersPage = Math.max(1, Math.min(totalP, referrersPage));
+
+      if (pageInfo) pageInfo.textContent = referrersPage + " / " + totalP;
+      if (btnPrev) btnPrev.disabled = referrersPage <= 1;
+      if (btnNext) btnNext.disabled = referrersPage >= totalP;
 
       var html = "";
 
@@ -1159,12 +1799,14 @@ const description = isEs
       }
 
       if (referrers.length) {
+        var start = (referrersPage - 1) * REFERRERS_PAGE_SIZE;
+        var pagedRefs = referrers.slice(start, start + REFERRERS_PAGE_SIZE);
+
         html +=
           '<div class="space-y-1.5 mt-3"><div class="text-[10px] uppercase text-[var(--color-text-muted)] tracking-wider font-semibold">' +
           (isEs ? "Top Referrers Externos" : "Top External Referrers") +
           "</div>";
-        html += referrers
-          .slice(0, 5)
+        html += pagedRefs
           .map(function (r) {
             var rf = r.referrer || "Direct";
             if (rf.toLowerCase() === "invalid") rf = "Direct";
@@ -1212,7 +1854,6 @@ const description = isEs
         return;
       }
 
-      // Conteo por ruta
       var counts = {};
       prefetches.forEach(function (p) {
         counts[p.path] = (counts[p.path] || 0) + 1;
@@ -1238,14 +1879,92 @@ const description = isEs
         .join("");
     }
 
+    function renderLeads() {
+      var tbody = document.getElementById("leads-tbody");
+      var badge = document.getElementById("leads-count-badge");
+      var pageInfo = document.getElementById("leads-page-info");
+      var btnPrev = document.getElementById("btn-leads-prev");
+      var btnNext = document.getElementById("btn-leads-next");
+
+      if (badge) badge.textContent = rawLeads.length + " leads";
+
+      var totalP = Math.max(1, Math.ceil(rawLeads.length / LEADS_PAGE_SIZE));
+      leadsPage = Math.max(1, Math.min(totalP, leadsPage));
+
+      if (pageInfo) pageInfo.textContent = (isEs ? "Página " : "Page ") + leadsPage + (isEs ? " de " : " of ") + totalP;
+      if (btnPrev) btnPrev.disabled = leadsPage <= 1;
+      if (btnNext) btnNext.disabled = leadsPage >= totalP;
+
+      if (!tbody) return;
+
+      if (!rawLeads.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="6" class="py-4 text-center text-[var(--color-text-muted)] italic">' +
+          (isEs
+            ? "Sin leads registrados aún en el búfer D1."
+            : "No leads received yet in D1 buffer.") +
+          "</td></tr>";
+        return;
+      }
+
+      var start = (leadsPage - 1) * LEADS_PAGE_SIZE;
+      var pagedLeads = rawLeads.slice(start, start + LEADS_PAGE_SIZE);
+
+      tbody.innerHTML = pagedLeads
+        .map(function (l) {
+          var dt = formatDateTime(l.created_at);
+          var name = escapeHtml(l.name || "--");
+          var email = escapeHtml(l.from_email || "--");
+          var phone = l.phone ? '<br><small class="text-[var(--color-text-dim)] font-mono">📞 ' + escapeHtml(l.phone) + "</small>" : "";
+          var loc = escapeHtml((l.locale || "en").toUpperCase());
+          var geoParts = [l.city, l.country].filter(Boolean);
+          var geoText = geoParts.length ? '<br><small class="text-[var(--color-text-primary)] font-semibold">📍 ' + escapeHtml(geoParts.join(", ")) + "</small>" : "";
+          var ipText = l.ip ? '<br><small class="text-[var(--color-text-dim)] text-[10px]">IP: ' + escapeHtml(l.ip) + (l.as_organization ? " · " + escapeHtml(l.as_organization) : "") + "</small>" : "";
+          var subj = escapeHtml(l.subject || "--");
+          var rawBody = l.body || "";
+          var msg = escapeHtml(rawBody.replace(/[\r\n]+/g, " ").slice(0, 100));
+
+          return (
+            '<tr class="border-b border-[var(--color-surface-border)] hover:bg-[var(--color-accent-gold-subtle)] transition-colors">' +
+            '<td class="py-2.5 px-3 text-[var(--color-text-dim)] whitespace-nowrap">' +
+            dt +
+            "</td>" +
+            '<td class="py-2.5 px-3 font-bold text-[var(--color-text-primary)]">' +
+            name +
+            "</td>" +
+            '<td class="py-2.5 px-3"><span class="text-[var(--color-accent-gold)] font-medium">' +
+            email +
+            "</span>" +
+            phone +
+            "</td>" +
+            '<td class="py-2.5 px-3"><span class="px-1.5 py-0.5 rounded-xs bg-[var(--color-bg-primary)] border border-[var(--color-surface-border)] font-bold text-[10px]">' +
+            loc +
+            "</span>" +
+            geoText +
+            ipText +
+            "</td>" +
+            '<td class="py-2.5 px-3 font-semibold text-[var(--color-text-primary)]">' +
+            subj +
+            "</td>" +
+            '<td class="py-2.5 px-3 text-[var(--color-text-secondary)] max-w-xs truncate" title="' +
+            escapeHtml(rawBody) +
+            '">' +
+            msg +
+            "</td>" +
+            "</tr>"
+          );
+        })
+        .join("");
+    }
+
     function renderTable(items) {
       var tbody = document.getElementById("telemetry-tbody");
       var counter = document.getElementById("events-count-label");
       var searchCounter = document.getElementById("search-counter");
       if (!tbody) return;
 
-      if (counter) counter.textContent = items.length + (isEs ? " eventos" : " events");
-      if (searchCounter) searchCounter.textContent = items.length + " hits";
+      if (counter) counter.textContent = totalFiltered + (isEs ? " eventos" : " events");
+      if (searchCounter) searchCounter.textContent = totalFiltered + " hits";
 
       if (!items.length) {
         tbody.innerHTML =
@@ -1258,7 +1977,6 @@ const description = isEs
       }
 
       tbody.innerHTML = items
-        .slice(0, 60)
         .map(function (item) {
           var isBot = Boolean(item.is_bot);
           var isPrefetch = Boolean(item.is_prefetch || item.purpose);
@@ -1269,6 +1987,7 @@ const description = isEs
               : '<span class="px-2 py-0.5 rounded-xs border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold text-[10px]">HUMAN</span>';
 
           var country = item.country || "XX";
+          var fullName = getCountryFullName(country);
           var ref =
             item.utm_source && item.utm_source !== "direct"
               ? item.utm_source
@@ -1276,17 +1995,13 @@ const description = isEs
           if (typeof ref === "string" && ref.toLowerCase() === "invalid") {
             ref = "Direct";
           }
-          var campaign = item.utm_campaign
-            ? escapeHtml(item.utm_campaign)
-            : "--";
-          var hash = item.visitor_hash
-            ? item.visitor_hash.slice(0, 10) + "..."
-            : "--";
+          var campaign = item.utm_campaign ? escapeHtml(item.utm_campaign) : "--";
+          var hash = item.visitor_hash ? item.visitor_hash.slice(0, 10) + "..." : "--";
 
           return (
             '<tr class="border-b border-[var(--color-surface-border)] hover:bg-[var(--color-accent-gold-subtle)] transition-colors">' +
             '<td class="py-2 px-2.5 text-[var(--color-text-dim)] whitespace-nowrap">' +
-            formatTime(item.created_at) +
+            formatDateTime(item.created_at) +
             "</td>" +
             '<td class="py-2 px-2.5 whitespace-nowrap">' +
             tagBadge +
@@ -1296,7 +2011,11 @@ const description = isEs
             '">' +
             escapeHtml(item.path) +
             "</td>" +
-            '<td class="py-2 px-2.5 whitespace-nowrap"><span class="px-1.5 py-0.5 rounded-xs bg-[var(--color-bg-primary)] border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] font-bold text-[10px]">' +
+            '<td class="py-2 px-2.5 whitespace-nowrap"><span class="country-tag px-1.5 py-0.5 rounded-xs bg-[var(--color-bg-primary)] border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] font-bold text-[10px]" data-country="' +
+            escapeHtml(country) +
+            '" title="' +
+            escapeHtml(fullName) +
+            '">' +
             escapeHtml(country) +
             "</span></td>" +
             '<td class="py-2 px-2.5 text-[var(--color-text-secondary)] max-w-xs truncate">' +
@@ -1312,6 +2031,8 @@ const description = isEs
           );
         })
         .join("");
+
+      attachCountryTooltipEvents();
     }
 
     function renderPanes() {
@@ -1357,7 +2078,7 @@ const description = isEs
       if (depTbody) {
         if (!rawDeployments.length) {
           depTbody.innerHTML =
-            '<tr><td colspan="5" class="py-4 text-center text-[var(--color-text-muted)] italic">v1.4.2 (Production Active)</td></tr>';
+            '<tr><td colspan="5" class="py-4 text-center text-[var(--color-text-muted)] italic">v1.4.3 (Production Active)</td></tr>';
         } else {
           depTbody.innerHTML = rawDeployments
             .map(function (d) {
@@ -1370,7 +2091,7 @@ const description = isEs
                 escapeHtml(d.git_commit || "--") +
                 "</td>" +
                 '<td class="py-2 px-3">' +
-                formatTime(d.deployed_at) +
+                formatDateTime(d.deployed_at) +
                 "</td>" +
                 '<td class="py-2 px-3">' +
                 escapeHtml(d.environment || "production") +
@@ -1388,47 +2109,13 @@ const description = isEs
             .join("");
         }
       }
-
-      // Leads
-      var leadsTbody = document.getElementById("leads-tbody");
-      if (leadsTbody) {
-        if (!rawLeads.length) {
-          leadsTbody.innerHTML =
-            '<tr><td colspan="4" class="py-4 text-center text-[var(--color-text-muted)] italic">' +
-            (isEs
-              ? "Sin leads corporativos registrados aún."
-              : "No corporate leads recorded yet.") +
-            "</td></tr>";
-        } else {
-          leadsTbody.innerHTML = rawLeads
-            .map(function (l) {
-              return (
-                '<tr class="border-b border-[var(--color-surface-border)]">' +
-                '<td class="py-2 px-3 text-[var(--color-text-dim)] whitespace-nowrap">' +
-                formatTime(l.created_at) +
-                "</td>" +
-                '<td class="py-2 px-3 font-bold text-[var(--color-accent-gold)]">' +
-                escapeHtml(l.from_email) +
-                "</td>" +
-                '<td class="py-2 px-3 font-semibold text-[var(--color-text-primary)]">' +
-                escapeHtml(l.subject) +
-                "</td>" +
-                '<td class="py-2 px-3 text-[var(--color-text-secondary)] max-w-sm truncate">' +
-                escapeHtml(l.body) +
-                "</td>" +
-                "</tr>"
-              );
-            })
-            .join("");
-        }
-      }
     }
 
-    // Handlers expuestos al window
+    // Handlers exposed to window
     var win = typeof window !== "undefined" ? window : {};
 
     win["setSegmentFilter"] = function (seg) {
-      currentSegment = seg;
+      stagedSegment = seg;
       document.querySelectorAll(".filter-tab").forEach(function (tab) {
         tab.classList.remove(
           "active",
@@ -1454,18 +2141,18 @@ const description = isEs
           "text-[var(--color-text-secondary)]",
         );
       }
-      fetchDashboardData(true);
+      markFiltersStaged(true);
     };
 
     win["onRangeChange"] = function (val) {
-      currentRange = val;
+      stagedRange = val;
       var customBar = document.getElementById("custom-range-bar");
       if (val === "custom") {
         if (customBar) customBar.classList.remove("hidden");
       } else {
         if (customBar) customBar.classList.add("hidden");
-        fetchDashboardData(true);
       }
+      markFiltersStaged(true);
     };
 
     win["applyCustomDateRange"] = function () {
@@ -1473,24 +2160,24 @@ const description = isEs
       var toInput = document.getElementById("custom-to");
       customFrom = fromInput ? fromInput.value : "";
       customTo = toInput ? toInput.value : "";
-      fetchDashboardData(true);
+      markFiltersStaged(true);
     };
 
     win["onCountryChange"] = function (val) {
-      currentCountry = val;
-      fetchDashboardData(true);
+      stagedCountry = val;
+      markFiltersStaged(true);
     };
 
     win["filterByCountry"] = function (c) {
       var select = document.getElementById("select-country");
       if (select) select.value = c;
-      currentCountry = c;
-      fetchDashboardData(true);
+      stagedCountry = c;
+      markFiltersStaged(true);
     };
 
     win["onPathFilterChange"] = function (val) {
-      currentPathFilter = val;
-      fetchDashboardData(true);
+      stagedPathFilter = val;
+      markFiltersStaged(true);
     };
 
     win["onPollIntervalChange"] = function (val) {
@@ -1504,9 +2191,38 @@ const description = isEs
     };
 
     win["onSearchInput"] = function (val) {
-      searchQuery = val;
-      fetchDashboardData(false);
+      stagedSearchQuery = val;
+      markFiltersStaged(true);
     };
+
+    win["onSearchKeyDown"] = function (e) {
+      if (e && e.key === "Enter") {
+        applyFilters();
+      }
+    };
+
+    win["toggleExcludeBots"] = function (checked) {
+      stagedSegment = checked ? "human" : "all";
+      win["setSegmentFilter"](stagedSegment);
+    };
+
+    win["toggleIncludePrefetch"] = function (checked) {
+      if (!checked && stagedSegment === "prefetch") {
+        stagedSegment = "all";
+        win["setSegmentFilter"]("all");
+      } else {
+        markFiltersStaged(true);
+      }
+    };
+
+    win["toggleTimezone"] = toggleTimezone;
+    win["applyFilters"] = applyFilters;
+    win["changePathsPage"] = changePathsPage;
+    win["changeCountriesPage"] = changeCountriesPage;
+    win["changeReferrersPage"] = changeReferrersPage;
+    win["changeLeadsPage"] = changeLeadsPage;
+    win["goToPage"] = goToPage;
+    win["setLimit"] = setLimit;
 
     win["switchSubtab"] = function (tab, btnEl) {
       document.querySelectorAll(".subtab-btn").forEach(function (btn) {
@@ -1584,16 +2300,6 @@ const description = isEs
       }
     };
 
-    function formatTime(isoStr) {
-      if (!isoStr) return "--";
-      try {
-        var d = new Date(isoStr);
-        return d.toISOString().replace("T", " ").slice(0, 19);
-      } catch (_) {
-        return isoStr;
-      }
-    }
-
     function escapeHtml(str) {
       if (!str) return "";
       return String(str).replace(/[&<>"']/g, function (m) {
@@ -1607,7 +2313,16 @@ const description = isEs
       });
     }
 
-    // Inicialización automática
+    var searchEl = document.getElementById("input-search");
+    if (searchEl) {
+      searchEl.addEventListener("keydown", function (e) {
+        if (e && e.key === "Enter") {
+          applyFilters();
+        }
+      });
+    }
+
+    // Auto initialize
     fetchDashboardData(false);
     if (pollDelay > 0) {
       pollIntervalId = setInterval(function () {

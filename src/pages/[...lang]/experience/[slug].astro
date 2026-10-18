@@ -711,6 +711,10 @@ const jobIndexItems: IndexItem[] = [
 
         isTransitioning = true;
 
+        if (typeof window.__showBeacon === "function") {
+          window.__showBeacon(undefined, true);
+        }
+
         var htmlPromise = cache[url]
           ? Promise.resolve(cache[url])
           : fetch(url)
@@ -834,6 +838,9 @@ const jobIndexItems: IndexItem[] = [
               nextAnimTarget.style.transition = "";
               nextAnimTarget.style.willChange = "";
               isTransitioning = false;
+              if (typeof window.__hideBeacon === "function") {
+                window.__hideBeacon();
+              }
             }, 240);
 
             updateStickyHeader();
@@ -846,6 +853,9 @@ const jobIndexItems: IndexItem[] = [
             }
           })
           .catch(function () {
+            if (typeof window.__hideBeacon === "function") {
+              window.__hideBeacon();
+            }
             routerNavigate(url);
           });
       }

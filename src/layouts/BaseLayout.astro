@@ -35,6 +35,7 @@ interface Props {
     | undefined;
   hideSubtleCoffee?: boolean | undefined;
   noindex?: boolean | undefined;
+  hideFooter?: boolean | undefined;
 }
 
 const {
@@ -49,6 +50,7 @@ const {
   collectionName,
   hideSubtleCoffee = false,
   noindex = false,
+  hideFooter = false,
 } = Astro.props;
 
 const alternateEnUrl =
@@ -279,7 +281,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
       )}
     </main>
 
-    <Footer locale={locale} />
+    {!hideFooter && <Footer locale={locale} />}
     <UniversalSearchModal locale={locale} />
     {hasJudges && <OnlineJudgesModal locale={locale} />}
 

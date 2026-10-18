@@ -475,6 +475,11 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
       });
     }
 
+    window.addEventListener("reset-page-filters", () => {
+      activeFilters.clear();
+      updateView();
+    });
+
     const params = new URLSearchParams(window.location.search);
     const initialFilters =
       params.get("filters") || params.get("skill") || params.get("company");

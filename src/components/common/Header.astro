@@ -753,7 +753,31 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 }
               } else if (!link.hash || link.hash === "#about") {
                 e.preventDefault();
-                setActiveSection("about");
+                var isHome = currentPath === "/" || currentPath === "/es";
+                if (isHome) {
+                  setActiveSection("about");
+                } else {
+                  var navSection = link.getAttribute("data-nav-section");
+                  if (navSection) {
+                    setActiveSection(navSection);
+                  }
+                  // Reset any active filters on the page (Task 7)
+                  window.dispatchEvent(new CustomEvent("reset-page-filters"));
+                  var resetBtns = document.querySelectorAll(
+                    "#reset-exp-filter-btn, #reset-project-filter-btn, #reset-cs-filters-btn, #reset-filter-btn, [data-exp-filter='all'], [data-project-filter='all'], [data-cs-filter='all'], [data-filter='all']"
+                  );
+                  resetBtns.forEach(function (btn) {
+                    if (typeof btn.click === "function") btn.click();
+                  });
+                  try {
+                    var cleanUrl = new URL(window.location.href);
+                    cleanUrl.searchParams.delete("skill");
+                    cleanUrl.searchParams.delete("company");
+                    cleanUrl.searchParams.delete("filters");
+                    cleanUrl.searchParams.delete("tag");
+                    window.history.replaceState({}, "", cleanUrl.pathname);
+                  } catch (_) {}
+                }
                 window.__isProgrammaticNav = true;
                 window.scrollTo({ top: 0, behavior: "smooth" });
                 var clearAboutScroll = function () {

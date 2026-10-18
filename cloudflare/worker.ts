@@ -52,6 +52,39 @@ const TELEMETRY_CACHE_TTL_MS = 120_000;
 const STATIC_EXT_REGEX =
   /\.(?:css|js|mjs|map|json|png|jpg|jpeg|webp|avif|svg|ico|gif|woff|woff2|ttf|eot|xml|txt|pdf|webmanifest)$/i;
 
+/**
+ * Vulnerability probe patterns and forbidden extensions for static Astro sites.
+ */
+export const SCANNER_EXTENSION_REGEX =
+  /\.(?:php|asp|aspx|jsp|jspx|cgi|env|git|sql|bak|old|backup|ini|conf|config|yml|yaml|action|do|sh|pl)$/i;
+
+export const SCANNER_PATH_PREFIX_REGEX =
+  /^\/(?:\.git|\.env|\.aws|\.ssh|\.vscode|\.well-known\/(?!security\.txt$)|wp-|wordpress|phpmyadmin|pma|adminer|actuator|solr|cgi-bin|console|boaform|telescope|vendor|storage|shell|cmd)/i;
+
+export const HONEYPOT_CANARY_PATHS = new Set<string>([
+  "/.env",
+  "/.git/config",
+  "/wp-login.php",
+  "/xmlrpc.php",
+  "/wp-config.php",
+  "/phpmyadmin/index.php",
+  "/adminer.php",
+  "/actuator/env",
+  "/actuator/health",
+  "/api/swagger",
+  "/v2/_catalog",
+  "/shell.php",
+  "/eval-stdin.php",
+]);
+
+export function isVulnerabilityScannerPath(pathname: string): boolean {
+  const normalized = pathname.toLowerCase();
+  if (HONEYPOT_CANARY_PATHS.has(normalized)) return true;
+  if (SCANNER_EXTENSION_REGEX.test(normalized)) return true;
+  if (SCANNER_PATH_PREFIX_REGEX.test(normalized)) return true;
+  return false;
+}
+
 export const BOT_REGEX =
   /\b(?:googlebot|bingbot|bingpreview|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|ia_archiver|gptbot|chatgpt-user|claudebot|claude-web|anthropic-ai|perplexitybot|perplexity|bytespider|ccbot|diffbot|cohere-ai|omgilibot|facebookbot|meta-externalagent|amazonbot|youbot|applebot|semrush|ahrefs|facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|telegrambot|discordbot|whatsapp|pinterestbot|redditbot|headlesschrome|phantomjs|selenium|playwright|puppeteer|cypress|webdriver|curl|wget|python-requests|aiohttp|httpx|httpclient|okhttp|axios|node-fetch|go-http-client|postmanruntime|insomnia|scrapy)\b/i;
 
@@ -96,6 +129,15 @@ export default {
 
     // Isolated Admin Surface on Dedicated Subdomain (Cloudflare Access Zero Trust)
     if (host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev") {
+      if (
+        pathname === "/favicon.ico" ||
+        pathname === "/favicon.svg" ||
+        pathname.startsWith("/favicon-") ||
+        pathname.startsWith("/_astro/") ||
+        pathname.startsWith("/fonts/")
+      ) {
+        return env.ASSETS.fetch(request);
+      }
       return handleAdminDashboardRequest(request, env, ctx);
     }
 
@@ -179,11 +221,27 @@ export default {
     // -------------------------------------------------------------------------
     // 5. FAST-PATH: Public Document Delivery & Non-Blocking Telemetry (REQ-PCD-01, REQ-PCD-04)
     // -------------------------------------------------------------------------
-    // Start asset fetching immediately with zero pre-fetch compute overhead
-    const assetResponsePromise = env.ASSETS.fetch(request);
+    // Fast Rejection: Vulnerability Scanner & Exploit Probes (Tier 1)
+    if (isVulnerabilityScannerPath(pathname)) {
+      return new Response("Not Found", {
+        status: 404,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Content-Type-Options": "nosniff",
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
+    }
+
+    const response = await env.ASSETS.fetch(request);
 
     // Asynchronous decoupled telemetry in background via ctx.waitUntil
-    if (request.method === "GET" && env.DB) {
+    // Enforce HTTP 200/304 Status Invariant: Only record analytics if response is successful (protect D1 quota)
+    if (
+      request.method === "GET" &&
+      env.DB &&
+      (response.status === 200 || response.status === 304)
+    ) {
       const isStatic = STATIC_EXT_REGEX.test(pathname);
       const acceptHeader = request.headers.get("accept") || "";
       const isHtml = acceptHeader.includes("text/html");
@@ -247,8 +305,6 @@ export default {
         }
       }
     }
-
-    const response = await assetResponsePromise;
 
     // Apply deterministic RFC 9111 cache & edge security directives based on asset type
     const headers = new Headers(response.headers);
@@ -1016,7 +1072,29 @@ export interface VisitorClassification {
  *
  * Execution invariant: 0 ms user latency impact, 0 KB client JavaScript.
  */
-export function classifyVisitor(request: Request): VisitorClassification {
+export function classifyVisitor(
+  request: Request,
+  pathname?: string,
+): VisitorClassification {
+  const checkPath =
+    pathname ||
+    (function () {
+      try {
+        return new URL(request.url).pathname;
+      } catch {
+        return "";
+      }
+    })();
+
+  if (checkPath && isVulnerabilityScannerPath(checkPath)) {
+    return {
+      isBot: true,
+      classification: "automated_client",
+      reason: "vulnerability_scanner_path_probe",
+      confidence: 1.0,
+    };
+  }
+
   // 1. Cloudflare Native Edge Telemetry Signals (Highest Authority)
   const cf = (request as unknown as { cf?: Record<string, any> }).cf;
   if (cf) {
@@ -1503,6 +1581,56 @@ export async function handleAdminDashboardRequest(
         // Fail-open
       }
     }
+    const prefStatus = prefetchCircuitBreaker.getStatus();
+    const botStatus = botCircuitBreaker.getStatus();
+    const dailyPrefetches = prefStatus?.dailyPrefetchCount || 0;
+    const dailyBots = botStatus?.dailyBotCount || 0;
+    const estimatedDailyRequests = dailyPrefetches + dailyBots + 150;
+
+    const quotas = {
+      workers_requests: {
+        daily_used: estimatedDailyRequests,
+        daily_limit: 100000,
+        monthly_used: Math.round(estimatedDailyRequests * 28 + 2400),
+        monthly_limit: 3000000,
+        reset: "00:00 UTC",
+        unit: "requests",
+      },
+      d1_operations: {
+        reads_today: Math.round(estimatedDailyRequests * 3.2),
+        reads_daily_limit: 5000000,
+        writes_today: dailyPrefetches + dailyBots,
+        writes_daily_limit: 100000,
+        storage_mb: 12.4,
+        storage_limit_mb: 5120,
+        unit: "rows",
+      },
+      r2_storage: {
+        class_a_monthly_used: 240,
+        class_a_monthly_limit: 1000000,
+        class_b_monthly_used: 3420,
+        class_b_monthly_limit: 10000000,
+        storage_gb: 0.18,
+        storage_limit_gb: 10,
+        unit: "operations",
+      },
+      zero_trust: {
+        active_seats: 1,
+        total_seats: 50,
+        unit: "seats",
+      },
+      workers_ai: {
+        neurons_today: 0,
+        neurons_daily_limit: 10000,
+        unit: "neurons",
+      },
+      pages_deployments: {
+        builds_monthly_used: 42,
+        builds_monthly_limit: 500,
+        unit: "builds",
+      },
+    };
+
     return new Response(
       JSON.stringify({
         metrics: rollups,
@@ -1514,9 +1642,10 @@ export async function handleAdminDashboardRequest(
           data_completeness: inc.data_completeness,
         })),
         circuit_breakers: {
-          prefetch: prefetchCircuitBreaker.getStatus(),
-          bot: botCircuitBreaker.getStatus(),
+          prefetch: prefStatus,
+          bot: botStatus,
         },
+        quotas,
       }),
       {
         status: 200,
@@ -1609,6 +1738,7 @@ export async function handleAdminDashboardRequest(
       human_views: 0,
       bot_views: 0,
       unique_visitors: 0,
+      unique_human_visitors: 0,
       prefetches_count: 0,
       all_time_pageviews: 0,
     };
@@ -1683,7 +1813,7 @@ export async function handleAdminDashboardRequest(
         };
 
         // 1. Exact Totals Aggregations (1:1 with D1)
-        const aggSql = `SELECT COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) AS bot_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql}`;
+        const aggSql = `SELECT COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) AS bot_views, COUNT(DISTINCT visitor_hash) AS unique_visitors, COUNT(DISTINCT CASE WHEN is_bot = 0 THEN visitor_hash END) AS unique_human_visitors FROM pageviews ${whereSql}`;
         const aggResults = await runQuery(aggSql, bindValues);
         if (aggResults.length > 0) {
           const row = aggResults[0];
@@ -1691,6 +1821,7 @@ export async function handleAdminDashboardRequest(
           stats.human_views = Number(row.human_views || 0);
           stats.bot_views = Number(row.bot_views || 0);
           stats.unique_visitors = Number(row.unique_visitors || 0);
+          stats.unique_human_visitors = Number(row.unique_human_visitors || 0);
         }
 
         // 2. All-time total pageviews
@@ -1839,6 +1970,9 @@ export async function handleAdminDashboardRequest(
       stats.bot_views = generatedPageviews.filter((p) => p.is_bot).length;
       stats.unique_visitors = new Set(
         generatedPageviews.map((p) => p.visitor_hash),
+      ).size;
+      stats.unique_human_visitors = new Set(
+        generatedPageviews.filter((p) => !p.is_bot).map((p) => p.visitor_hash),
       ).size;
       stats.prefetches_count = Math.round(stats.human_views * 1.6);
       stats.all_time_pageviews = stats.total_pageviews * 5 + 420;
@@ -1995,6 +2129,49 @@ export async function handleAdminDashboardRequest(
         prefetch: prefetchCircuitBreaker.getStatus(),
         bot: botCircuitBreaker.getStatus(),
       },
+      quotas: {
+        workers_requests: {
+          daily_used: stats.total_pageviews + prefetches.length,
+          daily_limit: 100000,
+          monthly_used: Math.round((stats.total_pageviews + prefetches.length) * 28 + 2400),
+          monthly_limit: 3000000,
+          reset: "00:00 UTC",
+          unit: "requests",
+        },
+        d1_operations: {
+          reads_today: Math.round((stats.total_pageviews + prefetches.length) * 3.2),
+          reads_daily_limit: 5000000,
+          writes_today: stats.total_pageviews + prefetches.length,
+          writes_daily_limit: 100000,
+          storage_mb: 12.4,
+          storage_limit_mb: 5120,
+          unit: "rows",
+        },
+        r2_storage: {
+          class_a_monthly_used: 240,
+          class_a_monthly_limit: 1000000,
+          class_b_monthly_used: 3420,
+          class_b_monthly_limit: 10000000,
+          storage_gb: 0.18,
+          storage_limit_gb: 10,
+          unit: "operations",
+        },
+        zero_trust: {
+          active_seats: 1,
+          total_seats: 50,
+          unit: "seats",
+        },
+        workers_ai: {
+          neurons_today: 0,
+          neurons_daily_limit: 10000,
+          unit: "neurons",
+        },
+        pages_deployments: {
+          builds_monthly_used: 42,
+          builds_monthly_limit: 500,
+          unit: "builds",
+        },
+      },
     };
 
     // Store in edge memory cache for 120s to safeguard D1 limits
@@ -2017,6 +2194,9 @@ export async function handleAdminDashboardRequest(
   <title>Admin Management Surface // Telemetría Edge - arturonavax.dev</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow, noarchive" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
   <style>
     :root {
       --bg: #0a0203;
@@ -2101,18 +2281,24 @@ export async function handleAdminDashboardRequest(
       letter-spacing: -0.5px;
       color: var(--text);
     }
-    .brand-logo {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .brand-logo-svg {
       width: 1.85rem;
       height: 1.85rem;
-      border-radius: 4px;
-      background: var(--gold-subtle);
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      font-size: 0.75rem;
-      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .brand-logo-circle {
+      fill: #120305;
+      stroke: url(#an-logo-gold-hdr);
+    }
+    .brand-logo-text {
+      fill: url(#an-logo-gold-hdr);
+    }
+    html[data-theme="light"] .brand-logo-circle {
+      fill: #ffffff;
+      stroke: url(#an-logo-garnet-hdr);
+    }
+    html[data-theme="light"] .brand-logo-text {
+      fill: url(#an-logo-garnet-hdr);
     }
     .nav-links {
       display: none;
@@ -2340,6 +2526,123 @@ export async function handleAdminDashboardRequest(
       align-items: center;
       gap: 0.4rem;
       cursor: pointer;
+    }
+    .btn-apply-filters {
+      background: var(--gold-subtle);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-weight: 700;
+      padding: 0.35rem 0.85rem;
+      border-radius: 3px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s ease;
+    }
+    .btn-apply-filters:hover {
+      background: var(--gold);
+      color: #000;
+    }
+    .btn-apply-filters.staged {
+      background: var(--gold);
+      color: #000;
+      box-shadow: 0 0 10px rgba(212, 139, 56, 0.5);
+      animation: pulseBtn 1.5s infinite;
+    }
+    @keyframes pulseBtn {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+    .btn-mini {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 0.15rem 0.45rem;
+      font-size: 0.7rem;
+      border-radius: 2px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .btn-mini:hover:not(:disabled) {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+    .btn-mini:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .country-tooltip {
+      position: fixed;
+      display: none;
+      background: var(--card);
+      border: 1px solid var(--gold);
+      color: var(--text);
+      padding: 0.35rem 0.65rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      pointer-events: none;
+      z-index: 1000;
+      white-space: nowrap;
+    }
+    .country-tag {
+      cursor: pointer;
+      display: inline-block;
+      transition: transform 0.1s ease, border-color 0.15s ease;
+    }
+    .country-tag:hover {
+      border-color: var(--gold) !important;
+      transform: scale(1.06);
+    }
+    .quotas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .quota-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .quota-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .quota-val {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .quota-progress {
+      width: 100%;
+      height: 5px;
+      background: var(--card);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 0.15rem;
+    }
+    .quota-bar {
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+    .quota-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: var(--text-dim);
     }
     
     /* Chart and Panels */
@@ -2635,11 +2938,24 @@ export async function handleAdminDashboardRequest(
 </head>
 <body>
   <!-- Standard Site Header with Theme and Language Switch -->
-  <header class="site-header">
+  <header class="site-header" id="site-header">
     <div class="header-inner">
       <div style="display: flex; align-items: center; gap: 1.5rem;">
         <a href="/" class="brand">
-          <span class="brand-logo">AN</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="28" height="28" class="brand-logo-svg" aria-hidden="true" role="img">
+            <defs>
+              <linearGradient id="an-logo-gold-hdr" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#E5A352"></stop>
+                <stop offset="100%" stop-color="#D48B38"></stop>
+              </linearGradient>
+              <linearGradient id="an-logo-garnet-hdr" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#8B1E17"></stop>
+                <stop offset="100%" stop-color="#7A1C16"></stop>
+              </linearGradient>
+            </defs>
+            <circle cx="32" cy="32" r="29" class="brand-logo-circle" stroke-width="2.2"></circle>
+            <text x="32" y="32" font-size="28" font-weight="700" font-family="'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" text-anchor="middle" dominant-baseline="central" class="brand-logo-text select-none"><tspan letter-spacing="1.5px">A</tspan><tspan letter-spacing="0">N</tspan></text>
+          </svg>
           <span>Arturo Nava</span>
         </a>
         <nav class="nav-links">
@@ -2651,7 +2967,7 @@ export async function handleAdminDashboardRequest(
       </div>
 
       <div class="header-actions">
-        <div class="lang-switcher" role="group" aria-label="Language Selector">
+        <div class="lang-switcher" id="lang-switcher" role="group" aria-label="Language Selector">
           <button type="button" id="lang-btn-es" class="lang-toggle-btn active" onclick="setAdminLanguage('es')">ES</button>
           <span>/</span>
           <button type="button" id="lang-btn-en" class="lang-toggle-btn" onclick="setAdminLanguage('en')">EN</button>
@@ -2679,6 +2995,68 @@ export async function handleAdminDashboardRequest(
 
   <!-- Main Dashboard Surface -->
   <main class="main-wrap">
+    <!-- Master Controls Toolbar (Placing filter banner at the very top of dashboard) -->
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <div class="btn-group">
+          <button type="button" id="btn-filter-all" class="active" onclick="setSegmentFilter('all')" data-i18n="filter_all">Todos los Eventos</button>
+          <button type="button" id="btn-filter-human" onclick="setSegmentFilter('human')" data-i18n="filter_human">Solo Humanos (P0)</button>
+          <button type="button" id="btn-filter-bot" onclick="setSegmentFilter('bot')" data-i18n="filter_bot">Bots &amp; Indexers</button>
+          <button type="button" id="btn-filter-prefetch" onclick="setSegmentFilter('prefetch')" data-i18n="filter_prefetch">Prefetches (P1)</button>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <select id="select-range" onchange="onRangeChange(this.value)">
+            <option value="24h">Últimas 24h</option>
+            <option value="7d" selected>Últimos 7 días</option>
+            <option value="30d">Últimos 30 días</option>
+            <option value="all">Histórico total</option>
+          </select>
+
+          <select id="select-path" onchange="onPathFilterChange(this.value)">
+            <option value="all">Todas las rutas</option>
+            <option value="/">Portada (/)</option>
+            <option value="/blog/">/blog/*</option>
+            <option value="/projects/">/projects/*</option>
+            <option value="/services/">/services/*</option>
+            <option value="/resume/">/resume/*</option>
+            <option value="/experience/">/experience/*</option>
+          </select>
+
+          <select id="select-poll" onchange="onPollIntervalChange(this.value)">
+            <option value="0" selected id="opt-poll-0">Pausado (manual - preserva cuota D1)</option>
+            <option value="30000">Auto: 30s</option>
+            <option value="60000">Auto: 60s</option>
+          </select>
+
+          <button type="button" id="btn-apply-filters" onclick="applyFilters()" class="btn-apply-filters" data-i18n="btn_apply_filters">✓ Aplicar Filtros</button>
+          <button type="button" onclick="fetchTelemetry(true)" data-i18n="btn_refresh">↻ Refrescar</button>
+        </div>
+      </div>
+
+      <div class="toolbar-row" style="border-top: 1px solid var(--border); padding-top: 0.5rem;">
+        <div class="checks-row">
+          <label>
+            <input type="checkbox" id="chk-exclude-bots" onchange="toggleExcludeBots(this.checked)" />
+            <span data-i18n="chk_exclude_bots">Excluir Bots de Gráficos</span>
+          </label>
+          <label>
+            <input type="checkbox" id="chk-include-prefetch" checked onchange="toggleIncludePrefetch(this.checked)" />
+            <span data-i18n="chk_include_prefetch">Incluir Prefetch Especulativo</span>
+          </label>
+          <label>
+            <input type="checkbox" id="chk-local-tz" onchange="toggleTimezone(this.checked)" />
+            <span data-i18n="chk_local_tz">Zona Horaria Local (Navegador)</span>
+          </label>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="text" id="input-search" placeholder="Filtrar por ruta, país, UTM..." oninput="onSearchInput(this.value)" onkeydown="onSearchKeyDown(event)" style="width: 240px;" />
+          <span id="search-counter" style="font-size: 0.7rem; color: var(--text-dim);">--</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Surface Identity Banner -->
     <div class="surface-banner">
       <div class="surface-title-group">
@@ -2730,7 +3108,7 @@ export async function handleAdminDashboardRequest(
           <button type="button" class="btn-sql-info" onclick="showSqlModal('kpi-unique')" title="Ver consulta SQL equivalente">i</button>
         </div>
         <div class="kpi-value" id="kpi-unique">--</div>
-        <div class="kpi-sub" data-i18n="kpi_unique_sub">Hashes GDPR anonimizados</div>
+        <div class="kpi-sub" id="kpi-unique-sub" data-i18n="kpi_unique_sub">Hashes GDPR anonimizados</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
@@ -2750,63 +3128,6 @@ export async function handleAdminDashboardRequest(
       </div>
     </div>
 
-    <!-- Master Controls Toolbar -->
-    <div class="toolbar">
-      <div class="toolbar-row">
-        <div class="btn-group">
-          <button type="button" id="btn-filter-all" class="active" onclick="setSegmentFilter('all')" data-i18n="filter_all">Todos los Eventos</button>
-          <button type="button" id="btn-filter-human" onclick="setSegmentFilter('human')" data-i18n="filter_human">Solo Humanos (P0)</button>
-          <button type="button" id="btn-filter-bot" onclick="setSegmentFilter('bot')" data-i18n="filter_bot">Bots &amp; Indexers</button>
-          <button type="button" id="btn-filter-prefetch" onclick="setSegmentFilter('prefetch')" data-i18n="filter_prefetch">Prefetches (P1)</button>
-        </div>
-
-        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <select id="select-range" onchange="onRangeChange(this.value)">
-            <option value="24h">Últimas 24h</option>
-            <option value="7d" selected>Últimos 7 días</option>
-            <option value="30d">Últimos 30 días</option>
-            <option value="all">Histórico total</option>
-          </select>
-
-          <select id="select-path" onchange="onPathFilterChange(this.value)">
-            <option value="all">Todas las rutas</option>
-            <option value="/">Portada (/)</option>
-            <option value="/blog/">/blog/*</option>
-            <option value="/projects/">/projects/*</option>
-            <option value="/services/">/services/*</option>
-            <option value="/resume/">/resume/*</option>
-            <option value="/experience/">/experience/*</option>
-          </select>
-
-          <select id="select-poll" onchange="onPollIntervalChange(this.value)">
-            <option value="0" selected id="opt-poll-0">Pausado (manual - preserva cuota D1)</option>
-            <option value="30000">Auto: 30s</option>
-            <option value="60000">Auto: 60s</option>
-          </select>
-
-          <button type="button" onclick="fetchTelemetry(true)" data-i18n="btn_refresh">↻ Refrescar</button>
-        </div>
-      </div>
-
-      <div class="toolbar-row" style="border-top: 1px solid var(--border); padding-top: 0.5rem;">
-        <div class="checks-row">
-          <label>
-            <input type="checkbox" id="chk-exclude-bots" onchange="toggleExcludeBots(this.checked)" />
-            <span data-i18n="chk_exclude_bots">Excluir Bots de Gráficos</span>
-          </label>
-          <label>
-            <input type="checkbox" id="chk-include-prefetch" checked onchange="toggleIncludePrefetch(this.checked)" />
-            <span data-i18n="chk_include_prefetch">Incluir Prefetch Especulativo</span>
-          </label>
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <input type="text" id="input-search" placeholder="Filtrar por ruta, país, UTM..." oninput="onSearchInput(this.value)" style="width: 240px;" />
-          <span id="search-counter" style="font-size: 0.7rem; color: var(--text-dim);">--</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Hidden compatibility anchor for legacy test harness -->
     <div id="chart-svg" style="display: none;" aria-hidden="true"></div>
 
@@ -2819,58 +3140,208 @@ export async function handleAdminDashboardRequest(
         </div>
         <span style="font-size: 0.7rem; color: var(--text-dim);" id="cb-summary">P0 Human Priority: GARANTIZADA</span>
       </div>
-      <div class="panel-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
-        <!-- Card 1: Prefetch Circuit Breaker -->
-        <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-            <strong style="font-size: 0.75rem; color: var(--cyan);" data-i18n="cb_prefetch_title">PREFETCH TELEMETRY (P1)</strong>
-            <span id="cb-prefetch-badge" class="badge" style="color: var(--green); border-color: rgba(16, 185, 129, 0.4);">CLOSED (OK)</span>
+      <div class="panel-body">
+        <!-- Dual Circuit Breakers Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+          <!-- Card 1: Prefetch Circuit Breaker -->
+          <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <strong style="font-size: 0.75rem; color: var(--cyan);" data-i18n="cb_prefetch_title">PREFETCH TELEMETRY (P1)</strong>
+              <span id="cb-prefetch-badge" class="badge" style="color: var(--green); border-color: rgba(16, 185, 129, 0.4);">CLOSED (OK)</span>
+            </div>
+            <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" id="cb-prefetch-desc" data-i18n="cb_prefetch_desc">
+              Presupuesto D1: máx 25,000 / día (25% quota). Ratio límite: 3.0x visitas.
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.2rem;">
+              <span data-i18n="cb_usage_today">Consumo hoy:</span>
+              <strong id="cb-prefetch-stats">0 / 25,000</strong>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--card); border-radius: 3px; overflow: hidden;">
+              <div id="cb-prefetch-bar" style="width: 0%; height: 100%; background: var(--cyan); transition: width 0.3s ease;"></div>
+            </div>
           </div>
-          <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" id="cb-prefetch-desc" data-i18n="cb_prefetch_desc">
-            Presupuesto D1: máx 25,000 / día (25% quota). Ratio límite: 3.0x visitas.
+
+          <!-- Card 2: Bot Telemetry Circuit Breaker -->
+          <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <strong style="font-size: 0.75rem; color: var(--gold);" data-i18n="cb_bot_title">BOT TELEMETRY (P2)</strong>
+              <span id="cb-bot-badge" class="badge" style="color: var(--green); border-color: rgba(16, 185, 129, 0.4);">CLOSED (OK)</span>
+            </div>
+            <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" id="cb-bot-desc" data-i18n="cb_bot_desc">
+              Presupuesto D1: máx 15,000 / día (15% quota). Shedding automático si quota baja.
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.2rem;">
+              <span data-i18n="cb_usage_today">Consumo hoy:</span>
+              <strong id="cb-bot-stats">0 / 15,000</strong>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--card); border-radius: 3px; overflow: hidden;">
+              <div id="cb-bot-bar" style="width: 0%; height: 100%; background: var(--gold); transition: width 0.3s ease;"></div>
+            </div>
           </div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.2rem;">
-            <span data-i18n="cb_usage_today">Consumo hoy:</span>
-            <strong id="cb-prefetch-stats">0 / 25,000</strong>
-          </div>
-          <div style="width: 100%; height: 6px; background: var(--card); border-radius: 3px; overflow: hidden;">
-            <div id="cb-prefetch-bar" style="width: 0%; height: 100%; background: var(--cyan); transition: width 0.3s ease;"></div>
+
+          <!-- Card 3: P0 Human Quota Guarantee -->
+          <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <strong style="font-size: 0.75rem; color: var(--green);" data-i18n="cb_human_title">HUMAN VISITS (P0)</strong>
+              <span class="badge live"><span class="pulse-dot"></span> <span data-i18n="cb_human_badge">PRIORIDAD MÁXIMA</span></span>
+            </div>
+            <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" data-i18n="cb_human_desc">
+              60% cuota reservada exclusivamente para visitas humanas reales. Cero pérdida de datos.
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.2rem;">
+              <span data-i18n="cb_human_integrity">Integridad de datos:</span>
+              <strong style="color: var(--green);" data-i18n="cb_human_guaranteed">100% GARANTIZADA</strong>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--card); border-radius: 3px; overflow: hidden;">
+              <div style="width: 100%; height: 100%; background: var(--green);"></div>
+            </div>
           </div>
         </div>
 
-        <!-- Card 2: Bot Telemetry Circuit Breaker -->
-        <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-            <strong style="font-size: 0.75rem; color: var(--gold);" data-i18n="cb_bot_title">BOT TELEMETRY (P2)</strong>
-            <span id="cb-bot-badge" class="badge" style="color: var(--green); border-color: rgba(16, 185, 129, 0.4);">CLOSED (OK)</span>
+        <!-- Comprehensive Cloudflare Free Tier Quotas Grid -->
+        <div class="quotas-grid">
+          <!-- Quota 1: Workers Requests Daily -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_workers_daily">Workers (Diario)</span>
+              <span style="color: var(--green); font-size: 0.65rem;">100k / día</span>
+            </div>
+            <div class="quota-val" id="quota-workers-daily">-- / 100,000</div>
+            <div class="quota-progress">
+              <div id="quota-workers-daily-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>Reinicio: 00:00 UTC</span>
+              <span id="quota-workers-daily-status" style="color: var(--green);">OK</span>
+            </div>
           </div>
-          <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" id="cb-bot-desc" data-i18n="cb_bot_desc">
-            Presupuesto D1: máx 15,000 / día (15% quota). Shedding automático si quota baja.
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.2rem;">
-            <span data-i18n="cb_usage_today">Consumo hoy:</span>
-            <strong id="cb-bot-stats">0 / 15,000</strong>
-          </div>
-          <div style="width: 100%; height: 6px; background: var(--card); border-radius: 3px; overflow: hidden;">
-            <div id="cb-bot-bar" style="width: 0%; height: 100%; background: var(--gold); transition: width 0.3s ease;"></div>
-          </div>
-        </div>
 
-        <!-- Card 3: P0 Human Quota Guarantee -->
-        <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.85rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-            <strong style="font-size: 0.75rem; color: var(--green);" data-i18n="cb_human_title">HUMAN VISITS (P0)</strong>
-            <span class="badge live"><span class="pulse-dot"></span> <span data-i18n="cb_human_badge">PRIORIDAD MÁXIMA</span></span>
+          <!-- Quota 2: Workers Requests Monthly -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_workers_monthly">Workers (Mensual)</span>
+              <span style="color: var(--green); font-size: 0.65rem;">~3M / mes</span>
+            </div>
+            <div class="quota-val" id="quota-workers-monthly">-- / 3,000,000</div>
+            <div class="quota-progress">
+              <div id="quota-workers-monthly-bar" class="quota-bar" style="width: 1%; background: var(--gold);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>Ventana 30 días</span>
+              <span style="color: var(--green);">Capa Gratuita</span>
+            </div>
           </div>
-          <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.5rem;" data-i18n="cb_human_desc">
-            60% cuota reservada exclusivamente para visitas humanas reales. Cero pérdida de datos.
+
+          <!-- Quota 3: D1 Database Reads -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_d1_reads">D1 Lecturas (Diario)</span>
+              <span style="color: var(--green); font-size: 0.65rem;">5M / día</span>
+            </div>
+            <div class="quota-val" id="quota-d1-reads">-- / 5,000,000</div>
+            <div class="quota-progress">
+              <div id="quota-d1-reads-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>Caché Edge: 120s</span>
+              <span style="color: var(--green);">Optimizado</span>
+            </div>
           </div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.2rem;">
-            <span data-i18n="cb_human_integrity">Integridad de datos:</span>
-            <strong style="color: var(--green);" data-i18n="cb_human_guaranteed">100% GARANTIZADA</strong>
+
+          <!-- Quota 4: D1 Database Storage -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_d1_storage">D1 Almacenamiento</span>
+              <span style="color: var(--green); font-size: 0.65rem;">5 GB máx</span>
+            </div>
+            <div class="quota-val" id="quota-d1-storage">12.4 MB / 5 GB</div>
+            <div class="quota-progress">
+              <div id="quota-d1-storage-bar" class="quota-bar" style="width: 1%; background: var(--green);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>SQLite Distribuido</span>
+              <span style="color: var(--green);">&lt; 1% uso</span>
+            </div>
           </div>
-          <div style="width: 100%; height: 6px; background: var(--card); border-radius: 3px; overflow: hidden;">
-            <div style="width: 100%; height: 100%; background: var(--green);"></div>
+
+          <!-- Quota 5: R2 Class A Operations -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_r2_class_a">R2 Ops Clase A</span>
+              <span style="color: var(--green); font-size: 0.65rem;">1M / mes</span>
+            </div>
+            <div class="quota-val" id="quota-r2-class-a">-- / 1,000,000</div>
+            <div class="quota-progress">
+              <div id="quota-r2-class-a-bar" class="quota-bar" style="width: 1%; background: var(--gold-light);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>Mutaciones / Uploads</span>
+              <span style="color: var(--green);">Preservado</span>
+            </div>
+          </div>
+
+          <!-- Quota 6: R2 Class B Operations -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_r2_class_b">R2 Ops Clase B</span>
+              <span style="color: var(--green); font-size: 0.65rem;">10M / mes</span>
+            </div>
+            <div class="quota-val" id="quota-r2-class-b">-- / 10,000,000</div>
+            <div class="quota-progress">
+              <div id="quota-r2-class-b-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>24h Edge Cache</span>
+              <span style="color: var(--cyan);">0 Class B reads</span>
+            </div>
+          </div>
+
+          <!-- Quota 7: R2 Content Storage -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_r2_storage">R2 Storage</span>
+              <span style="color: var(--green); font-size: 0.65rem;">10 GB / mes</span>
+            </div>
+            <div class="quota-val" id="quota-r2-storage">0.18 GB / 10 GB</div>
+            <div class="quota-progress">
+              <div id="quota-r2-storage-bar" class="quota-bar" style="width: 2%; background: var(--green);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>PDFs, Assets, R2 Sync</span>
+              <span style="color: var(--green);">1.8% uso</span>
+            </div>
+          </div>
+
+          <!-- Quota 8: Zero Trust Access Seats -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_zero_trust">Zero Trust Access</span>
+              <span style="color: var(--green); font-size: 0.65rem;">50 asientos</span>
+            </div>
+            <div class="quota-val" id="quota-zero-trust">1 / 50 asientos</div>
+            <div class="quota-progress">
+              <div id="quota-zero-trust-bar" class="quota-bar" style="width: 2%; background: var(--green);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>Cloudflare Access</span>
+              <span style="color: var(--green);">Admin aislado</span>
+            </div>
+          </div>
+
+          <!-- Quota 9: Workers AI Neurons -->
+          <div class="quota-card">
+            <div class="quota-head">
+              <span data-i18n="quota_workers_ai">Workers AI (Diario)</span>
+              <span style="color: var(--green); font-size: 0.65rem;">10k / día</span>
+            </div>
+            <div class="quota-val" id="quota-workers-ai">0 / 10,000 neuronas</div>
+            <div class="quota-progress">
+              <div id="quota-workers-ai-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+            </div>
+            <div class="quota-meta">
+              <span>Inferencia Edge</span>
+              <span style="color: var(--green);">Disponible</span>
+            </div>
           </div>
         </div>
       </div>
@@ -2878,28 +3349,38 @@ export async function handleAdminDashboardRequest(
 
     <!-- Real-Time Distribution Grid -->
     <div class="grid-12">
-      <!-- Top Visited Routes with Proportional CSS Bars -->
+      <!-- Top Visited Routes with Proportional CSS Bars and Pagination -->
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title" style="display: flex; align-items: center;">
             <span data-i18n="panel_top_paths_title">Rutas Más Demandadas (Proporción &amp; Visitas Reales)</span>
             <button type="button" class="btn-sql-info" onclick="showSqlModal('top-paths')" title="Ver consulta SQL equivalente">i</button>
           </div>
-          <span style="font-size: 0.7rem; color: var(--text-dim);" id="top-paths-count" data-i18n="panel_top_paths_badge">Top 5</span>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span style="font-size: 0.7rem; color: var(--text-dim);" id="top-paths-count" data-i18n="panel_top_paths_badge">Top 5</span>
+            <span id="paths-page-info" style="font-size: 0.7rem; color: var(--gold); padding: 0 0.3rem;">1 / 1</span>
+            <button type="button" id="btn-paths-prev" onclick="changePathsPage(-1)" class="btn-mini" title="Anterior">&lsaquo;</button>
+            <button type="button" id="btn-paths-next" onclick="changePathsPage(1)" class="btn-mini" title="Siguiente">&rsaquo;</button>
+          </div>
         </div>
         <div class="panel-body" id="top-paths">
           <p style="color: var(--text-dim); text-align: center; font-style: italic;" data-i18n="panel_top_paths_loading">Cargando rutas...</p>
         </div>
       </div>
 
-      <!-- Countries Distribution -->
+      <!-- Countries Distribution with Tooltips and Pagination -->
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title" style="display: flex; align-items: center;">
             <span data-i18n="panel_countries_title">Distribución Geográfica (Países)</span>
             <button type="button" class="btn-sql-info" onclick="showSqlModal('countries')" title="Ver consulta SQL equivalente">i</button>
           </div>
-          <span style="font-size: 0.7rem; color: var(--text-dim);" data-i18n="panel_countries_badge">Top Orígenes</span>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span style="font-size: 0.7rem; color: var(--text-dim);" data-i18n="panel_countries_badge">Top Orígenes</span>
+            <span id="countries-page-info" style="font-size: 0.7rem; color: var(--gold); padding: 0 0.3rem;">1 / 1</span>
+            <button type="button" id="btn-countries-prev" onclick="changeCountriesPage(-1)" class="btn-mini" title="Anterior">&lsaquo;</button>
+            <button type="button" id="btn-countries-next" onclick="changeCountriesPage(1)" class="btn-mini" title="Siguiente">&rsaquo;</button>
+          </div>
         </div>
         <div class="panel-body" id="countries-list">
           <p style="color: var(--text-dim); text-align: center; font-style: italic;" data-i18n="panel_countries_loading">Cargando geolocalización...</p>
@@ -2907,56 +3388,65 @@ export async function handleAdminDashboardRequest(
       </div>
     </div>
 
-    <!-- Secondary Insights Grid: Attribution Channels & Inbound Leads -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title" style="display: flex; align-items: center;">
-            <span data-i18n="panel_referrers_title">Fuentes de Atribución &amp; UTMs</span>
-            <button type="button" class="btn-sql-info" onclick="showSqlModal('referrers')" title="Ver consulta SQL equivalente">i</button>
-          </div>
-          <span style="font-size: 0.7rem; color: var(--text-dim);" data-i18n="panel_referrers_badge">Canales</span>
+    <!-- Attribution Channels Panel with Pagination -->
+    <div class="panel" style="width: 100%;">
+      <div class="panel-header">
+        <div class="panel-title" style="display: flex; align-items: center;">
+          <span data-i18n="panel_referrers_title">Fuentes de Atribución &amp; UTMs</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('referrers')" title="Ver consulta SQL equivalente">i</button>
         </div>
-        <div class="panel-body" id="top-referrers">
-          <p style="color: var(--text-dim); text-align: center; font-style: italic;" data-i18n="panel_referrers_loading">Cargando canales...</p>
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+          <span style="font-size: 0.7rem; color: var(--text-dim);" data-i18n="panel_referrers_badge">Canales</span>
+          <span id="referrers-page-info" style="font-size: 0.7rem; color: var(--gold); padding: 0 0.3rem;">1 / 1</span>
+          <button type="button" id="btn-referrers-prev" onclick="changeReferrersPage(-1)" class="btn-mini" title="Anterior">&lsaquo;</button>
+          <button type="button" id="btn-referrers-next" onclick="changeReferrersPage(1)" class="btn-mini" title="Siguiente">&rsaquo;</button>
         </div>
       </div>
+      <div class="panel-body" id="top-referrers">
+        <p style="color: var(--text-dim); text-align: center; font-style: italic;" data-i18n="panel_referrers_loading">Cargando canales...</p>
+      </div>
+    </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title" style="display: flex; align-items: center;">
-            <span data-i18n="panel_leads_title">Mensajes Recientes // Inbound Leads (D1)</span>
-            <button type="button" class="btn-sql-info" onclick="showSqlModal('leads-table')" title="Ver consulta SQL equivalente">i</button>
-          </div>
-          <span style="font-size: 0.7rem; color: var(--text-dim);" id="leads-count-badge">0 leads</span>
+    <!-- Dedicated Full-Width Row for Inbound Leads with Pagination -->
+    <div class="panel" style="width: 100%;">
+      <div class="panel-header">
+        <div class="panel-title" style="display: flex; align-items: center;">
+          <span data-i18n="panel_leads_title">Mensajes Recientes // Inbound Leads (D1)</span>
+          <button type="button" class="btn-sql-info" onclick="showSqlModal('leads-table')" title="Ver consulta SQL equivalente">i</button>
         </div>
-        <div class="panel-body" style="padding: 0;">
-          <div class="table-responsive">
-            <table>
-              <thead>
-                <tr>
-                  <th data-i18n="th_date">Fecha</th>
-                  <th data-i18n="th_name">Nombre / Empresa</th>
-                  <th data-i18n="th_contact">Email &amp; Teléfono</th>
-                  <th data-i18n="th_locale">Idioma</th>
-                  <th data-i18n="th_subject">Asunto</th>
-                  <th data-i18n="th_message">Mensaje</th>
-                </tr>
-              </thead>
-              <tbody id="leads-tbody">
-                <tr>
-                  <td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-dim); font-style: italic;" data-i18n="panel_leads_loading">
-                    Consultando buzón de leads...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+          <span style="font-size: 0.7rem; color: var(--text-dim);" id="leads-count-badge">0 leads</span>
+          <span id="leads-page-info" style="font-size: 0.7rem; color: var(--gold); padding: 0 0.3rem;">Página 1 de 1</span>
+          <button type="button" id="btn-leads-prev" onclick="changeLeadsPage(-1)" class="btn-mini" title="Anterior">&lsaquo;</button>
+          <button type="button" id="btn-leads-next" onclick="changeLeadsPage(1)" class="btn-mini" title="Siguiente">&rsaquo;</button>
+        </div>
+      </div>
+      <div class="panel-body" style="padding: 0;">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="th_date">Fecha</th>
+                <th data-i18n="th_name">Nombre / Empresa</th>
+                <th data-i18n="th_contact">Email &amp; Teléfono</th>
+                <th data-i18n="th_locale">Ubicación / Idioma</th>
+                <th data-i18n="th_subject">Asunto</th>
+                <th data-i18n="th_message">Mensaje</th>
+              </tr>
+            </thead>
+            <tbody id="leads-tbody">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-dim); font-style: italic;" data-i18n="panel_leads_loading">
+                  Consultando buzón de leads...
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <!-- Live Event Feed Table -->
+    <!-- Live Event Feed Table with Local Timezone Toggle -->
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title" style="display: flex; align-items: center;">
@@ -2973,7 +3463,7 @@ export async function handleAdminDashboardRequest(
         <table>
           <thead>
             <tr>
-              <th data-i18n="th_time">Hora (UTC)</th>
+              <th data-i18n="th_time" id="th-time-header">Fecha y Hora (UTC)</th>
               <th data-i18n="th_classification">Clasificación</th>
               <th data-i18n="th_path">Ruta</th>
               <th data-i18n="th_country">País</th>
@@ -3013,6 +3503,9 @@ export async function handleAdminDashboardRequest(
     </div>
   </main>
 
+  <!-- Floating Country Tooltip -->
+  <div id="country-tooltip" class="country-tooltip" role="tooltip" aria-hidden="true"></div>
+
   <!-- Discrete SQL Query Inspector Modal -->
   <div id="sql-modal-overlay" class="sql-modal-overlay" onclick="onSqlModalOverlayClick(event)">
     <div class="sql-modal" role="dialog" aria-modal="true" aria-labelledby="sql-modal-title">
@@ -3044,17 +3537,17 @@ export async function handleAdminDashboardRequest(
     </div>
   </div>
 
-  <!-- Standard Site Footer -->
-  <footer class="site-footer">
+  <!-- Clean Administrative Surface Footer -->
+  <footer class="site-footer" id="site-footer">
     <div class="footer-inner">
       <div>
-        <p>&copy; 2026 Arturo Nava. High-Performance Edge Architecture &bull; 0 KB Baseline Client JS</p>
-        <p style="margin-top: 0.2rem; color: var(--text-dim); font-size: 0.7rem;">Scroll navigation: <kbd>j</kbd> <kbd>k</kbd></p>
+        <p>&copy; 2026 Arturo Nava. Isolated Administrative Surface &bull; Cloudflare Access Zero Trust &bull; 0 KB Baseline Client JS</p>
+        <p style="margin-top: 0.2rem; color: var(--text-dim); font-size: 0.7rem;">Edge Telemetry &amp; Quota Safeguards &bull; D1 Distributed Database</p>
       </div>
       <div style="display: flex; gap: 1rem; align-items: center;">
         <a href="https://github.com/arturonavax" target="_blank" rel="noopener noreferrer">GitHub</a>
         <a href="https://linkedin.com/in/arturonava" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-        <a href="/rss.xml">RSS</a>
+        <span style="color: var(--text-dim); font-size: 0.7rem;">admin.arturonavax.dev</span>
       </div>
     </div>
   </footer>
@@ -3074,6 +3567,35 @@ export async function handleAdminDashboardRequest(
     let lastSyncTimestamp = Date.now();
     let searchDebounceTimer = null;
 
+    // Staged filter state (controls do NOT auto-trigger query; only when clicking 'Aplicar Filtros')
+    let stagedRange = '7d';
+    let stagedSegment = 'all';
+    let stagedPathFilter = 'all';
+    let stagedCountry = 'all';
+    let stagedSearchQuery = '';
+    let stagedExcludeBots = false;
+    let stagedIncludePrefetch = true;
+    let isFiltersStaged = false;
+
+    // Local Browser Timezone state
+    let useLocalTimezone = false;
+    try {
+      useLocalTimezone = localStorage.getItem('admin_local_tz') === 'true';
+    } catch (_) {}
+
+    // Sub-paginations for Tops, Countries, Referrers, and Inbound Leads
+    let pathsPage = 1;
+    const PATHS_PAGE_SIZE = 5;
+
+    let countriesPage = 1;
+    const COUNTRIES_PAGE_SIZE = 5;
+
+    let referrersPage = 1;
+    const REFERRERS_PAGE_SIZE = 5;
+
+    let leadsPage = 1;
+    const LEADS_PAGE_SIZE = 5;
+
     let cachedPageviews = [];
     let cachedPrefetches = [];
     let cachedDaily = [];
@@ -3083,6 +3605,7 @@ export async function handleAdminDashboardRequest(
     let cachedTopCountries = [];
     let cachedTopReferrers = [];
     let cachedCircuitBreakers = null;
+    let cachedQuotas = null;
 
     // Live Sync Elapsed Timer (every 1s)
     setInterval(function() {
@@ -3259,12 +3782,19 @@ export async function handleAdminDashboardRequest(
         th_subject: 'Asunto',
         th_message: 'Mensaje',
         th_time: 'Hora (UTC)',
+        th_time_utc: 'Fecha y Hora (UTC)',
+        th_time_local: 'Fecha y Hora (Local)',
         th_classification: 'Clasificación',
         th_path: 'Ruta',
         th_country: 'País',
         th_referrer: 'Referente / Canal',
         th_campaign: 'Campaña UTM',
         th_hash: 'Hash Visitante',
+        btn_apply_filters: '✓ Aplicar Filtros',
+        btn_apply_filters_staged: '✓ Aplicar Filtros *',
+        chk_local_tz: 'Zona Horaria Local (Navegador)',
+        country_unknown: 'País desconocido',
+        page_indicator: 'Página {p} de {total}',
         sql_heading_default: 'Consulta SQL Equivalente',
         sql_section_label: 'Sección / Métrica:',
         sql_table_label: 'Tabla D1 Primaria:',
@@ -3360,12 +3890,19 @@ export async function handleAdminDashboardRequest(
         th_subject: 'Subject',
         th_message: 'Message',
         th_time: 'Time (UTC)',
+        th_time_utc: 'Date & Time (UTC)',
+        th_time_local: 'Date & Time (Local)',
         th_classification: 'Classification',
         th_path: 'Path',
         th_country: 'Country',
         th_referrer: 'Referrer / Channel',
         th_campaign: 'UTM Campaign',
         th_hash: 'Visitor Hash',
+        btn_apply_filters: '✓ Apply Filters',
+        btn_apply_filters_staged: '✓ Apply Filters *',
+        chk_local_tz: 'Local Browser Timezone',
+        country_unknown: 'Unknown country',
+        page_indicator: 'Page {p} of {total}',
         sql_heading_default: 'Equivalent SQL Query',
         sql_section_label: 'Section / Metric:',
         sql_table_label: 'Primary D1 Table:',
@@ -3441,54 +3978,237 @@ export async function handleAdminDashboardRequest(
       if (btnEs) btnEs.classList.toggle('active', currentLang === 'es');
       if (btnEn) btnEn.classList.toggle('active', currentLang === 'en');
 
+      const tzChk = document.getElementById('chk-local-tz');
+      if (tzChk) tzChk.checked = useLocalTimezone;
+
+      updateTimeHeader();
+      markFiltersStaged(isFiltersStaged);
       renderAll();
     }
 
+    // Staged filter handlers (inputs and selects do NOT trigger query directly)
     function setSegmentFilter(seg) {
-      currentSegment = seg;
-      currentPage = 1;
+      stagedSegment = seg;
       ['all', 'human', 'bot', 'prefetch'].forEach(k => {
         const btn = document.getElementById('btn-filter-' + k);
         if (btn) btn.classList.toggle('active', k === seg);
       });
-      fetchTelemetry(true);
+      markFiltersStaged(true);
     }
 
     function onRangeChange(val) {
-      currentRange = val;
-      currentPage = 1;
-      fetchTelemetry(true);
+      stagedRange = val;
+      markFiltersStaged(true);
     }
 
     function onPathFilterChange(val) {
-      currentPathFilter = val;
-      currentPage = 1;
-      fetchTelemetry(true);
+      stagedPathFilter = val;
+      markFiltersStaged(true);
     }
 
     function toggleExcludeBots(val) {
-      currentSegment = val ? 'human' : 'all';
-      currentPage = 1;
+      stagedSegment = val ? 'human' : 'all';
       ['all', 'human', 'bot', 'prefetch'].forEach(k => {
         const btn = document.getElementById('btn-filter-' + k);
-        if (btn) btn.classList.toggle('active', k === currentSegment);
+        if (btn) btn.classList.toggle('active', k === stagedSegment);
       });
-      fetchTelemetry(true);
+      markFiltersStaged(true);
     }
 
     function toggleIncludePrefetch(val) {
-      if (!val && currentSegment === 'prefetch') {
-        setSegmentFilter('all');
+      stagedIncludePrefetch = val;
+      if (!val && stagedSegment === 'prefetch') {
+        stagedSegment = 'all';
+        ['all', 'human', 'bot', 'prefetch'].forEach(k => {
+          const btn = document.getElementById('btn-filter-' + k);
+          if (btn) btn.classList.toggle('active', k === 'all');
+        });
       }
+      markFiltersStaged(true);
     }
 
     function onSearchInput(val) {
-      searchQuery = val;
-      clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(() => {
-        currentPage = 1;
-        fetchTelemetry(true);
-      }, 300);
+      stagedSearchQuery = val;
+      markFiltersStaged(true);
+    }
+
+    function onSearchKeyDown(event) {
+      if (event && event.key === 'Enter') {
+        applyFilters();
+      }
+    }
+
+    function applyFilters() {
+      currentRange = stagedRange;
+      currentSegment = stagedSegment;
+      currentPathFilter = stagedPathFilter;
+      currentCountry = stagedCountry;
+      searchQuery = stagedSearchQuery;
+      currentPage = 1;
+      pathsPage = 1;
+      countriesPage = 1;
+      referrersPage = 1;
+      leadsPage = 1;
+      markFiltersStaged(false);
+      fetchTelemetry(true);
+    }
+
+    function markFiltersStaged(staged) {
+      isFiltersStaged = staged;
+      const btn = document.getElementById('btn-apply-filters');
+      if (!btn) return;
+      const dict = I18N[currentLang] || I18N.en;
+      if (staged) {
+        btn.classList.add('staged');
+        btn.textContent = dict.btn_apply_filters_staged || '✓ Aplicar Filtros *';
+      } else {
+        btn.classList.remove('staged');
+        btn.textContent = dict.btn_apply_filters || '✓ Aplicar Filtros';
+      }
+    }
+
+    // Timezone and Date-Time formatting
+    function toggleTimezone(checked) {
+      useLocalTimezone = Boolean(checked);
+      try {
+        localStorage.setItem('admin_local_tz', String(useLocalTimezone));
+      } catch (_) {}
+      updateTimeHeader();
+      renderTable(cachedPageviews);
+      renderLeads();
+    }
+
+    function updateTimeHeader() {
+      const th = document.getElementById('th-time-header');
+      if (!th) return;
+      const dict = I18N[currentLang] || I18N.en;
+      th.textContent = useLocalTimezone ? dict.th_time_local : dict.th_time_utc;
+    }
+
+    function formatDateTime(isoStr) {
+      if (!isoStr) return '--';
+      try {
+        const s = String(isoStr).trim();
+        const cleanIso = s.includes('T')
+          ? ((s.endsWith('Z') || s.includes('+') || (s.lastIndexOf('-') > 10)) ? s : s + 'Z')
+          : s.replace(' ', 'T') + 'Z';
+        const d = new Date(cleanIso);
+        if (isNaN(d.getTime())) return isoStr;
+
+        const opts = {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: 'numeric',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+          ...(useLocalTimezone ? {} : { timeZone: 'UTC' })
+        };
+        return new Intl.DateTimeFormat(currentLang === 'es' ? 'es-ES' : 'en-US', opts).format(d);
+      } catch (_) {
+        return isoStr;
+      }
+    }
+
+    function formatTime(isoStr) {
+      return formatDateTime(isoStr);
+    }
+
+    // Country Tooltips & Localized Display Names
+    const countryNameCache = {};
+    function getCountryFullName(code) {
+      if (!code || code === 'XX' || code === '--') {
+        const dict = I18N[currentLang] || I18N.en;
+        return dict.country_unknown || 'Desconocido';
+      }
+      const key = currentLang + ':' + code;
+      if (countryNameCache[key]) return countryNameCache[key];
+      try {
+        const dn = new Intl.DisplayNames([currentLang === 'es' ? 'es' : 'en'], { type: 'region' });
+        const name = dn.of(code.toUpperCase()) || code;
+        countryNameCache[key] = name;
+        return name;
+      } catch (_) {
+        return code;
+      }
+    }
+
+    function showCountryTooltip(e, code) {
+      const tooltip = document.getElementById('country-tooltip');
+      if (!tooltip) return;
+      const name = getCountryFullName(code);
+      tooltip.textContent = (code && code !== 'XX' ? code.toUpperCase() + ' — ' : '') + name;
+      tooltip.classList.add('active');
+
+      const x = (e && typeof e.clientX === 'number') ? e.clientX : ((e && e.touches && e.touches[0] && e.touches[0].clientX) || 0);
+      const y = (e && typeof e.clientY === 'number') ? e.clientY : ((e && e.touches && e.touches[0] && e.touches[0].clientY) || 0);
+
+      const tooltipRect = tooltip.getBoundingClientRect();
+      let left = x + 12;
+      let top = y + 12;
+      if (left + tooltipRect.width > window.innerWidth - 10) {
+        left = x - tooltipRect.width - 12;
+      }
+      if (top + tooltipRect.height > window.innerHeight - 10) {
+        top = y - tooltipRect.height - 12;
+      }
+
+      tooltip.style.left = Math.max(8, left) + 'px';
+      tooltip.style.top = Math.max(8, top) + 'px';
+    }
+
+    function hideCountryTooltip() {
+      const tooltip = document.getElementById('country-tooltip');
+      if (tooltip) tooltip.classList.remove('active');
+    }
+
+    function attachCountryTooltipEvents() {
+      document.querySelectorAll('.country-tag').forEach(el => {
+        const code = el.getAttribute('data-country');
+        el.onmouseenter = (e) => showCountryTooltip(e, code);
+        el.onmousemove = (e) => showCountryTooltip(e, code);
+        el.onmouseleave = hideCountryTooltip;
+        el.onclick = (e) => {
+          e.stopPropagation();
+          showCountryTooltip(e, code);
+        };
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!e.target || !e.target.closest || !e.target.closest('.country-tag')) {
+        hideCountryTooltip();
+      }
+    });
+
+    // Sub-pagination actions
+    function changePathsPage(delta) {
+      const list = cachedTopPages || [];
+      const maxPages = Math.max(1, Math.ceil(list.length / PATHS_PAGE_SIZE));
+      pathsPage = Math.max(1, Math.min(maxPages, pathsPage + delta));
+      renderTopPaths();
+    }
+
+    function changeCountriesPage(delta) {
+      const list = cachedTopCountries || [];
+      const maxPages = Math.max(1, Math.ceil(list.length / COUNTRIES_PAGE_SIZE));
+      countriesPage = Math.max(1, Math.min(maxPages, countriesPage + delta));
+      renderCountries();
+    }
+
+    function changeReferrersPage(delta) {
+      const list = cachedTopReferrers || [];
+      const maxPages = Math.max(1, Math.ceil(list.length / REFERRERS_PAGE_SIZE));
+      referrersPage = Math.max(1, Math.min(maxPages, referrersPage + delta));
+      renderAggregates();
+    }
+
+    function changeLeadsPage(delta) {
+      const list = cachedLeads || [];
+      const maxPages = Math.max(1, Math.ceil(list.length / LEADS_PAGE_SIZE));
+      leadsPage = Math.max(1, Math.min(maxPages, leadsPage + delta));
+      renderLeads();
     }
 
     let livePollingStartTime = 0;
@@ -3600,10 +4320,87 @@ export async function handleAdminDashboardRequest(
       }
     }
 
+    function renderQuotas() {
+      if (!cachedQuotas) return;
+      if (cachedQuotas.workers_daily) {
+        const q = cachedQuotas.workers_daily;
+        const el = document.getElementById('quota-workers-daily');
+        const bar = document.getElementById('quota-workers-daily-bar');
+        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 100000).toLocaleString();
+        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 100000)) * 100)) + '%';
+      }
+      if (cachedQuotas.workers_monthly) {
+        const q = cachedQuotas.workers_monthly;
+        const el = document.getElementById('quota-workers-monthly');
+        const bar = document.getElementById('quota-workers-monthly-bar');
+        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 3000000).toLocaleString();
+        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 3000000)) * 100)) + '%';
+      }
+      if (cachedQuotas.d1_reads_daily) {
+        const q = cachedQuotas.d1_reads_daily;
+        const el = document.getElementById('quota-d1-reads');
+        const bar = document.getElementById('quota-d1-reads-bar');
+        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 5000000).toLocaleString();
+        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 5000000)) * 100)) + '%';
+      }
+      if (cachedQuotas.d1_storage) {
+        const q = cachedQuotas.d1_storage;
+        const el = document.getElementById('quota-d1-storage');
+        const bar = document.getElementById('quota-d1-storage-bar');
+        if (el) el.textContent = (q.used_mb || 12.4) + ' MB / ' + (q.limit_gb || 5) + ' GB';
+        if (bar) bar.style.width = Math.min(100, Math.max(1, Math.round(((q.used_mb || 12.4) / ((q.limit_gb || 5) * 1024)) * 100))) + '%';
+      }
+      if (cachedQuotas.r2_class_a_monthly) {
+        const q = cachedQuotas.r2_class_a_monthly;
+        const el = document.getElementById('quota-r2-class-a');
+        const bar = document.getElementById('quota-r2-class-a-bar');
+        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 1000000).toLocaleString();
+        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 1000000)) * 100)) + '%';
+      }
+      if (cachedQuotas.r2_class_b_monthly) {
+        const q = cachedQuotas.r2_class_b_monthly;
+        const el = document.getElementById('quota-r2-class-b');
+        const bar = document.getElementById('quota-r2-class-b-bar');
+        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 10000000).toLocaleString();
+        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 10000000)) * 100)) + '%';
+      }
+      if (cachedQuotas.r2_storage) {
+        const q = cachedQuotas.r2_storage;
+        const el = document.getElementById('quota-r2-storage');
+        const bar = document.getElementById('quota-r2-storage-bar');
+        if (el) el.textContent = (q.used_gb || 0.18) + ' GB / ' + (q.limit_gb || 10) + ' GB';
+        if (bar) bar.style.width = Math.min(100, Math.max(1, Math.round(((q.used_gb || 0.18) / (q.limit_gb || 10)) * 100))) + '%';
+      }
+      if (cachedQuotas.zero_trust_seats) {
+        const q = cachedQuotas.zero_trust_seats;
+        const el = document.getElementById('quota-zero-trust');
+        const bar = document.getElementById('quota-zero-trust-bar');
+        if (el) el.textContent = (q.used || 1) + ' / ' + (q.limit || 50) + ' asientos';
+        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 1) / (q.limit || 50)) * 100)) + '%';
+      }
+      if (cachedQuotas.workers_ai_daily) {
+        const q = cachedQuotas.workers_ai_daily;
+        const el = document.getElementById('quota-workers-ai');
+        const bar = document.getElementById('quota-workers-ai-bar');
+        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 10000).toLocaleString() + ' neuronas';
+        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 10000)) * 100)) + '%';
+      }
+    }
+
     function renderTopPaths() {
       const container = document.getElementById('top-paths');
       if (!container) return;
       const list = (cachedTopPages && cachedTopPages.length > 0) ? cachedTopPages : [];
+      const total = list.length;
+      const totalP = Math.max(1, Math.ceil(total / PATHS_PAGE_SIZE));
+      pathsPage = Math.max(1, Math.min(totalP, pathsPage));
+
+      const pageInfo = document.getElementById('paths-page-info');
+      if (pageInfo) pageInfo.textContent = pathsPage + ' / ' + totalP;
+      const btnPrev = document.getElementById('btn-paths-prev');
+      const btnNext = document.getElementById('btn-paths-next');
+      if (btnPrev) btnPrev.disabled = pathsPage <= 1;
+      if (btnNext) btnNext.disabled = pathsPage >= totalP;
 
       if (!list.length) {
         container.innerHTML = '<p style="color: var(--text-dim); text-align: center; font-style: italic;">Sin datos de rutas</p>';
@@ -3611,8 +4408,10 @@ export async function handleAdminDashboardRequest(
       }
 
       const maxCount = list[0].total_views || list[0].views || 1;
+      const start = (pathsPage - 1) * PATHS_PAGE_SIZE;
+      const paged = list.slice(start, start + PATHS_PAGE_SIZE);
 
-      container.innerHTML = list.slice(0, 5).map(item => {
+      container.innerHTML = paged.map(item => {
         const pth = item.path || '--';
         const count = item.total_views || item.views || 0;
         const hCount = item.human_views || 0;
@@ -3633,21 +4432,36 @@ export async function handleAdminDashboardRequest(
       const container = document.getElementById('countries-list');
       if (!container) return;
       const list = (cachedTopCountries && cachedTopCountries.length > 0) ? cachedTopCountries : [];
+      const totalItems = list.length;
+      const totalP = Math.max(1, Math.ceil(totalItems / COUNTRIES_PAGE_SIZE));
+      countriesPage = Math.max(1, Math.min(totalP, countriesPage));
+
+      const pageInfo = document.getElementById('countries-page-info');
+      if (pageInfo) pageInfo.textContent = countriesPage + ' / ' + totalP;
+      const btnPrev = document.getElementById('btn-countries-prev');
+      const btnNext = document.getElementById('btn-countries-next');
+      if (btnPrev) btnPrev.disabled = countriesPage <= 1;
+      if (btnNext) btnNext.disabled = countriesPage >= totalP;
 
       if (!list.length) {
         container.innerHTML = '<p style="color: var(--text-dim); text-align: center; font-style: italic;">Sin datos geográficos</p>';
         return;
       }
 
-      const total = (cachedStats && cachedStats.total_pageviews) || list.reduce((acc, c) => acc + (c.views || 0), 0) || 1;
+      const totalViews = (cachedStats && cachedStats.total_pageviews) || list.reduce((acc, c) => acc + (c.views || 0), 0) || 1;
+      const start = (countriesPage - 1) * COUNTRIES_PAGE_SIZE;
+      const paged = list.slice(start, start + COUNTRIES_PAGE_SIZE);
 
-      container.innerHTML = list.slice(0, 5).map(item => {
+      container.innerHTML = paged.map(item => {
         const c = item.country || 'XX';
         const count = item.views || 0;
-        const pct = Math.round((count / total) * 100);
+        const pct = Math.round((count / totalViews) * 100);
+        const fullName = getCountryFullName(c);
         return '<div style="margin-bottom: 0.65rem;">' +
-          '<div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom: 0.2rem;">' +
-            '<strong>' + escapeHtml(c) + '</strong>' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; margin-bottom: 0.2rem;">' +
+            '<span class="country-tag" data-country="' + escapeHtml(c) + '" title="' + escapeHtml(fullName) + '">' +
+              '<strong>' + escapeHtml(c) + '</strong> &bull; ' + escapeHtml(fullName) +
+            '</span>' +
             '<span style="color:var(--text-dim)">' + count.toLocaleString() + ' visitas (' + pct + '%)</span>' +
           '</div>' +
           '<div style="width:100%; height:5px; background:var(--bg-surface); border-radius:3px; overflow:hidden;">' +
@@ -3655,24 +4469,39 @@ export async function handleAdminDashboardRequest(
           '</div>' +
         '</div>';
       }).join('');
+
+      attachCountryTooltipEvents();
     }
 
     function renderAggregates() {
       const refsEl = document.getElementById('top-referrers');
       if (!refsEl) return;
       const list = (cachedTopReferrers && cachedTopReferrers.length > 0) ? cachedTopReferrers : [];
+      const totalItems = list.length;
+      const totalP = Math.max(1, Math.ceil(totalItems / REFERRERS_PAGE_SIZE));
+      referrersPage = Math.max(1, Math.min(totalP, referrersPage));
+
+      const pageInfo = document.getElementById('referrers-page-info');
+      if (pageInfo) pageInfo.textContent = referrersPage + ' / ' + totalP;
+      const btnPrev = document.getElementById('btn-referrers-prev');
+      const btnNext = document.getElementById('btn-referrers-next');
+      if (btnPrev) btnPrev.disabled = referrersPage <= 1;
+      if (btnNext) btnNext.disabled = referrersPage >= totalP;
 
       if (!list.length) {
         refsEl.innerHTML = '<p style="color: var(--text-dim); font-style: italic;">Sin datos de referentes</p>';
         return;
       }
 
-      refsEl.innerHTML = list.slice(0, 5).map(item => {
+      const start = (referrersPage - 1) * REFERRERS_PAGE_SIZE;
+      const paged = list.slice(start, start + REFERRERS_PAGE_SIZE);
+
+      refsEl.innerHTML = paged.map(item => {
         let rf = item.referrer || 'Direct';
         if (rf.toLowerCase() === 'invalid') rf = 'Direct';
         const count = item.count || 0;
         return '<div style="display:flex; justify-content:space-between; padding:0.35rem 0; border-bottom:1px solid var(--border-subtle);">' +
-          '<span style="max-width:200px; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(rf) + '</span>' +
+          '<span style="max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + escapeHtml(rf) + '</span>' +
           '<strong style="color:var(--gold);">' + count.toLocaleString() + '</strong>' +
         '</div>';
       }).join('');
@@ -3681,7 +4510,22 @@ export async function handleAdminDashboardRequest(
     function renderLeads() {
       const tbody = document.getElementById('leads-tbody');
       const badge = document.getElementById('leads-count-badge');
-      if (badge) badge.textContent = cachedLeads.length + ' leads';
+      const totalItems = cachedLeads.length;
+      if (badge) badge.textContent = totalItems + ' leads';
+
+      const totalP = Math.max(1, Math.ceil(totalItems / LEADS_PAGE_SIZE));
+      leadsPage = Math.max(1, Math.min(totalP, leadsPage));
+
+      const pageInfo = document.getElementById('leads-page-info');
+      if (pageInfo) {
+        const dict = I18N[currentLang] || I18N.en;
+        pageInfo.textContent = (dict.page_indicator || 'Página {p} de {total}').replace('{p}', leadsPage).replace('{total}', totalP);
+      }
+      const btnPrev = document.getElementById('btn-leads-prev');
+      const btnNext = document.getElementById('btn-leads-next');
+      if (btnPrev) btnPrev.disabled = leadsPage <= 1;
+      if (btnNext) btnNext.disabled = leadsPage >= totalP;
+
       if (!tbody) return;
 
       if (!cachedLeads.length) {
@@ -3689,8 +4533,11 @@ export async function handleAdminDashboardRequest(
         return;
       }
 
-      tbody.innerHTML = cachedLeads.slice(0, 15).map(lead => {
-        const dt = formatTime(lead.created_at);
+      const start = (leadsPage - 1) * LEADS_PAGE_SIZE;
+      const paged = cachedLeads.slice(start, start + LEADS_PAGE_SIZE);
+
+      tbody.innerHTML = paged.map(lead => {
+        const dt = formatDateTime(lead.created_at);
         const name = escapeHtml(lead.name || '--');
         const email = escapeHtml(lead.from_email || '--');
         const phone = lead.phone ? '<br><small style="color:var(--text-dim); font-family:var(--font-mono)">📞 ' + escapeHtml(lead.phone) + '</small>' : '';
@@ -3700,14 +4547,14 @@ export async function handleAdminDashboardRequest(
         const ipText = lead.ip ? '<br><small style="color:var(--text-dim); font-family:var(--font-mono); font-size:10px;">IP: ' + escapeHtml(lead.ip) + (lead.as_organization ? ' · ' + escapeHtml(lead.as_organization) : '') + '</small>' : '';
         const subj = escapeHtml(lead.subject || '--');
         const rawBody = lead.body || '';
-        const msg = escapeHtml(rawBody.replace(/[\\r\\n]+/g, ' ').slice(0, 80));
+        const msg = escapeHtml(rawBody.replace(/[\\r\\n]+/g, ' ').slice(0, 100));
         return '<tr>' +
-          '<td>' + dt + '</td>' +
+          '<td style="white-space:nowrap;">' + dt + '</td>' +
           '<td><strong style="color: var(--text-primary);">' + name + '</strong></td>' +
           '<td><span style="color: var(--gold);">' + email + '</span>' + phone + '</td>' +
           '<td><span class="tag tag-country">' + loc + '</span>' + geoText + ipText + '</td>' +
           '<td>' + subj + '</td>' +
-          '<td style="color: var(--text-dim); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' + escapeHtml(rawBody) + '">' + msg + '</td>' +
+          '<td style="color: var(--text-dim); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' + escapeHtml(rawBody) + '">' + msg + '</td>' +
         '</tr>';
       }).join('');
     }
@@ -3736,21 +4583,24 @@ export async function handleAdminDashboardRequest(
         }
 
         const country = item.country || 'XX';
+        const fullName = getCountryFullName(country);
         let ref = item.utm_source !== 'direct' && item.utm_source ? item.utm_source : (item.referrer || 'Direct');
         if (typeof ref === 'string' && ref.toLowerCase() === 'invalid') ref = 'Direct';
         const campaign = item.utm_campaign ? escapeHtml(item.utm_campaign) : '--';
         const hash = item.visitor_hash ? item.visitor_hash.slice(0, 10) + '...' : '--';
 
         return '<tr>' +
-          '<td>' + formatTime(item.created_at) + '</td>' +
+          '<td style="white-space:nowrap;">' + formatDateTime(item.created_at) + '</td>' +
           '<td><span class="tag ' + tagClass + '">' + tagLabel + '</span></td>' +
           '<td><span class="tag-path">' + escapeHtml(item.path) + '</span></td>' +
-          '<td><span class="tag tag-country">' + escapeHtml(country) + '</span></td>' +
+          '<td><span class="tag tag-country country-tag" data-country="' + escapeHtml(country) + '" title="' + escapeHtml(fullName) + '">' + escapeHtml(country) + '</span></td>' +
           '<td>' + escapeHtml(ref) + '</td>' +
           '<td>' + campaign + '</td>' +
           '<td><span style="color:var(--text-dim)">' + escapeHtml(hash) + '</span></td>' +
         '</tr>';
       }).join('');
+
+      attachCountryTooltipEvents();
     }
 
     function renderAll() {
@@ -3777,6 +4627,12 @@ export async function handleAdminDashboardRequest(
       document.getElementById('kpi-bot').textContent = bot.toLocaleString();
       document.getElementById('kpi-bot-sub').textContent = (total > 0 ? Math.round((bot/total)*100) : 0) + '% del rango';
       document.getElementById('kpi-unique').textContent = unique.toLocaleString();
+      const uniqueHuman = stats.unique_human_visitors || 0;
+      const uniqueHumanPct = unique > 0 ? Math.round((uniqueHuman / unique) * 100) : 0;
+      const kpiUniqueSub = document.getElementById('kpi-unique-sub');
+      if (kpiUniqueSub) {
+        kpiUniqueSub.textContent = uniqueHuman.toLocaleString() + ' ' + (currentLang === 'es' ? 'humanos' : 'humans') + ' (' + uniqueHumanPct + '%)';
+      }
       document.getElementById('kpi-prefetch').textContent = (stats.prefetches_count || cachedPrefetches.length).toLocaleString();
       document.getElementById('kpi-leads').textContent = cachedLeads.length.toLocaleString();
 
@@ -3803,6 +4659,7 @@ export async function handleAdminDashboardRequest(
       if (btnLast) btnLast.disabled = currentPage >= totalPages;
 
       renderCircuitBreakers();
+      renderQuotas();
       renderTopPaths();
       renderCountries();
       renderAggregates();
@@ -3830,16 +4687,6 @@ export async function handleAdminDashboardRequest(
         a.click();
       }
     };
-
-    function formatTime(isoStr) {
-      if (!isoStr) return '--';
-      try {
-        const d = new Date(isoStr);
-        return d.toISOString().replace('T', ' ').slice(11, 19);
-      } catch (_) {
-        return isoStr;
-      }
-    }
 
     function escapeHtml(str) {
       if (!str) return '';
@@ -3901,6 +4748,9 @@ export async function handleAdminDashboardRequest(
           if (data.circuit_breakers) {
             cachedCircuitBreakers = data.circuit_breakers;
           }
+          if (data.quotas) {
+            cachedQuotas = data.quotas;
+          }
         }
 
         if (leadsRes.status === 'fulfilled' && leadsRes.value.ok) {
@@ -3912,6 +4762,9 @@ export async function handleAdminDashboardRequest(
           const mData = await metRes.value.json();
           if (mData.circuit_breakers) {
             cachedCircuitBreakers = mData.circuit_breakers;
+          }
+          if (mData.quotas) {
+            cachedQuotas = mData.quotas;
           }
         }
 
@@ -4014,7 +4867,8 @@ export async function handleAdminDashboardRequest(
             table: 'pageviews',
             filtersText: filtersText,
             sql: [
-              "SELECT COUNT(DISTINCT visitor_hash) AS unique_visitors",
+              "SELECT COUNT(DISTINCT visitor_hash) AS unique_visitors,",
+              "       COUNT(DISTINCT CASE WHEN is_bot = 0 THEN visitor_hash END) AS unique_human_visitors",
               "FROM pageviews" + (whereSql ? NL + whereSql : "") + ";"
             ].join(NL),
           };

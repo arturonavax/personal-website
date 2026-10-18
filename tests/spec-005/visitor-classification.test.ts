@@ -443,4 +443,45 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
       expect(res.classification).toBe("human");
     });
   });
+
+  describe("Vulnerability Scanner & Exploit Path Filtering", () => {
+    it("classifies spoofed Chrome requests targeting /.env as Bot", () => {
+      const req = new Request("https://arturonavax.dev/.env", {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+          accept: "text/html",
+        },
+      });
+      const res = classifyVisitor(req, "/.env");
+      expect(res.isBot).toBe(true);
+      expect(res.reason).toBe("vulnerability_scanner_path_probe");
+    });
+
+    it("classifies requests to WordPress administration probes as Bot", () => {
+      const req = new Request("https://arturonavax.dev/wp-login.php", {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6_1) AppleWebKit/605.1.15 Safari/605.1.15",
+        },
+      });
+      const res = classifyVisitor(req, "/wp-login.php");
+      expect(res.isBot).toBe(true);
+    });
+
+    it("preserves legitimate human navigation on valid content paths", () => {
+      const req = new Request("https://arturonavax.dev/blog/", {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+          accept: "text/html",
+          "accept-language": "en-US,en;q=0.9",
+          "sec-fetch-dest": "document",
+        },
+      });
+      const res = classifyVisitor(req, "/blog/");
+      expect(res.isBot).toBe(false);
+      expect(res.classification).toBe("human");
+    });
+  });
 });
