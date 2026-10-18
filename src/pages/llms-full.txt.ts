@@ -95,15 +95,56 @@ export const GET: APIRoute = async () => {
         }
         content += "\n";
       }
+      content += "---\n\n";
     }
   } catch (err) {
     console.error("[llms-full.txt:services error]", err);
   }
 
+  // 5. Verified Career Milestones & Experience
+  try {
+    const experiences = await getCollection("experience");
+    const enExp = experiences
+      .filter(
+        (e) =>
+          !e.data.draft && e.data.visible !== false && e.id.startsWith("en/"),
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.data.startDate).getTime() -
+          new Date(a.data.startDate).getTime(),
+      );
+
+    if (enExp.length > 0) {
+      content += "# Verified Career Milestones & Systems Architecture\n\n";
+      for (const exp of enExp) {
+        const slug = exp.id.replace(/^en\//, "").replace(/\.md$/, "");
+        content += `## ${exp.data.role} @ ${exp.data.company}\n`;
+        content += `- URL: https://arturonavax.dev/experience/${slug}/\n`;
+        content += `- Organization: ${exp.data.company}\n`;
+        content += `- Role: ${exp.data.role}\n`;
+        if (exp.data.location) content += `- Location: ${exp.data.location}\n`;
+        if (exp.data.skills?.length) {
+          content += `- Core Skills: ${exp.data.skills.join(", ")}\n`;
+        }
+        if (exp.data.keyAchievements?.length) {
+          content += `- Key Architecture Highlights:\n`;
+          for (const ach of exp.data.keyAchievements.slice(0, 3)) {
+            content += `  * ${ach}\n`;
+          }
+        }
+        content += "\n";
+      }
+    }
+  } catch (err) {
+    console.error("[llms-full.txt:experience error]", err);
+  }
+
   return new Response(content, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "public, max-age=3600, must-revalidate",
+      "Cache-Control":
+        "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
     },
   });
 };

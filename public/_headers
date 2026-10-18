@@ -29,22 +29,22 @@
 
 # Índices de búsqueda desacoplados
 /search-index*.json
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+  Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
 
 # Raw Feeds and Discovery Artifacts
 /sitemap*.xml
-  Cache-Control: public, max-age=3600, must-revalidate
+  Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400
   Content-Type: application/xml; charset=UTF-8
 
 /rss.xml
-  Cache-Control: public, max-age=3600, must-revalidate
+  Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400
 
 /robots.txt
-  Cache-Control: public, max-age=3600, must-revalidate
+  Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400
 
 /llms*.txt
-  Cache-Control: public, max-age=3600, must-revalidate
+  Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400
   Content-Type: text/plain; charset=UTF-8
 
 # Document Delivery with Instant Revalidation
@@ -54,6 +54,12 @@
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()
+  X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1
+
+# API endpoints: estrictamente no indexables
+/api/*
+  Cache-Control: no-store, private
+  X-Robots-Tag: noindex, nofollow, noarchive
 
 # Admin surface: estrictamente privado y sin caché (Zero Trust)
 /admin*
@@ -93,7 +99,7 @@
   Alt-Svc: h3=":443"; ma=86400
   Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' data: https://static.cloudflareinsights.com https://app.cal.com https://challenges.cloudflare.com; script-src-elem 'self' 'unsafe-inline' data: https://static.cloudflareinsights.com https://app.cal.com https://challenges.cloudflare.com; frame-src 'self' https://app.cal.com https://cal.com https://challenges.cloudflare.com; child-src 'self' https://app.cal.com https://cal.com https://challenges.cloudflare.com; connect-src 'self' https://cloudflareinsights.com https://cal.com https://app.cal.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'self'; object-src 'none';
-  Link: </llms.txt>; rel="describedby"
+  Link: <https://arturonavax.dev/llms.txt>; rel="llms-txt", <https://arturonavax.dev/llms-full.txt>; rel="alternate"; type="text/plain"
   X-Llms-Txt: /llms.txt
 
 # Downloadable CVs synced from R2 (public/downloads/)

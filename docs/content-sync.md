@@ -15,17 +15,17 @@ This project implements an **R2-decoupled content architecture**. Editorial cont
 
 ## 2. Directory Layout & Source of Truth
 
-| In R2 Bucket (`personal-website-content`) | Local Directory (Ignored by `.gitignore`)    | Purpose                                        |
-| :---------------------------------------- | :------------------------------------------- | :--------------------------------------------- |
-| `content/posts/<locale>/<slug>.md(x)`     | `src/content/posts/<locale>/<slug>.md(x)`    | Technical essays & blog posts                  |
-| `content/projects/<locale>/<slug>.md`     | `src/content/projects/<locale>/<slug>.md`    | Portfolio case studies                         |
-| `content/services/<locale>/<slug>.md`     | `src/content/services/<locale>/<slug>.md`    | Architectural consulting services              |
-| `content/experience/<locale>/<slug>.md`   | `src/content/experience/<locale>/<slug>.md`  | Career timeline entries                        |
-| `content/resume/<file>.json`              | `src/content/resume/<file>.json`             | Structured resume & skill data                 |
-| `assets/<path>`                           | `public/remote-assets/<path>`                | Post images, diagrams, architecture charts     |
-| `downloads/ArturoNava-CV-{en,es}.pdf`     | `public/downloads/ArturoNava-CV-{en,es}.pdf` | Downloadable CV PDFs (on `/resume/`)           |
-| `_manifest.json`                          | (Generated & stored in R2)                   | SHA-256 hash catalogue for incremental sync    |
-| `_bundle.tar.gz`                          | (Generated & stored in R2)                   | Gzip bundle for 1-request cold start hydration |
+| In R2 Bucket (`personal-website-content`) | Local Directory (Ignored by `.gitignore`)                | Purpose                                                  |
+| :---------------------------------------- | :------------------------------------------------------- | :------------------------------------------------------- |
+| `content/posts/<locale>/<slug>.md(x)`     | `src/content/posts/<locale>/<slug>.md(x)`                | Technical essays & blog posts                            |
+| `content/projects/<locale>/<slug>.md`     | `src/content/projects/<locale>/<slug>.md`                | Portfolio case studies                                   |
+| `content/services/<locale>/<slug>.md`     | `src/content/services/<locale>/<slug>.md`                | Architectural consulting services                        |
+| `content/experience/<locale>/<slug>.md`   | `src/content/experience/<locale>/<slug>.md`              | Career timeline entries                                  |
+| `content/resume/<file>.json`              | `src/content/resume/<file>.json`                         | Structured resume & skill data                           |
+| `assets/<path>`                           | `public/remote-assets/<path>`                            | Post images, diagrams, architecture charts               |
+| `downloads/ArturoNava-CV-{en,es}.pdf`     | `public/downloads/ArturoNava-CV-{en,es}.pdf`             | Downloadable CV PDFs (on `/resume/`)                     |
+| `content/_manifest.v2.json`               | `.cache/r2-manifest.json` (`.remote-sync-manifest.json`) | SHA-256 hash catalogue + `rootHash` for incremental sync |
+| `content/_bundle-<shortHash>.tar.gz`      | (Generated & stored in R2)                               | Gzip bundle for 1-request cold start hydration           |
 
 > [!NOTE]
 > Only `.gitkeep` placeholder files under `src/content/*/` and `public/{downloads,remote-assets}/` are tracked in Git so directory structures exist on fresh checkouts.
@@ -34,7 +34,7 @@ This project implements an **R2-decoupled content architecture**. Editorial cont
 
 ## 3. High-Performance Sync Engine (`scripts/lib/r2-content.mjs`)
 
-The sync engine is engineered in pure Node.js (ESM) with zero heavy external dependencies. It guarantees idempotency, speed, and safety.
+The sync engine is engineered in pure Node.js (ESM) with zero heavy external dependencies. It guarantees idempotency, speed, and safety while protecting Cloudflare R2 Free Tier Class A (1M/month) and Class B (10M/month) quotas.
 
 ### 3.1. Three-Tier Resilient Transport
 
@@ -66,24 +66,26 @@ The driver auto-detects available credentials and selects the optimal transport:
 2. **`cf` CLI (Tier 2):** Uses the official Cloudflare CLI (`npm i -g cf@latest`). Provides zero-configuration local authentication via browser OAuth (`cf auth login`).
 3. **`wrangler` CLI (Tier 3):** Uses `wrangler r2 object get/put` with `--remote`.
 
-### 3.2. Incremental SHA-256 Checksums
+### 3.2. Incremental SHA-256 Manifest Diffing (`content/_manifest.v2.json` & `rootHash`)
 
-Before transferring files, the sync engine computes the SHA-256 hash of each local file and compares it against `_manifest.json` in R2.
+Before transferring files, the sync engine fetches `content/_manifest.v2.json` once from R2 (**1 Class B op, 0 `ListObjectsV2` calls**), computes the deterministic `rootHash` (`computeRootHash`) and SHA-256 hash of each local file using a bounded concurrency worker pool (`CONCURRENCY = 6`), and executes `computeRemoteManifestDiff(localFiles, remoteManifest)`:
 
-- If content has not changed, **zero bytes are transferred** (a pull/push check finishes in ~1.5 s).
-- Only changed or missing files are downloaded or uploaded.
+- On `r2-pull.mjs`, if `.cache/r2-manifest.json` exists and the remote ETag (`If-None-Match` -> `304 Not Modified`) or `rootHash` matches the cached `rootHash`, the sync exits immediately with **1 Class B operation and 0 file downloads**.
+- On `r2-push.mjs`, if `remoteManifest.rootHash === localManifest.rootHash` (`toUpload.length === 0`), **zero Class A write operations are executed** and `content/_manifest.v2.json` is not re-uploaded.
+- Only changed or missing files (`toUpload` / `toDownload`) are uploaded or downloaded in parallel with `concurrency = 6`.
+- After a successful push or pull, the manifest is cached locally in `.cache/r2-manifest.json` (and `.remote-sync-manifest.json`).
 
-### 3.3. Fast-Pull Tarball Bundle (`_bundle.tar.gz`)
+### 3.3. Fast-Pull Tarball Bundle (`content/_bundle-<shortHash>.tar.gz`)
 
-When a developer checks out the repo on a brand-new machine, syncing 50+ individual objects through sequential CLI calls would take 30+ seconds.
+When a developer checks out the repo on a brand-new machine or CI runner, syncing 50+ individual objects through sequential calls would waste time and Class B operations.
 
-- **The Optimization:** `scripts/r2-push.mjs` automatically packages all content files into a single `_bundle.tar.gz` archive and uploads it alongside `_manifest.json`.
-- When `scripts/r2-pull.mjs` detects more than 8 modified/missing files, it downloads the single compressed tarball and unpacks it locally, completing the full sync in **under 2.5 seconds**.
+- **The Optimization:** `scripts/r2-push.mjs` automatically packages all content files into a single `content/_bundle-${rootHash.slice(0, 12)}.tar.gz` archive (plus `_bundle.tar.gz`) and uploads it alongside `content/_manifest.v2.json` whenever at least 1 file changes or is pruned.
+- When `scripts/r2-pull.mjs` detects a cold start or more than `BUNDLE_THRESHOLD = 5` modified/missing files, it downloads the single compressed tarball (**2 Class B ops total**: 1 manifest + 1 bundle) and unpacks it locally, completing the full sync in **under 2.5 seconds**.
 
-### 3.4. Safety Guards & Path Normalization
+### 3.4. Safety Guards, Path Normalization & Orphan Pruning (`pruneOrphanRemoteKeys`)
 
-- **Path Traversal Protection:** Every entry inside `_bundle.tar.gz` is validated to prevent path traversal (`..` and absolute paths are rejected).
-- **Prune Safety:** `pnpm content:push` never deletes remote objects unless explicitly passed the `--prune` flag. This prevents an empty checkout from inadvertently wiping remote production content.
+- **Path Traversal Protection:** Every entry inside `content/_bundle-<shortHash>.tar.gz` is validated to prevent path traversal (`..` and absolute paths are rejected).
+- **Prune Safety (`--prune`):** `pnpm content:push` never deletes remote objects unless explicitly passed the `--prune` flag, which invokes `pruneOrphanRemoteKeys(orphanKeys, { driver })` to batch-delete stale R2 keys. This prevents an empty checkout from inadvertently wiping remote production content.
 
 ---
 

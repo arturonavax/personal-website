@@ -32,10 +32,21 @@ const run = promisify(execFile);
 export const ROOT = process.cwd();
 export const BUCKET = process.env.R2_BUCKET_NAME || "personal-website-content";
 export const MANIFEST_KEY = "_manifest.json";
+export const REMOTE_MANIFEST_KEY = "content/_manifest.json";
+export const MANIFEST_V2_KEY = "content/_manifest.v2.json";
+export const LOCAL_MANIFEST_CACHE = path.join(
+  ROOT,
+  ".remote-sync-manifest.json",
+);
+export const LOCAL_MANIFEST_CACHE_PATH = path.join(
+  ROOT,
+  ".cache",
+  "r2-manifest.json",
+);
 export const BUNDLE_KEY = "_bundle.tar.gz";
-export const CONCURRENCY = Number(process.env.R2_CONCURRENCY) || 8;
+export const CONCURRENCY = Number(process.env.R2_CONCURRENCY) || 6;
 /** Above this many changed files a single bundle download beats per-file requests. */
-export const BUNDLE_THRESHOLD = 8;
+export const BUNDLE_THRESHOLD = 5;
 
 /** [key prefix, local directory]. Order matters only for readability. */
 export const MAPPINGS = [
@@ -107,7 +118,7 @@ export function sha256File(file) {
   });
 }
 
-/** Runs fn over items with bounded parallelism; throws on the first failure. */
+/** Runs fn over items with bounded parallelism (default concurrency = 6); throws on the first failure. */
 export async function pool(items, fn, limit = CONCURRENCY) {
   let next = 0;
   const workers = Array.from(
@@ -122,9 +133,214 @@ export async function pool(items, fn, limit = CONCURRENCY) {
   await Promise.all(workers);
 }
 
+/**
+ * Computes a deterministic SHA-256 hex digest over sorted `${key}:${sha256}` entries.
+ */
+export function computeRootHash(entries) {
+  const pairs = [];
+  if (Array.isArray(entries)) {
+    for (const e of entries) {
+      if (e && e.key && e.sha256) pairs.push(`${e.key}:${e.sha256}`);
+    }
+  } else if (entries && typeof entries === "object") {
+    for (const [key, val] of Object.entries(entries)) {
+      if (val && typeof val.sha256 === "string") {
+        pairs.push(`${key}:${val.sha256}`);
+      }
+    }
+  }
+  pairs.sort();
+  return createHash("sha256").update(pairs.join("\n")).digest("hex");
+}
+
+/**
+ * Builds a v2 content manifest with `rootHash`, `bundleKey`, `entries` map, and `files` list.
+ */
+export function buildLocalManifestV2(
+  localFiles = [],
+  generatedAt = new Date().toISOString(),
+) {
+  const sorted = [...(localFiles ?? [])].sort((a, b) =>
+    a.key.localeCompare(b.key),
+  );
+  const entries = {};
+  const files = [];
+  for (const f of sorted) {
+    const ext = path.extname(f.key);
+    const baseNoExt = ext ? f.key.slice(0, -ext.length) : f.key;
+    const shortSha = (f.sha256 || "").slice(0, 12);
+    const immutableKey = `${baseNoExt}.${shortSha}${ext}`;
+    const contentType = contentTypeFor(f.key);
+    entries[f.key] = {
+      sha256: f.sha256,
+      size: f.size ?? 0,
+      contentType,
+      immutableKey,
+    };
+    files.push({
+      key: f.key,
+      size: f.size ?? 0,
+      sha256: f.sha256,
+      contentType,
+      immutableKey,
+    });
+  }
+  const rootHash = computeRootHash(files);
+  const bundleKey = `content/_bundle-${rootHash.slice(0, 12)}.tar.gz`;
+  return {
+    version: 2,
+    generatedAt,
+    rootHash,
+    bundleKey,
+    entries,
+    files,
+  };
+}
+
+/**
+ * Normalizes a v1 or v2 manifest into a consistent structure with both `files` array and `rootHash`.
+ */
+export function normalizeManifest(manifest) {
+  if (!manifest || typeof manifest !== "object") return null;
+  let files = Array.isArray(manifest.files) ? manifest.files : [];
+  if (
+    files.length === 0 &&
+    manifest.entries &&
+    typeof manifest.entries === "object"
+  ) {
+    files = Object.entries(manifest.entries).map(([key, val]) => ({
+      key,
+      size: val?.size ?? 0,
+      sha256: val?.sha256 ?? "",
+      contentType: val?.contentType ?? contentTypeFor(key),
+      immutableKey: val?.immutableKey,
+    }));
+  }
+  const rootHash = manifest.rootHash || computeRootHash(files);
+  return {
+    ...manifest,
+    files,
+    rootHash,
+  };
+}
+
+/**
+ * Reads the remote manifest from `content/_manifest.v2.json`, falling back to `content/_manifest.json`
+ * and `_manifest.json` for backwards compatibility.
+ */
 export async function readManifest(driver) {
-  const buf = await driver.getBuffer(MANIFEST_KEY);
-  return buf ? JSON.parse(buf.toString("utf8")) : null;
+  const v2Buf = await driver.getBuffer(MANIFEST_V2_KEY);
+  if (v2Buf) return normalizeManifest(JSON.parse(v2Buf.toString("utf8")));
+  const primaryBuf = await driver.getBuffer(REMOTE_MANIFEST_KEY);
+  if (primaryBuf)
+    return normalizeManifest(JSON.parse(primaryBuf.toString("utf8")));
+  const fallbackBuf = await driver.getBuffer(MANIFEST_KEY);
+  return fallbackBuf
+    ? normalizeManifest(JSON.parse(fallbackBuf.toString("utf8")))
+    : null;
+}
+
+/**
+ * Reads the cached local manifest from `.cache/r2-manifest.json` (or `.remote-sync-manifest.json`).
+ */
+export async function readLocalManifestCache(
+  cachePath = LOCAL_MANIFEST_CACHE_PATH,
+) {
+  try {
+    if (existsSync(cachePath)) {
+      const raw = await readFile(cachePath, "utf8");
+      return normalizeManifest(JSON.parse(raw));
+    }
+    if (
+      cachePath !== LOCAL_MANIFEST_CACHE &&
+      existsSync(LOCAL_MANIFEST_CACHE)
+    ) {
+      const raw = await readFile(LOCAL_MANIFEST_CACHE, "utf8");
+      return normalizeManifest(JSON.parse(raw));
+    }
+  } catch {
+    // Ignore corrupt or missing cache
+  }
+  return null;
+}
+
+/**
+ * Persists the manifest to local cache (`.cache/r2-manifest.json` and `.remote-sync-manifest.json`).
+ */
+export async function writeLocalManifestCache(
+  manifest,
+  cachePath = LOCAL_MANIFEST_CACHE_PATH,
+) {
+  try {
+    const normalized = normalizeManifest(manifest) ?? manifest;
+    await mkdir(path.dirname(cachePath), { recursive: true });
+    await writeFile(cachePath, JSON.stringify(normalized, null, 2));
+    if (cachePath !== LOCAL_MANIFEST_CACHE) {
+      await writeFile(
+        LOCAL_MANIFEST_CACHE,
+        JSON.stringify(normalized, null, 2),
+      );
+    }
+  } catch {
+    // Non-fatal if filesystem is read-only
+  }
+}
+
+/**
+ * Computes incremental SHA-256 diff between local files and remote manifest.
+ * @param {Array<{key: string, sha256: string, size?: number, file?: string, rel?: string}>} localFiles
+ * @param {{files?: Array<{key: string, sha256: string, size?: number}>, entries?: Record<string, {sha256: string, size?: number}>} | null} remoteManifest
+ */
+export function computeRemoteManifestDiff(localFiles, remoteManifest) {
+  const normalizedRemote = normalizeManifest(remoteManifest);
+  const remoteFiles = normalizedRemote?.files ?? [];
+  const remoteMap = new Map(remoteFiles.map((f) => [f.key, f]));
+  const localMap = new Map(localFiles.map((f) => [f.key, f]));
+
+  const toUpload = [];
+  const unchanged = [];
+  for (const localFile of localFiles) {
+    const remoteEntry = remoteMap.get(localFile.key);
+    if (!remoteEntry || remoteEntry.sha256 !== localFile.sha256) {
+      toUpload.push(localFile);
+    } else {
+      unchanged.push(localFile);
+    }
+  }
+
+  const toDownload = [];
+  const orphanRemoteKeys = [];
+  for (const remoteFile of remoteFiles) {
+    const localEntry = localMap.get(remoteFile.key);
+    if (!localEntry) {
+      orphanRemoteKeys.push(remoteFile.key);
+      toDownload.push(remoteFile);
+    } else if (localEntry.sha256 !== remoteFile.sha256) {
+      toDownload.push(remoteFile);
+    }
+  }
+
+  return {
+    toUpload,
+    toDownload,
+    unchanged,
+    orphanRemoteKeys,
+  };
+}
+
+/**
+ * Deletes stale R2 keys that no longer exist locally when `--prune` is enabled.
+ */
+export async function pruneOrphanRemoteKeys(orphanKeys, options = {}) {
+  const { driver, dryRun = false } = options;
+  if (!Array.isArray(orphanKeys) || orphanKeys.length === 0) {
+    return { deleted: 0, keys: [] };
+  }
+  if (dryRun || !driver) {
+    return { deleted: 0, keys: orphanKeys };
+  }
+  await driver.deleteMany(orphanKeys);
+  return { deleted: orphanKeys.length, keys: orphanKeys };
 }
 
 /** Picks the transport: S3 if credentials exist, cf CLI if available, or wrangler as fallback. */
@@ -371,3 +587,90 @@ export async function extractBundle(bundleFile) {
 }
 
 export const fileSize = async (file) => (await stat(file)).size;
+
+export const REQUIRED_CONTENT_COLLECTIONS = [
+  "posts",
+  "projects",
+  "experience",
+  "services",
+  "resume",
+];
+
+export const REQUIRED_CONTENT_LOCALES = ["en", "es"];
+
+const VALID_CONTENT_EXT_REGEX = /\.(?:md|mdx|json)$/i;
+
+async function listValidContentFilesRecursive(dir) {
+  if (!existsSync(dir)) return [];
+  const results = [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name.startsWith(".") || entry.name.startsWith("_")) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...(await listValidContentFilesRecursive(full)));
+    } else if (entry.isFile() && VALID_CONTENT_EXT_REGEX.test(entry.name)) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+/**
+ * Build-Time Content Integrity Gate (TASK SEO-1).
+ * Verifies that every required collection (`posts`, `projects`, `experience`, `services`, `resume`)
+ * has >= 1 valid content file (`.md`, `.mdx`, or `.json`) for each supported locale (`en`, `es`).
+ */
+export async function verifyContentHydration(options = {}) {
+  const contentRoot = options.contentRoot || path.join(ROOT, "src", "content");
+  const collections = options.collections || REQUIRED_CONTENT_COLLECTIONS;
+  const locales = options.locales || REQUIRED_CONTENT_LOCALES;
+  const allowEmpty =
+    options.allowEmpty === true ||
+    process.env.ALLOW_EMPTY_CONTENT === "true" ||
+    process.env.ALLOW_EMPTY_CONTENT === "1";
+
+  const counts = {};
+  const missing = [];
+
+  for (const collection of collections) {
+    counts[collection] = {};
+    const collectionDir = path.join(contentRoot, collection);
+    const topEntries = existsSync(collectionDir)
+      ? await readdir(collectionDir, { withFileTypes: true })
+      : [];
+
+    for (const locale of locales) {
+      const localeDir = path.join(collectionDir, locale);
+      const localeSubdirFiles = await listValidContentFilesRecursive(localeDir);
+
+      // Also support flat locale-suffixed files such as `ArturoNava-Resume-en.md`
+      const flatLocaleRegex = new RegExp(
+        `(?:^|[-_.])${locale}\\.(?:md|mdx|json)$`,
+        "i",
+      );
+      const flatLocaleFiles = topEntries
+        .filter((e) => e.isFile() && flatLocaleRegex.test(e.name))
+        .map((e) => path.join(collectionDir, e.name));
+
+      const total = localeSubdirFiles.length + flatLocaleFiles.length;
+      counts[collection][locale] = total;
+
+      if (total < 1) {
+        missing.push(`${collection}/${locale}`);
+      }
+    }
+  }
+
+  if (missing.length > 0 && !allowEmpty) {
+    throw new Error(
+      `[ContentHydrationError] Build-time content integrity check failed. Missing content for: ${missing.join(", ")} in ${contentRoot}. Run \`pnpm content:pull\` or set ALLOW_EMPTY_CONTENT=true if intentional.`,
+    );
+  }
+
+  return {
+    valid: missing.length === 0,
+    counts,
+    missing,
+  };
+}

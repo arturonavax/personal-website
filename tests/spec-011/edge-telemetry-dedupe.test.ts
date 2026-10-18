@@ -21,12 +21,7 @@ const MIGRATIONS_DIR = path.join(
   "d1",
   "migrations",
 );
-const MIGRATIONS = [
-  "0001_initial_schema.sql",
-  "0002_analytics_rollups.sql",
-  "0009_telemetry_performance_indexes.sql",
-  "0010_telemetry_dedupe_and_index_pruning.sql",
-];
+const MIGRATIONS = ["0001_initial_schema.sql"];
 
 function createD1Shim() {
   const sqlite = new Database(":memory:");
@@ -207,5 +202,505 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
         `INSERT INTO pageviews (path, visitor_hash, is_bot, dedupe_key) VALUES ('/blog','hash',0,'${key}')`,
       ),
     ).toThrow();
+  });
+});
+
+import worker from "../../cloudflare/worker";
+import {
+  D1TelemetryAdapter,
+  QuotaDegradationTier,
+  edgeQuotaTracker,
+  flushCompactRollupBuffer,
+} from "../../src/lib/adapters";
+import { reconcileR2WalToD1 } from "../../cloudflare/cron-scheduler";
+
+function createMockR2Bucket() {
+  const objects = new Map<string, string>();
+  return {
+    objects,
+    put: async (key: string, value: unknown) => {
+      const str =
+        typeof value === "string"
+          ? value
+          : value instanceof Uint8Array
+            ? new TextDecoder().decode(value)
+            : String(value);
+      objects.set(key, str);
+      return { key };
+    },
+    get: async (key: string) => {
+      const val = objects.get(key);
+      if (val === undefined) return null;
+      return {
+        text: async () => val,
+        arrayBuffer: async () => new TextEncoder().encode(val).buffer,
+        body: new ReadableStream(),
+        httpMetadata: { contentType: "application/x-ndjson" },
+        size: val.length,
+        etag: "mock-etag",
+      };
+    },
+    delete: async (keys: string | string[]) => {
+      if (Array.isArray(keys)) {
+        for (const k of keys) objects.delete(k);
+      } else {
+        objects.delete(keys);
+      }
+    },
+    list: async (opts?: { prefix?: string; limit?: number }) => {
+      const prefix = opts?.prefix || "";
+      const matched = [...objects.keys()]
+        .filter((k) => k.startsWith(prefix))
+        .slice(0, opts?.limit || 1000)
+        .map((key) => ({ key }));
+      return { objects: matched, truncated: false };
+    },
+  };
+}
+
+describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypass", () => {
+  beforeEach(() => {
+    clearRecentPageviewsCache();
+    edgeQuotaTracker.reset();
+  });
+
+  it("1. 30m L1 Cache Dedupe & SPA Double-Count Prevention: 1 SSR visit + 5 SPA transitions within 30m produce 1 D1 write", async () => {
+    const { db, count } = createD1Shim();
+    const adapter = new D1TelemetryAdapter(db);
+    const t0 = 1_700_000_000_000;
+
+    // Initial SSR / document visit
+    const first = await adapter.ingestVisit({
+      path: "/en/blog/post-1",
+      visitorHash: "visitor-abc-123",
+      eventType: "pageview",
+      isBot: false,
+      country: "US",
+      referrerHost: "google.com",
+      nowMs: t0,
+    });
+    expect(first.recorded).toBe(true);
+    expect(first.deduped).toBe(false);
+    expect(first.storageTier).toBe("D1");
+    expect(count("telemetry_events")).toBe(1);
+    expect(count("analytics_rollups")).toBe(1);
+
+    // 5 rapid SPA transitions / refreshes within the 30-minute window
+    for (let i = 1; i <= 5; i++) {
+      const subsequent = await adapter.ingestVisit({
+        path: "/en/blog/post-1/",
+        visitorHash: "visitor-abc-123",
+        eventType: "spa_transition",
+        isBot: false,
+        country: "US",
+        referrerHost: "arturonavax.dev",
+        nowMs: t0 + i * 60_000, // +1m, +2m, +3m, +4m, +5m (< 30m)
+      });
+      expect(subsequent.recorded).toBe(false);
+      expect(subsequent.deduped).toBe(true);
+      expect(subsequent.storageTier).toBe("L1_CACHE");
+    }
+
+    // Exactly 1 D1 write occurred across all 6 hits
+    expect(count("telemetry_events")).toBe(1);
+    expect(count("analytics_rollups")).toBe(1);
+
+    // End-to-end Worker verification:
+    // (a) Prefetch request (/en/blog/post-2 with Sec-Purpose: prefetch) does NOT record a visit,
+    //     so a subsequent SPA transition beacon records the real visit.
+    const waitPromises: Promise<unknown>[] = [];
+    const mockCtx = {
+      waitUntil: (p: Promise<unknown>) => waitPromises.push(p),
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+    const mockEnv = {
+      DB: db,
+      ASSETS: {
+        fetch: async () =>
+          new Response("<!doctype html><html><body>ok</body></html>", {
+            status: 200,
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          }),
+      } as unknown as Fetcher,
+    };
+
+    const prefetchReq = new Request("https://arturonavax.dev/en/blog/post-2", {
+      headers: {
+        "user-agent": CHROME_UA,
+        accept: "text/html",
+        "sec-purpose": "prefetch",
+        "cf-connecting-ip": "203.0.113.77",
+      },
+    });
+    const prefetchRes = await worker.fetch(prefetchReq, mockEnv, mockCtx);
+    await Promise.all(waitPromises.splice(0));
+    expect(prefetchRes.headers.get("X-Edge-Visit-Logged")).toBeNull();
+    expect(count("pageviews")).toBe(0);
+
+    const spaBeaconReq = new Request(
+      "https://arturonavax.dev/api/telemetry/collect",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "user-agent": CHROME_UA,
+          "cf-connecting-ip": "203.0.113.77",
+        },
+        body: JSON.stringify({
+          path: "/en/blog/post-2/",
+          type: "pageview",
+          trigger: "spa_transition",
+        }),
+      },
+    );
+    const spaBeaconRes = await worker.fetch(spaBeaconReq, mockEnv, mockCtx);
+    await Promise.all(waitPromises.splice(0));
+    expect(spaBeaconRes.status).toBe(202);
+    expect(count("telemetry_events")).toBe(2);
+
+    // (b) Real SSR navigation (/en/projects with Sec-Fetch-Mode: navigate) sets X-Edge-Visit-Logged: 1
+    //     and ev_init=1 cookie, and an immediate duplicate beacon from the same visitor is deduplicated at L1.
+    const ssrNavReq = new Request("https://arturonavax.dev/en/projects", {
+      headers: {
+        "user-agent": CHROME_UA,
+        accept: "text/html",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-dest": "document",
+        "cf-connecting-ip": "203.0.113.88",
+      },
+    });
+    const ssrNavRes = await worker.fetch(ssrNavReq, mockEnv, mockCtx);
+    await Promise.all(waitPromises.splice(0));
+    expect(ssrNavRes.headers.get("X-Edge-Visit-Logged")).toBe("1");
+    expect(ssrNavRes.headers.get("Set-Cookie")).toContain("ev_init=1");
+    const pageviewsAfterSsr = count("pageviews");
+    const telemetryAfterSsr = count("telemetry_events");
+    expect(pageviewsAfterSsr).toBe(1);
+
+    const dupBeaconReq = new Request(
+      "https://arturonavax.dev/api/telemetry/collect",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "user-agent": CHROME_UA,
+          "cf-connecting-ip": "203.0.113.88",
+        },
+        body: JSON.stringify({
+          path: "/en/projects/",
+          type: "pageview",
+          trigger: "initial_load",
+        }),
+      },
+    );
+    const dupBeaconRes = await worker.fetch(dupBeaconReq, mockEnv, mockCtx);
+    await Promise.all(waitPromises.splice(0));
+    const dupJson = (await dupBeaconRes.json()) as {
+      recorded: boolean;
+      deduped: boolean;
+      storageTier: string;
+    };
+    expect(dupJson.recorded).toBe(false);
+    expect(dupJson.deduped).toBe(true);
+    expect(dupJson.storageTier).toBe("L1_CACHE");
+    expect(count("pageviews")).toBe(pageviewsAfterSsr);
+    expect(count("telemetry_events")).toBe(telemetryAfterSsr);
+  });
+
+  it("2. 5-Tier Quota Degradation & Automatic D1 Error Failover to R2 WAL", async () => {
+    const r2 = createMockR2Bucket();
+    const { db, sqlite, count } = createD1Shim();
+
+    // Tier 2 (COMPACT_ROLLUP): 80,000 writes -> skips raw telemetry_events, buffers analytics_rollups
+    edgeQuotaTracker.setCountsForTesting(82_000, 10_000);
+    expect(edgeQuotaTracker.getTier()).toBe(
+      QuotaDegradationTier.COMPACT_ROLLUP,
+    );
+
+    const adapter = new D1TelemetryAdapter(db, { STORAGE_BUCKET: r2 });
+    const rollupRes = await adapter.ingestVisit({
+      path: "/projects/distributed-engine",
+      visitorHash: "visitor-tier2",
+      eventType: "pageview",
+      isBot: false,
+      country: "DE",
+    });
+    expect(rollupRes.recorded).toBe(true);
+    expect(rollupRes.storageTier).toBe("D1");
+    expect(count("telemetry_events")).toBe(0); // Raw event skipped in Tier 2
+    await flushCompactRollupBuffer(db);
+    expect(count("analytics_rollups")).toBe(1);
+
+    // Simulate D1 throwing "D1_ERROR: daily write quota exceeded" during a visit and a contact form submission
+    edgeQuotaTracker.reset();
+    const failingDb = {
+      prepare: () => ({
+        bind: () => ({
+          run: async () => {
+            throw new Error("D1_ERROR: daily write quota exceeded");
+          },
+          all: async () => {
+            throw new Error("D1_ERROR: daily write quota exceeded");
+          },
+        }),
+      }),
+    } as unknown as D1Database;
+    (failingDb as unknown as { batch: () => Promise<never> }).batch =
+      async () => {
+        throw new Error("D1_ERROR: daily write quota exceeded");
+      };
+
+    const failingAdapter = new D1TelemetryAdapter(failingDb, {
+      STORAGE_BUCKET: r2,
+    });
+    const failoverRes = await failingAdapter.ingestVisit({
+      path: "/blog/edge-resilience",
+      visitorHash: "visitor-failover",
+      eventType: "pageview",
+      isBot: false,
+      country: "US",
+    });
+
+    expect(failoverRes.recorded).toBe(true);
+    expect(failoverRes.storageTier).toBe("R2_WAL");
+    expect(edgeQuotaTracker.getTier()).toBe(
+      QuotaDegradationTier.R2_WAL_FALLBACK,
+    );
+
+    const walTelemetryKeys = [...r2.objects.keys()].filter((k) =>
+      k.startsWith("wal/telemetry/"),
+    );
+    expect(walTelemetryKeys.length).toBe(1);
+
+    // Contact form submission under D1 quota error also returns HTTP 200 and spills lead to wal/leads/
+    const contactReq = new Request("https://arturonavax.dev/api/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "cf-connecting-ip": "198.51.100.200",
+      },
+      body: JSON.stringify({
+        name: "Grace Hopper",
+        email: "grace@navy.mil",
+        subject: "Compiler Architecture",
+        message:
+          "Testing zero data loss R2 WAL failover when D1 quota is full.",
+      }),
+    });
+    const mockCtx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+    const contactRes = await worker.fetch(
+      contactReq,
+      {
+        DB: failingDb,
+        STORAGE_BUCKET: r2 as unknown as R2Bucket,
+        ASSETS: {
+          fetch: async () => new Response("OK", { status: 200 }),
+        } as unknown as Fetcher,
+      },
+      mockCtx,
+    );
+    expect(contactRes.status).toBe(200);
+    const walLeadKeys = [...r2.objects.keys()].filter((k) =>
+      k.startsWith("wal/leads/"),
+    );
+    expect(walLeadKeys.length).toBe(1);
+    void sqlite;
+  });
+
+  it("3. R2 WAL Nightly Cron Reconciliation: replays telemetry NDJSON and leads JSON into D1 and deletes R2 WAL objects", async () => {
+    const { db, count } = createD1Shim();
+    const r2 = createMockR2Bucket();
+
+    const walLines = [
+      JSON.stringify({
+        dedupe_key: "wal-dedupe-1",
+        path: "/blog/post-a",
+        event_type: "pageview",
+        visitor_hash: "v-hash-1",
+        is_bot: 0,
+        bot_name: null,
+        country: "US",
+        device_type: "desktop",
+        referrer_host: "news.ycombinator.com",
+        status_code: 200,
+        created_at: "2026-10-18T02:10:00.000Z",
+      }),
+      JSON.stringify({
+        dedupe_key: "wal-dedupe-2",
+        path: "/blog/post-a",
+        event_type: "spa_transition",
+        visitor_hash: "v-hash-2",
+        is_bot: 1,
+        bot_name: "GPTBot",
+        country: "US",
+        device_type: "desktop",
+        referrer_host: "openai.com",
+        status_code: 200,
+        created_at: "2026-10-18T02:15:00.000Z",
+      }),
+    ].join("\n");
+
+    await r2.put("wal/telemetry/2026-10-18/iso-test-1.ndjson", walLines);
+    await r2.put(
+      "wal/leads/lead-test-1.json",
+      JSON.stringify({
+        name: "Alan Turing",
+        from_email: "alan@bletchley.uk",
+        phone: "+44 20 7946 0921",
+        subject: "[Web] Cryptography Inquiry",
+        body: "Reconciled from R2 WAL",
+        locale: "en",
+        ip: "192.0.2.99",
+        country: "GB",
+        turnstile_verified: 1,
+        created_at: "2026-10-18T03:00:00.000Z",
+      }),
+    );
+
+    const summary = await reconcileR2WalToD1({
+      DB: db,
+      STORAGE_BUCKET: r2 as unknown as R2Bucket,
+    });
+
+    expect(summary.telemetryObjectsProcessed).toBe(1);
+    expect(summary.telemetryEventsInserted).toBe(2);
+    expect(summary.leadObjectsProcessed).toBe(1);
+    expect(summary.leadsInserted).toBe(1);
+    expect(summary.deletedKeys.length).toBe(2);
+    expect(r2.objects.size).toBe(0);
+
+    expect(count("telemetry_events")).toBe(2);
+    expect(count("analytics_rollups")).toBe(1);
+    expect(count("contact_leads")).toBe(1);
+  });
+
+  it("4. Minimum-Cost R2 Sync: r2:pull with matching rootHash in content/_manifest.v2.json performs 1 GetObject and 0 ListObjectsV2", async () => {
+    const { runR2Pull } = await import("../../scripts/r2-pull.mjs");
+    const { buildLocalManifestV2 } =
+      await import("../../scripts/lib/r2-content.mjs");
+
+    const localManifest = buildLocalManifestV2();
+    const tmpCachePath = path.join(
+      process.cwd(),
+      ".cache",
+      `r2-manifest.test-${Date.now()}.json`,
+    );
+    fs.mkdirSync(path.dirname(tmpCachePath), { recursive: true });
+    fs.writeFileSync(
+      tmpCachePath,
+      JSON.stringify(
+        {
+          etag: '"v2-etag-1"',
+          rootHash: localManifest.rootHash,
+          manifest: localManifest,
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const getObjectKeys: string[] = [];
+    let listObjectsV2Calls = 0;
+
+    const mockDriver = {
+      getObjectCalls: 0,
+      listObjectsCalls: 0,
+      getJsonIfModified: async (key: string) => {
+        mockDriver.getObjectCalls++;
+        getObjectKeys.push(key);
+        return {
+          notModified: false,
+          etag: '"v2-etag-1"',
+          data: localManifest,
+        };
+      },
+      getBuffer: async (key: string) => {
+        mockDriver.getObjectCalls++;
+        getObjectKeys.push(key);
+        return null;
+      },
+      listObjectsV2: async () => {
+        listObjectsV2Calls++;
+        mockDriver.listObjectsCalls++;
+        return [];
+      },
+    };
+
+    try {
+      const result = await runR2Pull({
+        driver: mockDriver,
+        cachePath: tmpCachePath,
+        silent: true,
+      });
+
+      expect(result.skipped).toBe(true);
+      expect(result.getObjectCalls).toBe(1);
+      expect(getObjectKeys).toEqual(["content/_manifest.v2.json"]);
+      expect(result.listObjectsCalls).toBe(0);
+      expect(listObjectsV2Calls).toBe(0);
+    } finally {
+      if (fs.existsSync(tmpCachePath)) {
+        fs.unlinkSync(tmpCachePath);
+      }
+    }
+  });
+
+  it("5. Static Asset Zero-D1 Bypass: requests to /_astro/client.js, /fonts/inter.woff2, /favicon.svg trigger 0 D1 queries", async () => {
+    let d1Calls = 0;
+    const spyDb = {
+      prepare: () => {
+        d1Calls++;
+        return {
+          bind: () => ({
+            run: async () => ({ success: true }),
+            all: async () => ({ results: [] }),
+          }),
+        };
+      },
+      batch: async () => {
+        d1Calls++;
+        return [];
+      },
+    } as unknown as D1Database;
+
+    const mockEnv = {
+      DB: spyDb,
+      ASSETS: {
+        fetch: async () =>
+          new Response("/* static asset */", {
+            status: 200,
+            headers: { "Content-Type": "application/javascript" },
+          }),
+      } as unknown as Fetcher,
+    };
+
+    const waitPromises: Promise<unknown>[] = [];
+    const mockCtx = {
+      waitUntil: (p: Promise<unknown>) => waitPromises.push(p),
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+
+    for (const assetPath of [
+      "/_astro/client.js",
+      "/fonts/inter.woff2",
+      "/favicon.svg",
+    ]) {
+      const req = new Request(`https://arturonavax.dev${assetPath}`, {
+        headers: {
+          "user-agent": CHROME_UA,
+          accept: "*/*",
+        },
+      });
+      const res = await worker.fetch(req, mockEnv, mockCtx);
+      expect(res.status).toBe(200);
+    }
+
+    await Promise.all(waitPromises);
+    expect(waitPromises.length).toBe(0);
+    expect(d1Calls).toBe(0);
   });
 });

@@ -15,6 +15,19 @@ import {
   BotQuotaCircuitBreaker,
   StaticMemorySearchAdapter,
   DeploymentRegistry,
+  QuotaDegradationTier,
+  degradationTierToName,
+  edgeQuotaTracker,
+  isD1QuotaException,
+  D1TelemetryAdapter,
+  normalizeTelemetryPath,
+  computeVisitDedupeKey,
+  checkAndSetL1DedupeCache,
+  clearL1DedupeCache,
+  clearCompactRollupBuffer,
+  flushCompactRollupBuffer,
+  writeTelemetryWalToR2,
+  resolveR2Bucket,
 } from "../src/lib/adapters";
 import type { SearchResultItem } from "../src/lib/ports/search.port";
 
@@ -22,6 +35,15 @@ export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   STORAGE_BUCKET?: R2Bucket;
+  R2_BUCKET?: R2Bucket;
+  CONTENT_BUCKET?: R2Bucket;
+  ANALYTICS_ENGINE?: {
+    writeDataPoint(event: {
+      blobs?: string[];
+      doubles?: number[];
+      indexes?: string[];
+    }): void;
+  };
   VECTORIZE_INDEX?: any;
   AI?: any;
   TURNSTILE_SECRET_KEY?: string;
@@ -38,19 +60,39 @@ export interface Env {
   ENABLE_PREFETCH_TELEMETRY?: string | boolean;
   ENABLE_BOT_TELEMETRY?: string | boolean;
   SIMULATE_LOW_DB_QUOTA?: string | boolean;
+  CLOUDFLARE_PLAN_TIER?: string;
   D1_DAILY_WRITE_BUDGET?: string | number;
+  D1_DAILY_READ_BUDGET?: string | number;
+  WORKERS_DAILY_REQUEST_BUDGET?: string | number;
+  D1_TIER_CONSERVATIVE_RATIO?: string | number;
+  D1_TIER_COMPACT_RATIO?: string | number;
+  D1_TIER_SURVIVAL_RATIO?: string | number;
+  D1_TIER_WAL_RATIO?: string | number;
+  D1_BOT_BUDGET_RATIO?: string | number;
+  D1_PREFETCH_BUDGET_RATIO?: string | number;
+  D1_VISIT_BUDGET_RATIO?: string | number;
+  D1_PREFETCH_SAMPLE_RATE?: string | number;
+  REQUIRE_CF_ACCESS?: string | boolean;
 }
 
-// 120-second In-Memory Edge Cache for /api/telemetry to protect D1 daily row read quota (5,000,000 limit)
+// 120-second In-Memory Edge Cache for /api/telemetry, /api/metrics, /api/leads, and /api/deployments to protect D1 daily row read quota (5,000,000 limit)
 interface CachedTelemetry {
   timestamp: number;
   data: any;
+  dbRef?: unknown;
 }
 const telemetryCache = new Map<string, CachedTelemetry>();
+const telemetryFreshCooldown = new Map<string, number>();
+let cachedMetricsSnapshot: CachedTelemetry | null = null;
+let cachedLeadsSnapshot: CachedTelemetry | null = null;
+let cachedDeploymentsSnapshot: CachedTelemetry | null = null;
 const TELEMETRY_CACHE_TTL_MS = 120_000;
+const TELEMETRY_FRESH_COOLDOWN_MS = 15_000;
 
 const STATIC_EXT_REGEX =
-  /\.(?:css|js|mjs|map|json|png|jpg|jpeg|webp|avif|svg|ico|gif|woff|woff2|ttf|eot|xml|txt|pdf|webmanifest)$/i;
+  /\.(?:css|js|mjs|map|json|png|jpg|jpeg|webp|avif|svg|ico|gif|woff|woff2|ttf|otf|eot|xml|txt|pdf|webmanifest)$/i;
+
+const STATIC_PREFIX_REGEX = /^\/(?:_astro|fonts|images|assets)\//i;
 
 /**
  * Vulnerability probe patterns and forbidden extensions for static Astro sites.
@@ -106,6 +148,210 @@ const circuitBreaker = new FailOpenCircuitBreaker();
 export const prefetchCircuitBreaker = new PrefetchQuotaCircuitBreaker();
 export const botCircuitBreaker = new BotQuotaCircuitBreaker();
 
+function isAdminSurfacePath(pathname: string): boolean {
+  return (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    /^\/[a-z]{2}\/admin(?:\/|$)/i.test(pathname)
+  );
+}
+
+function withNoIndexHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  const body =
+    response.status === 304 || response.status === 204 ? null : response.body;
+  return new Response(body, { status: response.status, headers });
+}
+
+const AI_CONTENT_ROUTE_REGEX =
+  /^\/(?:(en|es)\/)?(blog|projects|services|experience|resume)(?:\/([^/?#]+?))?(?:\.md)?\/?$/i;
+
+function stripHtmlTagsToMarkdown(html: string): {
+  title: string;
+  description: string;
+  bodyMarkdown: string;
+} {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const descMatch =
+    html.match(
+      /<meta[^>]+name=["']description["'][^>]+content=["']([\s\S]*?)["']/i,
+    ) ||
+    html.match(
+      /<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']description["']/i,
+    );
+  const title = (titleMatch?.[1] || "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const description = (descMatch?.[1] || "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const articleMatch =
+    html.match(/<article[^>]*>([\s\S]*?)<\/article>/i) ||
+    html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+  const rawSection = articleMatch?.[1] || "";
+  if (!rawSection) {
+    return { title, description, bodyMarkdown: "" };
+  }
+
+  const bodyMarkdown = rawSection
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, "\n# $1\n")
+    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, "\n## $1\n")
+    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, "\n### $1\n")
+    .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, "- $1\n")
+    .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, "\n$1\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return { title, description, bodyMarkdown };
+}
+
+async function handleAiMarkdownNegotiation(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+): Promise<Response | null> {
+  if (request.method !== "GET") return null;
+
+  const pathname = url.pathname;
+  const acceptHeader = (request.headers.get("accept") || "").toLowerCase();
+  const isMdExtension = pathname.toLowerCase().endsWith(".md");
+  const wantsMarkdown = acceptHeader.includes("text/markdown") || isMdExtension;
+
+  if (!wantsMarkdown) return null;
+
+  const match = pathname.match(AI_CONTENT_ROUTE_REGEX);
+  if (!match) return null;
+
+  const locale = (match[1] || "en").toLowerCase();
+  const section = (match[2] || "blog").toLowerCase();
+  const rawSlug = (match[3] || "").replace(/\.md$/i, "");
+  const slug = rawSlug || section;
+
+  const canonicalPath =
+    locale === "es"
+      ? `/es/${section}${rawSlug ? `/${rawSlug}/` : "/"}`
+      : `/${section}${rawSlug ? `/${rawSlug}/` : "/"}`;
+  const canonicalUrl = `https://arturonavax.dev${canonicalPath}`;
+  const llmsAnchorUrl = `https://arturonavax.dev/llms-full.txt#${encodeURIComponent(slug)}`;
+
+  const cache =
+    typeof caches !== "undefined" && caches.default ? caches.default : null;
+  const cacheKey = new Request(
+    `https://markdown.internal${canonicalPath}index.md`,
+    { method: "GET" },
+  );
+
+  if (cache) {
+    try {
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    } catch {
+      // Fail-open on cache error
+    }
+  }
+
+  let extractedTitle = "";
+  let extractedDesc = "";
+  let extractedBody = "";
+
+  if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
+    try {
+      const assetUrl = new URL(canonicalPath, url.origin);
+      const htmlReq = new Request(assetUrl.toString(), {
+        method: "GET",
+        headers: { accept: "text/html" },
+      });
+      const htmlRes = await env.ASSETS.fetch(htmlReq);
+      if (htmlRes && htmlRes.status === 200) {
+        const htmlText = await htmlRes.text();
+        const parsed = stripHtmlTagsToMarkdown(htmlText);
+        extractedTitle = parsed.title;
+        extractedDesc = parsed.description;
+        extractedBody = parsed.bodyMarkdown;
+      }
+    } catch {
+      // Fail-open on asset fetch
+    }
+  }
+
+  const humanizedSlug = slug
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  const finalTitle =
+    extractedTitle || `${humanizedSlug} — Arturo Nava (${section})`;
+  const finalSummary =
+    extractedDesc ||
+    `Technical ${section} resource by Arturo Nava (Senior Software & AI Engineer | Distributed Systems Architect).`;
+
+  const markdownLines = [
+    `# ${finalTitle}`,
+    "",
+    `- **Author**: Arturo Nava (https://arturonavax.dev/#person)`,
+    `- **Canonical URL**: ${canonicalUrl}`,
+    `- **Locale**: ${locale}`,
+    `- **Section**: ${section}`,
+    `- **Full AI Knowledge Base**: ${llmsAnchorUrl}`,
+    "",
+    `## Summary`,
+    finalSummary,
+  ];
+
+  if (extractedBody) {
+    markdownLines.push("", "## Content", extractedBody);
+  }
+
+  markdownLines.push(
+    "",
+    "---",
+    `For complete machine-readable context across all posts, projects, experience, services, and resume, fetch: https://arturonavax.dev/llms-full.txt`,
+    "",
+  );
+
+  const mdResponse = new Response(markdownLines.join("\n"), {
+    status: 200,
+    headers: {
+      "Content-Type": "text/markdown; charset=utf-8",
+      "Cache-Control": "public, max-age=86400, s-maxage=86400",
+      "X-Robots-Tag":
+        "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+      Link: `<https://arturonavax.dev/llms.txt>; rel="llms-txt", <https://arturonavax.dev/llms-full.txt>; rel="alternate"; type="text/plain", <${canonicalUrl}>; rel="canonical"`,
+      Location: llmsAnchorUrl,
+      Vary: "Accept",
+    },
+  });
+
+  if (cache) {
+    try {
+      const putPromise = cache.put(cacheKey, mdResponse.clone());
+      if (ctx && typeof ctx.waitUntil === "function") {
+        ctx.waitUntil(putPromise);
+      } else {
+        await putPromise;
+      }
+    } catch {
+      // Fail-open on cache write
+    }
+  }
+
+  return mdResponse;
+}
+
 export default {
   async fetch(
     request: Request,
@@ -114,15 +360,38 @@ export default {
   ): Promise<Response> {
     const url = new URL(request.url);
     const host = url.hostname.toLowerCase();
-
     const pathname = url.pathname;
+
+    if (env) {
+      edgeQuotaTracker.configureFromEnv(
+        env as unknown as Record<string, unknown>,
+      );
+    }
 
     // -------------------------------------------------------------------------
     // 1. FAST-PATH: Subdomain Canonicalization & Apex Admin Surface Redirect (REQ-PCD-02, REQ-PCD-03)
     // -------------------------------------------------------------------------
     const isLocal = host === "localhost" || host === "127.0.0.1";
-    if (isLocal && (pathname === "/admin" || pathname.startsWith("/admin/"))) {
-      return handleAdminDashboardRequest(request, env, ctx);
+    if (isLocal && isAdminSurfacePath(pathname)) {
+      return withNoIndexHeaders(
+        await handleAdminDashboardRequest(request, env, ctx),
+      );
+    }
+
+    if (
+      isAdminSurfacePath(pathname) &&
+      host !== "admin.arturonavax.dev" &&
+      host !== "dash.arturonavax.dev"
+    ) {
+      const adminPath = pathname.replace(/^\/(?:[a-z]{2}\/)?admin/i, "") || "/";
+      return new Response(null, {
+        status: 308,
+        headers: {
+          Location: `https://admin.arturonavax.dev${adminPath}${url.search}`,
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
+          "Cache-Control": "no-store, private",
+        },
+      });
     }
 
     const redirect = routingPolicy.resolveCanonicalRedirect(url);
@@ -136,16 +405,18 @@ export default {
         pathname === "/favicon.ico" ||
         pathname === "/favicon.svg" ||
         pathname.startsWith("/favicon-") ||
-        pathname.startsWith("/_astro/") ||
-        pathname.startsWith("/fonts/")
+        STATIC_PREFIX_REGEX.test(pathname) ||
+        STATIC_EXT_REGEX.test(pathname)
       ) {
-        return env.ASSETS.fetch(request);
+        return withNoIndexHeaders(await env.ASSETS.fetch(request));
       }
-      return handleAdminDashboardRequest(request, env, ctx);
+      return withNoIndexHeaders(
+        await handleAdminDashboardRequest(request, env, ctx),
+      );
     }
 
     // -------------------------------------------------------------------------
-    // 2. FAST-PATH: Immutable Static Assets & Typography (REQ-PCD-01, REQ-PCD-06)
+    // 2. FAST-PATH: Static Asset Bypass (Zero D1 / Telemetry / Session Overhead)
     // -------------------------------------------------------------------------
     const isImmutableAsset =
       pathname.startsWith("/_astro/") || pathname.startsWith("/fonts/");
@@ -158,6 +429,55 @@ export default {
         headers.set("Access-Control-Allow-Origin", "*");
       }
       headers.set("X-Content-Type-Options", "nosniff");
+      const body =
+        response.status === 304 || response.status === 204
+          ? null
+          : response.body;
+      return new Response(body, { status: response.status, headers });
+    }
+
+    if (
+      !pathname.startsWith("/api/") &&
+      !pathname.startsWith("/cdn-assets/") &&
+      !isVulnerabilityScannerPath(pathname) &&
+      (STATIC_PREFIX_REGEX.test(pathname) || STATIC_EXT_REGEX.test(pathname))
+    ) {
+      const response = await env.ASSETS.fetch(request);
+      const headers = new Headers(response.headers);
+      if (pathname.endsWith(".pdf")) {
+        headers.set(
+          "Cache-Control",
+          "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+        );
+      } else if (/\.(?:png|jpg|jpeg|webp|avif|svg|ico|gif)$/i.test(pathname)) {
+        headers.set(
+          "Cache-Control",
+          "public, max-age=604800, stale-while-revalidate=86400",
+        );
+        headers.set("X-Content-Type-Options", "nosniff");
+      } else if (pathname.startsWith("/search-index")) {
+        headers.set(
+          "Cache-Control",
+          "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+        );
+        headers.set("Access-Control-Allow-Origin", "*");
+      } else if (
+        pathname.endsWith("sitemap-index.xml") ||
+        pathname.endsWith("sitemap-0.xml") ||
+        pathname === "/rss.xml" ||
+        pathname === "/robots.txt" ||
+        pathname.startsWith("/llms")
+      ) {
+        headers.set(
+          "Cache-Control",
+          "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+        );
+      } else {
+        headers.set(
+          "Cache-Control",
+          "public, max-age=3600, stale-while-revalidate=86400",
+        );
+      }
       const body =
         response.status === 304 || response.status === 204
           ? null
@@ -181,19 +501,39 @@ export default {
     // 4. Dedicated API Endpoints (Search, Captcha, Ingestion, Storage, Contact)
     // -------------------------------------------------------------------------
     if (pathname === "/api/contact") {
-      return handleContactFormSubmission(request, env, ctx);
+      return withNoIndexHeaders(
+        await handleContactFormSubmission(request, env, ctx),
+      );
     }
 
     if (pathname === "/api/search") {
-      return handleSemanticSearch(request, env, ctx, url);
+      return withNoIndexHeaders(
+        await handleSemanticSearch(request, env, ctx, url),
+      );
     }
 
     if (pathname === "/api/verify-captcha" && request.method === "POST") {
-      return handleCaptchaVerification(request, env, ctx);
+      return withNoIndexHeaders(
+        await handleCaptchaVerification(request, env, ctx),
+      );
     }
 
     if (pathname === "/api/v1/telemetry" && request.method === "POST") {
-      return handleTelemetryIngestion(request, env, ctx, isPrefetch);
+      return withNoIndexHeaders(
+        await handleTelemetryIngestion(request, env, ctx, isPrefetch),
+      );
+    }
+
+    if (pathname === "/api/telemetry/collect") {
+      return withNoIndexHeaders(
+        await handleTelemetryCollectBeacon(request, env, ctx, isPrefetch),
+      );
+    }
+
+    if (pathname === "/api/telemetry/views" && request.method === "GET") {
+      return withNoIndexHeaders(
+        await handleTelemetryViewsRead(request, env, ctx, url),
+      );
     }
 
     if (pathname.startsWith("/cdn-assets/") && env.STORAGE_BUCKET) {
@@ -216,18 +556,39 @@ export default {
             "Content-Type": "application/json",
             "Cache-Control": "no-store, private",
             "X-Content-Type-Options": "nosniff",
+            "X-Robots-Tag": "noindex, nofollow, noarchive",
           },
         },
       );
     }
 
+    if (pathname.startsWith("/api/")) {
+      return new Response(JSON.stringify({ error: "Not Found" }), {
+        status: 404,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Content-Type-Options": "nosniff",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
+        },
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 4b. AI Content Negotiation (Accept: text/markdown or .md suffix)
+    // -------------------------------------------------------------------------
+    const aiMarkdownResponse = await handleAiMarkdownNegotiation(
+      request,
+      env,
+      ctx,
+      url,
+    );
+    if (aiMarkdownResponse) {
+      return aiMarkdownResponse;
+    }
+
     // -------------------------------------------------------------------------
     // 5. FAST-PATH: Public Document Delivery & Non-Blocking Telemetry (REQ-PCD-01, REQ-PCD-04)
     // -------------------------------------------------------------------------
-    // Fast Rejection: Vulnerability Scanner & Exploit Probes (Tier 1).
-    // Defense-in-depth behind the Tier 0 WAF rule. Never touches ASSETS or D1.
-    // Note: Worker-generated responses are not auto-cached by the CDN; max-age only
-    // benefits clients, the O(1) check itself is the performance guarantee.
     if (isVulnerabilityScannerPath(pathname)) {
       return new Response("Not Found", {
         status: 404,
@@ -235,11 +596,13 @@ export default {
           "Content-Type": "text/plain; charset=utf-8",
           "X-Content-Type-Options": "nosniff",
           "Cache-Control": "public, max-age=86400",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
         },
       });
     }
 
     const response = await env.ASSETS.fetch(request);
+    let edgeVisitLogged = false;
 
     // Asynchronous decoupled telemetry in background via ctx.waitUntil
     // Enforce HTTP 200/304 Status Invariant: Only record analytics if response is successful (protect D1 quota)
@@ -282,7 +645,11 @@ export default {
           } else {
             // Circuit Breaker tripped or kill-switch: log incident once per date in background
             const today = new Date().toISOString().slice(0, 10);
-            if (prefetchCircuitBreaker.shouldLogIncident(today)) {
+            if (
+              edgeQuotaTracker.getTier() <
+                QuotaDegradationTier.CRITICAL_SURVIVAL &&
+              prefetchCircuitBreaker.shouldLogIncident(today)
+            ) {
               prefetchCircuitBreaker.markIncidentLogged(today);
               const tripReason = prefetchCircuitBreaker.getTripReason();
               ctx.waitUntil(
@@ -297,14 +664,13 @@ export default {
           }
         } else {
           // Primary Priority (P0): Real human pageview (100% server-side, anti-adblocker)
+          edgeVisitLogged = true;
           if (
             !prefetchCircuitBreaker.canRecordVisit ||
             prefetchCircuitBreaker.canRecordVisit(
               env as unknown as Record<string, unknown>,
             )
           ) {
-            // recordVisit() is invoked inside recordAnalyticsNonBlocking only after the
-            // dedupe gate passes, so discarded duplicates never burn quota budget.
             ctx.waitUntil(
               recordAnalyticsNonBlocking(request, pathname, env.DB, env),
             );
@@ -317,55 +683,45 @@ export default {
     const headers = new Headers(response.headers);
     let shouldWrapResponse = false;
 
-    if (pathname.endsWith(".pdf")) {
-      headers.set(
-        "Cache-Control",
-        "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
-      );
-      shouldWrapResponse = true;
-    } else if (/\.(?:png|jpg|jpeg|webp|avif|svg|ico)$/i.test(pathname)) {
-      headers.set(
-        "Cache-Control",
-        "public, max-age=604800, stale-while-revalidate=86400",
-      );
-      headers.set("X-Content-Type-Options", "nosniff");
-      shouldWrapResponse = true;
-    } else if (pathname.startsWith("/search-index")) {
-      headers.set(
-        "Cache-Control",
-        "public, max-age=3600, stale-while-revalidate=86400",
-      );
-      headers.set("Access-Control-Allow-Origin", "*");
-      shouldWrapResponse = true;
-    } else if (
-      pathname.endsWith("sitemap-index.xml") ||
-      pathname.endsWith("sitemap-0.xml") ||
-      pathname === "/rss.xml" ||
-      pathname === "/robots.txt" ||
-      pathname.startsWith("/llms")
+    const contentType = headers.get("content-type") || "";
+    if (
+      contentType.includes("text/html") ||
+      pathname.endsWith("/") ||
+      !pathname.includes(".")
     ) {
-      headers.set("Cache-Control", "public, max-age=3600, must-revalidate");
-      shouldWrapResponse = true;
-    } else {
-      const contentType = headers.get("content-type") || "";
-      if (
-        contentType.includes("text/html") ||
-        pathname.endsWith("/") ||
-        !pathname.includes(".")
-      ) {
-        if (!headers.has("Cache-Control")) {
-          headers.set("Cache-Control", "public, max-age=0, must-revalidate");
-        }
-        headers.set("X-Content-Type-Options", "nosniff");
-        headers.set("X-Frame-Options", "DENY");
-        headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-        headers.set(
-          "Strict-Transport-Security",
-          "max-age=63072000; includeSubDomains; preload",
-        );
-        headers.set("Alt-Svc", 'h3=":443"; ma=86400');
-        shouldWrapResponse = true;
+      if (!headers.has("Cache-Control")) {
+        headers.set("Cache-Control", "public, max-age=0, must-revalidate");
       }
+      headers.set("X-Content-Type-Options", "nosniff");
+      headers.set("X-Frame-Options", "DENY");
+      headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+      headers.set(
+        "Strict-Transport-Security",
+        "max-age=63072000; includeSubDomains; preload",
+      );
+      headers.set("Alt-Svc", 'h3=":443"; ma=86400');
+
+      if (isAdminSurfacePath(pathname)) {
+        headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+      } else if (response.status === 200) {
+        headers.set(
+          "X-Robots-Tag",
+          "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+        );
+        headers.set(
+          "Link",
+          '<https://arturonavax.dev/llms.txt>; rel="llms-txt", <https://arturonavax.dev/llms-full.txt>; rel="alternate"; type="text/plain"',
+        );
+      }
+
+      if (edgeVisitLogged && !isPrefetch) {
+        headers.set("X-Edge-Visit-Logged", "1");
+        headers.append(
+          "Set-Cookie",
+          "ev_init=1; Max-Age=5; Path=/; SameSite=Lax",
+        );
+      }
+      shouldWrapResponse = true;
     }
 
     if (shouldWrapResponse) {
@@ -885,7 +1241,46 @@ export async function handleContactFormSubmission(
     formattedBody += `\nLocale: ${locale}\nIP: ${ip}\nLocation: ${[city, country].filter(Boolean).join(", ") || "Unknown"}\n\nMessage:\n${message}`;
 
     // Persist in D1 contact_leads (Migration 0008 includes legal, network & geo telemetry)
-    if (env.DB) {
+    // Tier 4 or D1 error automatically spills the lead to R2 WAL (`wal/leads/${uuid}.json`)
+    const leadWalPayload = {
+      name,
+      from_email: email,
+      phone: phone || null,
+      subject: `[Web] ${subject}`,
+      body: formattedBody,
+      locale,
+      ip,
+      country: country || null,
+      city: city || null,
+      region: region || null,
+      timezone: timezone || null,
+      asn,
+      as_organization: asOrganization || null,
+      user_agent: userAgent || null,
+      referer: referer || null,
+      turnstile_verified: isTurnstileVerified ? 1 : 0,
+      created_at: new Date().toISOString(),
+    };
+
+    const spillLeadToR2Wal = async () => {
+      const bucket = resolveR2Bucket(env);
+      if (!bucket || typeof bucket.put !== "function") return;
+      try {
+        const walKey = `wal/leads/${crypto.randomUUID()}.json`;
+        await bucket.put(walKey, JSON.stringify(leadWalPayload), {
+          httpMetadata: { contentType: "application/json" },
+        });
+      } catch (walErr) {
+        console.warn("[Contact Lead R2 WAL Error]:", walErr);
+      }
+    };
+
+    if (
+      edgeQuotaTracker.getTier() === QuotaDegradationTier.R2_WAL_FALLBACK ||
+      !env.DB
+    ) {
+      await spillLeadToR2Wal();
+    } else if (env.DB) {
       try {
         const stmt = env.DB.prepare(
           "INSERT INTO contact_leads (from_email, subject, body, name, phone, locale, ip, country, city, region, timezone, asn, as_organization, user_agent, referer, turnstile_verified, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
@@ -908,20 +1303,32 @@ export async function handleContactFormSubmission(
           isTurnstileVerified ? 1 : 0,
         );
         await stmt.run();
+        edgeQuotaTracker.recordWrite(1);
       } catch (err) {
-        try {
-          const fallbackStmt = env.DB.prepare(
-            "INSERT INTO contact_leads (from_email, subject, body, name, phone, locale, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
-          ).bind(
-            email,
-            `[Web] ${subject}`,
-            formattedBody,
-            name,
-            phone || null,
-            locale,
-          );
-          await fallbackStmt.run();
-        } catch {}
+        if (isD1QuotaException(err)) {
+          edgeQuotaTracker.tripCircuitBreaker(String(err));
+          await spillLeadToR2Wal();
+        } else {
+          try {
+            const fallbackStmt = env.DB.prepare(
+              "INSERT INTO contact_leads (from_email, subject, body, name, phone, locale, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+            ).bind(
+              email,
+              `[Web] ${subject}`,
+              formattedBody,
+              name,
+              phone || null,
+              locale,
+            );
+            await fallbackStmt.run();
+            edgeQuotaTracker.recordWrite(1);
+          } catch (fallbackErr) {
+            if (isD1QuotaException(fallbackErr)) {
+              edgeQuotaTracker.tripCircuitBreaker(String(fallbackErr));
+            }
+            await spillLeadToR2Wal();
+          }
+        }
       }
     }
 
@@ -1154,7 +1561,8 @@ export function classifyVisitor(
     if (
       acceptHeader.includes("text/html") ||
       secFetchDest === "document" ||
-      request.url.includes("/api/v1/telemetry")
+      request.url.includes("/api/v1/telemetry") ||
+      request.url.includes("/api/telemetry/collect")
     ) {
       return {
         isBot: false,
@@ -1486,6 +1894,273 @@ async function handleTelemetryIngestion(
 }
 
 /**
+ * Lightweight SPA View Transitions & bfcache Beacon Collector (`POST /api/telemetry/collect`)
+ * Protected by L1 Cache API 30-minute deduplication and 5-tier quota degradation.
+ */
+async function handleTelemetryCollectBeacon(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  isPrefetch: boolean,
+): Promise<Response> {
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json", Allow: "POST" },
+    });
+  }
+
+  const jsonHeaders = {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store, private",
+  };
+
+  if (isPrefetch) {
+    return new Response(
+      JSON.stringify({
+        recorded: false,
+        deduped: true,
+        storageTier: "L1_CACHE",
+      }),
+      { status: 202, headers: jsonHeaders },
+    );
+  }
+
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > 1024) {
+    return new Response(JSON.stringify({ error: "Payload Too Large" }), {
+      status: 413,
+      headers: jsonHeaders,
+    });
+  }
+
+  try {
+    const raw = await request.text();
+    if (raw.length > 1024) {
+      return new Response(JSON.stringify({ error: "Payload Too Large" }), {
+        status: 413,
+        headers: jsonHeaders,
+      });
+    }
+    const payload = (raw ? JSON.parse(raw) : {}) as Record<string, unknown>;
+    const rawPath = String(payload.path || "/");
+    if (
+      !TELEMETRY_PATH_REGEX.test(rawPath) ||
+      isVulnerabilityScannerPath(rawPath) ||
+      STATIC_EXT_REGEX.test(rawPath)
+    ) {
+      return new Response(
+        JSON.stringify({
+          recorded: false,
+          deduped: false,
+          storageTier: "L1_CACHE",
+        }),
+        { status: 202, headers: jsonHeaders },
+      );
+    }
+
+    const normalizedPath = normalizeTelemetryPath(rawPath);
+    const eventTypeRaw = String(
+      payload.trigger || payload.eventType || "spa_transition",
+    );
+    const eventType: "pageview" | "spa_transition" | "bfcache" | "beacon" =
+      eventTypeRaw === "bfcache" ||
+      eventTypeRaw === "pageview" ||
+      eventTypeRaw === "beacon"
+        ? eventTypeRaw
+        : "spa_transition";
+
+    const visitorInfo = classifyVisitor(request, normalizedPath);
+    const userAgent = request.headers.get("user-agent") || "";
+    if (visitorInfo.isBot) {
+      if (
+        !botCircuitBreaker.canRecordBot(
+          env as unknown as Record<string, unknown>,
+          userAgent,
+          visitorInfo.classification,
+        )
+      ) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            recorded: false,
+            deduped: true,
+            deduplicated: true,
+            storageTier: "L1_CACHE",
+          }),
+          { status: 202, headers: jsonHeaders },
+        );
+      }
+      botCircuitBreaker.recordBot();
+    }
+
+    const ip = request.headers.get("cf-connecting-ip") || "127.0.0.1";
+    const visitorHash = await computeVisitorHash(ip, userAgent);
+    const country =
+      (request as unknown as { cf?: { country?: string } }).cf?.country ||
+      request.headers.get("cf-ipcountry") ||
+      "XX";
+    const attribution = parseAttribution(
+      request.url,
+      String(payload.referrer || request.headers.get("referer") || ""),
+    );
+
+    const adapter = new D1TelemetryAdapter(env.DB, env, ctx);
+    const result = await adapter.ingestVisit({
+      path: normalizedPath,
+      visitorHash,
+      ip,
+      userAgent,
+      eventType,
+      isBot: visitorInfo.isBot,
+      botName: visitorInfo.isBot ? visitorInfo.reason : null,
+      country,
+      deviceType: /mobile|android|iphone|ipad/i.test(userAgent)
+        ? "mobile"
+        : "desktop",
+      referrerHost: attribution.referrer,
+      statusCode: 200,
+    });
+
+    if (result.recorded) {
+      prefetchCircuitBreaker.recordVisit();
+    }
+
+    return new Response(JSON.stringify({ ok: true, ...result }), {
+      status: 202,
+      headers: jsonHeaders,
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        recorded: false,
+        deduped: false,
+        storageTier: "L1_CACHE",
+      }),
+      { status: 202, headers: jsonHeaders },
+    );
+  }
+}
+
+/**
+ * Cached O(1) Views Counter Read Endpoint (`GET /api/telemetry/views?path=/...`)
+ * Queries `analytics_rollups` (1 indexed row read) and caches in `caches.default` for 60s.
+ */
+async function handleTelemetryViewsRead(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+): Promise<Response> {
+  const rawPath = url.searchParams.get("path") || "/";
+  const normalizedPath = normalizeTelemetryPath(rawPath);
+  const cache =
+    typeof caches !== "undefined" && caches.default ? caches.default : null;
+  const cacheKey = new Request(
+    `https://telemetry.internal/views?path=${encodeURIComponent(normalizedPath)}`,
+  );
+
+  if (cache) {
+    try {
+      const hit = await cache.match(cacheKey);
+      if (hit) {
+        const clone = hit.clone();
+        const headers = new Headers(clone.headers);
+        headers.set("X-Telemetry-Cache", "HIT");
+        return new Response(clone.body, { status: 200, headers });
+      }
+    } catch {
+      // Ignore cache lookup failure
+    }
+  }
+
+  // Tier 3+ Survival Mode: Zero D1 reads
+  if (
+    edgeQuotaTracker.getTier() >= QuotaDegradationTier.CRITICAL_SURVIVAL ||
+    !env.DB
+  ) {
+    return new Response(
+      JSON.stringify({
+        path: normalizedPath,
+        views: 0,
+        cached: true,
+        degraded: true,
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control":
+            "public, max-age=60, s-maxage=60, stale-while-revalidate=300",
+        },
+      },
+    );
+  }
+
+  let views = 0;
+  try {
+    const stmt = env.DB.prepare(
+      "SELECT COALESCE(SUM(views), 0) AS total_views FROM analytics_rollups WHERE path = ?",
+    ).bind(normalizedPath);
+    const res =
+      typeof (stmt as any).all === "function"
+        ? await (stmt as any).all()
+        : await stmt.all();
+    const rows = (res.results || []) as Array<{ total_views?: number }>;
+    views = Number(rows[0]?.total_views || 0);
+    edgeQuotaTracker.recordD1Meta(res.meta, 0, 1);
+
+    if (views === 0) {
+      try {
+        const fallbackStmt = env.DB.prepare(
+          "SELECT COUNT(*) AS total_views FROM pageviews WHERE (path = ? OR path = ?) AND is_bot = 0",
+        ).bind(normalizedPath, `${normalizedPath}/`);
+        const fallbackRes =
+          typeof (fallbackStmt as any).all === "function"
+            ? await (fallbackStmt as any).all()
+            : await fallbackStmt.all();
+        const fbRows = (fallbackRes.results || []) as Array<{
+          total_views?: number;
+        }>;
+        views = Number(fbRows[0]?.total_views || 0);
+      } catch {
+        // Ignore fallback failure
+      }
+    }
+  } catch (err) {
+    if (isD1QuotaException(err)) {
+      edgeQuotaTracker.tripCircuitBreaker(String(err), undefined, ctx);
+    }
+  }
+
+  const response = new Response(
+    JSON.stringify({
+      path: normalizedPath,
+      views,
+      cached: false,
+    }),
+    {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control":
+          "public, max-age=60, s-maxage=60, stale-while-revalidate=300",
+        "X-Telemetry-Cache": "MISS",
+      },
+    },
+  );
+
+  if (cache && ctx && typeof ctx.waitUntil === "function") {
+    ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  } else if (cache) {
+    await cache.put(cacheKey, response.clone());
+  }
+
+  return response;
+}
+
+/**
  * R2 Storage Asset Handler via Workers Cache API (SPEC-003, SPEC-004 REQ-EDG-03)
  */
 async function handleCdnStorageAsset(
@@ -1529,6 +2204,11 @@ export async function handleAdminDashboardRequest(
   ctx: ExecutionContext,
 ): Promise<Response> {
   const url = new URL(request.url);
+  if (env) {
+    edgeQuotaTracker.configureFromEnv(
+      env as unknown as Record<string, unknown>,
+    );
+  }
 
   // Cloudflare Access Zero Trust verification: protect admin surface in production
   const cfUserEmail = request.headers.get("cf-access-authenticated-user-email");
@@ -1551,6 +2231,7 @@ export async function handleAdminDashboardRequest(
           "Content-Type": "application/json",
           "Cache-Control": "no-store, private",
           "WWW-Authenticate": 'Bearer realm="admin.arturonavax.dev"',
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
         },
       },
     );
@@ -1574,78 +2255,115 @@ export async function handleAdminDashboardRequest(
           "Cache-Control": "no-store, private",
           "X-Frame-Options": "DENY",
           "X-Content-Type-Options": "nosniff",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
         },
       },
     );
   }
 
   if (url.pathname === "/api/deployments") {
-    const registry = new DeploymentRegistry(env.DB);
-    const deployments = await registry.listDeployments(20);
-    return new Response(
-      JSON.stringify({
-        deployments,
-      }),
-      {
+    const now = Date.now();
+    const isFresh =
+      url.searchParams.get("fresh") === "true" ||
+      url.searchParams.get("refresh") === "1";
+
+    if (
+      !isFresh &&
+      cachedDeploymentsSnapshot &&
+      cachedDeploymentsSnapshot.dbRef === env.DB &&
+      now - cachedDeploymentsSnapshot.timestamp < TELEMETRY_CACHE_TTL_MS
+    ) {
+      return new Response(JSON.stringify(cachedDeploymentsSnapshot.data), {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-store, private",
+          "Cache-Control": "private, max-age=120",
+          "X-Telemetry-Source": "edge-memory-cache",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
         },
+      });
+    }
+
+    let deployments: unknown[] = [];
+    if (
+      env.DB &&
+      edgeQuotaTracker.getTier(now) < QuotaDegradationTier.CRITICAL_SURVIVAL
+    ) {
+      const registry = new DeploymentRegistry(env.DB);
+      deployments = await registry.listDeployments(20);
+      edgeQuotaTracker.recordRead(deployments.length || 1, now);
+    }
+
+    const deploymentsPayload = { deployments };
+    cachedDeploymentsSnapshot = {
+      timestamp: now,
+      data: deploymentsPayload,
+      dbRef: env.DB,
+    };
+
+    return new Response(JSON.stringify(deploymentsPayload), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "private, max-age=120",
+        "X-Robots-Tag": "noindex, nofollow, noarchive",
       },
-    );
+    });
   }
 
-  if (url.pathname === "/api/metrics") {
-    let rollups: unknown[] = [];
-    let incidents: unknown[] = [];
-    if (env.DB) {
-      try {
-        const stmt = env.DB.prepare(
-          "SELECT * FROM daily_analytics_rollups ORDER BY date DESC LIMIT 30",
-        );
-        const query =
-          typeof (stmt as any).all === "function"
-            ? await (stmt as any).all()
-            : await stmt.bind().all();
-        rollups = query.results || [];
-      } catch {
-        // Fail-open
-      }
+  const buildUnifiedQuotas = (
+    dailyUsedRequests: number,
+    dailyWrites: number,
+    dailyReads: number,
+  ) => {
+    const quotaConfig = edgeQuotaTracker.getConfig();
+    const trackerSnap = edgeQuotaTracker.getSnapshot();
+    const effectiveWrites = Math.max(dailyWrites, trackerSnap.dailyWrites);
+    const effectiveReads = Math.max(dailyReads, trackerSnap.dailyReads);
+    const monthlyUsed = Math.round(dailyUsedRequests * 28 + 2400);
 
-      try {
-        const incStmt = env.DB.prepare(
-          "SELECT * FROM circuit_breaker_incidents ORDER BY date DESC LIMIT 30",
-        );
-        const incQuery =
-          typeof (incStmt as any).all === "function"
-            ? await (incStmt as any).all()
-            : await incStmt.bind().all();
-        incidents = incQuery.results || [];
-      } catch {
-        // Fail-open
-      }
-    }
-    const prefStatus = prefetchCircuitBreaker.getStatus();
-    const botStatus = botCircuitBreaker.getStatus();
-    const dailyPrefetches = prefStatus?.dailyPrefetchCount || 0;
-    const dailyBots = botStatus?.dailyBotCount || 0;
-    const estimatedDailyRequests = dailyPrefetches + dailyBots + 150;
+    const workersDailyLimit = Number.isFinite(quotaConfig.workersDailyBudget)
+      ? quotaConfig.workersDailyBudget
+      : 100_000_000;
+    const workersMonthlyLimit = workersDailyLimit * 30;
+    const d1ReadsDailyLimit = Number.isFinite(quotaConfig.dailyReadBudget)
+      ? quotaConfig.dailyReadBudget
+      : 500_000_000;
+    const d1WritesDailyLimit = Number.isFinite(quotaConfig.dailyWriteBudget)
+      ? quotaConfig.dailyWriteBudget
+      : 100_000_000;
 
-    const quotas = {
+    return {
+      plan_tier: quotaConfig.planTier,
+      degradation_tier: trackerSnap.tier,
+      degradation_tier_name: trackerSnap.tierName,
+      strategy: {
+        plan_tier: quotaConfig.planTier,
+        daily_write_budget: d1WritesDailyLimit,
+        daily_read_budget: d1ReadsDailyLimit,
+        workers_daily_budget: workersDailyLimit,
+        conservative_ratio: quotaConfig.conservativeRatio,
+        compact_ratio: quotaConfig.compactRatio,
+        survival_ratio: quotaConfig.survivalRatio,
+        wal_ratio: quotaConfig.walRatio,
+        bot_budget_ratio: quotaConfig.botBudgetRatio,
+        prefetch_budget_ratio: quotaConfig.prefetchBudgetRatio,
+        visit_budget_ratio: quotaConfig.visitBudgetRatio,
+        prefetch_sample_rate: quotaConfig.prefetchSampleRate,
+      },
       workers_requests: {
-        daily_used: estimatedDailyRequests,
-        daily_limit: 100000,
-        monthly_used: Math.round(estimatedDailyRequests * 28 + 2400),
-        monthly_limit: 3000000,
+        daily_used: dailyUsedRequests,
+        daily_limit: workersDailyLimit,
+        monthly_used: monthlyUsed,
+        monthly_limit: workersMonthlyLimit,
         reset: "00:00 UTC",
         unit: "requests",
       },
       d1_operations: {
-        reads_today: Math.round(estimatedDailyRequests * 3.2),
-        reads_daily_limit: 5000000,
-        writes_today: dailyPrefetches + dailyBots,
-        writes_daily_limit: 100000,
+        reads_today: effectiveReads,
+        reads_daily_limit: d1ReadsDailyLimit,
+        writes_today: effectiveWrites,
+        writes_daily_limit: d1WritesDailyLimit,
         storage_mb: 12.4,
         storage_limit_mb: 5120,
         unit: "rows",
@@ -1657,6 +2375,8 @@ export async function handleAdminDashboardRequest(
         class_b_monthly_limit: 10000000,
         storage_gb: 0.18,
         storage_limit_gb: 10,
+        used_gb: 0.18,
+        limit_gb: 10,
         unit: "operations",
       },
       zero_trust: {
@@ -1674,37 +2394,181 @@ export async function handleAdminDashboardRequest(
         builds_monthly_limit: 500,
         unit: "builds",
       },
+      // Flat aliases for /admin UI renderQuotas() compatibility
+      workers_daily: { used: dailyUsedRequests, limit: workersDailyLimit },
+      workers_monthly: { used: monthlyUsed, limit: workersMonthlyLimit },
+      d1_reads_daily: { used: effectiveReads, limit: d1ReadsDailyLimit },
+      d1_writes_daily: { used: effectiveWrites, limit: d1WritesDailyLimit },
+      d1_storage: { used_mb: 12.4, limit_gb: 5 },
+      r2_class_a_monthly: { used: 240, limit: 1000000 },
+      r2_class_b_monthly: { used: 3420, limit: 10000000 },
+      zero_trust_seats: { used: 1, limit: 50 },
+      workers_ai_daily: { used: 0, limit: 10000 },
+      pages_builds_monthly: { used: 42, limit: 500 },
     };
+  };
 
-    return new Response(
-      JSON.stringify({
-        metrics: rollups,
-        data_quality_warnings: incidents.map((inc: any) => ({
-          date: inc.date,
-          subsystem: inc.subsystem,
-          warning: `Data is partial: circuit breaker tripped due to ${inc.reason}`,
-          shed_count: inc.shed_count,
-          data_completeness: inc.data_completeness,
-        })),
-        circuit_breakers: {
-          prefetch: prefStatus,
-          bot: botStatus,
-        },
-        quotas,
-      }),
-      {
+  if (url.pathname === "/api/metrics") {
+    const now = Date.now();
+    const isFresh =
+      url.searchParams.get("fresh") === "true" ||
+      url.searchParams.get("refresh") === "1";
+
+    if (
+      !isFresh &&
+      cachedMetricsSnapshot &&
+      cachedMetricsSnapshot.dbRef === env.DB &&
+      now - cachedMetricsSnapshot.timestamp < TELEMETRY_CACHE_TTL_MS
+    ) {
+      return new Response(JSON.stringify(cachedMetricsSnapshot.data), {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-store, private",
+          "Cache-Control": "private, max-age=120",
+          "X-Telemetry-Source": "edge-memory-cache",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
         },
-      },
+      });
+    }
+
+    let rollups: unknown[] = [];
+    let incidents: unknown[] = [];
+    if (
+      env.DB &&
+      edgeQuotaTracker.getTier(now) < QuotaDegradationTier.CRITICAL_SURVIVAL
+    ) {
+      try {
+        const stmt = env.DB.prepare(
+          "SELECT date, path, views, uniques, human_views, bot_views FROM analytics_rollups ORDER BY date DESC LIMIT 30",
+        );
+        const query =
+          typeof (stmt as any).all === "function"
+            ? await (stmt as any).all()
+            : await stmt.bind().all();
+        rollups = query.results || [];
+        edgeQuotaTracker.recordD1Meta(query.meta, 0, rollups.length || 1, now);
+      } catch (err) {
+        if (isD1QuotaException(err)) {
+          edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
+        }
+      }
+
+      if (rollups.length === 0) {
+        try {
+          const fallbackStmt = env.DB.prepare(
+            "SELECT summary_date AS date, path, total_views AS views FROM pageviews_daily_summary ORDER BY summary_date DESC LIMIT 30",
+          );
+          const fallbackQuery =
+            typeof (fallbackStmt as any).all === "function"
+              ? await (fallbackStmt as any).all()
+              : await fallbackStmt.bind().all();
+          rollups = fallbackQuery.results || [];
+          edgeQuotaTracker.recordD1Meta(
+            fallbackQuery.meta,
+            0,
+            rollups.length || 1,
+            now,
+          );
+        } catch (err) {
+          if (isD1QuotaException(err)) {
+            edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
+          }
+        }
+      }
+
+      try {
+        const incStmt = env.DB.prepare(
+          "SELECT * FROM circuit_breaker_incidents ORDER BY date DESC LIMIT 30",
+        );
+        const incQuery =
+          typeof (incStmt as any).all === "function"
+            ? await (incStmt as any).all()
+            : await incStmt.bind().all();
+        incidents = incQuery.results || [];
+        edgeQuotaTracker.recordD1Meta(
+          incQuery.meta,
+          0,
+          incidents.length || 1,
+          now,
+        );
+      } catch (err) {
+        if (isD1QuotaException(err)) {
+          edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
+        }
+      }
+    }
+    const envRecord = env as unknown as Record<string, unknown>;
+    const prefStatus = prefetchCircuitBreaker.getStatus(envRecord);
+    const botStatus = botCircuitBreaker.getStatus(envRecord);
+    const dailyPrefetches = prefStatus?.dailyPrefetchCount || 0;
+    const dailyBots = botStatus?.dailyBotCount || 0;
+    const estimatedDailyRequests = dailyPrefetches + dailyBots + 150;
+    const quotas = buildUnifiedQuotas(
+      estimatedDailyRequests,
+      dailyPrefetches + dailyBots,
+      Math.round(estimatedDailyRequests * 3.2),
     );
+
+    const metricsPayload = {
+      metrics: rollups,
+      data_quality_warnings: incidents.map((inc: any) => ({
+        date: inc.date,
+        subsystem: inc.subsystem,
+        warning: `Data is partial: circuit breaker tripped due to ${inc.reason}`,
+        shed_count: inc.shed_count,
+        data_completeness: inc.data_completeness,
+      })),
+      circuit_breakers: {
+        prefetch: prefStatus,
+        bot: botStatus,
+      },
+      degradation_tier: edgeQuotaTracker.getSnapshot(now),
+      quotas,
+    };
+
+    cachedMetricsSnapshot = {
+      timestamp: now,
+      data: metricsPayload,
+      dbRef: env.DB,
+    };
+
+    return new Response(JSON.stringify(metricsPayload), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "private, max-age=120",
+        "X-Robots-Tag": "noindex, nofollow, noarchive",
+      },
+    });
   }
 
   if (url.pathname === "/api/leads") {
+    const now = Date.now();
+    const isFresh =
+      url.searchParams.get("fresh") === "true" ||
+      url.searchParams.get("refresh") === "1";
+
+    if (
+      !isFresh &&
+      cachedLeadsSnapshot &&
+      cachedLeadsSnapshot.dbRef === env.DB &&
+      now - cachedLeadsSnapshot.timestamp < TELEMETRY_CACHE_TTL_MS
+    ) {
+      return new Response(JSON.stringify(cachedLeadsSnapshot.data), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "private, max-age=120",
+          "X-Telemetry-Source": "edge-memory-cache",
+        },
+      });
+    }
+
     let leads: any[] = [];
-    if (env.DB) {
+    if (
+      env.DB &&
+      edgeQuotaTracker.getTier(now) < QuotaDegradationTier.CRITICAL_SURVIVAL
+    ) {
       try {
         const stmt = env.DB.prepare(
           "SELECT id, name, from_email, phone, subject, body, locale, ip, country, city, region, timezone, asn, as_organization, user_agent, referer, turnstile_verified, created_at FROM contact_leads ORDER BY created_at DESC LIMIT 50",
@@ -1714,23 +2578,31 @@ export async function handleAdminDashboardRequest(
             ? await (stmt as any).all()
             : await stmt.bind().all();
         leads = q.results || [];
-      } catch {
-        // Fail-open
+        edgeQuotaTracker.recordD1Meta(q.meta, 0, leads.length || 1, now);
+      } catch (err) {
+        if (isD1QuotaException(err)) {
+          edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
+        }
       }
     }
-    return new Response(
-      JSON.stringify({
-        status: "ok",
-        leads,
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-store, private",
-        },
+
+    const leadsPayload = {
+      status: "ok",
+      leads,
+    };
+    cachedLeadsSnapshot = {
+      timestamp: now,
+      data: leadsPayload,
+      dbRef: env.DB,
+    };
+
+    return new Response(JSON.stringify(leadsPayload), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "private, max-age=120",
       },
-    );
+    });
   }
 
   if (url.pathname === "/api/contact") {
@@ -1751,18 +2623,32 @@ export async function handleAdminDashboardRequest(
       Math.max(10, parseInt(url.searchParams.get("limit") || "50", 10)),
     );
     const offset = (page - 1) * limit;
+    const pageOnly =
+      url.searchParams.get("page_only") === "1" ||
+      url.searchParams.get("page_only") === "true";
 
-    const isFresh =
+    const requestedFresh =
       url.searchParams.get("fresh") === "true" ||
       url.searchParams.get("refresh") === "1";
 
-    // 1. Edge In-Memory Cache Check (TTL: 120s) - Prevents burning D1 row read quota
-    const cacheKey = `${range}:${countryParam}:${segmentParam}:${pathFilter}:${searchParam}:${page}:${limit}`;
+    const now = Date.now();
+    const cacheKey = `${range}:${countryParam}:${segmentParam}:${pathFilter}:${searchParam}:${fromParam || ""}:${toParam || ""}:${page}:${limit}:${pageOnly ? "1" : "0"}`;
+
+    // Enforce 15-second cooldown on `fresh=true` cache bypasses to prevent D1 read amplification
+    const lastFreshAt = telemetryFreshCooldown.get(cacheKey) || 0;
+    const isFresh =
+      requestedFresh && now - lastFreshAt >= TELEMETRY_FRESH_COOLDOWN_MS;
+    if (isFresh) {
+      telemetryFreshCooldown.set(cacheKey, now);
+    }
+
+    // 1. Edge In-Memory Cache + Cache API Check (TTL: 120s) - Prevents burning D1 row read quota
     const cachedHit = telemetryCache.get(cacheKey);
     if (
       !isFresh &&
       cachedHit &&
-      Date.now() - cachedHit.timestamp < TELEMETRY_CACHE_TTL_MS
+      cachedHit.dbRef === env.DB &&
+      now - cachedHit.timestamp < TELEMETRY_CACHE_TTL_MS
     ) {
       return new Response(JSON.stringify(cachedHit.data), {
         status: 200,
@@ -1772,6 +2658,35 @@ export async function handleAdminDashboardRequest(
           "X-Telemetry-Source": "edge-memory-cache",
         },
       });
+    }
+
+    const edgeCache =
+      typeof caches !== "undefined" && caches.default ? caches.default : null;
+    const edgeCacheRequest = new Request(
+      `https://telemetry.internal/admin-telemetry/${encodeURIComponent(cacheKey)}`,
+    );
+    if (!isFresh && edgeCache) {
+      try {
+        const edgeHit = await edgeCache.match(edgeCacheRequest);
+        if (edgeHit) {
+          const hitData = await edgeHit.clone().json();
+          telemetryCache.set(cacheKey, {
+            timestamp: now,
+            data: hitData,
+            dbRef: env.DB,
+          });
+          return new Response(JSON.stringify(hitData), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "private, max-age=120",
+              "X-Telemetry-Source": "edge-memory-cache",
+            },
+          });
+        }
+      } catch {
+        // Ignore Cache API lookup error
+      }
     }
 
     let pageviews: any[] = [];
@@ -1792,7 +2707,10 @@ export async function handleAdminDashboardRequest(
       all_time_pageviews: 0,
     };
 
-    if (env.DB) {
+    if (
+      env.DB &&
+      edgeQuotaTracker.getTier(now) < QuotaDegradationTier.CRITICAL_SURVIVAL
+    ) {
       try {
         const whereClauses: string[] = [];
         const bindValues: any[] = [];
@@ -1858,7 +2776,9 @@ export async function handleAdminDashboardRequest(
             typeof (stmt as any).all === "function"
               ? await (stmt as any).all()
               : await stmt.bind().all();
-          return q.results || [];
+          const rows = q.results || [];
+          edgeQuotaTracker.recordD1Meta(q.meta, 0, rows.length || 1, now);
+          return rows;
         };
 
         // 1. Exact Totals Aggregations (1:1 with D1)
@@ -1873,41 +2793,63 @@ export async function handleAdminDashboardRequest(
           stats.unique_human_visitors = Number(row.unique_human_visitors || 0);
         }
 
-        // 2. All-time total pageviews
+        // 2. All-time total pageviews via compact rollup summary (zero full-table scan on pageviews)
         if (whereClauses.length === 0) {
           stats.all_time_pageviews = stats.total_pageviews;
-        } else {
-          const allRes = await runQuery(
-            "SELECT COUNT(*) AS all_views FROM pageviews",
-          );
-          if (allRes.length > 0) {
-            stats.all_time_pageviews = Number(allRes[0].all_views || 0);
+        } else if (!pageOnly) {
+          try {
+            let rollupTotal = 0;
+            try {
+              const arRes = await runQuery(
+                "SELECT COALESCE(SUM(views), 0) AS all_views FROM analytics_rollups",
+              );
+              rollupTotal = Number(arRes[0]?.all_views || 0);
+            } catch {
+              // Fallback to pageviews_daily_summary
+            }
+            if (rollupTotal === 0) {
+              const allRes = await runQuery(
+                "SELECT COALESCE(SUM(total_views), 0) AS all_views FROM pageviews_daily_summary",
+              );
+              rollupTotal = Number(allRes[0]?.all_views || 0);
+            }
+            stats.all_time_pageviews =
+              rollupTotal > stats.total_pageviews
+                ? rollupTotal
+                : stats.total_pageviews;
+          } catch {
+            stats.all_time_pageviews = stats.total_pageviews;
           }
+        } else {
+          stats.all_time_pageviews = stats.total_pageviews;
         }
 
-        // 3. Exact Top Pages (grouped by path, 1:1 with D1)
-        const pagesSql = `SELECT path, COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql} GROUP BY path ORDER BY total_views DESC LIMIT 15`;
-        topPages = await runQuery(pagesSql, bindValues);
+        // Skip heavy GROUP BY aggregations when `page_only=1` (table pagination fast-path)
+        if (!pageOnly) {
+          // 3. Exact Top Pages (grouped by path, 1:1 with D1)
+          const pagesSql = `SELECT path, COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql} GROUP BY path ORDER BY total_views DESC LIMIT 15`;
+          topPages = await runQuery(pagesSql, bindValues);
 
-        // 4. Exact Top Countries (grouped by country, 1:1 with D1)
-        const countriesSql = `SELECT country, COUNT(*) AS views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql} GROUP BY country ORDER BY views DESC LIMIT 15`;
-        topCountries = await runQuery(countriesSql, bindValues);
+          // 4. Exact Top Countries (grouped by country, 1:1 with D1)
+          const countriesSql = `SELECT country, COUNT(*) AS views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql} GROUP BY country ORDER BY views DESC LIMIT 15`;
+          topCountries = await runQuery(countriesSql, bindValues);
 
-        // 5. Exact Top Referrers (1:1 with D1, sanitizing legacy Invalid entries)
-        const refWhere =
-          whereClauses.length > 0
-            ? `${whereSql} AND referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''`
-            : "WHERE referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''";
-        const refSql = `SELECT referrer, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${refWhere} GROUP BY referrer ORDER BY count DESC LIMIT 15`;
-        topReferrers = await runQuery(refSql, bindValues);
+          // 5. Exact Top Referrers (1:1 with D1, sanitizing legacy Invalid entries)
+          const refWhere =
+            whereClauses.length > 0
+              ? `${whereSql} AND referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''`
+              : "WHERE referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''";
+          const refSql = `SELECT referrer, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${refWhere} GROUP BY referrer ORDER BY count DESC LIMIT 15`;
+          topReferrers = await runQuery(refSql, bindValues);
 
-        // 6. Exact Top UTM Attributions (1:1 with D1, sanitizing legacy Invalid entries)
-        const utmWhere =
-          whereClauses.length > 0
-            ? `${whereSql} AND utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''`
-            : "WHERE utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''";
-        const utmSql = `SELECT utm_source, utm_medium, utm_campaign, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${utmWhere} GROUP BY utm_source, utm_medium, utm_campaign ORDER BY count DESC LIMIT 15`;
-        utmAttributions = await runQuery(utmSql, bindValues);
+          // 6. Exact Top UTM Attributions (1:1 with D1, sanitizing legacy Invalid entries)
+          const utmWhere =
+            whereClauses.length > 0
+              ? `${whereSql} AND utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''`
+              : "WHERE utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''";
+          const utmSql = `SELECT utm_source, utm_medium, utm_campaign, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${utmWhere} GROUP BY utm_source, utm_medium, utm_campaign ORDER BY count DESC LIMIT 15`;
+          utmAttributions = await runQuery(utmSql, bindValues);
+        }
 
         // 7. Paginated Pageviews Batch (bounded LIMIT and OFFSET, sanitizing legacy Invalid rows)
         const pageviewsSql = `SELECT id, path, visitor_hash, referrer, country, utm_source, utm_medium, utm_campaign, utm_content, utm_term, is_bot, created_at FROM pageviews ${whereSql} ORDER BY id DESC LIMIT ? OFFSET ?`;
@@ -1928,16 +2870,30 @@ export async function handleAdminDashboardRequest(
               : p.utm_source,
         }));
 
-        // 8. Prefetches
-        prefetches = await runQuery(
-          "SELECT id, path, visitor_hash, referrer, country, purpose, created_at FROM prefetch_analytics_events ORDER BY id DESC LIMIT 15",
-        );
+        if (!pageOnly) {
+          // 8. Prefetches
+          prefetches = await runQuery(
+            "SELECT id, path, visitor_hash, referrer, country, purpose, created_at FROM prefetch_analytics_events ORDER BY id DESC LIMIT 15",
+          );
 
-        // 9. Daily Summaries
-        dailySummaries = await runQuery(
-          "SELECT summary_date, path, country, total_views FROM pageviews_daily_summary ORDER BY summary_date DESC LIMIT 50",
-        );
+          // 9. Daily Summaries (query analytics_rollups first, fallback to pageviews_daily_summary)
+          try {
+            dailySummaries = await runQuery(
+              "SELECT date AS summary_date, path, 'ALL' AS country, views AS total_views, human_views, bot_views, uniques FROM analytics_rollups ORDER BY date DESC LIMIT 30",
+            );
+          } catch {
+            dailySummaries = [];
+          }
+          if (dailySummaries.length === 0) {
+            dailySummaries = await runQuery(
+              "SELECT summary_date, path, country, total_views FROM pageviews_daily_summary ORDER BY summary_date DESC LIMIT 30",
+            );
+          }
+        }
       } catch (err) {
+        if (isD1QuotaException(err)) {
+          edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
+        }
         // Fail-open resilience: If D1 row read quota was exceeded or temporarily blocked by Cloudflare
         console.warn("[D1 Telemetry Quota Safeguard - Fail-Open]:", err);
       }
@@ -2154,11 +3110,13 @@ export async function handleAdminDashboardRequest(
 
     const totalFiltered = stats.total_pageviews;
     const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
+    const dailyUsedReq = stats.total_pageviews + prefetches.length;
 
     const responsePayload = {
       status: "ok",
       surface: "admin-isolated",
       timestamp: new Date().toISOString(),
+      page_only: pageOnly,
       pagination: {
         page,
         limit,
@@ -2184,63 +3142,47 @@ export async function handleAdminDashboardRequest(
       prefetches,
       daily_summaries: dailySummaries,
       circuit_breakers: {
-        prefetch: prefetchCircuitBreaker.getStatus(),
-        bot: botCircuitBreaker.getStatus(),
+        prefetch: prefetchCircuitBreaker.getStatus(
+          env as unknown as Record<string, unknown>,
+        ),
+        bot: botCircuitBreaker.getStatus(
+          env as unknown as Record<string, unknown>,
+        ),
       },
-      quotas: {
-        workers_requests: {
-          daily_used: stats.total_pageviews + prefetches.length,
-          daily_limit: 100000,
-          monthly_used: Math.round(
-            (stats.total_pageviews + prefetches.length) * 28 + 2400,
-          ),
-          monthly_limit: 3000000,
-          reset: "00:00 UTC",
-          unit: "requests",
-        },
-        d1_operations: {
-          reads_today: Math.round(
-            (stats.total_pageviews + prefetches.length) * 3.2,
-          ),
-          reads_daily_limit: 5000000,
-          writes_today: stats.total_pageviews + prefetches.length,
-          writes_daily_limit: 100000,
-          storage_mb: 12.4,
-          storage_limit_mb: 5120,
-          unit: "rows",
-        },
-        r2_storage: {
-          class_a_monthly_used: 240,
-          class_a_monthly_limit: 1000000,
-          class_b_monthly_used: 3420,
-          class_b_monthly_limit: 10000000,
-          storage_gb: 0.18,
-          storage_limit_gb: 10,
-          unit: "operations",
-        },
-        zero_trust: {
-          active_seats: 1,
-          total_seats: 50,
-          unit: "seats",
-        },
-        workers_ai: {
-          neurons_today: 0,
-          neurons_daily_limit: 10000,
-          unit: "neurons",
-        },
-        pages_deployments: {
-          builds_monthly_used: 42,
-          builds_monthly_limit: 500,
-          unit: "builds",
-        },
-      },
+      degradation_tier: edgeQuotaTracker.getSnapshot(now),
+      quotas: buildUnifiedQuotas(
+        dailyUsedReq,
+        dailyUsedReq,
+        Math.round(dailyUsedReq * 3.2),
+      ),
     };
 
-    // Store in edge memory cache for 120s to safeguard D1 limits
+    // Store in edge memory cache and Cache API for 120s to safeguard D1 limits
     telemetryCache.set(cacheKey, {
-      timestamp: Date.now(),
+      timestamp: now,
       data: responsePayload,
+      dbRef: env.DB,
     });
+
+    if (edgeCache) {
+      try {
+        const cachedResp = new Response(JSON.stringify(responsePayload), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "public, max-age=120",
+            "X-Robots-Tag": "noindex, nofollow, noarchive",
+          },
+        });
+        if (ctx && typeof ctx.waitUntil === "function") {
+          ctx.waitUntil(edgeCache.put(edgeCacheRequest, cachedResp));
+        } else {
+          await edgeCache.put(edgeCacheRequest, cachedResp);
+        }
+      } catch {
+        // Ignore Cache API write failure
+      }
+    }
 
     return new Response(JSON.stringify(responsePayload), {
       status: 200,
@@ -2248,6 +3190,7 @@ export async function handleAdminDashboardRequest(
         "Content-Type": "application/json",
         "Cache-Control": "private, max-age=120",
         "X-Telemetry-Source": "edge-d1-fresh",
+        "X-Robots-Tag": "noindex, nofollow, noarchive",
       },
     });
   }
@@ -4115,7 +5058,7 @@ export async function handleAdminDashboardRequest(
       referrersPage = 1;
       leadsPage = 1;
       markFiltersStaged(false);
-      fetchTelemetry(true);
+      fetchTelemetry(false, false);
     }
 
     function markFiltersStaged(staged) {
@@ -4334,13 +5277,13 @@ export async function handleAdminDashboardRequest(
     function goToPage(p) {
       if (p < 1 || p > totalPages || p === currentPage) return;
       currentPage = p;
-      fetchTelemetry(true);
+      fetchTelemetry(false, true);
     }
 
     function setLimit(l) {
       currentLimit = parseInt(l, 10);
       currentPage = 1;
-      fetchTelemetry(true);
+      fetchTelemetry(false, true);
     }
 
     function renderCircuitBreakers() {
@@ -4760,7 +5703,7 @@ export async function handleAdminDashboardRequest(
       });
     }
 
-    async function fetchTelemetry(isManual) {
+    async function fetchTelemetry(isManual, pageOnly) {
       try {
         const params = new URLSearchParams({
           range: currentRange,
@@ -4771,17 +5714,28 @@ export async function handleAdminDashboardRequest(
           page: String(currentPage),
           limit: String(currentLimit),
         });
+        if (pageOnly) {
+          params.set('page_only', '1');
+        }
         if (isManual) {
           params.set('fresh', 'true');
         }
 
-        const [telRes, leadsRes, metRes] = await Promise.allSettled([
-          fetch('/api/telemetry?' + params.toString(), { cache: 'no-store' }),
-          fetch('/api/leads', { cache: 'no-store' }),
-          fetch('/api/metrics', { cache: 'no-store' }),
-        ]);
+        const fetchOpts = isManual ? { cache: 'no-store' } : {};
+        const promises = [
+          fetch('/api/telemetry?' + params.toString(), fetchOpts),
+        ];
+        if (!pageOnly) {
+          promises.push(fetch('/api/leads' + (isManual ? '?fresh=true' : ''), fetchOpts));
+          promises.push(fetch('/api/metrics' + (isManual ? '?fresh=true' : ''), fetchOpts));
+        }
 
-        if (telRes.status === 'fulfilled' && telRes.value.ok) {
+        const results = await Promise.allSettled(promises);
+        const telRes = results[0];
+        const leadsRes = results[1];
+        const metRes = results[2];
+
+        if (telRes && telRes.status === 'fulfilled' && telRes.value.ok) {
           const cacheBadge = document.getElementById('badge-cache-mode');
           if (cacheBadge) {
             const src = telRes.value.headers.get('X-Telemetry-Source');
@@ -4799,12 +5753,14 @@ export async function handleAdminDashboardRequest(
 
           const data = await telRes.value.json();
           cachedPageviews = data.pageviews || [];
-          cachedPrefetches = data.prefetches || [];
-          cachedDaily = data.daily_summaries || [];
-          cachedStats = data.stats || null;
-          cachedTopPages = data.top_pages || [];
-          cachedTopCountries = data.top_countries || [];
-          cachedTopReferrers = data.top_referrers || [];
+          if (!data.page_only) {
+            cachedPrefetches = data.prefetches || [];
+            cachedDaily = data.daily_summaries || [];
+            cachedStats = data.stats || null;
+            cachedTopPages = data.top_pages || [];
+            cachedTopCountries = data.top_countries || [];
+            cachedTopReferrers = data.top_referrers || [];
+          }
           if (data.pagination) {
             currentPage = data.pagination.page;
             totalPages = data.pagination.total_pages || 1;
@@ -4818,12 +5774,12 @@ export async function handleAdminDashboardRequest(
           }
         }
 
-        if (leadsRes.status === 'fulfilled' && leadsRes.value.ok) {
+        if (leadsRes && leadsRes.status === 'fulfilled' && leadsRes.value.ok) {
           const lData = await leadsRes.value.json();
           cachedLeads = lData.leads || [];
         }
 
-        if (metRes.status === 'fulfilled' && metRes.value.ok) {
+        if (metRes && metRes.status === 'fulfilled' && metRes.value.ok) {
           const mData = await metRes.value.json();
           if (mData.circuit_breakers) {
             cachedCircuitBreakers = mData.circuit_breakers;
@@ -5160,6 +6116,7 @@ export async function handleAdminDashboardRequest(
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
     },
   });
 }
@@ -5489,6 +6446,14 @@ const PAGEVIEW_CACHE_MAX_ENTRIES = 5_000;
 
 export function clearRecentPageviewsCache(): void {
   recentPageviewsCache.clear();
+  clearL1DedupeCache();
+  clearCompactRollupBuffer();
+  telemetryCache.clear();
+  telemetryFreshCooldown.clear();
+  cachedMetricsSnapshot = null;
+  cachedLeadsSnapshot = null;
+  cachedDeploymentsSnapshot = null;
+  edgeQuotaTracker.reset();
 }
 
 export function isDuplicatePageview(
@@ -5577,28 +6542,43 @@ export async function recordAnalyticsNonBlocking(
 
     const visitorInfo = classifyVisitor(request, path);
     const isBot = visitorInfo.isBot ? 1 : 0;
-    const today = new Date().toISOString().slice(0, 10);
+    const now = Date.now();
+    const today = new Date(now).toISOString().slice(0, 10);
 
     const visitorHash = await computeVisitorHash(ip, userAgent, today);
 
     // Normalización canónica de la ruta para agregación consistente
-    const normalizedPath = path.toLowerCase().replace(/\/+$/, "") || "/";
-    const now = Date.now();
+    const normalizedPath = normalizeTelemetryPath(path);
 
-    // L1 dedupe (per-isolate). Skips the D1 round-trip for rapid repeats.
-    if (isDuplicatePageview(visitorHash, normalizedPath, now)) {
+    // L1 dedupe (per-isolate + Edge Cache API 30-minute window). Skips the D1 round-trip for repeats.
+    const l1Key30m = await computeVisitDedupeKey(
+      ip,
+      userAgent,
+      normalizedPath,
+      now,
+    );
+    const isDupShort = isDuplicatePageview(visitorHash, normalizedPath, now);
+    const isDupL1 = await checkAndSetL1DedupeCache(l1Key30m, now);
+    if (isDupShort || isDupL1) {
       return;
     }
+
+    const currentTier = edgeQuotaTracker.getTier(now);
 
     if (isBot) {
       // Bot Telemetry Circuit Breaker: Bots are secondary priority compared to human visits (P0).
       if (
         !botCircuitBreaker.canRecordBot(
           env as unknown as Record<string, unknown>,
+          userAgent,
+          visitorInfo.classification,
         )
       ) {
         // Quota is constrained or bot kill-switch is active: shed bot telemetry to protect P0 quota.
-        if (botCircuitBreaker.shouldLogIncident(today)) {
+        if (
+          currentTier < QuotaDegradationTier.CRITICAL_SURVIVAL &&
+          botCircuitBreaker.shouldLogIncident(today)
+        ) {
           botCircuitBreaker.markIncidentLogged(today);
           const tripReason = botCircuitBreaker.getTripReason();
           await recordCircuitBreakerIncident(
@@ -5616,6 +6596,49 @@ export async function recordAnalyticsNonBlocking(
 
     // Quota accounting happens only for visits that survived the L1 dedupe gate.
     prefetchCircuitBreaker.recordVisit();
+
+    const walRecord = {
+      dedupe_key: l1Key30m,
+      path: normalizedPath,
+      event_type: "pageview",
+      visitor_hash: visitorHash,
+      is_bot: isBot,
+      bot_name: isBot ? visitorInfo.reason : null,
+      country: country.slice(0, 10),
+      device_type: /mobile|android|iphone|ipad/i.test(userAgent)
+        ? "mobile"
+        : "desktop",
+      referrer_host: referrer.slice(0, 100),
+      status_code: 200,
+      created_at: new Date(now).toISOString(),
+    };
+
+    // Tier 3 (CRITICAL_SURVIVAL) & Tier 4 (R2_WAL_FALLBACK): Zero D1 writes, spill to R2 WAL + Analytics Engine
+    if (currentTier >= QuotaDegradationTier.CRITICAL_SURVIVAL) {
+      await writeTelemetryWalToR2(walRecord, env, now);
+      return;
+    }
+
+    // Tier 2 (COMPACT_ROLLUP): Skip raw pageviews/telemetry_events inserts, buffer into analytics_rollups
+    if (currentTier === QuotaDegradationTier.COMPACT_ROLLUP) {
+      const adapter = new D1TelemetryAdapter(db, env);
+      await adapter.ingestVisit({
+        path: normalizedPath,
+        visitorHash,
+        ip,
+        userAgent,
+        dedupeKey: l1Key30m,
+        skipL1Check: true,
+        eventType: "pageview",
+        isBot: Boolean(isBot),
+        botName: isBot ? visitorInfo.reason : null,
+        country,
+        referrerHost: referrer,
+        statusCode: 200,
+        nowMs: now,
+      });
+      return;
+    }
 
     const locale = path.startsWith("/es") ? "es" : "en";
 
@@ -5672,7 +6695,23 @@ export async function recordAnalyticsNonBlocking(
       );
     }
 
-    await db.batch(statements);
+    try {
+      if (typeof db.batch === "function") {
+        await db.batch(statements);
+      } else {
+        for (const stmt of statements) {
+          await stmt.run();
+        }
+      }
+      edgeQuotaTracker.recordWrite(statements.length, now);
+    } catch (batchErr) {
+      if (isD1QuotaException(batchErr)) {
+        edgeQuotaTracker.tripCircuitBreaker(String(batchErr), now);
+        await writeTelemetryWalToR2(walRecord, env, now);
+        return;
+      }
+      throw batchErr;
+    }
   } catch (err) {
     // Fail-open resilience: Never bubble database errors to client
     console.error("[Analytics Background Error - Fail-Open]:", err);
@@ -5689,6 +6728,9 @@ export async function recordPrefetchAnalyticsNonBlocking(
   db: D1Database,
   purpose: string,
 ): Promise<void> {
+  if (edgeQuotaTracker.getTier() >= QuotaDegradationTier.CONSERVATIVE) {
+    return;
+  }
   try {
     const ip = request.headers.get("cf-connecting-ip") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "";
@@ -5726,7 +6768,11 @@ export async function recordPrefetchAnalyticsNonBlocking(
         purpose.slice(0, 50),
       )
       .run();
+    edgeQuotaTracker.recordWrite(1);
   } catch (err) {
+    if (isD1QuotaException(err)) {
+      edgeQuotaTracker.tripCircuitBreaker(String(err));
+    }
     // Fail-open resilience: Never bubble database errors to client
     console.warn("[Prefetch Analytics Background Error - Fail-Open]:", err);
   }
@@ -5741,19 +6787,27 @@ export async function recordCircuitBreakerIncident(
   subsystem: string,
   date: string,
   reason: string,
+  notes = "Prefetch telemetry shed to protect P0 quota",
 ): Promise<void> {
+  if (edgeQuotaTracker.getTier() >= QuotaDegradationTier.CRITICAL_SURVIVAL) {
+    return;
+  }
   try {
     await db
       .prepare(
         `INSERT INTO circuit_breaker_incidents (
            subsystem, date, reason, shed_count, data_completeness, notes
-         ) VALUES (?, ?, ?, 1, 'partial', 'Prefetch telemetry shed to protect P0 quota')
+         ) VALUES (?, ?, ?, 1, 'partial', ?)
          ON CONFLICT(subsystem, date) DO UPDATE SET
            shed_count = circuit_breaker_incidents.shed_count + 1`,
       )
-      .bind(subsystem, date, reason)
+      .bind(subsystem, date, reason, notes)
       .run();
+    edgeQuotaTracker.recordWrite(1);
   } catch (err) {
+    if (isD1QuotaException(err)) {
+      edgeQuotaTracker.tripCircuitBreaker(String(err));
+    }
     console.warn("[Circuit Breaker Incident Log Error - Fail-Open]:", err);
   }
 }

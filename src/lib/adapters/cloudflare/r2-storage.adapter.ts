@@ -47,12 +47,14 @@ export class CloudflareR2StorageAdapter implements StoragePort {
         "Content-Length": String(object.size),
         ETag: object.httpEtag,
         "Cache-Control":
-          "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+          "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
       },
     });
 
     if (cache && this.executionCtx) {
       this.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+    } else if (cache) {
+      await cache.put(cacheKey, response.clone());
     }
 
     return {
@@ -64,6 +66,13 @@ export class CloudflareR2StorageAdapter implements StoragePort {
         etag: object.httpEtag,
       },
     };
+  }
+
+  async getObject(key: string): Promise<{
+    data: ReadableStream | Uint8Array;
+    metadata: StorageItemMetadata;
+  } | null> {
+    return this.get(key);
   }
 
   async put(
@@ -83,8 +92,36 @@ export class CloudflareR2StorageAdapter implements StoragePort {
     }
   }
 
+  async putObject(
+    key: string,
+    body: ReadableStream | Uint8Array | string,
+    metadata?: Partial<StorageItemMetadata> | undefined,
+  ): Promise<void> {
+    await this.put(key, body, metadata);
+  }
+
   async delete(key: string): Promise<void> {
     await this.bucket.delete(key);
+  }
+
+  async deleteObject(key: string): Promise<void> {
+    await this.delete(key);
+  }
+
+  async listObjects(prefix: string): Promise<string[]> {
+    const keys: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const listOptions: R2ListOptions = cursor
+        ? { prefix, cursor }
+        : { prefix };
+      const listed = await this.bucket.list(listOptions);
+      for (const obj of listed.objects || []) {
+        keys.push(obj.key);
+      }
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+    return keys;
   }
 
   getPublicUrl(key: string): string {

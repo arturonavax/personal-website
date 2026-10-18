@@ -1,4 +1,7 @@
 ---
+import { ensureUnifiedGraphJsonLd } from "@/lib/seo/schema-builder";
+import { resolveVerifiedHreflang } from "@/utils/seo";
+
 interface Props {
   title: string;
   description: string;
@@ -9,6 +12,7 @@ interface Props {
   jsonLd?: Record<string, unknown> | Array<Record<string, unknown>> | undefined;
   alternateEnUrl?: string | undefined;
   alternateEsUrl?: string | undefined;
+  availableLocales?: readonly ("en" | "es")[] | undefined;
   noindex?: boolean | undefined;
 }
 
@@ -22,13 +26,14 @@ const {
   jsonLd,
   alternateEnUrl,
   alternateEsUrl,
+  availableLocales,
   noindex = false,
 } = Astro.props;
 
 const siteUrl = Astro.site?.origin ?? "https://arturonavax.dev";
 const rawPath = Astro.url.pathname;
 
-// Asegurar siempre trailing slash en rutas normalizadas
+// Ensure trailing slash on normalized routes
 const normalizedPath = rawPath.endsWith("/") ? rawPath : `${rawPath}/`;
 
 const rawCanonical = canonicalUrl ?? `${siteUrl}${normalizedPath}`;
@@ -47,22 +52,14 @@ try {
   cleanCanonicalUrl = rawCanonical.split("?")[0]!;
 }
 
-// Hreflang URLs con trailing slash estricto (solo si la contraparte existe)
-const enUrl =
-  locale === "en"
-    ? cleanCanonicalUrl
-    : alternateEnUrl
-      ? `${siteUrl}${alternateEnUrl.endsWith("/") ? alternateEnUrl : `${alternateEnUrl}/`}`
-      : undefined;
-
-const esUrl =
-  locale === "es"
-    ? cleanCanonicalUrl
-    : alternateEsUrl
-      ? `${siteUrl}${alternateEsUrl.endsWith("/") ? alternateEsUrl : `${alternateEsUrl}/`}`
-      : undefined;
-
-const xDefaultUrl = enUrl ?? `${siteUrl}/`;
+const { enUrl, esUrl, xDefaultUrl } = resolveVerifiedHreflang({
+  locale,
+  canonicalUrl: cleanCanonicalUrl,
+  alternateEnUrl,
+  alternateEsUrl,
+  availableLocales,
+  siteUrl,
+});
 
 const pageTitle = title.includes("Arturo Nava")
   ? title
@@ -70,14 +67,21 @@ const pageTitle = title.includes("Arturo Nava")
 const resolvedOgImage = ogImage.startsWith("http")
   ? ogImage
   : `${siteUrl}${ogImage}`;
+
+const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
+  locale,
+  canonicalUrl: cleanCanonicalUrl,
+  title: pageTitle,
+  description,
+});
 ---
 
 <!-- RSS Auto-Discovery -->
 <link
   rel="alternate"
   type="application/rss+xml"
-  title="Arturo Nava - Engineering Blog &amp; Systems Notes"
-  href="https://arturonavax.dev/rss.xml"
+  title="Arturo Nava — Engineering &amp; AI RSS Feed"
+  href="/rss.xml"
 />
 
 <!-- Global Metadata -->
@@ -221,12 +225,8 @@ const resolvedOgImage = ogImage.startsWith("http")
 />
 
 <!-- Structured Data (JSON-LD) -->
-{jsonLd && (
-  <script
-    type="application/ld+json"
-    is:inline
-    set:html={JSON.stringify(
-      Array.isArray(jsonLd) && jsonLd.length === 1 ? jsonLd[0] : jsonLd,
-    )}
-  />
-)}
+<script
+  type="application/ld+json"
+  is:inline
+  set:html={JSON.stringify(normalizedJsonLd)}
+/>

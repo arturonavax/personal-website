@@ -14,6 +14,32 @@ export interface TelemetryIngestResult {
   readonly reason?: "prefetch" | "bot" | "invalid_payload" | undefined;
 }
 
+export interface TelemetryIngestionResult {
+  recorded: boolean;
+  deduped: boolean;
+  deduplicated?: boolean | undefined;
+  degradationTier?:
+    | "NOMINAL"
+    | "CONSERVATIVE"
+    | "COMPACT_ROLLUP"
+    | "CRITICAL_SURVIVAL"
+    | "R2_WAL_FALLBACK"
+    | undefined;
+  storageTier:
+    | "L1_CACHE"
+    | "D1"
+    | "D1_BATCH"
+    | "D1_ROLLUP_ONLY"
+    | "R2_WAL"
+    | "ANALYTICS_ENGINE_AND_R2_WAL";
+  storageTarget?:
+    | "L1_CACHE"
+    | "D1_RAW_AND_ROLLUP"
+    | "D1_ROLLUP_ONLY"
+    | "ANALYTICS_ENGINE_AND_R2_WAL"
+    | undefined;
+}
+
 export interface PageviewEvent {
   path: string;
   locale: string;
@@ -85,17 +111,21 @@ export interface PrefetchCircuitBreakerPort {
   markIncidentLogged(dateString: string): void;
   recordVisit(): void;
   recordPrefetch(): void;
-  getStatus(): CircuitBreakerStatus;
+  getStatus(env?: Record<string, unknown>): CircuitBreakerStatus;
   reset(): void;
 }
 
 export interface BotCircuitBreakerPort {
-  canRecordBot(env?: Record<string, unknown>): boolean;
+  canRecordBot(
+    env?: Record<string, unknown>,
+    userAgentOrVerified?: string | boolean,
+    classification?: string,
+  ): boolean;
   getTripReason(): CircuitBreakerTripReason;
   shouldLogIncident(dateString: string): boolean;
   markIncidentLogged(dateString: string): void;
   recordBot(): void;
-  getStatus(): BotCircuitBreakerStatus;
+  getStatus(env?: Record<string, unknown>): BotCircuitBreakerStatus;
   reset(): void;
 }
 

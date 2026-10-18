@@ -374,7 +374,8 @@ const searchIndexPath = "/search-index.json";
         return getCurrentLocale() === "es" ? "/es/search/" : "/search/";
       }
 
-      // Preload search index in memory cache
+      // Preload search index in memory + sessionStorage cache (on-demand only)
+      var SESSION_STORAGE_SEARCH_KEY = "__anx_search_index_v1";
       if (!window.__searchIndexCache) {
         window.__searchIndexCache = {};
       }
@@ -383,6 +384,21 @@ const searchIndexPath = "/search-index.json";
         var path = targetPath || getIndexPath();
         if (window.__searchIndexCache[path]) {
           return Promise.resolve(window.__searchIndexCache[path]);
+        }
+        try {
+          var cachedStr =
+            typeof sessionStorage !== "undefined"
+              ? sessionStorage.getItem(SESSION_STORAGE_SEARCH_KEY)
+              : null;
+          if (cachedStr) {
+            var parsed = JSON.parse(cachedStr);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              window.__searchIndexCache[path] = parsed;
+              return Promise.resolve(parsed);
+            }
+          }
+        } catch (_e) {
+          // Ignore sessionStorage read errors
         }
         if (
           window.__searchIndexFetching &&
@@ -401,6 +417,16 @@ const searchIndexPath = "/search-index.json";
           })
           .then(function (data) {
             window.__searchIndexCache[path] = data;
+            try {
+              if (typeof sessionStorage !== "undefined") {
+                sessionStorage.setItem(
+                  SESSION_STORAGE_SEARCH_KEY,
+                  JSON.stringify(data),
+                );
+              }
+            } catch (_e) {
+              // Ignore sessionStorage quota errors
+            }
             return window.__searchIndexCache[path];
           })
           .catch(function (err) {
@@ -409,6 +435,10 @@ const searchIndexPath = "/search-index.json";
           });
         return window.__searchIndexFetching[path];
       }
+
+      window.prefetchUniversalSearchIndex = function () {
+        void fetchSearchData();
+      };
 
       function syncModalLocaleUI() {
         var isEs = getCurrentLocale() === "es";
@@ -474,46 +504,9 @@ const searchIndexPath = "/search-index.json";
         }
       }
 
-      // Proactively prefetch search index on intent (pointerenter, focus, touch)
+      // Lazy-load search index strictly on first modal open (Cmd+K / click)
       function attachSearchPrefetchTriggers() {
-        var triggers = document.querySelectorAll(
-          '#header-search-btn, #mobile-search-btn, [data-open-search], a[href*="/search/"]',
-        );
-        triggers.forEach(function (el) {
-          if (!el.dataset.searchPrefetchBound) {
-            el.dataset.searchPrefetchBound = "true";
-            el.addEventListener(
-              "pointerenter",
-              function () {
-                fetchSearchData();
-              },
-              {
-                passive: true,
-                once: true,
-              },
-            );
-            el.addEventListener(
-              "focus",
-              function () {
-                fetchSearchData();
-              },
-              {
-                passive: true,
-                once: true,
-              },
-            );
-            el.addEventListener(
-              "touchstart",
-              function () {
-                fetchSearchData();
-              },
-              {
-                passive: true,
-                once: true,
-              },
-            );
-          }
-        });
+        // Intentionally lazy: /search-index.json is fetched once on openSearchModal() and cached in window.__searchIndexCache
       }
 
       if (document.readyState === "loading") {
@@ -533,6 +526,9 @@ const searchIndexPath = "/search-index.json";
 
       function openSearchModal(initialQuery) {
         syncModalLocaleUI();
+        if (typeof window.prefetchUniversalSearchIndex === "function") {
+          window.prefetchUniversalSearchIndex();
+        }
         fetchSearchData();
         var currentDialog = document.getElementById("search-dialog");
         var currentInput = document.getElementById("universal-search-input");
@@ -1483,6 +1479,9 @@ const searchIndexPath = "/search-index.json";
           )
         ) {
           initSearch();
+          if (typeof window.prefetchUniversalSearchIndex === "function") {
+            window.prefetchUniversalSearchIndex();
+          }
         }
       },
       { passive: true, capture: true },
@@ -1499,6 +1498,9 @@ const searchIndexPath = "/search-index.json";
           )
         ) {
           initSearch();
+          if (typeof window.prefetchUniversalSearchIndex === "function") {
+            window.prefetchUniversalSearchIndex();
+          }
         }
       },
       { passive: true, capture: true },

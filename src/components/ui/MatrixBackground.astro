@@ -47,6 +47,8 @@ const {
     private canvas: HTMLCanvasElement | null = null;
     private ctx: CanvasRenderingContext2D | null = null;
     private resizeObserver: ResizeObserver | null = null;
+    private intersectionObserver: IntersectionObserver | null = null;
+    private isIntersecting = true;
     private themeObserver: MutationObserver | null = null;
     private windowResizeHandler: (() => void) | null = null;
     private lastWidth = 0;
@@ -183,6 +185,7 @@ const {
       }
 
       this.setupObservers(state);
+      document.addEventListener("visibilitychange", this.handleVisibility);
     }
 
     private setupObservers(state: MatrixSingleton) {
@@ -230,6 +233,31 @@ const {
       });
       this.resizeObserver.observe(this);
 
+      if (this.intersectionObserver) {
+        this.intersectionObserver.disconnect();
+      }
+      if (typeof IntersectionObserver !== "undefined") {
+        this.intersectionObserver = new IntersectionObserver((entries) => {
+          const entry = entries[0];
+          if (!entry) return;
+          this.isIntersecting = entry.isIntersecting;
+          if (state.worker) {
+            state.worker.postMessage({
+              type:
+                entry.isIntersecting && !document.hidden ? "resume" : "pause",
+            });
+          } else if (!entry.isIntersecting) {
+            if (state.animationFrameId !== null) {
+              cancelAnimationFrame(state.animationFrameId);
+              state.animationFrameId = null;
+            }
+          } else if (!document.hidden && state.animationFrameId === null) {
+            this.startRainLoop();
+          }
+        });
+        this.intersectionObserver.observe(this);
+      }
+
       if (this.windowResizeHandler) {
         window.removeEventListener("resize", this.windowResizeHandler);
       }
@@ -255,11 +283,22 @@ const {
 
     private handleVisibility = () => {
       const state = this.getGlobalState();
-      if (!state.worker) return;
-      state.worker.postMessage({
-        type: "visibility",
-        hidden: document.hidden,
-      });
+      if (state.worker) {
+        state.worker.postMessage({
+          type: document.hidden || !this.isIntersecting ? "pause" : "resume",
+        });
+        state.worker.postMessage({
+          type: "visibility",
+          hidden: document.hidden,
+        });
+      } else if (document.hidden) {
+        if (state.animationFrameId !== null) {
+          cancelAnimationFrame(state.animationFrameId);
+          state.animationFrameId = null;
+        }
+      } else if (this.isIntersecting && state.animationFrameId === null) {
+        this.startRainLoop();
+      }
     };
 
     disconnectedCallback() {
@@ -287,6 +326,10 @@ const {
           if (this.resizeObserver) {
             this.resizeObserver.disconnect();
             this.resizeObserver = null;
+          }
+          if (this.intersectionObserver) {
+            this.intersectionObserver.disconnect();
+            this.intersectionObserver = null;
           }
           if (state.worker) {
             state.worker.terminate();
@@ -371,11 +414,15 @@ const {
       const FRAME_INTERVAL = 60;
 
       const render = (now: number) => {
-        state.animationFrameId = requestAnimationFrame(render);
-
-        if (document.hidden || window.innerWidth < 768) {
+        if (
+          document.hidden ||
+          !this.isIntersecting ||
+          window.innerWidth < 768
+        ) {
+          state.animationFrameId = null;
           return;
         }
+        state.animationFrameId = requestAnimationFrame(render);
 
         if (now - lastRenderTime < FRAME_INTERVAL) {
           return;

@@ -25,12 +25,12 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "run_worker_first": true,
+    "run_worker_first": false,
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page",
   },
   "triggers": {
-    "crons": ["0 2 * * *"],
+    "crons": ["0 2 * * *", "5 0 * * *"],
   },
   "d1_databases": [
     {
@@ -62,5 +62,14 @@
   ],
   "observability": {
     "enabled": true,
+  },
+  // Configurable Quota & Progressive Degradation Strategy (Free Tier -> Paid Plans)
+  // Upgrade to Workers Paid with zero code changes by setting CLOUDFLARE_PLAN_TIER="paid"
+  // Optional overrides: D1_DAILY_WRITE_BUDGET, D1_DAILY_READ_BUDGET, WORKERS_DAILY_REQUEST_BUDGET,
+  // D1_TIER_CONSERVATIVE_RATIO (0.50), D1_TIER_COMPACT_RATIO (0.70), D1_TIER_SURVIVAL_RATIO (0.85),
+  // D1_TIER_WAL_RATIO (0.95), D1_BOT_BUDGET_RATIO (0.15), D1_PREFETCH_BUDGET_RATIO (0.25),
+  // D1_VISIT_BUDGET_RATIO (0.65), D1_PREFETCH_SAMPLE_RATE (0.10 free / 1.0 paid)
+  "vars": {
+    "CLOUDFLARE_PLAN_TIER": "free",
   },
 }

@@ -53,6 +53,77 @@ function minifyInlineScripts() {
   };
 }
 
+function buildRouteLastmodMap() {
+  const map = new Map();
+  const contentRoot = path.join(process.cwd(), "src", "content");
+  if (!fs.existsSync(contentRoot)) return map;
+
+  function parseDateFromFile(filePath) {
+    try {
+      const content = fs.readFileSync(filePath, "utf8");
+      const match = content.match(/^---\s*([\s\S]*?)\s*---/);
+      if (match) {
+        const fm = match[1];
+        const updatedMatch =
+          fm.match(/updatedDate:\s*["']?([^"'\n]+)/i) ||
+          fm.match(/updatedAt:\s*["']?([^"'\n]+)/i);
+        if (updatedMatch) return new Date(updatedMatch[1].trim());
+
+        const pubMatch =
+          fm.match(/pubDate:\s*["']?([^"'\n]+)/i) ||
+          fm.match(/publishedAt:\s*["']?([^"'\n]+)/i) ||
+          fm.match(/startDate:\s*["']?([^"'\n]+)/i);
+        if (pubMatch) return new Date(pubMatch[1].trim());
+      }
+      return fs.statSync(filePath).mtime;
+    } catch {
+      return new Date();
+    }
+  }
+
+  const collections = ["posts", "projects", "experience", "services", "resume"];
+  for (const collection of collections) {
+    const colDir = path.join(contentRoot, collection);
+    if (!fs.existsSync(colDir)) continue;
+
+    const walkDir = (dir, localePrefix = "") => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walkDir(full, entry.name);
+        } else if (entry.isFile() && /\.(?:md|mdx|json)$/i.test(entry.name)) {
+          if (entry.name.startsWith(".")) continue;
+          const date = parseDateFromFile(full);
+          const rawSlug = entry.name.replace(/\.(?:md|mdx|json)$/i, "");
+
+          if (collection === "resume") {
+            const isEs = rawSlug.toLowerCase().endsWith("-es");
+            map.set(isEs ? "/es/resume" : "/resume", date);
+            map.set(isEs ? "/es/resume/" : "/resume/", date);
+          } else {
+            const section = collection === "posts" ? "blog" : collection;
+            const locale = localePrefix === "es" ? "es" : "en";
+            if (locale === "es") {
+              map.set(`/es/${section}/${rawSlug}`, date);
+              map.set(`/es/${section}/${rawSlug}/`, date);
+            } else {
+              map.set(`/${section}/${rawSlug}`, date);
+              map.set(`/${section}/${rawSlug}/`, date);
+              map.set(`/en/${section}/${rawSlug}`, date);
+              map.set(`/en/${section}/${rawSlug}/`, date);
+            }
+          }
+        }
+      }
+    };
+    walkDir(colDir);
+  }
+  return map;
+}
+
+const routeLastmodMap = buildRouteLastmodMap();
+
 export default defineConfig({
   site: "https://arturonavax.dev",
   output: "static",
@@ -86,10 +157,11 @@ export default defineConfig({
   integrations: [
     sitemap({
       filter: (page) =>
-        !page.includes("/search/") &&
+        !page.includes("/admin/") &&
+        !page.includes("/admin") &&
+        !page.includes("/search") &&
         !page.includes("/404") &&
-        !page.includes("/case-studies/") &&
-        !page.includes("/admin/"),
+        !page.includes("/case-studies/"),
 
       i18n: {
         defaultLocale: "en",
@@ -101,8 +173,18 @@ export default defineConfig({
 
       // 3. Serializador avanzado (x-default + lastmod dinámico)
       serialize(item) {
-        // Asignar fecha de última modificación
-        item.lastmod = new Date();
+        // Asignar fecha de última modificación determinista desde el mapa de contenido
+        try {
+          const parsed = new URL(item.url);
+          const p = parsed.pathname;
+          const matched =
+            routeLastmodMap.get(p) ||
+            routeLastmodMap.get(p.replace(/\/+$/, "")) ||
+            routeLastmodMap.get(`${p}/`);
+          item.lastmod = matched ? new Date(matched) : new Date();
+        } catch {
+          item.lastmod = new Date();
+        }
 
         // Asegurar que exista la directiva x-default apuntando a la versión en inglés
         if (item.links && item.links.length > 0) {

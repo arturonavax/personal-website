@@ -3,6 +3,11 @@ import type {
   CircuitBreakerStatus,
   CircuitBreakerTripReason,
 } from "../../ports/telemetry.port";
+import {
+  edgeQuotaTracker,
+  QuotaDegradationTier,
+  resolveQuotaConfig,
+} from "./circuit-breaker.adapter";
 
 export interface CircuitBreakerConfig {
   readonly defaultDailyWriteBudget?: number;
@@ -48,10 +53,50 @@ export class PrefetchQuotaCircuitBreaker implements PrefetchCircuitBreakerPort {
     }
   }
 
+  private computeBudgets(env?: Record<string, unknown>): {
+    maxPrefetchBudget: number;
+    maxVisitBudget: number;
+  } {
+    if (!env) {
+      return {
+        maxPrefetchBudget: Math.floor(
+          this.defaultDailyWriteBudget * this.prefetchBudgetRatio,
+        ),
+        maxVisitBudget: Math.floor(this.defaultDailyWriteBudget * 0.65),
+      };
+    }
+    const resolved = resolveQuotaConfig(env);
+    const hasEnvBudget =
+      env.D1_DAILY_WRITE_BUDGET !== undefined ||
+      env.CLOUDFLARE_PLAN_TIER !== undefined;
+    const totalBudget = hasEnvBudget
+      ? resolved.dailyWriteBudget
+      : this.defaultDailyWriteBudget;
+    const prefetchRatio =
+      env.D1_PREFETCH_BUDGET_RATIO !== undefined
+        ? resolved.prefetchBudgetRatio
+        : this.prefetchBudgetRatio;
+    const visitRatio =
+      env.D1_VISIT_BUDGET_RATIO !== undefined
+        ? resolved.visitBudgetRatio
+        : 0.65;
+
+    if (!Number.isFinite(totalBudget)) {
+      return {
+        maxPrefetchBudget: Number.MAX_SAFE_INTEGER,
+        maxVisitBudget: Number.MAX_SAFE_INTEGER,
+      };
+    }
+    return {
+      maxPrefetchBudget: Math.floor(totalBudget * prefetchRatio),
+      maxVisitBudget: Math.floor(totalBudget * visitRatio),
+    };
+  }
+
   canRecordPrefetch(env?: Record<string, unknown>): boolean {
     this.checkDayRollover();
 
-    // 1. Kill-Switch inmediato vía variable de entorno / secreto
+    // 1. Immediate kill-switch via environment variable / secret
     if (env) {
       const toggle = env.ENABLE_PREFETCH_TELEMETRY;
       if (toggle === false || toggle === "false" || toggle === "0") {
@@ -61,27 +106,24 @@ export class PrefetchQuotaCircuitBreaker implements PrefetchCircuitBreakerPort {
       }
     }
 
-    // 2. Cálculo del presupuesto de escritura diario seguro
-    let totalBudget = this.defaultDailyWriteBudget;
-    if (env?.D1_DAILY_WRITE_BUDGET) {
-      const parsed = Number(env.D1_DAILY_WRITE_BUDGET);
-      if (!Number.isNaN(parsed) && parsed > 0) {
-        totalBudget = parsed;
-      }
+    // 1b. Progressive Degradation Tier >= CONSERVATIVE (50% quota): 100% shutoff of prefetch D1 writes
+    if (edgeQuotaTracker.getTier() >= QuotaDegradationTier.CONSERVATIVE) {
+      this.state = "OPEN";
+      this.tripReason = "budget_exhausted";
+      return false;
     }
 
-    const maxPrefetchBudget = Math.floor(
-      totalBudget * this.prefetchBudgetRatio,
-    );
+    // 2. Compute safe daily write budget
+    const { maxPrefetchBudget } = this.computeBudgets(env);
 
-    // 3. Verificación de límite de presupuesto absoluto
+    // 3. Absolute prefetch budget cap check
     if (this.dailyPrefetchCount >= maxPrefetchBudget) {
       this.state = "OPEN";
       this.tripReason = "budget_exhausted";
       return false;
     }
 
-    // 4. Verificación de flujo proporcional de prefetch vs visitas reales
+    // 4. Proportional prefetch vs real visits ratio check
     if (
       this.dailyPrefetchCount > this.minSampleThreshold &&
       this.dailyPrefetchCount >
@@ -99,15 +141,7 @@ export class PrefetchQuotaCircuitBreaker implements PrefetchCircuitBreakerPort {
 
   canRecordVisit(env?: Record<string, unknown>): boolean {
     this.checkDayRollover();
-    let totalBudget = this.defaultDailyWriteBudget;
-    if (env?.D1_DAILY_WRITE_BUDGET) {
-      const parsed = Number(env.D1_DAILY_WRITE_BUDGET);
-      if (!Number.isNaN(parsed) && parsed > 0) {
-        totalBudget = parsed;
-      }
-    }
-    // Hard ceiling: max 65% of daily budget allocated to real visit writes (prevents overage)
-    const maxVisitBudget = Math.floor(totalBudget * 0.65);
+    const { maxVisitBudget } = this.computeBudgets(env);
     return this.dailyVisitCount < maxVisitBudget;
   }
 
@@ -146,11 +180,9 @@ export class PrefetchQuotaCircuitBreaker implements PrefetchCircuitBreakerPort {
     this.dailyPrefetchCount++;
   }
 
-  getStatus(): CircuitBreakerStatus {
+  getStatus(env?: Record<string, unknown>): CircuitBreakerStatus {
     this.checkDayRollover();
-    const maxPrefetchBudget = Math.floor(
-      this.defaultDailyWriteBudget * this.prefetchBudgetRatio,
-    );
+    const { maxPrefetchBudget } = this.computeBudgets(env);
     return {
       state: this.state,
       dailyPrefetchCount: this.dailyPrefetchCount,

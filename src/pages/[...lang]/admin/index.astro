@@ -1644,7 +1644,7 @@ const description = isEs
       referrersPage = 1;
       leadsPage = 1;
       markFiltersStaged(false);
-      fetchDashboardData(true);
+      fetchDashboardData(false, false);
     }
 
     // Sub-pagination logic
@@ -1691,16 +1691,16 @@ const description = isEs
     function goToPage(p) {
       if (p < 1 || p > totalPages || p === currentPage) return;
       currentPage = p;
-      fetchDashboardData(true);
+      fetchDashboardData(false, true);
     }
 
     function setLimit(l) {
       currentLimit = parseInt(l, 10);
       currentPage = 1;
-      fetchDashboardData(true);
+      fetchDashboardData(false, true);
     }
 
-    async function fetchDashboardData(isManual) {
+    async function fetchDashboardData(isManual, pageOnly) {
       var refreshIcon = document.getElementById("refresh-icon");
       if (refreshIcon) refreshIcon.classList.add("animate-spin");
 
@@ -1716,6 +1716,7 @@ const description = isEs
         if (searchQuery.trim()) queryParams.set("search", searchQuery.trim());
         queryParams.set("page", String(currentPage));
         queryParams.set("limit", String(currentLimit));
+        if (pageOnly) queryParams.set("page_only", "1");
         if (isManual) queryParams.set("fresh", "true");
 
         if (currentRange === "custom") {
@@ -1723,13 +1724,28 @@ const description = isEs
           if (customTo) queryParams.set("to", customTo);
         }
 
+        if (pageOnly) {
+          var pageRes = await fetch("/api/telemetry?" + queryParams.toString());
+          if (pageRes.ok) {
+            var pData = await pageRes.json();
+            rawPageviews = pData.pageviews || [];
+            if (pData.quotas) cachedQuotas = pData.quotas;
+            if (pData.pagination) {
+              currentPage = pData.pagination.page;
+              totalPages = pData.pagination.total_pages || 1;
+              totalFiltered = pData.pagination.total_filtered || 0;
+            }
+          }
+          lastSyncTimestamp = Date.now();
+          renderDashboard();
+          return;
+        }
+
         var results = await Promise.allSettled([
-          fetch("/api/telemetry?" + queryParams.toString(), {
-            cache: "no-store",
-          }),
-          fetch("/api/metrics", { cache: "no-store" }),
-          fetch("/api/deployments", { cache: "no-store" }),
-          fetch("/api/leads", { cache: "no-store" }),
+          fetch("/api/telemetry?" + queryParams.toString()),
+          fetch("/api/metrics"),
+          fetch("/api/deployments"),
+          fetch("/api/leads"),
         ]);
 
         var telemetryRes = results[0];

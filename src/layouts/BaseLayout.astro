@@ -33,6 +33,7 @@ interface Props {
     | "services"
     | "case-studies"
     | undefined;
+  availableLocales?: readonly Locale[] | undefined;
   hideSubtleCoffee?: boolean | undefined;
   noindex?: boolean | undefined;
   hideFooter?: boolean | undefined;
@@ -48,6 +49,7 @@ const {
   jsonLd,
   translationKey,
   collectionName,
+  availableLocales,
   hideSubtleCoffee = false,
   noindex = false,
   hideFooter = false,
@@ -99,6 +101,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
       jsonLd={jsonLd}
       alternateEnUrl={alternateEnUrl}
       alternateEsUrl={alternateEsUrl}
+      availableLocales={availableLocales}
       noindex={noindex}
     />
 

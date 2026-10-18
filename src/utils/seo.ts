@@ -4,6 +4,7 @@
  */
 
 import type { Locale } from "../i18n/locales";
+import { buildCoreGraphNodes } from "../lib/seo/schema-builder";
 
 export interface PersonSchemaOptions {
   locale: Locale;
@@ -16,6 +17,15 @@ export interface PersonSchemaOptions {
 export function generatePersonSchema(
   options: PersonSchemaOptions,
 ): Record<string, unknown> {
+  const coreNodes = buildCoreGraphNodes({
+    locale: options.locale,
+    canonicalUrl: options.canonicalUrl,
+    title: `Arturo Nava - ${options.headline}`,
+    description: options.bio,
+    pageType: ["ProfilePage", "WebPage"],
+    sameAs: options.sameAs,
+  });
+
   return {
     "@context": "https://schema.org",
     "@type": "Person",
@@ -30,7 +40,78 @@ export function generatePersonSchema(
       "https://linkedin.com/in/arturonava",
       "https://x.com/arturonavax",
     ],
+    "@graph": coreNodes,
   };
+}
+
+export interface HreflangLink {
+  hreflang: "en" | "es" | "x-default";
+  href: string;
+}
+
+/**
+ * Computes verified hreflang links for a page, emitting alternates ONLY for locales
+ * that actually exist (preventing broken hreflang -> 404 references).
+ */
+export function resolveVerifiedHreflang(options: {
+  locale: Locale;
+  canonicalUrl: string;
+  alternateEnUrl?: string | undefined;
+  alternateEsUrl?: string | undefined;
+  availableLocales?: readonly Locale[] | undefined;
+  siteUrl?: string | undefined;
+}): {
+  enUrl: string | undefined;
+  esUrl: string | undefined;
+  xDefaultUrl: string;
+  links: HreflangLink[];
+} {
+  const siteUrl = (options.siteUrl || "https://arturonavax.dev").replace(
+    /\/+$/,
+    "",
+  );
+  const toFullUrl = (pathOrUrl: string): string => {
+    if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+      return sanitizeCanonicalUrl(pathOrUrl, siteUrl);
+    }
+    const withLeading = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+    const withTrailing = withLeading.endsWith("/")
+      ? withLeading
+      : `${withLeading}/`;
+    return `${siteUrl}${withTrailing}`;
+  };
+
+  const hasEn = options.availableLocales
+    ? options.availableLocales.includes("en")
+    : options.locale === "en" || Boolean(options.alternateEnUrl);
+  const hasEs = options.availableLocales
+    ? options.availableLocales.includes("es")
+    : options.locale === "es" || Boolean(options.alternateEsUrl);
+
+  const enUrl = !hasEn
+    ? undefined
+    : options.locale === "en"
+      ? options.canonicalUrl
+      : options.alternateEnUrl
+        ? toFullUrl(options.alternateEnUrl)
+        : undefined;
+
+  const esUrl = !hasEs
+    ? undefined
+    : options.locale === "es"
+      ? options.canonicalUrl
+      : options.alternateEsUrl
+        ? toFullUrl(options.alternateEsUrl)
+        : undefined;
+
+  const xDefaultUrl = enUrl ?? esUrl ?? `${siteUrl}/`;
+
+  const links: HreflangLink[] = [];
+  if (enUrl) links.push({ hreflang: "en", href: enUrl });
+  if (esUrl) links.push({ hreflang: "es", href: esUrl });
+  links.push({ hreflang: "x-default", href: xDefaultUrl });
+
+  return { enUrl, esUrl, xDefaultUrl, links };
 }
 
 const TRACKING_PARAMS = new Set([

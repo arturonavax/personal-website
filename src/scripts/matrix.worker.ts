@@ -27,12 +27,26 @@ interface VisibilityMessage {
   hidden: boolean;
 }
 
+interface PauseMessage {
+  type: "pause";
+}
+
+interface ResumeMessage {
+  type: "resume";
+}
+
 type InboundMessage =
-  InitMessage | ResizeMessage | ThemeMessage | VisibilityMessage;
+  | InitMessage
+  | ResizeMessage
+  | ThemeMessage
+  | VisibilityMessage
+  | PauseMessage
+  | ResumeMessage;
 
 interface WorkerScope {
   onmessage: ((event: MessageEvent<InboundMessage>) => void) | null;
   requestAnimationFrame: (cb: (now: number) => void) => number;
+  cancelAnimationFrame?: (id: number) => void;
 }
 
 const scope = self as unknown as WorkerScope;
@@ -51,6 +65,7 @@ let height = 0;
 let currentDpr = 1;
 let isLight = false;
 let hidden = false;
+let rafId: number | null = null;
 let drops: number[] = [];
 let speeds: number[] = [];
 let lastRenderTime = 0;
@@ -87,9 +102,23 @@ function layout(w: number, h: number, dpr: number): void {
   speeds = nextSpeeds;
 }
 
+function scheduleNextFrame(): void {
+  if (hidden || rafId !== null) return;
+  rafId = scope.requestAnimationFrame(render);
+}
+
+function stopFrameLoop(): void {
+  if (rafId !== null && typeof scope.cancelAnimationFrame === "function") {
+    scope.cancelAnimationFrame(rafId);
+  }
+  rafId = null;
+}
+
 function render(now: number): void {
-  scope.requestAnimationFrame(render);
-  if (hidden || !ctx || now - lastRenderTime < FRAME_INTERVAL) return;
+  rafId = null;
+  if (hidden) return;
+  scheduleNextFrame();
+  if (!ctx || now - lastRenderTime < FRAME_INTERVAL) return;
   lastRenderTime = now;
 
   ctx.fillStyle = isLight
@@ -135,7 +164,7 @@ scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
       ctx = canvas.getContext("2d");
       isLight = msg.isLight;
       layout(msg.width, msg.height, msg.dpr);
-      scope.requestAnimationFrame(render);
+      scheduleNextFrame();
       break;
     case "resize":
       layout(msg.width, msg.height, msg.dpr);
@@ -145,6 +174,19 @@ scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
       break;
     case "visibility":
       hidden = msg.hidden;
+      if (hidden) {
+        stopFrameLoop();
+      } else {
+        scheduleNextFrame();
+      }
+      break;
+    case "pause":
+      hidden = true;
+      stopFrameLoop();
+      break;
+    case "resume":
+      hidden = false;
+      scheduleNextFrame();
       break;
   }
 };

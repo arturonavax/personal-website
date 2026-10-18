@@ -49,21 +49,51 @@ The search endpoint (`/api/search`) implements a dual-tier architecture:
 2. **Tier 2 (Workers AI + Vectorize):** Executes embedding generation via `@cf/baai/bge-small-en-v1.5` and queries Vectorize.
 3. **Tier 3 (Fail-Open Static Memory Fallback):** If Vectorize or Workers AI throws an error, exceeds the 350 ms latency budget, or runs out of Neurons, the worker seamlessly delegates to `StaticMemorySearchAdapter`, searching the pre-indexed JSON catalogue without returning an HTTP 500.
 
-### 2.5. Two-Layer Authoritative Pageview Deduplication
+### 2.5. Two-Layer Authoritative Pageview Deduplication (L1 Edge Cache + L2 DB)
 
 Cloudflare Workers run globally across hundreds of independent ephemeral isolates. Relying strictly on in-memory deduplication risks duplicate records when consecutive requests hit different isolates or POPs.
 
-- **Layer 1 (L1 In-Memory Fast Cache):** An ephemeral Map (`recentPageviewsCache`) with a 5000ms TTL absorbs rapid double-clicks, back/forward cache reloads, and simultaneous asset fetches within the same worker instance, skipping D1 writes completely (0ms cost).
-- **Layer 2 (L2 Authoritative Database Deduplication):** A deterministic dedupe key `sha256(visitor_hash:path:time_bucket_5s)` is stored in `pageviews.dedupe_key` backed by a `UNIQUE INDEX idx_pageviews_dedupe_key`. D1 automatically discards duplicates cross-isolate using `INSERT OR IGNORE`.
-- **Atomic Batch Rollups:** Daily rollup counters are updated in the same transaction using `db.batch([pageviewInsert, rollupInsert])` with `WHERE changes() > 0`, guaranteeing that rollup aggregates increment only on genuine, non-duplicate visits.
+- **Layer 1 (L1 Edge Cache API Absorption):** `computeVisitDedupeKey(ip, userAgent, path, timestamp)` computes a deterministic SHA-256 hash across a 30-minute bucket (`VISIT_DEDUPE_WINDOW_MS = 1_800_000`). Lookups check `caches.default` (`https://telemetry.internal/dedupe/${key}`). On cache hits, the visit is discarded immediately with **0 D1 reads and 0 D1 writes**.
+- **Layer 2 (L2 Authoritative Database Deduplication):** A deterministic dedupe key is stored in `pageviews.dedupe_key` and `telemetry_events.dedupe_key` backed by `UNIQUE INDEX idx_pageviews_dedupe_key`. D1 automatically discards duplicates cross-isolate using `INSERT OR IGNORE`.
+- **Atomic Batch Rollups:** Daily rollup counters are updated in the same transaction using `db.batch([pageviewInsert, rollupInsert])` with atomic upsert `INSERT INTO analytics_rollups ... ON CONFLICT DO UPDATE`, eliminating read-before-write race conditions.
+- **SSR/ClientRouter Coordination:** On initial HTML document navigation, the Edge Worker emits `X-Edge-Visit-Logged: 1` and cookie `ev_init=1`. `EdgeViewCounter.astro` detects `ev_init=1` on initial load and suppresses duplicate client beaconing, while firing beacon telemetry only on subsequent `ClientRouter` SPA transitions and `pageshow` `bfcache` restores.
 
-### 2.6. D1 Write Amplification Elimination & Index Pruning
+### 2.6. 5-Tier Progressive Degradation State Machine & R2 WAL (Zero Data Loss)
 
-In Cloudflare D1, every index entry modified during an `INSERT` counts as an additional row write against daily quota limits.
+To withstand sudden virality or distributed bot floods without exceeding D1 daily quotas, `EdgeQuotaTracker` implements an automated 5-tier progressive degradation engine:
 
-- **Problem:** Prior schema maintained 10 indexes on `pageviews`, turning a single pageview into ~12 D1 writes and consuming the 100k daily write budget prematurely.
-- **The Optimization:** Migration `0010_telemetry_dedupe_and_index_pruning.sql` removed 5 redundant overlapping composite indexes (`idx_pageviews_perf_composite`, `idx_pageviews_path_created`, `idx_pageviews_country_created`, `idx_pageviews_content`, `idx_pageviews_referrer`).
-- **Result:** Writes dropped from ~12 down to ~4 rows per pageview (>65% write reduction), leaving D1 query performance fully intact via leading `created_at` indexes.
+1. **Tier 0 (`NOMINAL` < 50% writes):** Full human telemetry, rollups, verified crawlers, contact leads, and prefetch tracking.
+2. **Tier 1 (`CONSERVATIVE` 50% - 70% writes):** 100% of prefetch telemetry writes are frozen (`prefetch-circuit-breaker`). Generic bot logging is dropped while verified SEO/AI search engines (`Googlebot`, `ClaudeBot`, `GPTBot`, `PerplexityBot`) are recorded in rollups.
+3. **Tier 2 (`COMPACT_ROLLUP` 70% - 85% writes):** Individual row logging to `pageviews` and `telemetry_events` is suspended. Visits are aggregated in isolate memory buffers (up to 25 events or 15s window) and flushed as atomic upserts to `analytics_rollups`.
+4. **Tier 3 (`CRITICAL_SURVIVAL` 85% - 95% writes):** 100% of telemetry D1 writes are frozen, reserving remaining quota for business-critical `contact_leads`. Telemetry visits are dispatched to Cloudflare Analytics Engine and written to R2 WAL (`wal/telemetry/${dateUtc}/${isolateId}.ndjson`).
+5. **Tier 4 (`R2_WAL_FALLBACK` >= 95% writes or D1 Exception):** All writes (both telemetry and contact leads) fall back to R2 WAL (`wal/leads/${uuid}.json`). The contact form continues to return `200 OK` (`walFallback: true`), guaranteeing **zero leads are ever lost**.
+
+**Automated Replay Cron (`5 0 * * *`):** A daily cron trigger runs at 00:05 UTC (`reconcileR2WalToD1`), replaying all buffered R2 leads and telemetry into D1 and purging processed WAL objects.
+
+### 2.7. Dynamically Configurable Quota Engine (Free Tier to Paid Plan)
+
+Upgrading from Cloudflare Free Tier to Paid Plans requires **zero code modifications**, managed entirely via environment variables in `wrangler.jsonc` or Cloudflare dashboard:
+
+- `CLOUDFLARE_PLAN_TIER`: `"free"` (default) | `"paid"` | `"unlimited"`.
+- `D1_DAILY_WRITE_BUDGET`: Defaults to `100_000` (free), `50_000_000` (paid), or `Infinity` (unlimited).
+- `D1_DAILY_READ_BUDGET`: Defaults to `5_000_000` (free), `250_000_000` (paid), or `Infinity` (unlimited).
+- `WORKERS_DAILY_REQUEST_BUDGET`: Defaults to `100_000` (free) or `10_000_000` (paid).
+- Ratios: `D1_TIER_CONSERVATIVE_RATIO` (0.50), `D1_TIER_COMPACT_RATIO` (0.70), `D1_TIER_SURVIVAL_RATIO` (0.85), `D1_TIER_WAL_RATIO` (0.95), `D1_PREFETCH_SAMPLE_RATE` (0.10 free, 1.0 paid).
+
+### 2.8. Low-Quota `/admin` Dashboard Strategy
+
+Opening the `/admin` telemetry dashboard twice a day never exhausts D1 row read quotas:
+
+- **120-Second Edge Cache TTL:** Telemetry aggregates are cached in `caches.default` and memory for 120 seconds.
+- **15-Second Cache-Buster Cooldown:** Rapid clicks on refresh buttons cannot bypass cache repeatedly.
+- **Pagination via `page_only=1`:** Page or limit adjustments only fetch the paginated slice (`<= 25` rows read) rather than re-running the 6 heavy `GROUP BY` aggregations.
+- **Eliminated Table Scans:** Total views are resolved from rollup tables rather than unbounded `SELECT COUNT(*) FROM pageviews`.
+
+### 2.9. D1 Write Amplification Elimination & Compacted Schema
+
+- Compacted all incremental migrations (`0001` through `0010`) into the baseline `0001_initial_schema.sql` and `schema.sql`.
+- Pruned 5 redundant indexes on `pageviews`, dropping write amplification from ~12 down to ~4 rows per write (>65% reduction).
+- Added deterministic reset script `cloudflare/d1/reset.sql` with npm scripts `db:reset:local` and `db:reset:remote`.
 
 ---
 

@@ -103,6 +103,8 @@ pnpm dev
 | **Upload Content**        | `pnpm content:push`                | Pushes local changes to R2 and generates a fresh `_bundle.tar.gz`.           |
 | **Upload + Prune**        | `node scripts/r2-push.mjs --prune` | Pushes local changes and removes remote objects deleted locally.             |
 | **Optimize & Publish CV** | `pnpm cv:publish`                  | Optimizes PDFs via `qpdf` (-19% size, crisp text) and syncs to R2.           |
+| **Reset D1 DB (Local)**   | `pnpm db:reset:local`              | Drops tables and re-initializes compacted D1 schema locally.                 |
+| **Reset D1 DB (Remote)**  | `pnpm db:reset:remote`             | Drops tables and re-initializes compacted D1 schema on production D1.        |
 | **Deploy to Edge**        | `pnpm run deploy`                  | Auto-pulls content from R2, compiles Astro SSG, and deploys Worker.          |
 
 ---
@@ -114,8 +116,8 @@ The repository includes a comprehensive automated quality suite:
 ```sh
 pnpm build        # Compiles Astro SSG (auto-pulls R2 content if missing)
 pnpm check        # Runs Astro & TypeScript type check (0 errors, 0 warnings)
-pnpm test         # Runs 202 unit/integration tests via Bun (< 700 ms)
-pnpm audit        # Runs SPEC-004 static architectural gates (scripts/audit-codebase.ts)
+pnpm test         # Runs 296 unit/integration tests via Bun (< 700 ms)
+pnpm audit        # Runs static architectural gates & content hydration checks
 ```
 
 ### Static Architecture Gates:

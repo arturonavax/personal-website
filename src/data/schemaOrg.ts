@@ -3,6 +3,9 @@ export function getHomepageJsonLd(
   avatarUrl?: string,
 ) {
   const isEs = locale === "es";
+  const pageUrl = isEs
+    ? "https://arturonavax.dev/es/"
+    : "https://arturonavax.dev/";
 
   return {
     "@context": "https://schema.org",
@@ -12,16 +15,21 @@ export function getHomepageJsonLd(
       {
         "@type": "WebSite",
         "@id": "https://arturonavax.dev/#website",
-        url: isEs ? "https://arturonavax.dev/es/" : "https://arturonavax.dev/",
+        url: pageUrl,
         name: "Arturo Nava",
         alternateName: "arturonavax.dev",
         publisher: { "@id": "https://arturonavax.dev/#person" },
         inLanguage: isEs ? "es" : "en",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: "https://arturonavax.dev/search?q={search_term_string}",
+          "query-input": "required name=search_term_string",
+        },
       },
       {
-        "@type": "ProfilePage",
-        "@id": "https://arturonavax.dev/#profilepage",
-        url: isEs ? "https://arturonavax.dev/es/" : "https://arturonavax.dev/",
+        "@type": ["ProfilePage", "WebPage"],
+        "@id": `${pageUrl}#webpage`,
+        url: pageUrl,
         name: isEs
           ? "Arturo Nava - Ingeniero de Software Senior / IA"
           : "Arturo Nava - Senior Software / AI Engineer",
@@ -31,6 +39,19 @@ export function getHomepageJsonLd(
         dateModified: "2026-09-27T23:46:15Z",
         mainEntity: { "@id": "https://arturonavax.dev/#person" },
         about: { "@id": "https://arturonavax.dev/#person" },
+        breadcrumb: { "@id": `${pageUrl}#breadcrumb` },
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${pageUrl}#breadcrumb`,
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: isEs ? "Inicio" : "Home",
+            item: pageUrl,
+          },
+        ],
       },
       {
         "@type": "Person",
@@ -44,7 +65,12 @@ export function getHomepageJsonLd(
           ? "Ingeniero de Software Senior / IA con más de 8 años diseñando arquitecturas distribuidas de alto rendimiento, motores antifraude en tiempo real, verificación criptográfica Web3 y flujos agénticos en Go, Rust y Python. Disponible para roles remotos Senior/Staff y consultoría a nivel global vía Contractor B2B (W-8BEN) o EOR (alineado con la zona horaria UTC-5 / EE. UU., sin patrocinio de visa)."
           : "Senior Software & AI Engineer with 8+ years architecting high-throughput distributed backends, real-time fraud engines, Web3 cryptographic verification, and production AI workflows in Go, Rust, and Python. Open to remote full-time Senior/Staff roles and advisory globally via B2B contractor (W-8BEN) or EOR (aligned with UTC-5 / US time zones, no visa sponsorship needed).",
         url: "https://arturonavax.dev/",
-        mainEntityOfPage: { "@id": "https://arturonavax.dev/#profilepage" },
+        mainEntityOfPage: { "@id": `${pageUrl}#webpage` },
+        worksFor: {
+          "@type": "Organization",
+          name: "LATAM Airlines",
+          url: "https://www.latamairlines.com",
+        },
         image: [
           avatarUrl
             ? avatarUrl.startsWith("http")
@@ -138,6 +164,18 @@ export function getHomepageJsonLd(
           },
         ],
         hasOccupation: [
+          {
+            "@type": "Role",
+            roleName: isEs
+              ? "Ingeniero de Software Senior"
+              : "Senior Software Engineer",
+            startDate: "2026-03-01",
+            worksFor: {
+              "@type": "Organization",
+              name: "LATAM Airlines",
+              url: "https://www.latamairlines.com",
+            },
+          },
           {
             "@type": "Role",
             roleName: isEs

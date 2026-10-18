@@ -103,5 +103,58 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       // Identity Anchor Preservation
       expect(enSchema["@id"]).toBe(esSchema["@id"]);
     });
+
+    test("Verify Unified @graph Knowledge Graph, Hreflang, and Meta Tags", async ({
+      page,
+    }) => {
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+
+      // JSON-LD @graph nodes
+      const jsonText = await page
+        .locator('script[type="application/ld+json"]')
+        .first()
+        .textContent();
+      const schema = JSON.parse(jsonText || "{}");
+      expect(schema["@context"]).toBe("https://schema.org");
+      expect(Array.isArray(schema["@graph"])).toBe(true);
+
+      const graphIds = schema["@graph"].map((n: any) => n["@id"]);
+      expect(graphIds).toContain("https://arturonavax.dev/#person");
+      expect(graphIds).toContain("https://arturonavax.dev/#website");
+      expect(graphIds.some((id: string) => id.includes("#webpage"))).toBe(true);
+      expect(graphIds.some((id: string) => id.includes("#breadcrumb"))).toBe(
+        true,
+      );
+
+      // Verified Hreflang + x-default
+      const hreflangEn = await page
+        .locator('link[rel="alternate"][hreflang="en"]')
+        .getAttribute("href");
+      const hreflangEs = await page
+        .locator('link[rel="alternate"][hreflang="es"]')
+        .getAttribute("href");
+      const hreflangDefault = await page
+        .locator('link[rel="alternate"][hreflang="x-default"]')
+        .getAttribute("href");
+      expect(hreflangEn).toBeTruthy();
+      expect(hreflangEs).toBeTruthy();
+      expect(hreflangDefault).toBeTruthy();
+
+      // OpenGraph and Twitter Card
+      const ogImage = await page
+        .locator('meta[property="og:image"]')
+        .getAttribute("content");
+      const twitterCard = await page
+        .locator('meta[name="twitter:card"]')
+        .getAttribute("content");
+      expect(ogImage).toBeTruthy();
+      expect(twitterCard).toBe("summary_large_image");
+
+      // RSS Autodiscovery
+      const rssLink = await page
+        .locator('link[rel="alternate"][type="application/rss+xml"]')
+        .getAttribute("href");
+      expect(rssLink).toBe("/rss.xml");
+    });
   });
 }

@@ -55,7 +55,7 @@ function wrapText(text: string, maxCharsPerLine = 38, maxLines = 3): string[] {
 }
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  // Desactivado temporalmente: se utiliza exclusivamente /og-default.png para todas las rutas
+  // Temporarily disabled: /og-default.png is served exclusively across all routes
   return [];
 };
 
@@ -180,7 +180,8 @@ export const GET: APIRoute = async ({ props }) => {
     status: 200,
     headers: {
       "Content-Type": "image/png",
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control":
+        "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400, immutable",
     },
   });
 };

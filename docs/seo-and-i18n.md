@@ -114,60 +114,53 @@ In `src/components/common/SEOHead.astro`, the tags are emitted conditionally:
 
 ---
 
+---
+
 ## 4. Multilingual XML Sitemap (`@astrojs/sitemap`)
 
 The build generates an RFC-compliant sitemap index (`dist/sitemap-index.xml`) with localized alternates in `dist/sitemap-0.xml`.
 
 Configured in `astro.config.mjs`:
 
-- Filters out non-content endpoints (`/search/`, `/404`, `/admin/`, `/case-studies/`).
+- Filters out non-content endpoints (`/search`, `/404`, `/admin/`, `/case-studies/`).
 - Emits `<xhtml:link rel="alternate" hreflang="en" .../>` and `hreflang="es"`.
 - Dynamically injects `hreflang="x-default"` pointing to the default English canonical URL.
-- Updates `<lastmod>` to the build timestamp.
+- **Deterministic `lastmod` Timestamps:** Lookups map each route path against content collection frontmatter (`updatedDate || updatedAt || pubDate || publishedAt || startDate`) or file mtime, ensuring search engines receive precise per-document modification dates rather than arbitrary build times.
 
 ---
 
-## 5. Structured Data (JSON-LD) Knowledge Graph
+## 5. Structured Data (JSON-LD) Unified `@graph` Knowledge Graph
 
-All pages inject validated JSON-LD schema conforming to Schema.org standards:
+Every public page emits a single root JSON-LD payload with `"@context": "https://schema.org"` and a unified `"@graph"` connecting authoritative entities with deterministic `@id` anchors:
 
-### 5.1. `Person` & `ProfilePage`
+- **Person (`https://arturonavax.dev/#person`):** Primary identity anchor with `worksFor` (LATAM Airlines), `alumniOf`, `knowsAbout`, and `sameAs`.
+- **WebSite (`https://arturonavax.dev/#website`):** Publisher linked to `#person`, with multilingual support and `SearchAction`.
+- **WebPage (`${canonicalUrl}#webpage`):** Page entity linked via `isPartOf: { "@id": "#website" }`, `about: { "@id": "#person" }`, and `breadcrumb: { "@id": "#breadcrumb" }`.
+- **BreadcrumbList (`${canonicalUrl}#breadcrumb`):** Deterministic hierarchy path.
 
-On the homepage and resume, JSON-LD defines:
+### Vertical Entity Schemas
 
-- `@type: ["Person", "ProfilePage"]`
-- `@id: "https://arturonavax.dev/#person"`
-- `name: "Arturo Nava"`
-- `jobTitle: "Senior Software Engineer & Distributed Systems Architect"`
-- `knowsAbout`: Distributed Systems, Astro, Cloudflare Workers, Go, Rust, TypeScript, Vector Search.
-- `sameAs`: GitHub, LinkedIn, Twitter/X, and professional profiles.
-
-### 5.2. `TechArticle` / `BlogPosting`
-
-On blog posts:
-
-- `@type: "TechArticle"`
-- `headline`, `description`, `datePublished`, `dateModified`
-- `author: { "@id": "https://arturonavax.dev/#person" }`
-- `publisher: { "@id": "https://arturonavax.dev/#person" }`
-- `mainEntityOfPage`: Canonical post URL.
-
-### 5.3. `ItemList`
-
-On taxonomy and catalogue pages (`/projects/`, `/services/`, `/experience/`), `ItemList` structured data outlines the items with explicit position indexes for rich search snippets.
+- **Blog (`TechArticle` + `BlogPosting`):** Includes `author: { "@id": "#person" }`, `datePublished`, `dateModified`, `wordCount`, `timeRequired` (ISO 8601), and `speakable` CSS selectors (`["h1", "article > p:first-of-type"]`).
+- **Projects (`SoftwareSourceCode` / `SoftwareApplication`):** With `programmingLanguage`, `runtimePlatform`, `codeRepository`, and `author`.
+- **Services (`Service` + `ProfessionalService`):** With `provider: { "@id": "#person" }`, `areaServed: "Worldwide"`, and `availableChannel`.
+- **Resume (`ProfilePage`):** Linked to `mainEntity: { "@id": "#person" }`, `hasOccupation`, and `educationalCredentialAwarded`.
+- **Experience (`TechArticle`):** Milestones linked to `#person` and employer organizations.
 
 ---
 
-## 6. Machine Readability for AI Agents (`llms.txt`)
+## 6. Edge AEO (Answer Engine Optimization) & AI Agents
 
-To ensure AI search engines (Perplexity, ChatGPT Search, Claude, Google Gemini) index the portfolio with maximal context:
+To maximize exposition across Google AI Overviews, ChatGPT Search, Perplexity, and Claude:
 
-- `/llms.txt`: Structured plain-text summary of the engineer's core competencies, architecture, bio, and key project links.
-- `/llms-full.txt`: Full-text machine-readable concatenation of all technical articles, services, and system specifications.
-- `public/_headers` injects `Link: </llms.txt>; rel="describedby"` and `X-Llms-Txt: /llms.txt` on all public HTML responses.
-- `public/robots.txt` explicitly allows AI crawlers while disallowing internal administrative endpoints.
-
----
+- `/llms.txt`: Clean, markdown-optimized profile and career summary with LATAM Airlines and key highlights (zero citation artifacts).
+- `/llms-full.txt`: Full-text machine-readable catalog of all 5 collections (`posts`, `projects`, `experience`, `services`, `resume`).
+- **Edge HTTP AEO Headers:** All public 200 HTML responses emit:
+  `X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1`
+  `Link: <https://arturonavax.dev/llms.txt>; rel="llms-txt", <https://arturonavax.dev/llms-full.txt>; rel="alternate"; type="text/plain"`
+- **AI Content Negotiation:** Incoming `GET` requests with `Accept: text/markdown` or `.md` URL extension (e.g. `/blog/my-post.md`) serve lightweight markdown summaries or 302 redirects to `/llms-full.txt#<slug>`, cached in `caches.default` for 24 hours.
+- **Automated `IndexNow` Push:** Content updates dispatched via `scripts/r2-push.mjs` immediately notify Bing, Yandex, and AI search engines through a single batch `POST https://api.indexnow.org/indexnow` payload with key verification via `/indexnow-key.txt` and `/.well-known/indexnow-key.txt`.
+- **Full-Featured RSS Feed:** `/rss.xml` with `<atom:link rel="self">`, tags/categories, and `<link rel="alternate" type="application/rss+xml">` autodiscovery across all pages.
+- **Build-Time Content Integrity Gate:** `verifyContentHydration()` validates that all required collections have valid `.md`/`.mdx`/`.json` content per locale before build, preventing empty Soft-404 site generation.
 
 ## 7. Discreet Language Suggestion Banner
 

@@ -20,6 +20,7 @@
     "cv:publish": "node scripts/optimize-pdf.mjs && node scripts/r2-push.mjs",
     "preview": "astro preview --host",
     "check": "astro check",
+    "typecheck": "astro check",
     "test": "bun test",
     "audit": "bun scripts/audit-codebase.ts",
     "build:assets": "node scripts/generate-assets.mjs",
@@ -28,7 +29,11 @@
     "deploy": "wrangler deploy -c wrangler.jsonc",
     "dev-prod": "pnpm check && pnpm build && wrangler dev -c wrangler.jsonc --port 8788 --ip 0.0.0.0",
     "audit:mobile": "pnpm dlx lighthouse http://127.0.0.1:8788 --output=json --output-path=./lh-raw.json --chrome-flags=\"--headless\" --quiet && node scripts/filter-lh.mjs",
-    "predeploy": "node scripts/r2-pull.mjs && pnpm run build"
+    "predeploy": "node scripts/r2-pull.mjs && pnpm run build",
+    "db:reset:local": "wrangler d1 execute personal-website-analytics --local --file=./cloudflare/d1/reset.sql",
+    "db:reset:remote": "wrangler d1 execute personal-website-analytics --remote --file=./cloudflare/d1/reset.sql",
+    "db:schema:local": "wrangler d1 execute personal-website-analytics --local --file=./cloudflare/d1/schema.sql",
+    "db:schema:remote": "wrangler d1 execute personal-website-analytics --remote --file=./cloudflare/d1/schema.sql"
   },
   "dependencies": {
     "@astrojs/rss": "4.0.19",

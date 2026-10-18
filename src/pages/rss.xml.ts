@@ -2,13 +2,13 @@ import rss from "@astrojs/rss";
 import type { APIContext } from "astro";
 import { getVisibleCollection } from "@/utils/visibility";
 
-// Fecha base estática para calcular timestamps consistentes según 'order'.
-// Evita que cada despliegue en Cloudflare alerte a los lectores RSS con artículos duplicados.
+// Static base epoch to compute deterministic timestamps per 'order'.
+// Prevents Cloudflare deployments from alerting RSS readers with duplicate items.
 const BASE_EPOCH = new Date("2026-01-01T00:00:00Z").getTime();
 const DAY_MS = 86_400_000;
 
 export async function GET(context: APIContext) {
-  // 1. Obtener todos los artículos de blog activos (bilingüe consolidado)
+  // 1. Fetch all active blog posts (consolidated bilingual feed)
   let blogItems: any[] = [];
   try {
     const posts = await getVisibleCollection("posts");
@@ -23,11 +23,17 @@ export async function GET(context: APIContext) {
             .replace(/\.(md|mdx)$/, "");
           const link = isEs ? `/es/blog/${slug}/` : `/blog/${slug}/`;
           const prefix = isEs ? "[ES] " : "";
+          const categories = [
+            ...(post.data.category ? [post.data.category] : []),
+            ...(Array.isArray(post.data.tags) ? post.data.tags : []),
+          ];
           return {
             title: `${prefix}${post.data.title}`,
             pubDate: post.data.pubDate,
             description: post.data.description,
             link,
+            categories,
+            author: "Arturo Nava (arturo@arturonavax.dev)",
           };
         });
     }
@@ -35,7 +41,7 @@ export async function GET(context: APIContext) {
     blogItems = [];
   }
 
-  // 2. Si no hay posts aún, poblar el feed con los proyectos técnicos
+  // 2. If no blog posts exist yet, populate feed with technical projects
   let projectItems: any[] = [];
   if (blogItems.length === 0) {
     try {
@@ -60,6 +66,10 @@ export async function GET(context: APIContext) {
             pubDate: stableDate,
             description: `${project.data.description}${stackSuffix}`,
             link: isEs ? `/es/projects/${slug}/` : `/projects/${slug}/`,
+            categories: Array.isArray(project.data.techStack)
+              ? project.data.techStack
+              : [],
+            author: "Arturo Nava (arturo@arturonavax.dev)",
           };
         });
     } catch {
@@ -69,12 +79,26 @@ export async function GET(context: APIContext) {
 
   const items = blogItems.length > 0 ? blogItems : projectItems;
 
-  return rss({
+  const response = await rss({
     title: "Arturo Nava - Engineering Blog & Systems Notes",
     description:
       "Senior Software / AI Engineer specializing in Go, Rust, Distributed Systems, and Application Security.",
     site: context.site?.origin ?? "https://arturonavax.dev",
     items,
-    customData: `<language>en-us</language>`,
+    xmlns: {
+      atom: "http://www.w3.org/2005/Atom",
+    },
+    customData: `<language>en-us</language><atom:link href="https://arturonavax.dev/rss.xml" rel="self" type="application/rss+xml" />`,
+  });
+
+  const headers = new Headers(response.headers);
+  headers.set(
+    "Cache-Control",
+    "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+  );
+
+  return new Response(response.body, {
+    status: response.status,
+    headers,
   });
 }

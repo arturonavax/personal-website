@@ -1,5 +1,11 @@
+-- =============================================================================
+-- Cloudflare D1 Unified Authoritative Schema (Compacted Baseline v1)
+-- Low-Write-Amplification, WITHOUT ROWID Composite Rollups, & 30m Deduplication
+-- =============================================================================
+
 CREATE TABLE IF NOT EXISTS pageviews (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dedupe_key TEXT,
   path TEXT NOT NULL,
   visitor_hash TEXT NOT NULL,
   referrer TEXT,
@@ -13,16 +19,31 @@ CREATE TABLE IF NOT EXISTS pageviews (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Visitas únicas, páginas más vistas y rendimiento filtrado por bots y fechas
+-- Authoritative deduplication and pruned secondary indexes
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pageviews_dedupe_key ON pageviews(dedupe_key);
 CREATE INDEX IF NOT EXISTS idx_pageviews_analytics ON pageviews(is_bot, created_at, path);
 CREATE INDEX IF NOT EXISTS idx_pageviews_visitor ON pageviews(visitor_hash, created_at);
 CREATE INDEX IF NOT EXISTS idx_pageviews_attribution ON pageviews(utm_source, utm_medium, utm_campaign, created_at);
-CREATE INDEX IF NOT EXISTS idx_pageviews_content ON pageviews(utm_content, created_at);
-CREATE INDEX IF NOT EXISTS idx_pageviews_referrer ON pageviews(is_bot, referrer, created_at);
 CREATE INDEX IF NOT EXISTS idx_pageviews_created_at ON pageviews(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_pageviews_perf_composite ON pageviews(created_at DESC, is_bot, country, path);
-CREATE INDEX IF NOT EXISTS idx_pageviews_path_created ON pageviews(path, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_pageviews_country_created ON pageviews(country, created_at DESC);
+
+-- Low-Write-Amplification Telemetry Events
+CREATE TABLE IF NOT EXISTS telemetry_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dedupe_key TEXT,
+  path TEXT NOT NULL,
+  event_type TEXT NOT NULL DEFAULT 'pageview',
+  visitor_hash TEXT NOT NULL,
+  is_bot INTEGER NOT NULL DEFAULT 0,
+  bot_name TEXT,
+  country TEXT DEFAULT 'XX',
+  device_type TEXT DEFAULT 'desktop',
+  referrer_host TEXT DEFAULT '',
+  status_code INTEGER NOT NULL DEFAULT 200,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_telemetry_dedupe_key ON telemetry_events(dedupe_key);
+CREATE INDEX IF NOT EXISTS idx_telemetry_created_at ON telemetry_events(created_at DESC);
 
 -- Edge Telemetry Table for Zero-Tracking Analytics (SPEC-001)
 CREATE TABLE IF NOT EXISTS edge_telemetry_events (
@@ -37,8 +58,6 @@ CREATE TABLE IF NOT EXISTS edge_telemetry_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON edge_telemetry_events(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_telemetry_path ON edge_telemetry_events(path);
-CREATE INDEX IF NOT EXISTS idx_telemetry_hash ON edge_telemetry_events(visitor_hash);
 
 -- Raw pageviews buffer (SPEC-003)
 CREATE TABLE IF NOT EXISTS pageview_events (
@@ -52,7 +71,7 @@ CREATE TABLE IF NOT EXISTS pageview_events (
 
 CREATE INDEX IF NOT EXISTS idx_pageview_timestamp ON pageview_events(timestamp);
 
--- Aggregated Daily Summary Table (Zero Full Scans on queries, SPEC-003)
+-- Aggregated Daily Summary Table (Zero Full Scans on queries, WITHOUT ROWID)
 CREATE TABLE IF NOT EXISTS pageviews_daily_summary (
   summary_date TEXT NOT NULL,
   path TEXT NOT NULL,
@@ -60,11 +79,24 @@ CREATE TABLE IF NOT EXISTS pageviews_daily_summary (
   country TEXT NOT NULL,
   total_views INTEGER NOT NULL,
   PRIMARY KEY (summary_date, path, locale, country)
-);
+) WITHOUT ROWID;
 
 CREATE INDEX IF NOT EXISTS idx_summary_date ON pageviews_daily_summary(summary_date);
 
--- Contact Leads for Serverless Corporate Email Ingestion (SPEC-003, Migration 0007 & 0008)
+-- Compact Daily Rollups by (date, path) (WITHOUT ROWID)
+CREATE TABLE IF NOT EXISTS analytics_rollups (
+  date TEXT NOT NULL,
+  path TEXT NOT NULL,
+  views INTEGER NOT NULL DEFAULT 0,
+  uniques INTEGER NOT NULL DEFAULT 0,
+  bot_views INTEGER NOT NULL DEFAULT 0,
+  human_views INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (date, path)
+) WITHOUT ROWID;
+
+CREATE INDEX IF NOT EXISTS idx_analytics_rollups_path ON analytics_rollups(path);
+
+-- Contact Leads for Serverless Corporate Email Ingestion
 CREATE TABLE IF NOT EXISTS contact_leads (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT,
@@ -92,7 +124,7 @@ CREATE INDEX IF NOT EXISTS idx_contact_leads_ip ON contact_leads(ip);
 CREATE INDEX IF NOT EXISTS idx_contact_leads_country ON contact_leads(country);
 CREATE INDEX IF NOT EXISTS idx_contact_leads_asn ON contact_leads(asn);
 
--- Isolated Prefetch Telemetry (SPEC-010, Migration 0004)
+-- Isolated Prefetch Telemetry (pruned to idx_prefetch_created only)
 CREATE TABLE IF NOT EXISTS prefetch_analytics_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   path TEXT NOT NULL,
@@ -103,10 +135,18 @@ CREATE TABLE IF NOT EXISTS prefetch_analytics_events (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_prefetch_path ON prefetch_analytics_events(path, created_at);
 CREATE INDEX IF NOT EXISTS idx_prefetch_created ON prefetch_analytics_events(created_at);
 
--- Telemetry Circuit Breaker Incidents & Traceability (SPEC-010, Migration 0005)
+-- Cross-isolate Daily D1 Quota State (WITHOUT ROWID)
+CREATE TABLE IF NOT EXISTS quota_state_daily (
+  date_utc TEXT PRIMARY KEY,
+  estimated_rows_written INTEGER NOT NULL DEFAULT 0,
+  estimated_rows_read INTEGER NOT NULL DEFAULT 0,
+  degradation_tier INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+) WITHOUT ROWID;
+
+-- Telemetry Circuit Breaker Incidents & Traceability
 CREATE TABLE IF NOT EXISTS circuit_breaker_incidents (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   subsystem TEXT NOT NULL,
@@ -136,7 +176,7 @@ LEFT JOIN circuit_breaker_incidents c
   AND c.date = strftime('%Y-%m-%d', p.created_at)
 GROUP BY summary_date, p.path;
 
--- System Deployments Registry (Migration 0006)
+-- System Deployments Registry
 CREATE TABLE IF NOT EXISTS system_deployments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   release_version TEXT NOT NULL,
@@ -153,3 +193,22 @@ CREATE INDEX IF NOT EXISTS idx_deployments_version ON system_deployments(release
 CREATE INDEX IF NOT EXISTS idx_deployments_deployed ON system_deployments(deployed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_deployments_status ON system_deployments(status);
 
+INSERT OR IGNORE INTO system_deployments (
+  id,
+  release_version,
+  worker_name,
+  environment,
+  status,
+  compatibility_date,
+  metadata
+) VALUES (
+  1,
+  '1.0.0-spec-unified',
+  'personal-website',
+  'production',
+  'active',
+  '2026-03-17',
+  '{"architecture":"hexagonal-edge-ssg","schema":"compacted-v1"}'
+);
+
+PRAGMA optimize;

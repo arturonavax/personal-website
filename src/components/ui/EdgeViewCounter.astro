@@ -9,5 +9,76 @@ const { contentId } = Astro.props;
 
 <div class="flex items-center gap-2 font-mono text-xs text-neutral-500">
   <span class="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-  <span id={`counter-${contentId}`}>-- views</span>
+  <span id={`counter-${contentId}`} data-edge-view-counter={contentId}>
+    -- views
+  </span>
 </div>
+
+<script>
+  let isInitialLoad = true;
+
+  function sendEdgeVisitBeacon(eventType: "spa_transition" | "bfcache") {
+    const path = window.location.pathname || "/";
+    const payload = JSON.stringify({
+      path,
+      referrer: document.referrer || "",
+      trigger: eventType,
+      eventType,
+    });
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.sendBeacon === "function"
+    ) {
+      const blob = new Blob([payload], { type: "application/json" });
+      navigator.sendBeacon("/api/telemetry/collect", blob);
+    } else {
+      fetch("/api/telemetry/collect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    }
+  }
+
+  async function refreshEdgeViewCounters() {
+    const counters = document.querySelectorAll<HTMLElement>(
+      "[data-edge-view-counter]",
+    );
+    if (counters.length === 0) return;
+    const path = window.location.pathname || "/";
+    try {
+      const res = await fetch(
+        `/api/telemetry/views?path=${encodeURIComponent(path)}`,
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as { views?: number };
+      const views = typeof data.views === "number" ? data.views : 0;
+      counters.forEach((el) => {
+        el.textContent = `${views.toLocaleString()} views`;
+      });
+    } catch {
+      // Fail-open on network errors
+    }
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    const hasEvInitCookie = document.cookie.includes("ev_init=1");
+    if (isInitialLoad && hasEvInitCookie) {
+      isInitialLoad = false;
+      document.cookie = "ev_init=; Max-Age=0; Path=/; SameSite=Lax";
+      void refreshEdgeViewCounters();
+      return;
+    }
+    isInitialLoad = false;
+    sendEdgeVisitBeacon("spa_transition");
+    void refreshEdgeViewCounters();
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      sendEdgeVisitBeacon("bfcache");
+      void refreshEdgeViewCounters();
+    }
+  });
+</script>

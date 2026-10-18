@@ -317,3 +317,83 @@ describe("D1TelemetryAdapter Quality Query Methods", () => {
     expect(prefetchSummary[0].estimatedShedCount).toBe(150);
   });
 });
+
+import {
+  BotQuotaCircuitBreaker,
+  QuotaDegradationTier,
+  edgeQuotaTracker,
+} from "../../src/lib/adapters";
+
+describe("5-Tier Quota Degradation Integration with Prefetch & Bot Circuit Breakers", () => {
+  beforeEach(() => {
+    edgeQuotaTracker.reset();
+    prefetchCircuitBreaker.reset();
+  });
+
+  it("shuts off 100% of prefetch D1 writes at Tier 1 (CONSERVATIVE >= 50% daily writes)", () => {
+    edgeQuotaTracker.setCountsForTesting(50_000, 10_000);
+    expect(edgeQuotaTracker.getTier()).toBe(QuotaDegradationTier.CONSERVATIVE);
+    expect(prefetchCircuitBreaker.canRecordPrefetch()).toBe(false);
+    expect(prefetchCircuitBreaker.getTripReason()).toBe("budget_exhausted");
+  });
+
+  it("drops generic bots at Tier 1 (CONSERVATIVE) while allowing verified SEO/AI crawlers, and drops all bots at Tier 3 (CRITICAL_SURVIVAL)", () => {
+    const botBreaker = new BotQuotaCircuitBreaker();
+
+    edgeQuotaTracker.setCountsForTesting(55_000, 10_000);
+    expect(edgeQuotaTracker.getTier()).toBe(QuotaDegradationTier.CONSERVATIVE);
+
+    // Generic scraper is dropped at Tier 1
+    expect(
+      botBreaker.canRecordBot({}, "python-requests/2.31.0", "automated_client"),
+    ).toBe(false);
+
+    // Verified SEO & AI crawlers are still allowed at Tier 1
+    expect(
+      botBreaker.canRecordBot(
+        {},
+        "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "search_crawler",
+      ),
+    ).toBe(true);
+    expect(
+      botBreaker.canRecordBot(
+        {},
+        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)",
+        "ai_scraper",
+      ),
+    ).toBe(true);
+
+    // Tier 0 (NOMINAL < 50%), Tier 1 (CONSERVATIVE >= 50%), Tier 2 (COMPACT_ROLLUP >= 70%),
+    // Tier 3 (CRITICAL_SURVIVAL >= 85%), Tier 4 (R2_WAL_FALLBACK >= 95% or D1 quota error)
+    edgeQuotaTracker.setCountsForTesting(40_000, 10_000);
+    expect(edgeQuotaTracker.getTier()).toBe(QuotaDegradationTier.NOMINAL);
+
+    edgeQuotaTracker.setCountsForTesting(55_000, 10_000);
+    expect(edgeQuotaTracker.getTier()).toBe(QuotaDegradationTier.CONSERVATIVE);
+
+    edgeQuotaTracker.setCountsForTesting(75_000, 10_000);
+    expect(edgeQuotaTracker.getTier()).toBe(
+      QuotaDegradationTier.COMPACT_ROLLUP,
+    );
+
+    // At Tier 3 (CRITICAL_SURVIVAL: 85% - 95%), 100% of bot D1 writes are shut off
+    edgeQuotaTracker.setCountsForTesting(90_000, 10_000);
+    expect(edgeQuotaTracker.getTier()).toBe(
+      QuotaDegradationTier.CRITICAL_SURVIVAL,
+    );
+    expect(
+      botBreaker.canRecordBot(
+        {},
+        "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "search_crawler",
+      ),
+    ).toBe(false);
+
+    // At Tier 4 (R2_WAL_FALLBACK: >= 95%), tier elevates to R2_WAL_FALLBACK
+    edgeQuotaTracker.setCountsForTesting(96_000, 10_000);
+    expect(edgeQuotaTracker.getTier()).toBe(
+      QuotaDegradationTier.R2_WAL_FALLBACK,
+    );
+  });
+});

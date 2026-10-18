@@ -4,14 +4,75 @@
 # and recruiter tools, protecting internal query endpoints.
 # ==============================================================================
 
-User-agent: *
-Disallow: /search
-Disallow: /es/search
+# Search Engine & AI Agents Explicit Allowance
+User-agent: Googlebot
+Allow: /
 Disallow: /admin
 Disallow: /es/admin
+Disallow: /api/
+Disallow: /search?
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /es/admin
+Disallow: /api/
+Disallow: /search?
+
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /es/admin
+Disallow: /api/
+Disallow: /search?
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /es/admin
+Disallow: /api/
+Disallow: /search?
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+Disallow: /es/admin
+Disallow: /api/
+Disallow: /search?
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+Disallow: /es/admin
+Disallow: /api/
+Disallow: /search?
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /es/admin
+Disallow: /api/
+Disallow: /search?
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin
+Disallow: /es/admin
+Disallow: /api/
+Disallow: /search?
+
+# Global Crawling Directives
+User-agent: *
+Disallow: /admin
+Disallow: /es/admin
+Disallow: /api/
+Disallow: /search
+Disallow: /es/search
+Disallow: /search?
 Disallow: /case-studies
 Disallow: /es/case-studies
 Allow: /
 
 # Canonical Sitemap Index
 Sitemap: https://arturonavax.dev/sitemap-index.xml
+

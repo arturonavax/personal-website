@@ -1,16 +1,23 @@
 # Cloudflare D1 Reference SQL Queries & Analytics Playbook
 
 Este documento reúne todas las consultas SQL de referencia para la base de datos analítica Cloudflare D1 del proyecto.
-Está organizado por dominio arquitectónico, migraciones (`0001` a `0005`), optimización de índices y control de cuotas.
+El esquema completo ha sido compactado en la línea base unificada `0001_initial_schema.sql` (y `schema.sql`) junto con `reset.sql` para reinicios deterministas sin amplificación de escritura.
+
+### Comandos de Gestión y Reset de Base de Datos
+
+- **Reset Total (Local)**: `pnpm run db:reset:local` (aplica `cloudflare/d1/reset.sql`)
+- **Reset Total (Producción Remote)**: `pnpm run db:reset:remote` (aplica `cloudflare/d1/reset.sql`)
+- **Aplicar Esquema Base (Local)**: `pnpm run db:schema:local` (aplica `cloudflare/d1/schema.sql`)
+- **Aplicar Esquema Base (Remote)**: `pnpm run db:schema:remote` (aplica `cloudflare/d1/schema.sql`)
 
 ---
 
 ## Índice
 
-1. [Prefetch Analytics & Calidad de Datos (Migraciones 0004 & 0005)](#1-prefetch-analytics--calidad-de-datos)
-2. [Visitas Reales & Telemetría P0 Anti-AdBlocker (Migración 0001)](#2-visitas-reales--telemetría-p0-anti-adblocker)
-3. [Resúmenes Diarios & Rollups de Alto Rendimiento (Migración 0002)](#3-resúmenes-diarios--rollups-de-alto-rendimiento)
-4. [Leads de Contacto & Mensajería Serverless (Migración 0003)](#4-leads-de-contacto--mensajería-serverless)
+1. [Prefetch Analytics & Calidad de Datos](#1-prefetch-analytics--calidad-de-datos)
+2. [Visitas Reales & Telemetría P0 Anti-AdBlocker](#2-visitas-reales--telemetría-p0-anti-adblocker)
+3. [Resúmenes Diarios & Rollups de Alto Rendimiento](#3-resúmenes-diarios--rollups-de-alto-rendimiento)
+4. [Leads de Contacto & Mensajería Serverless](#4-leads-de-contacto--mensajería-serverless)
 5. [Monitoreo de Cuota D1, Salud y Mantenimiento](#5-monitoreo-de-cuota-d1-salud-y-mantenimiento)
 
 ---
@@ -183,7 +190,7 @@ ORDER BY sessions DESC;
 
 ### 2.5. Fuentes de Referencia Externas (Top Referrers)
 
-Aprovecha el índice `idx_pageviews_referrer`:
+Aprovecha el índice compuesto `idx_pageviews_analytics(is_bot, created_at, path)` (`idx_pageviews_referrer` fue eliminado en la migración `0010` para reducir la amplificación de escritura en D1):
 
 ```sql
 SELECT
@@ -307,7 +314,7 @@ UNION ALL
 
 SELECT
   'circuit_breaker_incidents' AS table_name,
-  COALESCE(SUM(trip_count), 0) AS writes_today
+  COALESCE(SUM(shed_count), 0) AS writes_today
 FROM circuit_breaker_incidents
 WHERE date = date('now', 'start of day');
 ```
@@ -335,4 +342,79 @@ Si se desea liberar espacio en `prefetch_analytics_events` manteniendo el histó
 ```sql
 DELETE FROM prefetch_analytics_events
 WHERE created_at < datetime('now', '-30 days');
+```
+
+---
+
+## 6. Deduplicated Telemetry & Compact Rollups (Compacted Baseline)
+
+Tables: `telemetry_events` (pruned to 2 indexes: `idx_telemetry_dedupe_key`, `idx_telemetry_created_at`) and `analytics_rollups` (`PRIMARY KEY (date, path) WITHOUT ROWID`).
+
+### 6.1. O(1) Indexed Path Views Lookup (EdgeViewCounter & `/api/telemetry/views`)
+
+Uses `idx_analytics_rollups_path` with zero full-table scans on raw event tables:
+
+```sql
+SELECT COALESCE(SUM(views), 0) AS total_views
+FROM analytics_rollups
+WHERE path = ?;
+```
+
+### 6.2. Daily Human vs Bot Breakdown from Compact Rollups
+
+```sql
+SELECT
+  date,
+  SUM(views) AS total_views,
+  SUM(uniques) AS total_uniques,
+  SUM(human_views) AS human_views,
+  SUM(bot_views) AS bot_views
+FROM analytics_rollups
+WHERE date >= date('now', '-30 days')
+GROUP BY date
+ORDER BY date DESC;
+```
+
+### 6.3. Idempotent Batch Upsert with 30m `dedupe_key`
+
+```sql
+INSERT OR IGNORE INTO telemetry_events (
+  dedupe_key, path, event_type, visitor_hash, is_bot, bot_name,
+  country, device_type, referrer_host, status_code, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+INSERT INTO analytics_rollups (date, path, views, uniques, bot_views, human_views)
+VALUES (?, ?, 1, 1, ?, ?)
+ON CONFLICT(date, path) DO UPDATE SET
+  views = views + 1,
+  uniques = uniques + 1,
+  bot_views = bot_views + excluded.bot_views,
+  human_views = human_views + excluded.human_views;
+```
+
+---
+
+## 7. Compacted Single-Baseline Schema & Deterministic Reset Workflow
+
+All historical migrations (`0001` through `0010`) have been compacted into the unified authoritative schema in `cloudflare/d1/schema.sql` and `cloudflare/d1/reset.sql`.
+
+### 7.1. Key SQLite/D1 Compaction Optimizations
+
+- **`WITHOUT ROWID` Composite B-Trees**: `pageviews_daily_summary`, `analytics_rollups`, and `quota_state_daily` use `WITHOUT ROWID` to eliminate duplicate rowid storage and double B-tree traversals (~50% lower write amplification on upserts).
+- **Pruned Secondary Indexes**:
+  - `pageviews`: strictly 5 indexes (`idx_pageviews_dedupe_key`, `idx_pageviews_analytics`, `idx_pageviews_visitor`, `idx_pageviews_attribution`, `idx_pageviews_created_at`).
+  - `telemetry_events`: strictly 2 indexes (`idx_telemetry_dedupe_key`, `idx_telemetry_created_at`).
+  - `prefetch_analytics_events`: strictly 1 index (`idx_prefetch_created`).
+- **`PRAGMA optimize;`**: Run at schema initialization and completion to refresh SQLite query planner statistics.
+
+### 7.2. CLI Reset & Schema Commands (`package.json`)
+
+```bash
+# Deterministic full reset (drops all tables/views + d1_migrations and rebuilds compacted schema)
+pnpm run db:reset:local
+pnpm run db:reset:remote
+
+# Idempotent schema apply (IF NOT EXISTS)
+pnpm run db:schema:local
+pnpm run db:schema:remote
 ```
