@@ -4,6 +4,8 @@ dist/
 # generated types & cache
 .astro/
 .codegraph/
+.cache/
+.remote-sync-manifest.json
 
 # dependencies
 node_modules/

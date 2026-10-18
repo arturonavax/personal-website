@@ -1,2 +1,4 @@
 .agents/**/skills/
 pnpm-lock.yaml
+.cache/
+.remote-sync-manifest.json

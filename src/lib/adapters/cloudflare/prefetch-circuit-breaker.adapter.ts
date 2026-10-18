@@ -19,7 +19,7 @@ export interface CircuitBreakerConfig {
 export class PrefetchQuotaCircuitBreaker implements PrefetchCircuitBreakerPort {
   private dailyPrefetchCount = 0;
   private dailyVisitCount = 0;
-  private currentDay: string;
+  private currentDay: string = "";
   private state: "CLOSED" | "OPEN" | "HALF_OPEN" = "CLOSED";
   private tripReason: CircuitBreakerTripReason = "none";
   private loggedIncidentDays = new Set<string>();
@@ -34,7 +34,6 @@ export class PrefetchQuotaCircuitBreaker implements PrefetchCircuitBreakerPort {
     this.prefetchBudgetRatio = config?.prefetchBudgetRatio ?? 0.25;
     this.maxPrefetchToVisitRatio = config?.maxPrefetchToVisitRatio ?? 3.0;
     this.minSampleThreshold = config?.minSampleThreshold ?? 100;
-    this.currentDay = this.getTodayString();
   }
 
   private getTodayString(): string {

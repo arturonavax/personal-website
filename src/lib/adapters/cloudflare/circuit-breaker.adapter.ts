@@ -193,7 +193,7 @@ export interface QuotaStateSnapshot {
 }
 
 export class EdgeQuotaTracker {
-  private currentDay: string = new Date().toISOString().slice(0, 10);
+  private currentDay: string = "";
   private estimatedRowsWritten = 0;
   private estimatedRowsRead = 0;
   private d1HardBlocked = false;

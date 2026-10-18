@@ -33,7 +33,7 @@ export interface BotCircuitBreakerConfig {
 
 export class BotQuotaCircuitBreaker implements BotCircuitBreakerPort {
   private dailyBotCount = 0;
-  private currentDay: string;
+  private currentDay: string = "";
   private state: "CLOSED" | "OPEN" | "HALF_OPEN" = "CLOSED";
   private tripReason: CircuitBreakerTripReason = "none";
   private loggedIncidentDays = new Set<string>();
@@ -44,7 +44,6 @@ export class BotQuotaCircuitBreaker implements BotCircuitBreakerPort {
   constructor(config?: BotCircuitBreakerConfig) {
     this.defaultDailyWriteBudget = config?.defaultDailyWriteBudget ?? 100_000;
     this.botBudgetRatio = config?.botBudgetRatio ?? 0.15;
-    this.currentDay = this.getTodayString();
   }
 
   private getTodayString(): string {

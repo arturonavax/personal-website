@@ -17,10 +17,20 @@ const MAX_L1_MEMORY_DEDUPE_ENTRIES = 4_096;
 const l1DedupeMemoryCache = new Map<string, number>();
 const l1CacheApiKeys = new Set<string>();
 
-const ISOLATE_ID =
-  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID().slice(0, 8)
-    : Math.random().toString(36).slice(2, 10);
+let cachedIsolateId: string | null = null;
+export function getIsolateId(): string {
+  if (!cachedIsolateId) {
+    if (
+      typeof crypto !== "undefined" &&
+      typeof crypto.randomUUID === "function"
+    ) {
+      cachedIsolateId = crypto.randomUUID().slice(0, 8);
+    } else {
+      cachedIsolateId = Math.random().toString(36).slice(2, 10);
+    }
+  }
+  return cachedIsolateId;
+}
 
 export interface CompactRollupEntry {
   date: string;
@@ -378,8 +388,12 @@ export async function writeTelemetryWalToR2(
 
   try {
     const dateUtc = record.created_at.slice(0, 10);
-    const uniqueSuffix = `${nowMs}-${Math.random().toString(36).slice(2, 8)}`;
-    const walKey = `wal/telemetry/${dateUtc}/${ISOLATE_ID}-${uniqueSuffix}.ndjson`;
+    const suffix =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID().slice(0, 8)
+        : Math.random().toString(36).slice(2, 8);
+    const uniqueSuffix = `${nowMs}-${suffix}`;
+    const walKey = `wal/telemetry/${dateUtc}/${getIsolateId()}-${uniqueSuffix}.ndjson`;
     const ndjson = `${JSON.stringify(record)}\n`;
     await bucket.put(walKey, ndjson, {
       httpMetadata: { contentType: "application/x-ndjson" },
