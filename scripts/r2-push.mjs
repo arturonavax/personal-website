@@ -19,6 +19,7 @@ import {
   computeRemoteManifestDiff,
   createBundle,
   createDriver,
+  gcObsoleteBundles,
   pool,
   pruneOrphanRemoteKeys,
   readManifest,
@@ -45,6 +46,7 @@ export async function runR2Push(options = {}) {
   const localManifest = buildLocalManifestV2(local);
   const driver = dryRun ? null : (options.driver ?? (await createDriver()));
   const remote = dryRun ? null : await readManifest(driver);
+  const previousBundleKey = remote?.bundleKey || remote?.bundle?.key || null;
   const remoteMap = new Map((remote?.files ?? []).map((f) => [f.key, f]));
   const { toUpload: changed, orphanRemoteKeys: remoteOnly } =
     computeRemoteManifestDiff(local, remote);
@@ -141,6 +143,9 @@ export async function runR2Push(options = {}) {
     await driver.put(REMOTE_MANIFEST_KEY, manifestFile);
     await driver.put(MANIFEST_KEY, manifestFile);
     await writeLocalManifestCache(manifest);
+    if (!dryRun && driver) {
+      await gcObsoleteBundles(driver, manifest.bundleKey, previousBundleKey);
+    }
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -178,6 +183,13 @@ export async function notifyIndexNow(changedKeys = [], options = {}) {
       "[indexnow] INDEXNOW_KEY not set; skipping search engine push.",
     );
     return { skipped: true, reason: "missing_key" };
+  }
+
+  if (key === "e3b0c44298fc1c149afbf4c8996fb924") {
+    console.warn(
+      "[indexnow] WARNING: INDEXNOW_KEY is set to placeholder hash (e3b0c44298fc1c149afbf4c8996fb924); skipping search engine notification.",
+    );
+    return { ok: false, skipped: true, reason: "placeholder_key" };
   }
 
   const rawKeys = Array.isArray(changedKeys)
@@ -248,7 +260,7 @@ export async function notifyIndexNow(changedKeys = [], options = {}) {
   }
 
   const urlList = Array.from(urlSet);
-  const keyLocation = `${baseUrl}/${key}.txt`;
+  const keyLocation = `${baseUrl}/indexnow-key.txt`;
   const payload = {
     host,
     key,

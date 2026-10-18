@@ -343,6 +343,54 @@ export async function pruneOrphanRemoteKeys(orphanKeys, options = {}) {
   return { deleted: orphanKeys.length, keys: orphanKeys };
 }
 
+/**
+ * Garbage-collects obsolete bundle archives from R2 while retaining at most
+ * the current and immediately previous bundle for rollback safety.
+ * R2 DeleteObject operations are free in Cloudflare.
+ */
+export async function gcObsoleteBundles(
+  driver,
+  currentBundleKey,
+  previousBundleKey,
+) {
+  if (!driver || typeof driver.deleteMany !== "function") {
+    return { deleted: 0, keys: [], preserved: [] };
+  }
+  const preserved = new Set(
+    [currentBundleKey, previousBundleKey, BUNDLE_KEY].filter(Boolean),
+  );
+
+  let allKeys = [];
+  try {
+    if (typeof driver.listKeys === "function") {
+      allKeys = await driver.listKeys("content/_bundle-");
+    }
+  } catch {
+    // Fail-open on list errors
+  }
+
+  const toDelete = allKeys.filter(
+    (key) =>
+      key.startsWith("content/_bundle-") &&
+      key.endsWith(".tar.gz") &&
+      !preserved.has(key),
+  );
+
+  if (toDelete.length > 0) {
+    await driver.deleteMany(toDelete);
+    console.log(
+      `[sync:gc] Pruned ${toDelete.length} obsolete bundle archive(s) from R2: ${toDelete.join(", ")}`,
+    );
+    return {
+      deleted: toDelete.length,
+      keys: toDelete,
+      preserved: Array.from(preserved),
+    };
+  }
+
+  return { deleted: 0, keys: [], preserved: Array.from(preserved) };
+}
+
 /** Picks the transport: S3 if credentials exist, cf CLI if available, or wrangler as fallback. */
 export async function createDriver() {
   const {
@@ -444,6 +492,19 @@ function createWranglerDriver() {
         await wr(["r2", "object", "delete", `${BUCKET}/${k}`, "--remote"]);
       }
     },
+    async listKeys(prefix = "") {
+      try {
+        const args = ["r2", "object", "list", BUCKET, "--remote"];
+        if (prefix) args.push("--prefix", prefix);
+        const { stdout } = await wr(args);
+        const data = JSON.parse(stdout.toString("utf8"));
+        return Array.isArray(data)
+          ? data.map((o) => o.key || o.name).filter(Boolean)
+          : [];
+      } catch {
+        return [];
+      }
+    },
   };
 }
 
@@ -499,12 +560,30 @@ function createCfDriver() {
         ]);
       }
     },
+    async listKeys(prefix = "") {
+      try {
+        const args = ["r2", "objects", "list", ...base];
+        if (prefix) args.push("--prefix", prefix);
+        const { stdout } = await cf(args);
+        const data = JSON.parse(stdout.toString("utf8"));
+        return Array.isArray(data)
+          ? data.map((o) => o.key || o.name).filter(Boolean)
+          : [];
+      } catch {
+        return [];
+      }
+    },
   };
 }
 
 async function createS3Driver(accountId, accessKeyId, secretAccessKey) {
-  const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectsCommand } =
-    await import("@aws-sdk/client-s3");
+  const {
+    S3Client,
+    GetObjectCommand,
+    PutObjectCommand,
+    DeleteObjectsCommand,
+    ListObjectsV2Command,
+  } = await import("@aws-sdk/client-s3");
   const s3 = new S3Client({
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -549,6 +628,16 @@ async function createS3Driver(accountId, accessKeyId, secretAccessKey) {
             },
           }),
         );
+      }
+    },
+    async listKeys(prefix = "") {
+      try {
+        const res = await s3.send(
+          new ListObjectsV2Command({ Bucket: BUCKET, Prefix: prefix }),
+        );
+        return (res.Contents || []).map((o) => o.Key).filter(Boolean);
+      } catch {
+        return [];
       }
     },
   };

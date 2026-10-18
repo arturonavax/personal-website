@@ -5,6 +5,7 @@ import ResumeAttributionBar from "@/components/ui/ResumeAttributionBar.astro";
 import ResumeExportBar from "@/components/ui/ResumeExportBar.astro";
 import { getResumeData, hasResume } from "@/data/resume";
 import type { SupportedLocale } from "@/i18n/config";
+import { buildResumeJsonLd } from "@/lib/seo/schema-builder";
 
 export function getStaticPaths() {
   if (!hasResume) return [];
@@ -21,26 +22,33 @@ interface Props {
 const { locale } = Astro.props;
 const isEs = locale === "es";
 const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
+
+const resumeTitle = isEs
+  ? "Arturo Nava - Ingeniero de Software Senior | CV"
+  : "Arturo Nava - Senior Software Engineer | Resume";
+const resumeDescription = isEs
+  ? "Currículum profesional de Arturo Nava, Ingeniero de Software Senior especializado en Go, Rust y Python. Sistemas distribuidos, alta concurrencia y seguridad."
+  : "Professional CV of Arturo Nava, Senior Software Engineer specializing in Go, Rust, and Python. Distributed Systems, High-Concurrency & Security.";
+const canonicalUrl = isEs
+  ? "https://arturonavax.dev/es/resume/"
+  : "https://arturonavax.dev/resume/";
+
+const jsonLd = buildResumeJsonLd({
+  locale,
+  canonicalUrl,
+  title: resumeTitle,
+  description: resumeDescription,
+});
 ---
 
 <BaseLayout
-  title={
-    isEs
-      ? "Arturo Nava - Ingeniero de Software Senior | CV"
-      : "Arturo Nava - Senior Software Engineer | Resume"
-  }
-  description={
-    isEs
-      ? "Currículum profesional de Arturo Nava, Ingeniero de Software Senior especializado en Go, Rust y Python. Sistemas distribuidos, alta concurrencia y seguridad."
-      : "Professional CV of Arturo Nava, Senior Software Engineer specializing in Go, Rust, and Python. Distributed Systems, High-Concurrency & Security."
-  }
+  title={resumeTitle}
+  description={resumeDescription}
   locale={locale}
-  canonicalUrl={
-    isEs
-      ? "https://arturonavax.dev/es/resume/"
-      : "https://arturonavax.dev/resume/"
-  }
+  canonicalUrl={canonicalUrl}
+  availableLocales={["en", "es"]}
   type="profile"
+  jsonLd={jsonLd}
   hideSubtleCoffee={true}
 >
   {hasResume && (

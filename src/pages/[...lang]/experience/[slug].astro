@@ -11,10 +11,19 @@ import { getCompanyInfo } from "@/data/companies";
 import { getSimulationsForJob } from "@/data/simulations";
 import { formatDate, useTranslations } from "@/i18n/utils";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
+import { buildExperienceJsonLd } from "@/lib/seo/schema-builder";
 import { getVisibleCollection } from "@/utils/visibility";
 
 export async function getStaticPaths() {
   const experiences = await getVisibleCollection("experience");
+  const slugToLocales = new Map<string, SupportedLocale[]>();
+  for (const exp of experiences) {
+    const [localePart, ...slugParts] = exp.id.replace(/\.md$/, "").split("/");
+    const s = slugParts.join("/");
+    const list = slugToLocales.get(s) ?? [];
+    list.push(localePart as SupportedLocale);
+    slugToLocales.set(s, list);
+  }
 
   return experiences.map((experience) => {
     const [localePart, ...slugParts] = experience.id
@@ -31,12 +40,15 @@ export async function getStaticPaths() {
       props: {
         experience,
         currentLocale: localePart as SupportedLocale,
+        availableLocales: slugToLocales.get(slugPart) ?? [
+          localePart as SupportedLocale,
+        ],
       },
     };
   });
 }
 
-const { experience, currentLocale } = Astro.props;
+const { experience, currentLocale, availableLocales } = Astro.props;
 const { Content } = await render(experience);
 
 const {
@@ -119,25 +131,21 @@ const pageDescription = isEs
     ? `Career milestone, architecture achievements, and interactive system simulations for Arturo Nava as ${role} at ${company}.`
     : `Career milestone and production architecture achievements for Arturo Nava as ${role} at ${company}.`;
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "TechArticle",
-  headline: `${role} at ${company} - Career Milestone & System Architecture`,
+const canonicalUrl = isEs
+  ? `https://arturonavax.dev/es/experience/${slug}/`
+  : `https://arturonavax.dev/experience/${slug}/`;
+
+const jsonLd = buildExperienceJsonLd({
+  locale: currentLocale,
+  canonicalUrl,
+  role,
+  company,
+  companyUrl: experience.data.companyUrl,
   description: pageDescription,
-  author: {
-    "@type": "Person",
-    "@id": "https://arturonavax.dev/#person",
-    name: "Arturo Nava",
-    url: "https://arturonavax.dev/",
-  },
-  publisher: {
-    "@type": "Person",
-    "@id": "https://arturonavax.dev/#person",
-    name: "Arturo Nava",
-  },
-  datePublished: startDate.toISOString(),
-  inLanguage: currentLocale,
-};
+  startDate: startDate.toISOString(),
+  endDate: endDate ? endDate.toISOString() : undefined,
+  skills,
+});
 
 // Section navigation index for this job page (Task 51)
 const jobIndexItems: IndexItem[] = [
@@ -175,6 +183,7 @@ const jobIndexItems: IndexItem[] = [
   type="article"
   translationKey={experience.data.translationKey}
   collectionName="experience"
+  availableLocales={availableLocales}
   jsonLd={jsonLd}
 >
   <!-- Page Navigation Index for Job Page (Task 2 & 51) -->

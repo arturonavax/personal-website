@@ -21,6 +21,7 @@ import {
   isD1QuotaException,
   D1TelemetryAdapter,
   normalizeTelemetryPath,
+  normalizeIpForDedupe,
   computeVisitDedupeKey,
   checkAndSetL1DedupeCache,
   clearL1DedupeCache,
@@ -249,10 +250,8 @@ async function handleAiMarkdownNegotiation(
 
   const cache =
     typeof caches !== "undefined" && caches.default ? caches.default : null;
-  const cacheKey = new Request(
-    `https://markdown.internal${canonicalPath}index.md`,
-    { method: "GET" },
-  );
+  const cacheKeyUrl = `${new URL(request.url).origin}${pathname}?__format=markdown`;
+  const cacheKey = new Request(cacheKeyUrl, { method: "GET" });
 
   if (cache) {
     try {
@@ -447,6 +446,21 @@ export default {
           ? null
           : response.body;
       return new Response(body, { status: response.status, headers });
+    }
+
+    if (
+      pathname === "/indexnow-key.txt" ||
+      pathname === "/.well-known/indexnow-key.txt"
+    ) {
+      if (env.INDEXNOW_KEY && env.INDEXNOW_KEY.trim()) {
+        return new Response(env.INDEXNOW_KEY.trim(), {
+          status: 200,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "public, max-age=86400",
+          },
+        });
+      }
     }
 
     if (
@@ -713,6 +727,12 @@ export default {
         "max-age=63072000; includeSubDomains; preload",
       );
       headers.set("Alt-Svc", 'h3=":443"; ma=86400');
+      if (headers.has("Vary")) {
+        const v = headers.get("Vary") || "";
+        if (!v.includes("Accept")) headers.set("Vary", `${v}, Accept`);
+      } else {
+        headers.set("Vary", "Accept");
+      }
 
       if (isAdminSurfacePath(pathname)) {
         headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
@@ -1939,6 +1959,14 @@ async function handleTelemetryCollectBeacon(
     );
   }
 
+  const secFetchSite = request.headers.get("sec-fetch-site");
+  if (secFetchSite && secFetchSite !== "same-origin") {
+    return new Response(
+      JSON.stringify({ error: "Forbidden: cross-origin telemetry rejected" }),
+      { status: 403, headers: jsonHeaders },
+    );
+  }
+
   const declaredLength = Number(request.headers.get("content-length") || 0);
   if (declaredLength > 1024) {
     return new Response(JSON.stringify({ error: "Payload Too Large" }), {
@@ -1958,6 +1986,8 @@ async function handleTelemetryCollectBeacon(
     const payload = (raw ? JSON.parse(raw) : {}) as Record<string, unknown>;
     const rawPath = String(payload.path || "/");
     if (
+      rawPath.length > 180 ||
+      /[<>{}\\\^`|]/.test(rawPath) ||
       !TELEMETRY_PATH_REGEX.test(rawPath) ||
       isVulnerabilityScannerPath(rawPath) ||
       STATIC_EXT_REGEX.test(rawPath)
@@ -1967,8 +1997,9 @@ async function handleTelemetryCollectBeacon(
           recorded: false,
           deduped: false,
           storageTier: "L1_CACHE",
+          error: "Invalid or oversized telemetry path",
         }),
-        { status: 202, headers: jsonHeaders },
+        { status: 400, headers: jsonHeaders },
       );
     }
 
@@ -2659,19 +2690,31 @@ export async function handleAdminDashboardRequest(
 
     const workersDailyLimit = Number.isFinite(quotaConfig.workersDailyBudget)
       ? quotaConfig.workersDailyBudget
-      : 100_000_000;
+      : 100_000;
     const workersMonthlyLimit = workersDailyLimit * 30;
     const d1ReadsDailyLimit = Number.isFinite(quotaConfig.dailyReadBudget)
       ? quotaConfig.dailyReadBudget
-      : 500_000_000;
+      : 5_000_000;
     const d1WritesDailyLimit = Number.isFinite(quotaConfig.dailyWriteBudget)
       ? quotaConfig.dailyWriteBudget
-      : 100_000_000;
+      : 100_000;
+
+    const isWritesExceeded = effectiveWrites >= d1WritesDailyLimit;
+    const isReadsExceeded = effectiveReads >= d1ReadsDailyLimit;
+    const isWorkersExceeded = dailyUsedRequests >= workersDailyLimit;
+
+    const degradationTier = isWritesExceeded ? 4 : trackerSnap.tier;
+    const degradationTierName = isWritesExceeded
+      ? "R2_WAL_FALLBACK"
+      : trackerSnap.tierName;
 
     return {
       plan_tier: quotaConfig.planTier,
-      degradation_tier: trackerSnap.tier,
-      degradation_tier_name: trackerSnap.tierName,
+      degradation_tier: degradationTier,
+      degradation_tier_name: degradationTierName,
+      is_d1_writes_exceeded: isWritesExceeded,
+      is_d1_reads_exceeded: isReadsExceeded,
+      is_workers_exceeded: isWorkersExceeded,
       strategy: {
         plan_tier: quotaConfig.planTier,
         daily_write_budget: d1WritesDailyLimit,
@@ -2699,6 +2742,8 @@ export async function handleAdminDashboardRequest(
         reads_daily_limit: d1ReadsDailyLimit,
         writes_today: effectiveWrites,
         writes_daily_limit: d1WritesDailyLimit,
+        is_exceeded: isWritesExceeded,
+        exceeded_by: Math.max(0, effectiveWrites - d1WritesDailyLimit),
         storage_mb: 12.4,
         storage_limit_mb: 5120,
         unit: "rows",
@@ -2737,10 +2782,10 @@ export async function handleAdminDashboardRequest(
         unit: "dimensions",
       },
       // Flat aliases for /admin UI renderQuotas() compatibility
-      workers_daily: { used: dailyUsedRequests, limit: workersDailyLimit },
+      workers_daily: { used: dailyUsedRequests, limit: workersDailyLimit, is_exceeded: isWorkersExceeded },
       workers_monthly: { used: monthlyUsed, limit: workersMonthlyLimit },
-      d1_reads_daily: { used: effectiveReads, limit: d1ReadsDailyLimit },
-      d1_writes_daily: { used: effectiveWrites, limit: d1WritesDailyLimit },
+      d1_reads_daily: { used: effectiveReads, limit: d1ReadsDailyLimit, is_exceeded: isReadsExceeded },
+      d1_writes_daily: { used: effectiveWrites, limit: d1WritesDailyLimit, is_exceeded: isWritesExceeded },
       d1_storage: { used_mb: 12.4, limit_gb: 5 },
       r2_class_a_monthly: { used: 240, limit: 1000000 },
       r2_class_b_monthly: { used: 3420, limit: 10000000 },
@@ -2845,11 +2890,24 @@ export async function handleAdminDashboardRequest(
     const botStatus = botCircuitBreaker.getStatus(envRecord);
     const dailyPrefetches = prefStatus?.dailyPrefetchCount || 0;
     const dailyBots = botStatus?.dailyBotCount || 0;
-    const estimatedDailyRequests = dailyPrefetches + dailyBots + 150;
+
+    let snap = edgeQuotaTracker.getSnapshot(now);
+    try {
+      if (env.DB) {
+        snap = await edgeQuotaTracker.syncFromD1AndCache(env.DB, now);
+      }
+    } catch {
+      // Fail-open
+    }
+
+    const estimatedDailyRequests = Math.max(
+      dailyPrefetches + dailyBots + 150,
+      snap.dailyWrites > 0 ? snap.dailyWrites : 0,
+    );
     const quotas = buildUnifiedQuotas(
       estimatedDailyRequests,
-      dailyPrefetches + dailyBots,
-      Math.round(estimatedDailyRequests * 3.2),
+      snap.dailyWrites,
+      snap.dailyReads,
     );
 
     const metricsPayload = {
@@ -2865,7 +2923,7 @@ export async function handleAdminDashboardRequest(
         prefetch: prefStatus,
         bot: botStatus,
       },
-      degradation_tier: edgeQuotaTracker.getSnapshot(now),
+      degradation_tier: snap,
       quotas,
     };
 
@@ -3243,7 +3301,9 @@ export async function handleAdminDashboardRequest(
     }
 
     // Mock fallback when D1 is unavailable or empty (e.g. local development)
+    let isMockFallback = false;
     if (pageviews.length === 0 && stats.total_pageviews === 0) {
+      isMockFallback = true;
       const mockRoutes = [
         "/",
         "/blog/sub-50ms-fraud-engine-go/",
@@ -3455,6 +3515,15 @@ export async function handleAdminDashboardRequest(
     const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
     const dailyUsedReq = stats.total_pageviews + prefetches.length;
 
+    let snap = edgeQuotaTracker.getSnapshot(now);
+    try {
+      if (env.DB) {
+        snap = await edgeQuotaTracker.syncFromD1AndCache(env.DB, now);
+      }
+    } catch {
+      // Fail-open
+    }
+
     const responsePayload = {
       status: "ok",
       surface: "admin-isolated",
@@ -3492,38 +3561,40 @@ export async function handleAdminDashboardRequest(
           env as unknown as Record<string, unknown>,
         ),
       },
-      degradation_tier: edgeQuotaTracker.getSnapshot(now),
+      degradation_tier: snap,
       quotas: buildUnifiedQuotas(
-        dailyUsedReq,
-        dailyUsedReq,
-        Math.round(dailyUsedReq * 3.2),
+        Math.max(dailyUsedReq, snap.dailyWrites > 0 ? snap.dailyWrites : 0),
+        snap.dailyWrites,
+        snap.dailyReads,
       ),
     };
 
-    // Store in edge memory cache and Cache API for 120s to safeguard D1 limits
-    telemetryCache.set(cacheKey, {
-      timestamp: now,
-      data: responsePayload,
-      dbRef: env.DB,
-    });
+    // Store in edge memory cache and Cache API for 120s to safeguard D1 limits (skip when mock data)
+    if (!isMockFallback) {
+      telemetryCache.set(cacheKey, {
+        timestamp: now,
+        data: responsePayload,
+        dbRef: env.DB,
+      });
 
-    if (edgeCache) {
-      try {
-        const cachedResp = new Response(JSON.stringify(responsePayload), {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "public, max-age=120",
-            "X-Robots-Tag": "noindex, nofollow, noarchive",
-          },
-        });
-        if (ctx && typeof ctx.waitUntil === "function") {
-          ctx.waitUntil(edgeCache.put(edgeCacheRequest, cachedResp));
-        } else {
-          await edgeCache.put(edgeCacheRequest, cachedResp);
+      if (edgeCache) {
+        try {
+          const cachedResp = new Response(JSON.stringify(responsePayload), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "public, max-age=120",
+              "X-Robots-Tag": "noindex, nofollow, noarchive",
+            },
+          });
+          if (ctx && typeof ctx.waitUntil === "function") {
+            ctx.waitUntil(edgeCache.put(edgeCacheRequest, cachedResp));
+          } else {
+            await edgeCache.put(edgeCacheRequest, cachedResp);
+          }
+        } catch {
+          // Ignore Cache API write failure
         }
-      } catch {
-        // Ignore Cache API write failure
       }
     }
 
@@ -3953,6 +4024,71 @@ export async function handleAdminDashboardRequest(
       grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
       gap: 0.75rem;
       margin-top: 1rem;
+    }
+    .quota-tech-group {
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      border-radius: 4px;
+      margin-top: 0.75rem;
+      overflow: hidden;
+    }
+    .quota-tech-summary {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.65rem 0.85rem;
+      background: var(--card);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      user-select: none;
+      list-style: none;
+    }
+    .quota-tech-summary::-webkit-details-marker {
+      display: none;
+    }
+    .quota-tech-summary:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .quota-tech-group[open] .quota-tech-summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .quota-tech-icon {
+      transition: transform 0.2s ease;
+      display: inline-block;
+      margin-right: 0.4rem;
+    }
+    .quota-tech-group[open] .quota-tech-icon {
+      transform: rotate(90deg);
+    }
+    .quota-tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 0.75rem;
+      padding: 0.75rem;
+    }
+    .quota-alert-banner {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      padding: 0.6rem 0.85rem;
+      border-radius: 4px;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+      font-family: monospace;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    @keyframes pulseAlert {
+      0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.8)); }
+      50% { opacity: 0.6; filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.3)); }
+    }
+    .pulse-alert {
+      animation: pulseAlert 1.5s infinite ease-in-out;
     }
     .quota-card {
       background: var(--bg-surface);
@@ -4549,184 +4685,240 @@ export async function handleAdminDashboardRequest(
           </div>
         </div>
 
-        <!-- Comprehensive Cloudflare Free Tier Quotas Grid -->
-        <div class="quotas-grid">
-          <!-- Quota 1: Workers Requests Daily -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_workers_daily">Workers (Diario)</span>
-              <span style="color: var(--green); font-size: 0.65rem;">100k / día</span>
-            </div>
-            <div class="quota-val" id="quota-workers-daily">-- / 100,000</div>
-            <div class="quota-progress">
-              <div id="quota-workers-daily-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>Reinicio: 00:00 UTC</span>
-              <span id="quota-workers-daily-status" style="color: var(--green);">OK</span>
-            </div>
+        <!-- Cloudflare Free Tier Quotas Header & Overrun Alert -->
+        <div style="margin-top: 1.25rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 0.5px;">
+            📊 Cloudflare Edge Resource Quotas &amp; Limits
           </div>
-
-          <!-- Quota 2: Workers Requests Monthly -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_workers_monthly">Workers (Mensual)</span>
-              <span style="color: var(--green); font-size: 0.65rem;">~3M / mes</span>
-            </div>
-            <div class="quota-val" id="quota-workers-monthly">-- / 3,000,000</div>
-            <div class="quota-progress">
-              <div id="quota-workers-monthly-bar" class="quota-bar" style="width: 1%; background: var(--gold);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>Ventana 30 días</span>
-              <span style="color: var(--green);">Capa Gratuita</span>
-            </div>
-          </div>
-
-          <!-- Quota 3: D1 Database Reads -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_d1_reads">D1 Lecturas (Diario)</span>
-              <span style="color: var(--green); font-size: 0.65rem;">5M / día</span>
-            </div>
-            <div class="quota-val" id="quota-d1-reads">-- / 5,000,000</div>
-            <div class="quota-progress">
-              <div id="quota-d1-reads-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>Caché Edge: 120s</span>
-              <span style="color: var(--green);">Optimizado</span>
-            </div>
-          </div>
-
-          <!-- Quota 3B: D1 Database Writes -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_d1_writes">D1 Escrituras (Diario)</span>
-              <span style="color: var(--green); font-size: 0.65rem;">100k / día</span>
-            </div>
-            <div class="quota-val" id="quota-d1-writes">-- / 100,000</div>
-            <div class="quota-progress">
-              <div id="quota-d1-writes-bar" class="quota-bar" style="width: 1%; background: var(--green);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>Degradación: <span id="quota-d1-writes-status" style="color: var(--green); font-weight: 700;">NOMINAL</span></span>
-              <span>Reinicio: 00:00 UTC</span>
-            </div>
-          </div>
-
-          <!-- Quota 4: D1 Database Storage -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_d1_storage">D1 Almacenamiento</span>
-              <span style="color: var(--green); font-size: 0.65rem;">5 GB máx</span>
-            </div>
-            <div class="quota-val" id="quota-d1-storage">12.4 MB / 5 GB</div>
-            <div class="quota-progress">
-              <div id="quota-d1-storage-bar" class="quota-bar" style="width: 1%; background: var(--green);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>SQLite Distribuido</span>
-              <span style="color: var(--green);">&lt; 1% uso</span>
-            </div>
-          </div>
-
-          <!-- Quota 5: R2 Class A Operations -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_r2_class_a">R2 Ops Clase A</span>
-              <span style="color: var(--green); font-size: 0.65rem;">1M / mes</span>
-            </div>
-            <div class="quota-val" id="quota-r2-class-a">-- / 1,000,000</div>
-            <div class="quota-progress">
-              <div id="quota-r2-class-a-bar" class="quota-bar" style="width: 1%; background: var(--gold-light);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>Mutaciones / Uploads</span>
-              <span style="color: var(--green);">Preservado</span>
-            </div>
-          </div>
-
-          <!-- Quota 6: R2 Class B Operations -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_r2_class_b">R2 Ops Clase B</span>
-              <span style="color: var(--green); font-size: 0.65rem;">10M / mes</span>
-            </div>
-            <div class="quota-val" id="quota-r2-class-b">-- / 10,000,000</div>
-            <div class="quota-progress">
-              <div id="quota-r2-class-b-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>24h Edge Cache</span>
-              <span style="color: var(--cyan);">0 Class B reads</span>
-            </div>
-          </div>
-
-          <!-- Quota 7: R2 Content Storage -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_r2_storage">R2 Storage</span>
-              <span style="color: var(--green); font-size: 0.65rem;">10 GB / mes</span>
-            </div>
-            <div class="quota-val" id="quota-r2-storage">0.18 GB / 10 GB</div>
-            <div class="quota-progress">
-              <div id="quota-r2-storage-bar" class="quota-bar" style="width: 2%; background: var(--green);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>PDFs, Assets, R2 Sync</span>
-              <span style="color: var(--green);">1.8% uso</span>
-            </div>
-          </div>
-
-          <!-- Quota 8: Zero Trust Access Seats -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_zero_trust">Zero Trust Access</span>
-              <span style="color: var(--green); font-size: 0.65rem;">50 asientos</span>
-            </div>
-            <div class="quota-val" id="quota-zero-trust">1 / 50 asientos</div>
-            <div class="quota-progress">
-              <div id="quota-zero-trust-bar" class="quota-bar" style="width: 2%; background: var(--green);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>Cloudflare Access</span>
-              <span style="color: var(--green);">Admin aislado</span>
-            </div>
-          </div>
-
-          <!-- Quota 9: Workers AI Neurons -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_workers_ai">Workers AI (Diario)</span>
-              <span style="color: var(--green); font-size: 0.65rem;">10k / día</span>
-            </div>
-            <div class="quota-val" id="quota-workers-ai">0 / 10,000 neuronas</div>
-            <div class="quota-progress">
-              <div id="quota-workers-ai-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>Inferencia Edge</span>
-              <span style="color: var(--green);">Disponible</span>
-            </div>
-          </div>
-
-          <!-- Quota 10: Vectorize Semantic Embeddings -->
-          <div class="quota-card">
-            <div class="quota-head">
-              <span data-i18n="quota_vectorize">Vectorize (Mensual)</span>
-              <span style="color: var(--green); font-size: 0.65rem;">5M / mes</span>
-            </div>
-            <div class="quota-val" id="quota-vectorize">0 / 5,000,000 dims</div>
-            <div class="quota-progress">
-              <div id="quota-vectorize-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
-            </div>
-            <div class="quota-meta">
-              <span>Búsqueda Semántica</span>
-              <span style="color: var(--green);">Disponible</span>
-            </div>
-          </div>
+          <span id="quotas-global-badge" class="badge" style="color: var(--green); border-color: rgba(16, 185, 129, 0.4); font-size: 0.65rem;">
+            100% Free Tier Compliant
+          </span>
         </div>
+
+        <div id="quota-d1-overrun-banner" style="display: none;" class="quota-alert-banner">
+          ⚠️ <strong>ALERTA DE CUPO:</strong> Límite diario de escrituras D1 alcanzado/excedido (<span id="quota-d1-overrun-detail"></span>). Modo degradación R2 WAL activado para absorber telemetría sin coste adicional.
+        </div>
+
+        <!-- Tech Group 1: Cloudflare D1 Database (Serverless SQLite) -->
+        <details open class="quota-tech-group">
+          <summary class="quota-tech-summary">
+            <span><span class="quota-tech-icon">▶</span> <span data-i18n="tech_d1">Cloudflare D1 Database (SQLite Edge)</span></span>
+            <span style="color: var(--green); font-size: 0.65rem;">Serverless SQL</span>
+          </summary>
+          <div class="quota-tech-grid">
+            <!-- Quota 3B: D1 Database Writes -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_d1_writes">D1 Escrituras (Diario)</span>
+                <span style="color: var(--green); font-size: 0.65rem;">100k / día</span>
+              </div>
+              <div class="quota-val" id="quota-d1-writes">-- / 100,000</div>
+              <div class="quota-progress">
+                <div id="quota-d1-writes-bar" class="quota-bar" style="width: 1%; background: var(--green);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>Degradación: <span id="quota-d1-writes-status" style="color: var(--green); font-weight: 700;">NOMINAL</span></span>
+                <span>Reinicio: 00:00 UTC</span>
+              </div>
+            </div>
+
+            <!-- Quota 3: D1 Database Reads -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_d1_reads">D1 Lecturas (Diario)</span>
+                <span style="color: var(--green); font-size: 0.65rem;">5M / día</span>
+              </div>
+              <div class="quota-val" id="quota-d1-reads">-- / 5,000,000</div>
+              <div class="quota-progress">
+                <div id="quota-d1-reads-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>Caché Edge: 120s</span>
+                <span style="color: var(--green);">Optimizado</span>
+              </div>
+            </div>
+
+            <!-- Quota 4: D1 Database Storage -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_d1_storage">D1 Almacenamiento</span>
+                <span style="color: var(--green); font-size: 0.65rem;">5 GB máx</span>
+              </div>
+              <div class="quota-val" id="quota-d1-storage">12.4 MB / 5 GB</div>
+              <div class="quota-progress">
+                <div id="quota-d1-storage-bar" class="quota-bar" style="width: 1%; background: var(--green);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>SQLite Distribuido</span>
+                <span style="color: var(--green);">&lt; 1% uso</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Tech Group 2: Cloudflare Workers (Edge Execution) -->
+        <details open class="quota-tech-group">
+          <summary class="quota-tech-summary">
+            <span><span class="quota-tech-icon">▶</span> <span data-i18n="tech_workers">Cloudflare Workers Execution</span></span>
+            <span style="color: var(--green); font-size: 0.65rem;">V8 Isolates</span>
+          </summary>
+          <div class="quota-tech-grid">
+            <!-- Quota 1: Workers Requests Daily -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_workers_daily">Workers (Diario)</span>
+                <span style="color: var(--green); font-size: 0.65rem;">100k / día</span>
+              </div>
+              <div class="quota-val" id="quota-workers-daily">-- / 100,000</div>
+              <div class="quota-progress">
+                <div id="quota-workers-daily-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>Reinicio: 00:00 UTC</span>
+                <span id="quota-workers-daily-status" style="color: var(--green);">OK</span>
+              </div>
+            </div>
+
+            <!-- Quota 2: Workers Requests Monthly -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_workers_monthly">Workers (Mensual)</span>
+                <span style="color: var(--green); font-size: 0.65rem;">~3M / mes</span>
+              </div>
+              <div class="quota-val" id="quota-workers-monthly">-- / 3,000,000</div>
+              <div class="quota-progress">
+                <div id="quota-workers-monthly-bar" class="quota-bar" style="width: 1%; background: var(--gold);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>Ventana 30 días</span>
+                <span style="color: var(--green);">Capa Gratuita</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Tech Group 3: Cloudflare R2 Object Storage & WAL -->
+        <details open class="quota-tech-group">
+          <summary class="quota-tech-summary">
+            <span><span class="quota-tech-icon">▶</span> <span data-i18n="tech_r2">Cloudflare R2 Object Storage &amp; WAL</span></span>
+            <span style="color: var(--green); font-size: 0.65rem;">S3 Compatible (0 Egress)</span>
+          </summary>
+          <div class="quota-tech-grid">
+            <!-- Quota 5: R2 Class A Operations -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_r2_class_a">R2 Ops Clase A</span>
+                <span style="color: var(--green); font-size: 0.65rem;">1M / mes</span>
+              </div>
+              <div class="quota-val" id="quota-r2-class-a">-- / 1,000,000</div>
+              <div class="quota-progress">
+                <div id="quota-r2-class-a-bar" class="quota-bar" style="width: 1%; background: var(--gold-light);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>Mutaciones / Uploads</span>
+                <span style="color: var(--green);">Preservado</span>
+              </div>
+            </div>
+
+            <!-- Quota 6: R2 Class B Operations -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_r2_class_b">R2 Ops Clase B</span>
+                <span style="color: var(--green); font-size: 0.65rem;">10M / mes</span>
+              </div>
+              <div class="quota-val" id="quota-r2-class-b">-- / 10,000,000</div>
+              <div class="quota-progress">
+                <div id="quota-r2-class-b-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>24h Edge Cache</span>
+                <span style="color: var(--cyan);">0 Class B reads</span>
+              </div>
+            </div>
+
+            <!-- Quota 7: R2 Content Storage -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_r2_storage">R2 Storage</span>
+                <span style="color: var(--green); font-size: 0.65rem;">10 GB / mes</span>
+              </div>
+              <div class="quota-val" id="quota-r2-storage">0.18 GB / 10 GB</div>
+              <div class="quota-progress">
+                <div id="quota-r2-storage-bar" class="quota-bar" style="width: 2%; background: var(--green);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>PDFs, Assets, R2 Sync</span>
+                <span style="color: var(--green);">1.8% uso</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Tech Group 4: Cloudflare Workers AI & Vectorize -->
+        <details open class="quota-tech-group">
+          <summary class="quota-tech-summary">
+            <span><span class="quota-tech-icon">▶</span> <span data-i18n="tech_ai">Cloudflare Workers AI &amp; Vectorize</span></span>
+            <span style="color: var(--cyan); font-size: 0.65rem;">Edge ML &amp; Embeddings</span>
+          </summary>
+          <div class="quota-tech-grid">
+            <!-- Quota 9: Workers AI Neurons -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_workers_ai">Workers AI (Diario)</span>
+                <span style="color: var(--green); font-size: 0.65rem;">10k / día</span>
+              </div>
+              <div class="quota-val" id="quota-workers-ai">0 / 10,000 neuronas</div>
+              <div class="quota-progress">
+                <div id="quota-workers-ai-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>Inferencia Edge</span>
+                <span style="color: var(--green);">Disponible</span>
+              </div>
+            </div>
+
+            <!-- Quota 10: Vectorize Semantic Embeddings -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_vectorize">Vectorize (Mensual)</span>
+                <span style="color: var(--green); font-size: 0.65rem;">5M / mes</span>
+              </div>
+              <div class="quota-val" id="quota-vectorize">0 / 5,000,000 dims</div>
+              <div class="quota-progress">
+                <div id="quota-vectorize-bar" class="quota-bar" style="width: 1%; background: var(--cyan);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>Búsqueda Semántica</span>
+                <span style="color: var(--green);">Disponible</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Tech Group 5: Zero Trust & Deployments -->
+        <details open class="quota-tech-group">
+          <summary class="quota-tech-summary">
+            <span><span class="quota-tech-icon">▶</span> <span data-i18n="tech_zerotrust">Cloudflare Zero Trust &amp; Access</span></span>
+            <span style="color: var(--gold); font-size: 0.65rem;">Identity &amp; Edge Security</span>
+          </summary>
+          <div class="quota-tech-grid">
+            <!-- Quota 8: Zero Trust Access Seats -->
+            <div class="quota-card">
+              <div class="quota-head">
+                <span data-i18n="quota_zero_trust">Zero Trust Access</span>
+                <span style="color: var(--green); font-size: 0.65rem;">50 asientos</span>
+              </div>
+              <div class="quota-val" id="quota-zero-trust">1 / 50 asientos</div>
+              <div class="quota-progress">
+                <div id="quota-zero-trust-bar" class="quota-bar" style="width: 2%; background: var(--green);"></div>
+              </div>
+              <div class="quota-meta">
+                <span>Cloudflare Access</span>
+                <span style="color: var(--green);">Admin aislado</span>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -5725,56 +5917,124 @@ export async function handleAdminDashboardRequest(
       }
     }
 
+    function fmtK(n) {
+      if (typeof n !== "number" || isNaN(n)) return "0";
+      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 2) + "M";
+      if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 2) + "k";
+      return n.toLocaleString();
+    }
+
     function renderQuotas() {
       if (!cachedQuotas) return;
+
       if (cachedQuotas.workers_daily) {
         const q = cachedQuotas.workers_daily;
         const el = document.getElementById('quota-workers-daily');
         const bar = document.getElementById('quota-workers-daily-bar');
-        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 100000).toLocaleString();
-        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 100000)) * 100)) + '%';
+        const statusEl = document.getElementById('quota-workers-daily-status');
+        const limit = q.limit || 100000;
+        const used = q.used || 0;
+        if (el) el.textContent = fmtK(used) + ' / ' + fmtK(limit);
+        const pct = Math.min(100, Math.round((used / limit) * 100));
+        if (bar) bar.style.width = Math.max(1, pct) + '%';
+        if (statusEl) {
+          if (used >= limit) {
+            statusEl.textContent = 'EXCEDIDO';
+            statusEl.style.color = 'var(--red)';
+          } else {
+            statusEl.textContent = 'OK';
+            statusEl.style.color = 'var(--green)';
+          }
+        }
       }
+
       if (cachedQuotas.workers_monthly) {
         const q = cachedQuotas.workers_monthly;
         const el = document.getElementById('quota-workers-monthly');
         const bar = document.getElementById('quota-workers-monthly-bar');
-        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 3000000).toLocaleString();
-        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 3000000)) * 100)) + '%';
+        const limit = q.limit || 3000000;
+        const used = q.used || 0;
+        if (el) el.textContent = fmtK(used) + ' / ' + fmtK(limit);
+        if (bar) bar.style.width = Math.min(100, Math.round((used / limit) * 100)) + '%';
       }
+
       if (cachedQuotas.d1_reads_daily) {
         const q = cachedQuotas.d1_reads_daily;
         const el = document.getElementById('quota-d1-reads');
         const bar = document.getElementById('quota-d1-reads-bar');
-        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 5000000).toLocaleString();
-        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 5000000)) * 100)) + '%';
+        const limit = q.limit || 5000000;
+        const used = q.used || 0;
+        if (el) el.textContent = fmtK(used) + ' / ' + fmtK(limit);
+        if (bar) bar.style.width = Math.min(100, Math.round((used / limit) * 100)) + '%';
       }
+
       if (cachedQuotas.d1_writes_daily) {
         const q = cachedQuotas.d1_writes_daily;
         const el = document.getElementById('quota-d1-writes');
         const bar = document.getElementById('quota-d1-writes-bar');
         const statusEl = document.getElementById('quota-d1-writes-status');
+        const banner = document.getElementById('quota-d1-overrun-banner');
+        const bannerDetail = document.getElementById('quota-d1-overrun-detail');
+        const globalBadge = document.getElementById('quotas-global-badge');
+
         const limit = q.limit || 100000;
         const used = q.used || 0;
-        if (el) el.textContent = used.toLocaleString() + ' / ' + limit.toLocaleString() + ' filas';
+        const isExceeded = q.is_exceeded || used >= limit;
+
+        if (el) el.textContent = fmtK(used) + ' / ' + fmtK(limit) + ' filas';
         const pct = Math.min(100, Math.round((used / limit) * 100));
+
         if (bar) {
-          bar.style.width = Math.max(1, pct) + '%';
-          if (pct >= 95) bar.style.background = 'var(--red)';
-          else if (pct >= 85) bar.style.background = 'var(--orange, #f97316)';
-          else if (pct >= 70) bar.style.background = 'var(--gold)';
-          else if (pct >= 50) bar.style.background = 'var(--cyan)';
-          else bar.style.background = 'var(--green)';
+          bar.style.width = Math.max(1, isExceeded ? 100 : pct) + '%';
+          if (isExceeded) {
+            bar.style.background = 'var(--red)';
+            bar.classList.add('pulse-alert');
+          } else {
+            bar.classList.remove('pulse-alert');
+            if (pct >= 95) bar.style.background = 'var(--red)';
+            else if (pct >= 85) bar.style.background = 'var(--orange, #f97316)';
+            else if (pct >= 70) bar.style.background = 'var(--gold)';
+            else if (pct >= 50) bar.style.background = 'var(--cyan)';
+            else bar.style.background = 'var(--green)';
+          }
         }
+
         if (statusEl) {
-          const tierName = cachedQuotas.degradation_tier_name || 'NOMINAL';
-          statusEl.textContent = tierName;
-          if (tierName === 'NOMINAL') statusEl.style.color = 'var(--green)';
-          else if (tierName === 'CONSERVATIVE') statusEl.style.color = 'var(--cyan)';
-          else if (tierName === 'COMPACT_ROLLUP') statusEl.style.color = 'var(--gold)';
-          else if (tierName === 'CRITICAL_SURVIVAL') statusEl.style.color = 'var(--orange, #f97316)';
-          else statusEl.style.color = 'var(--red)';
+          if (isExceeded) {
+            statusEl.textContent = 'EXCEDIDO // R2 WAL';
+            statusEl.style.color = 'var(--red)';
+            statusEl.style.fontWeight = '700';
+          } else {
+            const tierName = cachedQuotas.degradation_tier_name || 'NOMINAL';
+            statusEl.textContent = tierName;
+            if (tierName === 'NOMINAL') statusEl.style.color = 'var(--green)';
+            else if (tierName === 'CONSERVATIVE') statusEl.style.color = 'var(--cyan)';
+            else if (tierName === 'COMPACT_ROLLUP') statusEl.style.color = 'var(--gold)';
+            else if (tierName === 'CRITICAL_SURVIVAL') statusEl.style.color = 'var(--orange, #f97316)';
+            else statusEl.style.color = 'var(--red)';
+          }
+        }
+
+        if (banner) {
+          banner.style.display = isExceeded ? 'flex' : 'none';
+          if (bannerDetail) {
+            bannerDetail.textContent = fmtK(used) + ' / ' + fmtK(limit);
+          }
+        }
+
+        if (globalBadge) {
+          if (isExceeded) {
+            globalBadge.textContent = '⚠️ CUPO D1 EXCEDIDO // R2 WAL ACTIVO';
+            globalBadge.style.color = 'var(--red)';
+            globalBadge.classList.add('pulse-alert');
+          } else {
+            globalBadge.textContent = '100% Free Tier Compliant';
+            globalBadge.style.color = 'var(--green)';
+            globalBadge.classList.remove('pulse-alert');
+          }
         }
       }
+
       if (cachedQuotas.d1_storage) {
         const q = cachedQuotas.d1_storage;
         const el = document.getElementById('quota-d1-storage');
@@ -5782,20 +6042,27 @@ export async function handleAdminDashboardRequest(
         if (el) el.textContent = (q.used_mb || 12.4) + ' MB / ' + (q.limit_gb || 5) + ' GB';
         if (bar) bar.style.width = Math.min(100, Math.max(1, Math.round(((q.used_mb || 12.4) / ((q.limit_gb || 5) * 1024)) * 100))) + '%';
       }
+
       if (cachedQuotas.r2_class_a_monthly) {
         const q = cachedQuotas.r2_class_a_monthly;
         const el = document.getElementById('quota-r2-class-a');
         const bar = document.getElementById('quota-r2-class-a-bar');
-        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 1000000).toLocaleString();
-        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 1000000)) * 100)) + '%';
+        const limit = q.limit || 1000000;
+        const used = q.used || 0;
+        if (el) el.textContent = fmtK(used) + ' / ' + fmtK(limit);
+        if (bar) bar.style.width = Math.min(100, Math.round((used / limit) * 100)) + '%';
       }
+
       if (cachedQuotas.r2_class_b_monthly) {
         const q = cachedQuotas.r2_class_b_monthly;
         const el = document.getElementById('quota-r2-class-b');
         const bar = document.getElementById('quota-r2-class-b-bar');
-        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 10000000).toLocaleString();
-        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 10000000)) * 100)) + '%';
+        const limit = q.limit || 10000000;
+        const used = q.used || 0;
+        if (el) el.textContent = fmtK(used) + ' / ' + fmtK(limit);
+        if (bar) bar.style.width = Math.min(100, Math.round((used / limit) * 100)) + '%';
       }
+
       if (cachedQuotas.r2_storage) {
         const q = cachedQuotas.r2_storage;
         const el = document.getElementById('quota-r2-storage');
@@ -5803,6 +6070,7 @@ export async function handleAdminDashboardRequest(
         if (el) el.textContent = (q.used_gb || 0.18) + ' GB / ' + (q.limit_gb || 10) + ' GB';
         if (bar) bar.style.width = Math.min(100, Math.max(1, Math.round(((q.used_gb || 0.18) / (q.limit_gb || 10)) * 100))) + '%';
       }
+
       if (cachedQuotas.zero_trust_seats) {
         const q = cachedQuotas.zero_trust_seats;
         const el = document.getElementById('quota-zero-trust');
@@ -5810,20 +6078,24 @@ export async function handleAdminDashboardRequest(
         if (el) el.textContent = (q.used || 1) + ' / ' + (q.limit || 50) + ' asientos';
         if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 1) / (q.limit || 50)) * 100)) + '%';
       }
+
       if (cachedQuotas.workers_ai_daily) {
         const q = cachedQuotas.workers_ai_daily;
         const el = document.getElementById('quota-workers-ai');
         const bar = document.getElementById('quota-workers-ai-bar');
-        if (el) el.textContent = (q.used || 0).toLocaleString() + ' / ' + (q.limit || 10000).toLocaleString() + ' neuronas';
-        if (bar) bar.style.width = Math.min(100, Math.round(((q.used || 0) / (q.limit || 10000)) * 100)) + '%';
+        const limit = q.limit || 10000;
+        const used = q.used || 0;
+        if (el) el.textContent = fmtK(used) + ' / ' + fmtK(limit) + ' neuronas';
+        if (bar) bar.style.width = Math.min(100, Math.round((used / limit) * 100)) + '%';
       }
+
       if (cachedQuotas.vectorize_monthly) {
         const q = cachedQuotas.vectorize_monthly;
         const el = document.getElementById('quota-vectorize');
         const bar = document.getElementById('quota-vectorize-bar');
         const limit = q.limit || 5000000;
         const used = q.used || 0;
-        if (el) el.textContent = used.toLocaleString() + ' / ' + limit.toLocaleString() + ' dims';
+        if (el) el.textContent = fmtK(used) + ' / ' + fmtK(limit) + ' dims';
         if (bar) bar.style.width = Math.min(100, Math.max(1, Math.round((used / limit) * 100))) + '%';
       }
     }
@@ -6931,13 +7203,16 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
+export { normalizeIpForDedupe };
+
 /** Daily-rotating anonymized visitor hash (GDPR compliant, no raw IP/UA stored). */
 export async function computeVisitorHash(
   ip: string,
   userAgent: string,
   day: string = new Date().toISOString().slice(0, 10),
 ): Promise<string> {
-  return (await sha256Hex(`${ip}-${userAgent}-${day}`)).slice(0, 16);
+  const normalizedIp = normalizeIpForDedupe(ip);
+  return (await sha256Hex(`${normalizedIp}-${userAgent}-${day}`)).slice(0, 16);
 }
 
 /** Deterministic dedupe key for a (visitor, path, time-bucket) triple. */

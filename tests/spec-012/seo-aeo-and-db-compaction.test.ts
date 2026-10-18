@@ -460,7 +460,7 @@ describe("SPEC-012: Edge AEO, AI Content Negotiation & Automated IndexNow (TASK 
     expect(capturedPayload.host).toBe("arturonavax.dev");
     expect(capturedPayload.key).toBe("test-indexnow-key-12345");
     expect(capturedPayload.keyLocation).toBe(
-      "https://arturonavax.dev/test-indexnow-key-12345.txt",
+      "https://arturonavax.dev/indexnow-key.txt",
     );
 
     const urls = capturedPayload.urlList;
@@ -475,9 +475,18 @@ describe("SPEC-012: Edge AEO, AI Content Negotiation & Automated IndexNow (TASK 
     );
     expect(urls).toContain("https://arturonavax.dev/experience/latam/");
     expect(urls).toContain("https://arturonavax.dev/resume/");
+
+    // Verify skipping when key is the placeholder hash
+    const skippedRes = await notifyIndexNow(changed, {
+      key: "e3b0c44298fc1c149afbf4c8996fb924",
+      host: "arturonavax.dev",
+      fetchFn: mockFetch as any,
+    });
+    expect(skippedRes.ok).toBe(false);
+    expect((skippedRes as any).skipped).toBe(true);
   });
 
-  it("verifies public/_headers contains required AEO headers and security invariants", () => {
+  it("verifies public/_headers contains required AEO headers, Vary: Accept and security invariants", () => {
     const headers = fs.readFileSync(
       path.join(ROOT_DIR, "public/_headers"),
       "utf8",
@@ -487,12 +496,49 @@ describe("SPEC-012: Edge AEO, AI Content Negotiation & Automated IndexNow (TASK 
       "X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
     );
     expect(headers).toContain("X-Robots-Tag: noindex, nofollow, noarchive");
+    expect(headers).toContain("Vary: Accept");
     expect(headers).toContain(
       'Link: <https://arturonavax.dev/llms.txt>; rel="llms-txt"',
     );
     expect(headers).toContain(
       '<https://arturonavax.dev/llms-full.txt>; rel="alternate"',
     );
+  });
+
+  it("serves dynamic IndexNow key at /indexnow-key.txt and emits Vary: Accept on Markdown content negotiation", async () => {
+    const workerModule = await import("../../cloudflare/worker");
+    const worker = workerModule.default;
+
+    const mockEnv = {
+      INDEXNOW_KEY: "prod-dynamic-indexnow-secret-999",
+      ASSETS: {
+        fetch: async () =>
+          new Response("<!doctype html><html><body><h1>Blog Post</h1></body></html>", {
+            status: 200,
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          }),
+      } as unknown as Fetcher,
+    };
+
+    const mockCtx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+
+    // Test dynamic indexnow-key.txt
+    const keyReq = new Request("https://arturonavax.dev/indexnow-key.txt");
+    const keyRes = await worker.fetch(keyReq, mockEnv, mockCtx);
+    expect(keyRes.status).toBe(200);
+    expect(await keyRes.text()).toBe("prod-dynamic-indexnow-secret-999");
+    expect(keyRes.headers.get("Content-Type")).toContain("text/plain");
+    expect(keyRes.headers.get("Cache-Control")).toContain("max-age=86400");
+
+    // Test Vary: Accept on HTML response
+    const htmlReq = new Request("https://arturonavax.dev/blog/test/", {
+      headers: { "user-agent": "Mozilla/5.0", accept: "text/html" },
+    });
+    const htmlRes = await worker.fetch(htmlReq, mockEnv, mockCtx);
+    expect(htmlRes.headers.get("Vary")).toContain("Accept");
   });
 
   it("verifies public/robots.txt explicitly welcomes leading AI crawlers and disallows internal query paths", () => {

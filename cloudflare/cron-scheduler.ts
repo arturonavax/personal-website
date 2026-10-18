@@ -28,18 +28,28 @@ async function readR2ObjectText(
   return "";
 }
 
-async function listR2Keys(bucket: R2Bucket, prefix: string): Promise<string[]> {
+async function listR2Keys(
+  bucket: R2Bucket,
+  prefix: string,
+  limit?: number,
+): Promise<string[]> {
   if (typeof bucket.list !== "function") return [];
   const keys: string[] = [];
   let cursor: string | undefined;
   do {
-    const opts: R2ListOptions = cursor ? { prefix, cursor } : { prefix };
+    const maxKeys = limit ? Math.min(limit - keys.length, 1000) : undefined;
+    const opts: R2ListOptions = {
+      prefix,
+      ...(cursor ? { cursor } : {}),
+      ...(maxKeys ? { limit: maxKeys } : {}),
+    };
     const listed = await bucket.list(opts);
     for (const obj of listed.objects || []) {
       keys.push(obj.key);
+      if (limit && keys.length >= limit) break;
     }
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
+    cursor = listed.truncated && (!limit || keys.length < limit) ? listed.cursor : undefined;
+  } while (cursor && (!limit || keys.length < limit));
   return keys;
 }
 
@@ -71,8 +81,26 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
   let leadObjectsProcessed = 0;
   const deletedKeys: string[] = [];
 
-  // 1. Reconcile wal/telemetry/ NDJSON objects
-  const telemetryKeys = await listR2Keys(bucket, "wal/telemetry/");
+  const MAX_WAL_OBJECTS_PER_CRON = 20;
+
+  // 1. Reconcile wal/telemetry/ NDJSON objects (capped at 20)
+  const telemetryKeys = await listR2Keys(
+    bucket,
+    "wal/telemetry/",
+    MAX_WAL_OBJECTS_PER_CRON,
+  );
+  const remainingSlots = Math.max(
+    0,
+    MAX_WAL_OBJECTS_PER_CRON - telemetryKeys.length,
+  );
+  const leadKeys =
+    remainingSlots > 0
+      ? await listR2Keys(bucket, "wal/leads/", remainingSlots)
+      : [];
+
+  const allStatements: D1PreparedStatement[] = [];
+  const processedKeys: string[] = [];
+
   if (telemetryKeys.length > 0) {
     const rollupMap = new Map<
       string,
@@ -98,7 +126,6 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
       status_code: number;
       created_at: string;
     }> = [];
-    const processedTelemetryKeys: string[] = [];
 
     for (const key of telemetryKeys) {
       const obj = await bucket.get(key);
@@ -160,85 +187,64 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
           // Skip malformed NDJSON line
         }
       }
-      processedTelemetryKeys.push(key);
+      processedKeys.push(key);
       telemetryObjectsProcessed += 1;
     }
 
-    if (rollupMap.size > 0 || rawEvents.length > 0) {
-      const statements: D1PreparedStatement[] = [];
+    for (const ev of rawEvents) {
+      allStatements.push(
+        env.DB.prepare(
+          `INSERT OR IGNORE INTO telemetry_events (
+            dedupe_key, path, event_type, visitor_hash, is_bot, bot_name,
+            country, device_type, referrer_host, status_code, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).bind(
+          ev.dedupe_key,
+          ev.path,
+          ev.event_type,
+          ev.visitor_hash,
+          ev.is_bot,
+          ev.bot_name,
+          ev.country,
+          ev.device_type,
+          ev.referrer_host,
+          ev.status_code,
+          ev.created_at,
+        ),
+      );
+    }
 
-      for (const ev of rawEvents) {
-        statements.push(
-          env.DB.prepare(
-            `INSERT OR IGNORE INTO telemetry_events (
-              dedupe_key, path, event_type, visitor_hash, is_bot, bot_name,
-              country, device_type, referrer_host, status_code, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          ).bind(
-            ev.dedupe_key,
-            ev.path,
-            ev.event_type,
-            ev.visitor_hash,
-            ev.is_bot,
-            ev.bot_name,
-            ev.country,
-            ev.device_type,
-            ev.referrer_host,
-            ev.status_code,
-            ev.created_at,
-          ),
-        );
-      }
-
-      for (const rollup of rollupMap.values()) {
-        statements.push(
-          env.DB.prepare(
-            `INSERT INTO analytics_rollups (date, path, views, uniques, bot_views, human_views)
-             VALUES (?, ?, ?, ?, ?, ?)
-             ON CONFLICT(date, path) DO UPDATE SET
-               views = views + excluded.views,
-               uniques = uniques + excluded.uniques,
-               bot_views = bot_views + excluded.bot_views,
-               human_views = human_views + excluded.human_views`,
-          ).bind(
-            rollup.date,
-            rollup.path,
-            rollup.views,
-            rollup.uniques,
-            rollup.botViews,
-            rollup.humanViews,
-          ),
-        );
-      }
-
-      if (typeof env.DB.batch === "function") {
-        await env.DB.batch(statements);
-      } else {
-        for (const stmt of statements) {
-          await stmt.run();
-        }
-      }
-
-      for (const key of processedTelemetryKeys) {
-        await bucket.delete(key);
-        deletedKeys.push(key);
-      }
+    for (const rollup of rollupMap.values()) {
+      allStatements.push(
+        env.DB.prepare(
+          `INSERT INTO analytics_rollups (date, path, views, uniques, bot_views, human_views)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(date, path) DO UPDATE SET
+             views = views + excluded.views,
+             uniques = uniques + excluded.uniques,
+             bot_views = bot_views + excluded.bot_views,
+             human_views = human_views + excluded.human_views`,
+        ).bind(
+          rollup.date,
+          rollup.path,
+          rollup.views,
+          rollup.uniques,
+          rollup.botViews,
+          rollup.humanViews,
+        ),
+      );
     }
   }
 
   // 2. Reconcile wal/leads/ JSON objects
-  const leadKeys = await listR2Keys(bucket, "wal/leads/");
   if (leadKeys.length > 0) {
-    const leadStatements: D1PreparedStatement[] = [];
-    const processedLeadKeys: string[] = [];
-
     for (const key of leadKeys) {
       const obj = await bucket.get(key);
       if (!obj) continue;
       const text = await readR2ObjectText(obj);
       try {
         const lead = JSON.parse(text) as Record<string, unknown>;
-        leadStatements.push(
+        allStatements.push(
           env.DB.prepare(
             `INSERT INTO contact_leads (
               name, from_email, phone, subject, body, locale,
@@ -265,27 +271,32 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
             String(lead.created_at || new Date().toISOString()),
           ),
         );
-        processedLeadKeys.push(key);
+        processedKeys.push(key);
         leadObjectsProcessed += 1;
         leadsReconciled += 1;
       } catch {
         // Ignore malformed lead payload
       }
     }
+  }
 
-    if (leadStatements.length > 0) {
-      if (typeof env.DB.batch === "function") {
-        await env.DB.batch(leadStatements);
-      } else {
-        for (const stmt of leadStatements) {
-          await stmt.run();
-        }
-      }
-      for (const key of processedLeadKeys) {
-        await bucket.delete(key);
-        deletedKeys.push(key);
+  // 3. Execute a SINGLE batch call for all D1 statements (1 subrequest)
+  if (allStatements.length > 0) {
+    if (typeof env.DB.batch === "function") {
+      await env.DB.batch(allStatements);
+    } else {
+      for (const stmt of allStatements) {
+        await stmt.run();
       }
     }
+  }
+
+  // 4. Delete all processed keys in a SINGLE bulk R2 call (1 subrequest)
+  if (processedKeys.length > 0) {
+    if (typeof bucket.delete === "function") {
+      await bucket.delete(processedKeys);
+    }
+    deletedKeys.push(...processedKeys);
   }
 
   return {

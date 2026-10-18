@@ -5,6 +5,8 @@ import path from "node:path";
 import {
   clearRecentPageviewsCache,
   computeDedupeKey,
+  computeVisitorHash,
+  normalizeIpForDedupe,
   recordAnalyticsNonBlocking,
   PAGEVIEW_DEDUPE_WINDOW_MS,
 } from "../../cloudflare/worker";
@@ -202,6 +204,31 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
         `INSERT INTO pageviews (path, visitor_hash, is_bot, dedupe_key) VALUES ('/blog','hash',0,'${key}')`,
       ),
     ).toThrow();
+  });
+
+  it("normalizes IPv6 to /64 prefix producing identical visitor_hash and dedupe_key across ephemeral suffixes", async () => {
+    const ip1 = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
+    const ip2 = "2001:0db8:85a3:0000:ffff:aaaa:bbbb:cccc";
+    const ua = CHROME_UA;
+    const day = "2026-10-18";
+
+    expect(normalizeIpForDedupe(ip1)).toBe("2001:0db8:85a3:0000");
+    expect(normalizeIpForDedupe(ip2)).toBe("2001:0db8:85a3:0000");
+
+    const hash1 = await computeVisitorHash(ip1, ua, day);
+    const hash2 = await computeVisitorHash(ip2, ua, day);
+    expect(hash1).toBe(hash2);
+
+    const key1 = await computeDedupeKey(hash1, "/blog", 12345);
+    const key2 = await computeDedupeKey(hash2, "/blog", 12345);
+    expect(key1).toBe(key2);
+
+    // End-to-end SQLite dedupe verification across ephemeral IPv6 rotation
+    const { db, count } = createD1Shim();
+    await recordAt(BASE + 100, db, "/blog/", humanRequest("/blog/", ip1));
+    clearRecentPageviewsCache();
+    await recordAt(BASE + 200, db, "/blog/", humanRequest("/blog/", ip2));
+    expect(count("pageviews")).toBe(1);
   });
 });
 
@@ -575,6 +602,106 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     expect(count("telemetry_events")).toBe(2);
     expect(count("analytics_rollups")).toBe(1);
     expect(count("contact_leads")).toBe(1);
+  });
+
+  it("3b. Subrequest Budget Gate: reconcileR2WalToD1 processes 20 WAL files using single D1 batch and single bulk delete (< 25 subrequests)", async () => {
+    const { db } = createD1Shim();
+    let d1BatchCalls = 0;
+    let d1SingleCalls = 0;
+    const trackedDb = {
+      prepare: (sql: string) => ({
+        bind: (...params: unknown[]) => ({
+          sql,
+          params,
+          run: async () => {
+            d1SingleCalls++;
+            return { success: true };
+          },
+        }),
+      }),
+      batch: async (stmts: unknown[]) => {
+        d1BatchCalls++;
+        return db.batch(stmts as any);
+      },
+    } as unknown as D1Database;
+
+    let r2ListCalls = 0;
+    let r2GetCalls = 0;
+    let r2DeleteCalls = 0;
+    let deletedKeyCount = 0;
+
+    const r2 = createMockR2Bucket();
+    const originalList = r2.list.bind(r2);
+    r2.list = async (opts?: any) => {
+      r2ListCalls++;
+      return originalList(opts);
+    };
+    const originalGet = r2.get.bind(r2);
+    r2.get = async (key: string) => {
+      r2GetCalls++;
+      return originalGet(key);
+    };
+    const originalDelete = r2.delete.bind(r2);
+    r2.delete = async (keys: string | string[]) => {
+      r2DeleteCalls++;
+      if (Array.isArray(keys)) {
+        deletedKeyCount += keys.length;
+      } else {
+        deletedKeyCount += 1;
+      }
+      return originalDelete(keys);
+    };
+
+    // Populate 10 telemetry WAL files + 10 lead WAL files (total 20 WAL files)
+    for (let i = 0; i < 10; i++) {
+      await r2.put(
+        `wal/telemetry/2026-10-18/iso-batch-${i}.ndjson`,
+        JSON.stringify({
+          dedupe_key: `dedupe-wal-${i}`,
+          path: `/blog/post-${i}`,
+          event_type: "pageview",
+          visitor_hash: `v-${i}`,
+          is_bot: 0,
+          country: "US",
+          created_at: "2026-10-18T05:00:00.000Z",
+        }),
+      );
+    }
+    for (let i = 0; i < 10; i++) {
+      await r2.put(
+        `wal/leads/lead-batch-${i}.json`,
+        JSON.stringify({
+          name: `Client ${i}`,
+          from_email: `client${i}@example.com`,
+          subject: "Inquiry",
+          body: "Hello",
+          locale: "en",
+          created_at: "2026-10-18T05:05:00.000Z",
+        }),
+      );
+    }
+
+    const summary = await reconcileR2WalToD1({
+      DB: trackedDb,
+      STORAGE_BUCKET: r2 as unknown as R2Bucket,
+    });
+
+    expect(summary.telemetryObjectsProcessed).toBe(10);
+    expect(summary.leadObjectsProcessed).toBe(10);
+    expect(summary.deletedKeys.length).toBe(20);
+    expect(deletedKeyCount).toBe(20);
+
+    // Assert that D1 statements were executed in a SINGLE batch call (1 subrequest)
+    expect(d1BatchCalls).toBe(1);
+    expect(d1SingleCalls).toBe(0);
+
+    // Assert that R2 deletion was performed in a SINGLE bulk call (1 subrequest)
+    expect(r2DeleteCalls).toBe(1);
+
+    // Total subrequests: list calls (2) + get calls (20) + DB batch (1) + R2 bulk delete (1) = 24
+    const totalSubrequests =
+      r2ListCalls + r2GetCalls + d1BatchCalls + d1SingleCalls + r2DeleteCalls;
+    expect(totalSubrequests).toBeLessThan(25);
   });
 
   it("4. Minimum-Cost R2 Sync: r2:pull with matching rootHash in content/_manifest.v2.json performs 1 GetObject and 0 ListObjectsV2", async () => {

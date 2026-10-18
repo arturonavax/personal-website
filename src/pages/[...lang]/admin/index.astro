@@ -537,309 +537,378 @@ const description = isEs
               : "Daily and monthly usage tracking for Workers, D1, R2, Zero Trust, and Workers AI"}
           </p>
         </div>
-        <span class="font-mono text-[11px] text-emerald-400 font-semibold">
+        <span id="quotas-global-badge" class="font-mono text-[11px] text-emerald-400 font-semibold">
           100% Free Tier Compliant
         </span>
       </div>
 
-      <!-- Quotas Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 font-mono text-xs">
-        <!-- Quota 1: Workers Requests Daily -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              Workers (Diario)
-            </span>
-            <span class="text-emerald-400 font-bold">100k / día</span>
-          </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-workers-daily"
-          >
-            -- / 100,000
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-workers-daily-bar"
-              class="h-full bg-cyan-400 transition-all duration-300"
-              style="width: 1%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>Reinicio: 00:00 UTC</span>
-            <span class="text-emerald-400 font-semibold">OK</span>
-          </div>
-        </div>
+      <!-- Overrun Alert Banner -->
+      <div id="quota-d1-overrun-banner" class="hidden p-3 rounded-sm border border-red-500/50 bg-red-950/30 text-red-300 font-mono text-xs flex items-center gap-2.5">
+        <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+        <span>
+          <strong>{isEs ? "ALERTA DE CUPO:" : "QUOTA ALERT:"}</strong>
+          {isEs ? " Límite diario de escrituras D1 alcanzado/excedido (" : " D1 daily writes limit reached/exceeded ("}<span id="quota-d1-overrun-detail" class="font-bold underline"></span>{isEs ? "). Modo degradación R2 WAL activado para absorber telemetría sin coste adicional." : "). R2 WAL fallback activated to absorb telemetry without additional costs."}
+        </span>
+      </div>
 
-        <!-- Quota 2: Workers Requests Monthly -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              Workers (Mensual)
+      <!-- Collapsible Technology Groups -->
+      <div class="space-y-3 font-mono text-xs">
+        <!-- Group 1: Cloudflare D1 Database -->
+        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+          <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
+            <span class="flex items-center gap-2">
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
+              <span>{isEs ? "Cloudflare D1 Database (SQLite Edge)" : "Cloudflare D1 Database (Edge SQLite)"}</span>
             </span>
-            <span class="text-emerald-400 font-bold">~3M / mes</span>
-          </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-workers-monthly"
-          >
-            -- / 3,000,000
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-workers-monthly-bar"
-              class="h-full bg-[var(--color-accent-gold)] transition-all duration-300"
-              style="width: 1%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>Ventana 30 días</span>
-            <span class="text-emerald-400 font-semibold">Capa Gratuita</span>
-          </div>
-        </div>
+            <span class="text-[11px] text-emerald-400 font-semibold lowercase">serverless sql</span>
+          </summary>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
+            <!-- Quota 3B: D1 Database Writes -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  {isEs ? "D1 Escrituras (Diario)" : "D1 Writes (Daily)"}
+                </span>
+                <span class="text-emerald-400 font-bold">100k / día</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-d1-writes"
+              >
+                -- / 100,000
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-d1-writes-bar"
+                  class="h-full bg-emerald-400 transition-all duration-300"
+                  style="width: 1%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>{isEs ? "Degradación:" : "Tier:"} <span id="quota-d1-writes-status" class="text-emerald-400 font-semibold">NOMINAL</span></span>
+                <span>00:00 UTC</span>
+              </div>
+            </div>
 
-        <!-- Quota 3: D1 Database Reads -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              D1 Lecturas (Diario)
-            </span>
-            <span class="text-emerald-400 font-bold">5M / día</span>
-          </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-d1-reads"
-          >
-            -- / 5,000,000
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-d1-reads-bar"
-              class="h-full bg-cyan-400 transition-all duration-300"
-              style="width: 1%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>Caché Edge: 120s</span>
-            <span class="text-emerald-400 font-semibold">Optimizado</span>
-          </div>
-        </div>
+            <!-- Quota 3: D1 Database Reads -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  {isEs ? "D1 Lecturas (Diario)" : "D1 Reads (Daily)"}
+                </span>
+                <span class="text-emerald-400 font-bold">5M / día</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-d1-reads"
+              >
+                -- / 5,000,000
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-d1-reads-bar"
+                  class="h-full bg-cyan-400 transition-all duration-300"
+                  style="width: 1%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>{isEs ? "Caché Edge: 120s" : "Edge Cache: 120s"}</span>
+                <span class="text-emerald-400 font-semibold">{isEs ? "Optimizado" : "Optimized"}</span>
+              </div>
+            </div>
 
-        <!-- Quota 3B: D1 Database Writes -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              {isEs ? "D1 Escrituras (Diario)" : "D1 Writes (Daily)"}
-            </span>
-            <span class="text-emerald-400 font-bold">100k / día</span>
+            <!-- Quota 4: D1 Storage -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  {isEs ? "D1 Almacenamiento" : "D1 Storage"}
+                </span>
+                <span class="text-emerald-400 font-bold">5 GB máx</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-d1-storage"
+              >
+                12.4 MB / 5 GB
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-d1-storage-bar"
+                  class="h-full bg-emerald-400 transition-all duration-300"
+                  style="width: 1%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>SQLite Distribuido</span>
+                <span class="text-emerald-400 font-semibold">&lt; 1% uso</span>
+              </div>
+            </div>
           </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-d1-writes"
-          >
-            -- / 100,000
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-d1-writes-bar"
-              class="h-full bg-emerald-400 transition-all duration-300"
-              style="width: 1%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>{isEs ? "Degradación:" : "Tier:"} <span id="quota-d1-writes-status" class="text-emerald-400 font-semibold">NOMINAL</span></span>
-            <span>00:00 UTC</span>
-          </div>
-        </div>
+        </details>
 
-        <!-- Quota 4: D1 Storage -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              D1 Almacenamiento
+        <!-- Group 2: Cloudflare Workers -->
+        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+          <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
+            <span class="flex items-center gap-2">
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
+              <span>{isEs ? "Cloudflare Workers Execution" : "Cloudflare Workers Execution"}</span>
             </span>
-            <span class="text-emerald-400 font-bold">5 GB máx</span>
-          </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-d1-storage"
-          >
-            12.4 MB / 5 GB
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-d1-storage-bar"
-              class="h-full bg-emerald-400 transition-all duration-300"
-              style="width: 1%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>SQLite Distribuido</span>
-            <span class="text-emerald-400 font-semibold">&lt; 1% uso</span>
-          </div>
-        </div>
+            <span class="text-[11px] text-emerald-400 font-semibold lowercase">v8 isolates</span>
+          </summary>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
+            <!-- Quota 1: Workers Requests Daily -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  {isEs ? "Workers (Diario)" : "Workers (Daily)"}
+                </span>
+                <span class="text-emerald-400 font-bold">100k / día</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-workers-daily"
+              >
+                -- / 100,000
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-workers-daily-bar"
+                  class="h-full bg-cyan-400 transition-all duration-300"
+                  style="width: 1%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>{isEs ? "Reinicio: 00:00 UTC" : "Reset: 00:00 UTC"}</span>
+                <span id="quota-workers-daily-status" class="text-emerald-400 font-semibold">OK</span>
+              </div>
+            </div>
 
-        <!-- Quota 5: R2 Class A Ops -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              R2 Ops Clase A
-            </span>
-            <span class="text-emerald-400 font-bold">1M / mes</span>
+            <!-- Quota 2: Workers Requests Monthly -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  {isEs ? "Workers (Mensual)" : "Workers (Monthly)"}
+                </span>
+                <span class="text-emerald-400 font-bold">~3M / mes</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-workers-monthly"
+              >
+                -- / 3,000,000
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-workers-monthly-bar"
+                  class="h-full bg-[var(--color-accent-gold)] transition-all duration-300"
+                  style="width: 1%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>{isEs ? "Ventana 30 días" : "30-day window"}</span>
+                <span class="text-emerald-400 font-semibold">{isEs ? "Capa Gratuita" : "Free Tier"}</span>
+              </div>
+            </div>
           </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-r2-class-a"
-          >
-            -- / 1,000,000
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-r2-class-a-bar"
-              class="h-full bg-[var(--color-accent-gold)] transition-all duration-300"
-              style="width: 1%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>Mutaciones / Uploads</span>
-            <span class="text-emerald-400 font-semibold">Preservado</span>
-          </div>
-        </div>
+        </details>
 
-        <!-- Quota 6: R2 Class B Ops -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              R2 Ops Clase B
+        <!-- Group 3: Cloudflare R2 Object Storage & WAL -->
+        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+          <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
+            <span class="flex items-center gap-2">
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
+              <span>{isEs ? "Cloudflare R2 Object Storage & WAL" : "Cloudflare R2 Object Storage & WAL"}</span>
             </span>
-            <span class="text-emerald-400 font-bold">10M / mes</span>
-          </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-r2-class-b"
-          >
-            -- / 10,000,000
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-r2-class-b-bar"
-              class="h-full bg-cyan-400 transition-all duration-300"
-              style="width: 1%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>24h Edge Cache</span>
-            <span class="text-cyan-400 font-semibold">0 Class B reads</span>
-          </div>
-        </div>
+            <span class="text-[11px] text-emerald-400 font-semibold lowercase">s3 compatible (0 egress)</span>
+          </summary>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
+            <!-- Quota 5: R2 Class A Ops -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  {isEs ? "R2 Ops Clase A" : "R2 Class A Ops"}
+                </span>
+                <span class="text-emerald-400 font-bold">1M / mes</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-r2-class-a"
+              >
+                -- / 1,000,000
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-r2-class-a-bar"
+                  class="h-full bg-[var(--color-accent-gold)] transition-all duration-300"
+                  style="width: 1%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>{isEs ? "Mutaciones / Uploads" : "Mutations / Uploads"}</span>
+                <span class="text-emerald-400 font-semibold">{isEs ? "Preservado" : "Preserved"}</span>
+              </div>
+            </div>
 
-        <!-- Quota 7: R2 Content Storage -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              R2 Storage
-            </span>
-            <span class="text-emerald-400 font-bold">10 GB / mes</span>
-          </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-r2-storage"
-          >
-            0.18 GB / 10 GB
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-r2-storage-bar"
-              class="h-full bg-emerald-400 transition-all duration-300"
-              style="width: 2%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>PDFs, Assets, R2 Sync</span>
-            <span class="text-emerald-400 font-semibold">1.8% uso</span>
-          </div>
-        </div>
+            <!-- Quota 6: R2 Class B Ops -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  {isEs ? "R2 Ops Clase B" : "R2 Class B Ops"}
+                </span>
+                <span class="text-emerald-400 font-bold">10M / mes</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-r2-class-b"
+              >
+                -- / 10,000,000
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-r2-class-b-bar"
+                  class="h-full bg-cyan-400 transition-all duration-300"
+                  style="width: 1%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>24h Edge Cache</span>
+                <span class="text-cyan-400 font-semibold">0 Class B reads</span>
+              </div>
+            </div>
 
-        <!-- Quota 8: Zero Trust Access Seats -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              Zero Trust Access
-            </span>
-            <span class="text-emerald-400 font-bold">50 asientos</span>
+            <!-- Quota 7: R2 Content Storage -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  R2 Storage
+                </span>
+                <span class="text-emerald-400 font-bold">10 GB / mes</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-r2-storage"
+              >
+                0.18 GB / 10 GB
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-r2-storage-bar"
+                  class="h-full bg-emerald-400 transition-all duration-300"
+                  style="width: 2%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>PDFs, Assets, R2 Sync</span>
+                <span class="text-emerald-400 font-semibold">1.8% uso</span>
+              </div>
+            </div>
           </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-zero-trust"
-          >
-            1 / 50 asientos
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-zero-trust-bar"
-              class="h-full bg-emerald-400 transition-all duration-300"
-              style="width: 2%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>Cloudflare Access</span>
-            <span class="text-emerald-400 font-semibold">Admin aislado</span>
-          </div>
-        </div>
+        </details>
 
-        <!-- Quota 9: Workers AI Neurons -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              Workers AI (Diario)
+        <!-- Group 4: Cloudflare Workers AI & Vectorize -->
+        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+          <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
+            <span class="flex items-center gap-2">
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
+              <span>{isEs ? "Cloudflare Workers AI & Vectorize" : "Cloudflare Workers AI & Vectorize"}</span>
             </span>
-            <span class="text-emerald-400 font-bold">10k / día</span>
-          </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-workers-ai"
-          >
-            0 / 10,000 neuronas
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-workers-ai-bar"
-              class="h-full bg-cyan-400 transition-all duration-300"
-              style="width: 1%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>Inferencia Edge</span>
-            <span class="text-emerald-400 font-semibold">Disponible</span>
-          </div>
-        </div>
+            <span class="text-[11px] text-cyan-400 font-semibold lowercase">edge ml & embeddings</span>
+          </summary>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
+            <!-- Quota 9: Workers AI Neurons -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  {isEs ? "Workers AI (Diario)" : "Workers AI (Daily)"}
+                </span>
+                <span class="text-emerald-400 font-bold">10k / día</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-workers-ai"
+              >
+                0 / 10,000 neuronas
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-workers-ai-bar"
+                  class="h-full bg-cyan-400 transition-all duration-300"
+                  style="width: 1%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>{isEs ? "Inferencia Edge" : "Edge Inference"}</span>
+                <span class="text-emerald-400 font-semibold">{isEs ? "Disponible" : "Ready"}</span>
+              </div>
+            </div>
 
-        <!-- Quota 10: Vectorize Semantic Embeddings -->
-        <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
-          <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">
-              {isEs ? "Vectorize (Mensual)" : "Vectorize (Monthly)"}
+            <!-- Quota 10: Vectorize Semantic Embeddings -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  {isEs ? "Vectorize (Mensual)" : "Vectorize (Monthly)"}
+                </span>
+                <span class="text-emerald-400 font-bold">5M / mes</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-vectorize"
+              >
+                0 / 5,000,000 dims
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-vectorize-bar"
+                  class="h-full bg-cyan-400 transition-all duration-300"
+                  style="width: 1%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>{isEs ? "Búsqueda Semántica" : "Semantic Search"}</span>
+                <span class="text-emerald-400 font-semibold">{isEs ? "Disponible" : "Ready"}</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Group 5: Zero Trust & Deployments -->
+        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+          <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
+            <span class="flex items-center gap-2">
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
+              <span>{isEs ? "Cloudflare Zero Trust & Access" : "Cloudflare Zero Trust & Access"}</span>
             </span>
-            <span class="text-emerald-400 font-bold">5M / mes</span>
+            <span class="text-[11px] text-[var(--color-accent-gold)] font-semibold lowercase">identity & security</span>
+          </summary>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
+            <!-- Quota 8: Zero Trust Access Seats -->
+            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="text-[var(--color-text-secondary)] font-medium">
+                  Zero Trust Access
+                </span>
+                <span class="text-emerald-400 font-bold">50 asientos</span>
+              </div>
+              <div
+                class="text-sm font-bold text-[var(--color-text-primary)]"
+                id="quota-zero-trust"
+              >
+                1 / 50 asientos
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                <div
+                  id="quota-zero-trust-bar"
+                  class="h-full bg-emerald-400 transition-all duration-300"
+                  style="width: 2%;"
+                ></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+                <span>Cloudflare Access</span>
+                <span class="text-emerald-400 font-semibold">Admin aislado</span>
+              </div>
+            </div>
           </div>
-          <div
-            class="text-sm font-bold text-[var(--color-text-primary)]"
-            id="quota-vectorize"
-          >
-            0 / 5,000,000 dims
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div
-              id="quota-vectorize-bar"
-              class="h-full bg-cyan-400 transition-all duration-300"
-              style="width: 1%;"
-            ></div>
-          </div>
-          <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-            <span>{isEs ? "Búsqueda Semántica" : "Semantic Search"}</span>
-            <span class="text-emerald-400 font-semibold">{isEs ? "Disponible" : "Ready"}</span>
-          </div>
-        </div>
+        </details>
       </div>
     </div>
 
@@ -1878,85 +1947,129 @@ const description = isEs
       }
     }
 
+    function fmtK(n) {
+      if (typeof n !== "number" || isNaN(n)) return "0";
+      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 2) + "M";
+      if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 2) + "k";
+      return n.toLocaleString();
+    }
+
     function renderQuotas() {
       if (!cachedQuotas) return;
+
       if (cachedQuotas.workers_daily) {
         var q1 = cachedQuotas.workers_daily;
         var el1 = document.getElementById("quota-workers-daily");
         var bar1 = document.getElementById("quota-workers-daily-bar");
-        if (el1)
-          el1.textContent =
-            (q1.used || 0).toLocaleString() +
-            " / " +
-            (q1.limit || 100000).toLocaleString();
-        if (bar1)
-          bar1.style.width =
-            Math.min(
-              100,
-              Math.round(((q1.used || 0) / (q1.limit || 100000)) * 100),
-            ) + "%";
+        var status1 = document.getElementById("quota-workers-daily-status");
+        var limit1 = q1.limit || 100000;
+        var used1 = q1.used || 0;
+        if (el1) el1.textContent = fmtK(used1) + " / " + fmtK(limit1);
+        var pct1 = Math.min(100, Math.round((used1 / limit1) * 100));
+        if (bar1) bar1.style.width = Math.max(1, pct1) + "%";
+        if (status1) {
+          if (used1 >= limit1) {
+            status1.textContent = "EXCEDIDO";
+            status1.className = "text-red-400 font-bold";
+          } else {
+            status1.textContent = "OK";
+            status1.className = "text-emerald-400 font-semibold";
+          }
+        }
       }
+
       if (cachedQuotas.workers_monthly) {
         var q2 = cachedQuotas.workers_monthly;
         var el2 = document.getElementById("quota-workers-monthly");
         var bar2 = document.getElementById("quota-workers-monthly-bar");
-        if (el2)
-          el2.textContent =
-            (q2.used || 0).toLocaleString() +
-            " / " +
-            (q2.limit || 3000000).toLocaleString();
+        var limit2 = q2.limit || 3000000;
+        var used2 = q2.used || 0;
+        if (el2) el2.textContent = fmtK(used2) + " / " + fmtK(limit2);
         if (bar2)
           bar2.style.width =
-            Math.min(
-              100,
-              Math.round(((q2.used || 0) / (q2.limit || 3000000)) * 100),
-            ) + "%";
+            Math.min(100, Math.round((used2 / limit2) * 100)) + "%";
       }
+
       if (cachedQuotas.d1_reads_daily) {
         var q3 = cachedQuotas.d1_reads_daily;
         var el3 = document.getElementById("quota-d1-reads");
         var bar3 = document.getElementById("quota-d1-reads-bar");
-        if (el3)
-          el3.textContent =
-            (q3.used || 0).toLocaleString() +
-            " / " +
-            (q3.limit || 5000000).toLocaleString();
+        var limit3 = q3.limit || 5000000;
+        var used3 = q3.used || 0;
+        if (el3) el3.textContent = fmtK(used3) + " / " + fmtK(limit3);
         if (bar3)
           bar3.style.width =
-            Math.min(
-              100,
-              Math.round(((q3.used || 0) / (q3.limit || 5000000)) * 100),
-            ) + "%";
+            Math.min(100, Math.round((used3 / limit3) * 100)) + "%";
       }
+
       if (cachedQuotas.d1_writes_daily) {
         var qw = cachedQuotas.d1_writes_daily;
         var elw = document.getElementById("quota-d1-writes");
         var barw = document.getElementById("quota-d1-writes-bar");
         var statusw = document.getElementById("quota-d1-writes-status");
+        var banner = document.getElementById("quota-d1-overrun-banner");
+        var bannerDetail = document.getElementById("quota-d1-overrun-detail");
+        var globalBadge = document.getElementById("quotas-global-badge");
+
         var limitw = qw.limit || 100000;
         var usedw = qw.used || 0;
+        var isExceeded = qw.is_exceeded || usedw >= limitw;
+
         if (elw)
           elw.textContent =
-            usedw.toLocaleString() + " / " + limitw.toLocaleString() + " filas";
+            fmtK(usedw) + " / " + fmtK(limitw) + (isEs ? " filas" : " rows");
         var pctw = Math.min(100, Math.round((usedw / limitw) * 100));
+
         if (barw) {
-          barw.style.width = Math.max(1, pctw) + "%";
-          if (pctw >= 95) barw.className = "h-full bg-red-500 transition-all duration-300";
+          barw.style.width = Math.max(1, isExceeded ? 100 : pctw) + "%";
+          if (isExceeded) {
+            barw.className = "h-full bg-red-500 animate-pulse transition-all duration-300";
+          } else if (pctw >= 95) barw.className = "h-full bg-red-500 transition-all duration-300";
           else if (pctw >= 85) barw.className = "h-full bg-orange-500 transition-all duration-300";
           else if (pctw >= 70) barw.className = "h-full bg-amber-400 transition-all duration-300";
           else if (pctw >= 50) barw.className = "h-full bg-cyan-400 transition-all duration-300";
           else barw.className = "h-full bg-emerald-400 transition-all duration-300";
         }
+
         if (statusw) {
-          var tierw = cachedQuotas.degradation_tier_name || "NOMINAL";
-          statusw.textContent = tierw;
-          if (tierw === "NOMINAL") statusw.className = "text-emerald-400 font-semibold";
-          else if (tierw === "CONSERVATIVE") statusw.className = "text-cyan-400 font-semibold";
-          else if (tierw === "COMPACT_ROLLUP") statusw.className = "text-amber-400 font-semibold";
-          else if (tierw === "CRITICAL_SURVIVAL") statusw.className = "text-orange-400 font-semibold";
-          else statusw.className = "text-red-400 font-semibold";
+          if (isExceeded) {
+            statusw.textContent = "EXCEDIDO // R2 WAL";
+            statusw.className = "text-red-400 font-bold animate-pulse";
+          } else {
+            var tierw = cachedQuotas.degradation_tier_name || "NOMINAL";
+            statusw.textContent = tierw;
+            if (tierw === "NOMINAL") statusw.className = "text-emerald-400 font-semibold";
+            else if (tierw === "CONSERVATIVE") statusw.className = "text-cyan-400 font-semibold";
+            else if (tierw === "COMPACT_ROLLUP") statusw.className = "text-amber-400 font-semibold";
+            else if (tierw === "CRITICAL_SURVIVAL") statusw.className = "text-orange-400 font-semibold";
+            else statusw.className = "text-red-400 font-semibold";
+          }
+        }
+
+        if (banner) {
+          if (isExceeded) {
+            banner.classList.remove("hidden");
+            if (bannerDetail) {
+              bannerDetail.textContent = fmtK(usedw) + " / " + fmtK(limitw);
+            }
+          } else {
+            banner.classList.add("hidden");
+          }
+        }
+
+        if (globalBadge) {
+          if (isExceeded) {
+            globalBadge.textContent = isEs
+              ? "⚠️ CUPO D1 EXCEDIDO // R2 WAL ACTIVO"
+              : "⚠️ D1 QUOTA EXCEEDED // R2 WAL ACTIVE";
+            globalBadge.className = "font-mono text-[11px] text-red-400 font-bold animate-pulse";
+          } else {
+            globalBadge.textContent = "100% Free Tier Compliant";
+            globalBadge.className = "font-mono text-[11px] text-emerald-400 font-semibold";
+          }
         }
       }
+
       if (cachedQuotas.d1_storage) {
         var q4 = cachedQuotas.d1_storage;
         var el4 = document.getElementById("quota-d1-storage");
@@ -1976,38 +2089,31 @@ const description = isEs
               ),
             ) + "%";
       }
+
       if (cachedQuotas.r2_class_a_monthly) {
         var q5 = cachedQuotas.r2_class_a_monthly;
         var el5 = document.getElementById("quota-r2-class-a");
         var bar5 = document.getElementById("quota-r2-class-a-bar");
-        if (el5)
-          el5.textContent =
-            (q5.used || 0).toLocaleString() +
-            " / " +
-            (q5.limit || 1000000).toLocaleString();
+        var limit5 = q5.limit || 1000000;
+        var used5 = q5.used || 0;
+        if (el5) el5.textContent = fmtK(used5) + " / " + fmtK(limit5);
         if (bar5)
           bar5.style.width =
-            Math.min(
-              100,
-              Math.round(((q5.used || 0) / (q5.limit || 1000000)) * 100),
-            ) + "%";
+            Math.min(100, Math.round((used5 / limit5) * 100)) + "%";
       }
+
       if (cachedQuotas.r2_class_b_monthly) {
         var q6 = cachedQuotas.r2_class_b_monthly;
         var el6 = document.getElementById("quota-r2-class-b");
         var bar6 = document.getElementById("quota-r2-class-b-bar");
-        if (el6)
-          el6.textContent =
-            (q6.used || 0).toLocaleString() +
-            " / " +
-            (q6.limit || 10000000).toLocaleString();
+        var limit6 = q6.limit || 10000000;
+        var used6 = q6.used || 0;
+        if (el6) el6.textContent = fmtK(used6) + " / " + fmtK(limit6);
         if (bar6)
           bar6.style.width =
-            Math.min(
-              100,
-              Math.round(((q6.used || 0) / (q6.limit || 10000000)) * 100),
-            ) + "%";
+            Math.min(100, Math.round((used6 / limit6) * 100)) + "%";
       }
+
       if (cachedQuotas.r2_storage) {
         var q7 = cachedQuotas.r2_storage;
         var el7 = document.getElementById("quota-r2-storage");
@@ -2025,6 +2131,7 @@ const description = isEs
               ),
             ) + "%";
       }
+
       if (cachedQuotas.zero_trust_seats) {
         var q8 = cachedQuotas.zero_trust_seats;
         var el8 = document.getElementById("quota-zero-trust");
@@ -2039,38 +2146,29 @@ const description = isEs
               Math.round(((q8.used || 1) / (q8.limit || 50)) * 100),
             ) + "%";
       }
+
       if (cachedQuotas.workers_ai_daily) {
         var q9 = cachedQuotas.workers_ai_daily;
         var el9 = document.getElementById("quota-workers-ai");
         var bar9 = document.getElementById("quota-workers-ai-bar");
-        if (el9)
-          el9.textContent =
-            (q9.used || 0).toLocaleString() +
-            " / " +
-            (q9.limit || 10000).toLocaleString() +
-            " neuronas";
+        var limit9 = q9.limit || 10000;
+        var used9 = q9.used || 0;
+        if (el9) el9.textContent = fmtK(used9) + " / " + fmtK(limit9) + " neuronas";
         if (bar9)
           bar9.style.width =
-            Math.min(
-              100,
-              Math.round(((q9.used || 0) / (q9.limit || 10000)) * 100),
-            ) + "%";
+            Math.min(100, Math.round((used9 / limit9) * 100)) + "%";
       }
+
       if (cachedQuotas.vectorize_monthly) {
         var qv = cachedQuotas.vectorize_monthly;
         var elv = document.getElementById("quota-vectorize");
         var barv = document.getElementById("quota-vectorize-bar");
         var limitv = qv.limit || 5000000;
         var usedv = qv.used || 0;
-        if (elv)
-          elv.textContent =
-            usedv.toLocaleString() + " / " + limitv.toLocaleString() + " dims";
+        if (elv) elv.textContent = fmtK(usedv) + " / " + fmtK(limitv) + " dims";
         if (barv)
           barv.style.width =
-            Math.min(
-              100,
-              Math.max(1, Math.round((usedv / limitv) * 100)),
-            ) + "%";
+            Math.min(100, Math.max(1, Math.round((usedv / limitv) * 100))) + "%";
       }
     }
 

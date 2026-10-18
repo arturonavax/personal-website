@@ -42,10 +42,7 @@ export interface CompactRollupEntry {
 }
 
 const compactRollupBuffer = new Map<string, CompactRollupEntry>();
-let lastCompactRollupFlushMs = 0;
-let bufferedVisitCount = 0;
 export const COMPACT_ROLLUP_FLUSH_INTERVAL_MS = 15_000;
-const COMPACT_ROLLUP_MAX_BUFFERED_VISITS = 25;
 
 export interface TelemetryVisitEvent {
   path: string;
@@ -103,6 +100,21 @@ export function normalizeTelemetryPath(rawPath: string): string {
 }
 
 /**
+ * Normalizes an IPv4 or IPv6 address for deduplication.
+ * IPv6 addresses are truncated to the /64 prefix (first 4 hextets) to avoid duplicate
+ * records across ephemeral privacy extension and dual-stack interface rotations.
+ */
+export function normalizeIpForDedupe(rawIp: string): string {
+  if (!rawIp) return "anon";
+  const trimmed = rawIp.trim();
+  if (trimmed.includes(":")) {
+    const hextets = trimmed.split(":");
+    return hextets.slice(0, 4).join(":");
+  }
+  return trimmed;
+}
+
+/**
  * Deterministic 30-minute bucket SHA-256 (32-hex-char) deduplication key for human and bot visits.
  * Supports both:
  *  - `computeVisitDedupeKey(ip, userAgent, canonicalPath, timestampMs, dailySalt)` (5-arg ODD spec)
@@ -125,7 +137,7 @@ export async function computeVisitDedupeKey(
     typeof canonicalPathOrTimestamp === "number" ||
     canonicalPathOrTimestamp === undefined
   ) {
-    ip = ipOrVisitorHash || "anon";
+    ip = normalizeIpForDedupe(ipOrVisitorHash || "anon");
     userAgent = "";
     rawPath = userAgentOrPath || "/";
     ts =
@@ -134,7 +146,7 @@ export async function computeVisitDedupeKey(
         : Date.now();
     salt = "";
   } else {
-    ip = ipOrVisitorHash || "127.0.0.1";
+    ip = normalizeIpForDedupe(ipOrVisitorHash || "127.0.0.1");
     userAgent = userAgentOrPath || "";
     rawPath = canonicalPathOrTimestamp || "/";
     ts = typeof timestampMs === "number" ? timestampMs : Date.now();
@@ -238,8 +250,6 @@ export async function checkAndSetL1DedupeCache(
  */
 export function clearCompactRollupBuffer(): void {
   compactRollupBuffer.clear();
-  bufferedVisitCount = 0;
-  lastCompactRollupFlushMs = 0;
 }
 
 /**
@@ -273,8 +283,6 @@ export async function flushCompactRollupBuffer(
   if (compactRollupBuffer.size === 0) return 0;
   const entries = Array.from(compactRollupBuffer.values());
   compactRollupBuffer.clear();
-  bufferedVisitCount = 0;
-  lastCompactRollupFlushMs = Date.now();
 
   const statements = entries.map((entry) =>
     db
@@ -297,8 +305,11 @@ export async function flushCompactRollupBuffer(
       ),
   );
 
+  const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(db);
+  const allStatements = quotaStmt ? [...statements, quotaStmt] : statements;
+
   if (typeof db.batch === "function") {
-    const batchRes = await db.batch(statements);
+    const batchRes = await db.batch(allStatements);
     let metaRecorded = false;
     if (Array.isArray(batchRes)) {
       for (const item of batchRes) {
@@ -497,66 +508,91 @@ export class D1TelemetryAdapter implements TelemetryPort {
       };
     }
 
-    // Tier 2 (COMPACT_ROLLUP): Skip raw telemetry_events, buffer rollup increments
+    // Tier 2 (COMPACT_ROLLUP): Skip raw telemetry_events, write directly to analytics_rollups (1 row written)
     if (tier === QuotaDegradationTier.COMPACT_ROLLUP) {
-      const rollupKey = `${dateUtc}:${cleanPath}`;
-      const existing = compactRollupBuffer.get(rollupKey);
-      if (existing) {
-        existing.views += 1;
-        existing.uniques += 1;
-        existing.botViews += isBotInt;
-        existing.humanViews += humanViewsInc;
-      } else {
-        compactRollupBuffer.set(rollupKey, {
-          date: dateUtc,
-          path: cleanPath,
-          views: 1,
-          uniques: 1,
-          botViews: isBotInt,
-          humanViews: humanViewsInc,
-        });
-      }
-      bufferedVisitCount += 1;
+      try {
+        const rollupStmt = this.db
+          .prepare(
+            `INSERT INTO analytics_rollups (date, path, views, uniques, bot_views, human_views)
+             VALUES (?, ?, 1, 1, ?, ?)
+             ON CONFLICT(date, path) DO UPDATE SET
+               views = views + 1,
+               uniques = uniques + 1,
+               bot_views = bot_views + excluded.bot_views,
+               human_views = human_views + excluded.human_views`,
+          )
+          .bind(dateUtc, cleanPath, isBotInt, humanViewsInc);
 
-      const shouldFlush =
-        bufferedVisitCount >= COMPACT_ROLLUP_MAX_BUFFERED_VISITS ||
-        nowMs - lastCompactRollupFlushMs >= COMPACT_ROLLUP_FLUSH_INTERVAL_MS;
+        const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(
+          this.db,
+          nowMs,
+        );
+        const statements: D1PreparedStatement[] = quotaStmt
+          ? [rollupStmt, quotaStmt]
+          : [rollupStmt];
 
-      if (shouldFlush) {
-        try {
-          await flushCompactRollupBuffer(this.db);
-        } catch (err) {
-          if (isD1QuotaException(err)) {
-            edgeQuotaTracker.tripCircuitBreaker(
-              String(err),
-              nowMs,
-              this.executionCtx as ExecutionContext | undefined,
-            );
-            await writeTelemetryWalToR2(walRecord, this.env, nowMs);
-            return {
-              recorded: true,
-              deduped: false,
-              deduplicated: false,
-              degradationTier: edgeQuotaTracker.getTierName(nowMs),
-              storageTier: "R2_WAL",
-              storageTarget: "ANALYTICS_ENGINE_AND_R2_WAL",
-            };
-          }
-          console.error(
-            "[D1TelemetryAdapter:flushCompactRollupBuffer Error]",
-            err,
+        let batchMeta: { rows_written?: number; rows_read?: number } | null =
+          null;
+        if (typeof this.db.batch === "function") {
+          const results = await this.db.batch(statements);
+          const totalWritten = results.reduce(
+            (acc, r) =>
+              acc +
+              (typeof r?.meta?.rows_written === "number"
+                ? r.meta.rows_written
+                : 1),
+            0,
           );
+          const totalRead = results.reduce(
+            (acc, r) =>
+              acc +
+              (typeof r?.meta?.rows_read === "number" ? r.meta.rows_read : 0),
+            0,
+          );
+          batchMeta = { rows_written: totalWritten || 1, rows_read: totalRead };
+        } else {
+          const res = await rollupStmt.run();
+          if (quotaStmt) await quotaStmt.run();
+          batchMeta = {
+            rows_written:
+              (res as { meta?: { rows_written?: number } })?.meta
+                ?.rows_written ?? 1,
+            rows_read: 0,
+          };
         }
-      }
 
-      return {
-        recorded: true,
-        deduped: false,
-        deduplicated: false,
-        degradationTier: edgeQuotaTracker.getTierName(nowMs),
-        storageTier: "D1",
-        storageTarget: "D1_ROLLUP_ONLY",
-      };
+        edgeQuotaTracker.recordD1Meta(batchMeta, 1, 0, nowMs);
+
+        return {
+          recorded: true,
+          deduped: false,
+          deduplicated: false,
+          degradationTier: edgeQuotaTracker.getTierName(nowMs),
+          storageTier: "D1",
+          storageTarget: "D1_ROLLUP_ONLY",
+        };
+      } catch (err) {
+        if (isD1QuotaException(err)) {
+          edgeQuotaTracker.tripCircuitBreaker(
+            String(err),
+            nowMs,
+            this.executionCtx as ExecutionContext | undefined,
+          );
+          await writeTelemetryWalToR2(walRecord, this.env, nowMs);
+          return {
+            recorded: true,
+            deduped: false,
+            deduplicated: false,
+            degradationTier: edgeQuotaTracker.getTierName(nowMs),
+            storageTier: "R2_WAL",
+            storageTarget: "ANALYTICS_ENGINE_AND_R2_WAL",
+          };
+        }
+        console.error(
+          "[D1TelemetryAdapter:COMPACT_ROLLUP Direct Write Error]",
+          err,
+        );
+      }
     }
 
     // Tier 0 (NOMINAL) & Tier 1 (CONSERVATIVE): Single atomic db.batch()
@@ -594,10 +630,18 @@ export class D1TelemetryAdapter implements TelemetryPort {
         )
         .bind(dateUtc, cleanPath, isBotInt, humanViewsInc);
 
+      const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(
+        this.db,
+        nowMs,
+      );
+      const batchStmts = quotaStmt
+        ? [telemetryStmt, rollupStmt, quotaStmt]
+        : [telemetryStmt, rollupStmt];
+
       let batchMeta: { rows_written?: number; rows_read?: number } | null =
         null;
       if (typeof this.db.batch === "function") {
-        const results = await this.db.batch([telemetryStmt, rollupStmt]);
+        const results = await this.db.batch(batchStmts);
         const totalWritten = results.reduce(
           (acc, r) =>
             acc +
@@ -616,6 +660,7 @@ export class D1TelemetryAdapter implements TelemetryPort {
       } else {
         await telemetryStmt.run();
         await rollupStmt.run();
+        if (quotaStmt) await quotaStmt.run();
       }
       edgeQuotaTracker.recordD1Meta(batchMeta, 2, 0, nowMs);
       await edgeQuotaTracker.tickAndMaybeSync(

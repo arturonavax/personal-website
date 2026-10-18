@@ -166,15 +166,17 @@ export function resolveDegradationTier(
 
 export function isD1QuotaException(err: unknown): boolean {
   if (!err) return false;
+  if (err instanceof TypeError) return false;
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  const cleanMsg = msg.replace(/quota_state_daily/g, "");
   return (
-    msg.includes("d1_error") ||
-    msg.includes("rows written") ||
-    msg.includes("rows read") ||
-    msg.includes("quota") ||
-    msg.includes("daily limit") ||
-    msg.includes("too many requests") ||
-    msg.includes("rate limit")
+    cleanMsg.includes("d1_error") ||
+    cleanMsg.includes("rows written") ||
+    cleanMsg.includes("rows read") ||
+    cleanMsg.includes("quota") ||
+    cleanMsg.includes("daily limit") ||
+    cleanMsg.includes("too many requests") ||
+    cleanMsg.includes("rate limit")
   );
 }
 
@@ -352,31 +354,44 @@ export class EdgeQuotaTracker {
     }
   }
 
-  async tickAndMaybeSync(
-    db?: D1Database,
-    ctx?: ExecutionContext,
-  ): Promise<QuotaDegradationTier> {
-    this.checkDayRollover();
-    this.requestCounter++;
-    if (this.requestCounter % 50 === 0) {
-      const syncPromise = this.syncToCacheAndD1(db);
-      if (ctx && typeof ctx.waitUntil === "function") {
-        ctx.waitUntil(syncPromise);
-      } else {
-        await syncPromise;
-      }
-    }
-    return this.getTier();
+  buildQuotaUpsertStatement(
+    db: D1Database,
+    nowMs?: number,
+  ): D1PreparedStatement | null {
+    this.checkDayRollover(nowMs);
+    if (this.d1HardBlocked) return null;
+    const snapshot = this.getSnapshot(nowMs);
+    return db
+      .prepare(
+        `INSERT INTO quota_state_daily (date_utc, estimated_rows_written, estimated_rows_read, degradation_tier, updated_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(date_utc) DO UPDATE SET
+           estimated_rows_written = MAX(quota_state_daily.estimated_rows_written, excluded.estimated_rows_written),
+           estimated_rows_read = MAX(quota_state_daily.estimated_rows_read, excluded.estimated_rows_read),
+           degradation_tier = MAX(quota_state_daily.degradation_tier, excluded.degradation_tier),
+           updated_at = excluded.updated_at`,
+      )
+      .bind(
+        snapshot.dateUtc,
+        snapshot.estimatedRowsWritten,
+        snapshot.estimatedRowsRead,
+        snapshot.tier,
+        snapshot.updatedAt,
+      );
   }
 
-  async syncToCacheAndD1(db?: D1Database): Promise<void> {
-    this.checkDayRollover();
+  async syncFromD1AndCache(
+    db?: D1Database,
+    nowMs?: number,
+  ): Promise<QuotaStateSnapshot> {
+    this.checkDayRollover(nowMs);
+    const today = this.currentDay;
     const cache =
       typeof caches !== "undefined"
         ? (caches as unknown as { default?: Cache })?.default
         : undefined;
-    const today = this.currentDay;
-    const req = new Request(`https://telemetry.internal/quota/${today}`);
+    const cacheUrl = `https://telemetry.internal/quota-state/${today}`;
+    const req = new Request(cacheUrl);
 
     if (cache) {
       try {
@@ -398,46 +413,104 @@ export class EdgeQuotaTracker {
           if (data.d1HardBlocked === true) {
             this.d1HardBlocked = true;
           }
+          return this.getSnapshot(nowMs);
         }
       } catch {
         // Fail-open
       }
     }
 
-    await this.syncToCacheOnly();
-
-    if (
-      db &&
-      !this.d1HardBlocked &&
-      this.getTier() < QuotaDegradationTier.CRITICAL_SURVIVAL
-    ) {
+    if (db && !this.d1HardBlocked) {
       try {
-        const snapshot = this.getSnapshot();
-        await db
+        const stmt = db
           .prepare(
-            `INSERT INTO quota_state_daily (date_utc, estimated_rows_written, estimated_rows_read, degradation_tier, updated_at)
-             VALUES (?, ?, ?, ?, ?)
-             ON CONFLICT(date_utc) DO UPDATE SET
-               estimated_rows_written = MAX(quota_state_daily.estimated_rows_written, excluded.estimated_rows_written),
-               estimated_rows_read = MAX(quota_state_daily.estimated_rows_read, excluded.estimated_rows_read),
-               degradation_tier = MAX(quota_state_daily.degradation_tier, excluded.degradation_tier),
-               updated_at = excluded.updated_at`,
+            `SELECT estimated_rows_written, estimated_rows_read, degradation_tier
+             FROM quota_state_daily WHERE date_utc = ?`,
           )
-          .bind(
-            snapshot.dateUtc,
-            snapshot.estimatedRowsWritten,
-            snapshot.estimatedRowsRead,
-            snapshot.tier,
-            snapshot.updatedAt,
-          )
-          .run();
+          .bind(today);
+
+        let row:
+          | {
+              estimated_rows_written?: number;
+              estimated_rows_read?: number;
+              degradation_tier?: number;
+            }
+          | null
+          | undefined = null;
+
+        if (typeof (stmt as any).first === "function") {
+          row = await (stmt as any).first();
+        } else if (typeof (stmt as any).all === "function") {
+          const res = await (stmt as any).all();
+          row = (res?.results?.[0] as typeof row) || null;
+        }
+
+        if (row) {
+          if (typeof row.estimated_rows_written === "number") {
+            this.estimatedRowsWritten = Math.max(
+              this.estimatedRowsWritten,
+              row.estimated_rows_written,
+            );
+          }
+          if (typeof row.estimated_rows_read === "number") {
+            this.estimatedRowsRead = Math.max(
+              this.estimatedRowsRead,
+              row.estimated_rows_read,
+            );
+          }
+          if (typeof row.degradation_tier === "number" && row.degradation_tier === QuotaDegradationTier.R2_WAL_FALLBACK) {
+            this.d1HardBlocked = true;
+          }
+        }
       } catch (err) {
         if (isD1QuotaException(err)) {
           this.d1HardBlocked = true;
-          await this.syncToCacheOnly();
         }
       }
     }
+
+    const snapshot = this.getSnapshot(nowMs);
+
+    if (cache) {
+      try {
+        await cache.put(
+          req,
+          new Response(JSON.stringify(snapshot), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "public, max-age=300",
+            },
+          }),
+        );
+      } catch {
+        // Fail-open
+      }
+    }
+
+    return snapshot;
+  }
+
+  async tickAndMaybeSync(
+    _db?: D1Database,
+    ctx?: ExecutionContext,
+  ): Promise<QuotaDegradationTier> {
+    this.checkDayRollover();
+    this.requestCounter++;
+    if (this.requestCounter % 50 === 0) {
+      const syncPromise = this.syncToCacheOnly();
+      if (ctx && typeof ctx.waitUntil === "function") {
+        ctx.waitUntil(syncPromise);
+      } else {
+        await syncPromise;
+      }
+    }
+    return this.getTier();
+  }
+
+  async syncToCacheAndD1(db?: D1Database): Promise<void> {
+    this.checkDayRollover();
+    await this.syncFromD1AndCache(db);
   }
 
   getSnapshot(nowMs?: number): QuotaStateSnapshot {

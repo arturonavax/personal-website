@@ -7,12 +7,23 @@ import { getVisibleCollection } from "@/utils/visibility";
 export async function getStaticPaths() {
   const posts = await getVisibleCollection("posts");
 
+  const slugToLocales = new Map<string, Set<SupportedLocale>>();
+  for (const p of posts) {
+    const [l, ...sp] = p.id.replace(/\.(md|mdx)$/, "").split("/");
+    const s = sp.join("/");
+    if (!slugToLocales.has(s)) slugToLocales.set(s, new Set());
+    slugToLocales.get(s)!.add(l as SupportedLocale);
+  }
+
   return posts.map((post) => {
     const [localePart, ...slugParts] = post.id
       .replace(/\.(md|mdx)$/, "")
       .split("/");
     const slugPart = slugParts.join("/");
     const lang = localePart === DEFAULT_LOCALE ? undefined : localePart;
+    const availableLocales = Array.from(
+      slugToLocales.get(slugPart) || [localePart as SupportedLocale],
+    );
 
     return {
       params: {
@@ -22,12 +33,13 @@ export async function getStaticPaths() {
       props: {
         post,
         currentLocale: localePart as SupportedLocale,
+        availableLocales,
       },
     };
   });
 }
 
-const { post, currentLocale } = Astro.props;
+const { post, currentLocale, availableLocales } = Astro.props;
 const { Content } = await render(post);
 const isEs = currentLocale === "es";
 ---
@@ -40,6 +52,7 @@ const isEs = currentLocale === "es";
   tags={post.data.tags}
   translationKey={post.data.translationKey}
   collectionName="posts"
+  availableLocales={availableLocales}
   backHref={isEs ? "/es/blog/" : "/blog/"}
   backLabel={isEs ? "Volver al blog" : "Back to blog"}
 >

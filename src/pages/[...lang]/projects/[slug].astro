@@ -3,9 +3,18 @@ import { render } from "astro:content";
 import ArticleLayout from "@/layouts/ArticleLayout.astro";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
 import { getVisibleCollection } from "@/utils/visibility";
+import { buildProjectJsonLd } from "@/lib/seo/schema-builder";
 
 export async function getStaticPaths() {
   const projects = await getVisibleCollection("projects");
+
+  const slugToLocales = new Map<string, Set<SupportedLocale>>();
+  for (const p of projects) {
+    const [l, ...sp] = p.id.replace(/\.md$/, "").split("/");
+    const s = sp.join("/");
+    if (!slugToLocales.has(s)) slugToLocales.set(s, new Set());
+    slugToLocales.get(s)!.add(l as SupportedLocale);
+  }
 
   return projects.map((project) => {
     const [localePart, ...slugParts] = project.id
@@ -13,6 +22,9 @@ export async function getStaticPaths() {
       .split("/");
     const slugPart = slugParts.join("/");
     const lang = localePart === DEFAULT_LOCALE ? undefined : localePart;
+    const availableLocales = Array.from(
+      slugToLocales.get(slugPart) || [localePart as SupportedLocale],
+    );
 
     return {
       params: {
@@ -22,14 +34,30 @@ export async function getStaticPaths() {
       props: {
         project,
         currentLocale: localePart as SupportedLocale,
+        availableLocales,
       },
     };
   });
 }
 
-const { project, currentLocale } = Astro.props;
+const { project, currentLocale, availableLocales } = Astro.props;
 const { Content } = await render(project);
 const isEs = currentLocale === "es";
+
+const siteUrl = "https://arturonavax.dev";
+const rawPath = Astro.url.pathname;
+const normalizedPath = rawPath.endsWith("/") ? rawPath : `${rawPath}/`;
+const canonicalUrl = `${siteUrl}${normalizedPath}`;
+
+const jsonLd = buildProjectJsonLd({
+  locale: currentLocale,
+  canonicalUrl,
+  title: project.data.title,
+  description: project.data.description,
+  techStack: project.data.techStack,
+  repoUrl: (project.data as any).repoUrl || "https://github.com/arturonavax",
+  liveUrl: (project.data as any).liveUrl,
+});
 ---
 
 <ArticleLayout
@@ -42,9 +70,11 @@ const isEs = currentLocale === "es";
   locale={currentLocale}
   translationKey={project.data.translationKey}
   collectionName="projects"
+  availableLocales={availableLocales}
   backHref={isEs ? "/es/projects/" : "/projects/"}
   backLabel={isEs ? "Volver a proyectos" : "Back to projects"}
   tags={project.data.techStack}
+  jsonLd={jsonLd}
 >
   <Content />
 </ArticleLayout>

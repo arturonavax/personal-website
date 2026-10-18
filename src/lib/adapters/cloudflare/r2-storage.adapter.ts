@@ -100,12 +100,16 @@ export class CloudflareR2StorageAdapter implements StoragePort {
     await this.put(key, body, metadata);
   }
 
-  async delete(key: string): Promise<void> {
-    await this.bucket.delete(key);
+  async delete(key: string | string[]): Promise<void> {
+    await this.bucket.delete(key as any);
   }
 
   async deleteObject(key: string): Promise<void> {
     await this.delete(key);
+  }
+
+  async deleteObjects(keys: string[]): Promise<void> {
+    await this.bucket.delete(keys);
   }
 
   async listObjects(prefix: string): Promise<string[]> {

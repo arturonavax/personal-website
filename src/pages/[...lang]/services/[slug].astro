@@ -4,9 +4,18 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import TechIcon from "@/components/ui/TechIcon.astro";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
 import { getVisibleCollection } from "@/utils/visibility";
+import { buildServiceJsonLd } from "@/lib/seo/schema-builder";
 
 export async function getStaticPaths() {
   const services = await getVisibleCollection("services");
+
+  const slugToLocales = new Map<string, Set<SupportedLocale>>();
+  for (const s of services) {
+    const [l, ...sp] = s.id.replace(/\.(md|mdx)$/, "").split("/");
+    const slug = sp.join("/");
+    if (!slugToLocales.has(slug)) slugToLocales.set(slug, new Set());
+    slugToLocales.get(slug)!.add(l as SupportedLocale);
+  }
 
   return services.map((service) => {
     const [localePart, ...slugParts] = service.id
@@ -14,6 +23,9 @@ export async function getStaticPaths() {
       .split("/");
     const slugPart = slugParts.join("/");
     const lang = localePart === DEFAULT_LOCALE ? undefined : localePart;
+    const availableLocales = Array.from(
+      slugToLocales.get(slugPart) || [localePart as SupportedLocale],
+    );
 
     return {
       params: {
@@ -23,12 +35,13 @@ export async function getStaticPaths() {
       props: {
         service,
         currentLocale: localePart as SupportedLocale,
+        availableLocales,
       },
     };
   });
 }
 
-const { service, currentLocale } = Astro.props;
+const { service, currentLocale, availableLocales } = Astro.props;
 const { Content } = await render(service);
 const isEs = currentLocale === "es";
 const basePath = isEs ? "/es" : "";
@@ -58,19 +71,19 @@ const typeLabels: Record<string, string> = isEs
       mentorship: "1-on-1 Engineering Mentorship",
     };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Service",
-  name: title,
-  description: description,
-  provider: {
-    "@type": "Person",
-    "@id": "https://arturonavax.dev/#person",
-    name: "Arturo Nava",
-    url: "https://arturonavax.dev/",
-  },
-  inLanguage: currentLocale,
-};
+const siteUrl = "https://arturonavax.dev";
+const rawPath = Astro.url.pathname;
+const normalizedPath = rawPath.endsWith("/") ? rawPath : `${rawPath}/`;
+const canonicalUrl = `${siteUrl}${normalizedPath}`;
+
+const jsonLd = buildServiceJsonLd({
+  locale: currentLocale,
+  canonicalUrl,
+  title,
+  description,
+  serviceType: typeLabels[type] ?? type,
+  tags,
+});
 ---
 
 <BaseLayout
@@ -80,6 +93,7 @@ const jsonLd = {
   type="article"
   collectionName="services"
   translationKey={translationKey}
+  availableLocales={availableLocales}
   jsonLd={jsonLd}
 >
   <article class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-8">

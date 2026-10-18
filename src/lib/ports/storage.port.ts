@@ -16,6 +16,6 @@ export interface StoragePort {
     data: ReadableStream | Uint8Array | string,
     metadata?: Partial<StorageItemMetadata> | undefined,
   ): Promise<void>;
-  delete(key: string): Promise<void>;
+  delete(key: string | string[]): Promise<void>;
   getPublicUrl(key: string): string;
 }
