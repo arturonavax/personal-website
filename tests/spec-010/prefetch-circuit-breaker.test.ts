@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from "bun:test";
 import worker, {
   type Env,
   prefetchCircuitBreaker,
+  clearRecentPageviewsCache,
 } from "../../cloudflare/worker";
 import {
   PrefetchQuotaCircuitBreaker,
@@ -31,12 +32,19 @@ const createMockDb = () => {
   return {
     prepare: (sql: string) => ({
       bind: (...params: any[]) => ({
+        sql,
+        params,
         run: async () => {
           executedQueries.push({ sql, params });
           return { success: true };
         },
       }),
     }),
+    batch: async (stmts: { sql: string; params: any[] }[]) => {
+      for (const s of stmts)
+        executedQueries.push({ sql: s.sql, params: s.params });
+      return stmts.map(() => ({ success: true }));
+    },
     executedQueries,
   } as unknown as D1Database & {
     executedQueries: { sql: string; params: any[] }[];
@@ -224,6 +232,7 @@ describe("Edge Worker Prefetch Telemetry Integration", () => {
   });
 
   it("always prioritizes real visits in pageviews table (P0)", async () => {
+    clearRecentPageviewsCache();
     const ctx = createMockCtx();
     const db = createMockDb();
     const env: Env = {

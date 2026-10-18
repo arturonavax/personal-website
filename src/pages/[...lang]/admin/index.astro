@@ -168,7 +168,9 @@ const description = isEs
               class="rounded-xs border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2.5 py-1 text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none cursor-pointer"
               onchange="onPollIntervalChange(this.value)"
             >
-              <option value="0" selected id="opt-poll-0">{isEs ? "Pausado (manual)" : "Paused (manual)"}</option>
+              <option value="0" selected id="opt-poll-0">
+                {isEs ? "Pausado (manual)" : "Paused (manual)"}
+              </option>
               <option value="15000">15s</option>
               <option value="30000">30s</option>
               <option value="60000">60s</option>
@@ -246,16 +248,38 @@ const description = isEs
       <div class="pt-3 border-t border-[var(--color-surface-border)] flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono text-xs">
         <div class="flex flex-wrap items-center gap-4">
           <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[var(--color-text-secondary)]">
-            <input type="checkbox" id="chk-exclude-bots" onchange="toggleExcludeBots(this.checked)" class="accent-[var(--color-accent-gold)] cursor-pointer" />
-            <span>{isEs ? "Excluir Bots de Gráficos" : "Exclude Bots from Charts"}</span>
+            <input
+              type="checkbox"
+              id="chk-exclude-bots"
+              onchange="toggleExcludeBots(this.checked)"
+              class="accent-[var(--color-accent-gold)] cursor-pointer"
+            />
+            <span>
+              {isEs ? "Excluir Bots de Gráficos" : "Exclude Bots from Charts"}
+            </span>
           </label>
           <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[var(--color-text-secondary)]">
-            <input type="checkbox" id="chk-include-prefetch" checked onchange="toggleIncludePrefetch(this.checked)" class="accent-[var(--color-accent-gold)] cursor-pointer" />
+            <input
+              type="checkbox"
+              id="chk-include-prefetch"
+              checked
+              onchange="toggleIncludePrefetch(this.checked)"
+              class="accent-[var(--color-accent-gold)] cursor-pointer"
+            />
             <span>{isEs ? "Incluir Prefetches" : "Include Prefetches"}</span>
           </label>
           <label class="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-[var(--color-text-secondary)]">
-            <input type="checkbox" id="chk-local-tz" onchange="toggleTimezone(this.checked)" class="accent-[var(--color-accent-gold)] cursor-pointer" />
-            <span>{isEs ? "Zona Horaria Local (Navegador)" : "Local Browser Timezone"}</span>
+            <input
+              type="checkbox"
+              id="chk-local-tz"
+              onchange="toggleTimezone(this.checked)"
+              class="accent-[var(--color-accent-gold)] cursor-pointer"
+            />
+            <span>
+              {isEs
+                ? "Zona Horaria Local (Navegador)"
+                : "Local Browser Timezone"}
+            </span>
           </label>
         </div>
 
@@ -505,12 +529,23 @@ const description = isEs
         <!-- Quota 1: Workers Requests Daily -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">Workers (Diario)</span>
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              Workers (Diario)
+            </span>
             <span class="text-emerald-400 font-bold">100k / día</span>
           </div>
-          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-workers-daily">-- / 100,000</div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-workers-daily"
+          >
+            -- / 100,000
+          </div>
           <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div id="quota-workers-daily-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 1%;"></div>
+            <div
+              id="quota-workers-daily-bar"
+              class="h-full bg-cyan-400 transition-all duration-300"
+              style="width: 1%;"
+            ></div>
           </div>
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>Reinicio: 00:00 UTC</span>
@@ -521,12 +556,23 @@ const description = isEs
         <!-- Quota 2: Workers Requests Monthly -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">Workers (Mensual)</span>
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              Workers (Mensual)
+            </span>
             <span class="text-emerald-400 font-bold">~3M / mes</span>
           </div>
-          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-workers-monthly">-- / 3,000,000</div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-workers-monthly"
+          >
+            -- / 3,000,000
+          </div>
           <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div id="quota-workers-monthly-bar" class="h-full bg-[var(--color-accent-gold)] transition-all duration-300" style="width: 1%;"></div>
+            <div
+              id="quota-workers-monthly-bar"
+              class="h-full bg-[var(--color-accent-gold)] transition-all duration-300"
+              style="width: 1%;"
+            ></div>
           </div>
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>Ventana 30 días</span>
@@ -537,12 +583,23 @@ const description = isEs
         <!-- Quota 3: D1 Database Reads -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">D1 Lecturas (Diario)</span>
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              D1 Lecturas (Diario)
+            </span>
             <span class="text-emerald-400 font-bold">5M / día</span>
           </div>
-          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-d1-reads">-- / 5,000,000</div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-d1-reads"
+          >
+            -- / 5,000,000
+          </div>
           <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div id="quota-d1-reads-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 1%;"></div>
+            <div
+              id="quota-d1-reads-bar"
+              class="h-full bg-cyan-400 transition-all duration-300"
+              style="width: 1%;"
+            ></div>
           </div>
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>Caché Edge: 120s</span>
@@ -553,12 +610,23 @@ const description = isEs
         <!-- Quota 4: D1 Storage -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">D1 Almacenamiento</span>
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              D1 Almacenamiento
+            </span>
             <span class="text-emerald-400 font-bold">5 GB máx</span>
           </div>
-          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-d1-storage">12.4 MB / 5 GB</div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-d1-storage"
+          >
+            12.4 MB / 5 GB
+          </div>
           <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div id="quota-d1-storage-bar" class="h-full bg-emerald-400 transition-all duration-300" style="width: 1%;"></div>
+            <div
+              id="quota-d1-storage-bar"
+              class="h-full bg-emerald-400 transition-all duration-300"
+              style="width: 1%;"
+            ></div>
           </div>
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>SQLite Distribuido</span>
@@ -569,12 +637,23 @@ const description = isEs
         <!-- Quota 5: R2 Class A Ops -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">R2 Ops Clase A</span>
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              R2 Ops Clase A
+            </span>
             <span class="text-emerald-400 font-bold">1M / mes</span>
           </div>
-          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-r2-class-a">-- / 1,000,000</div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-r2-class-a"
+          >
+            -- / 1,000,000
+          </div>
           <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div id="quota-r2-class-a-bar" class="h-full bg-[var(--color-accent-gold)] transition-all duration-300" style="width: 1%;"></div>
+            <div
+              id="quota-r2-class-a-bar"
+              class="h-full bg-[var(--color-accent-gold)] transition-all duration-300"
+              style="width: 1%;"
+            ></div>
           </div>
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>Mutaciones / Uploads</span>
@@ -585,12 +664,23 @@ const description = isEs
         <!-- Quota 6: R2 Class B Ops -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">R2 Ops Clase B</span>
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              R2 Ops Clase B
+            </span>
             <span class="text-emerald-400 font-bold">10M / mes</span>
           </div>
-          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-r2-class-b">-- / 10,000,000</div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-r2-class-b"
+          >
+            -- / 10,000,000
+          </div>
           <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div id="quota-r2-class-b-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 1%;"></div>
+            <div
+              id="quota-r2-class-b-bar"
+              class="h-full bg-cyan-400 transition-all duration-300"
+              style="width: 1%;"
+            ></div>
           </div>
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>24h Edge Cache</span>
@@ -601,12 +691,23 @@ const description = isEs
         <!-- Quota 7: R2 Content Storage -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">R2 Storage</span>
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              R2 Storage
+            </span>
             <span class="text-emerald-400 font-bold">10 GB / mes</span>
           </div>
-          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-r2-storage">0.18 GB / 10 GB</div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-r2-storage"
+          >
+            0.18 GB / 10 GB
+          </div>
           <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div id="quota-r2-storage-bar" class="h-full bg-emerald-400 transition-all duration-300" style="width: 2%;"></div>
+            <div
+              id="quota-r2-storage-bar"
+              class="h-full bg-emerald-400 transition-all duration-300"
+              style="width: 2%;"
+            ></div>
           </div>
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>PDFs, Assets, R2 Sync</span>
@@ -617,12 +718,23 @@ const description = isEs
         <!-- Quota 8: Zero Trust Access Seats -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">Zero Trust Access</span>
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              Zero Trust Access
+            </span>
             <span class="text-emerald-400 font-bold">50 asientos</span>
           </div>
-          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-zero-trust">1 / 50 asientos</div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-zero-trust"
+          >
+            1 / 50 asientos
+          </div>
           <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div id="quota-zero-trust-bar" class="h-full bg-emerald-400 transition-all duration-300" style="width: 2%;"></div>
+            <div
+              id="quota-zero-trust-bar"
+              class="h-full bg-emerald-400 transition-all duration-300"
+              style="width: 2%;"
+            ></div>
           </div>
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>Cloudflare Access</span>
@@ -633,12 +745,23 @@ const description = isEs
         <!-- Quota 9: Workers AI Neurons -->
         <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] space-y-2">
           <div class="flex justify-between items-center text-[11px]">
-            <span class="text-[var(--color-text-secondary)] font-medium">Workers AI (Diario)</span>
+            <span class="text-[var(--color-text-secondary)] font-medium">
+              Workers AI (Diario)
+            </span>
             <span class="text-emerald-400 font-bold">10k / día</span>
           </div>
-          <div class="text-sm font-bold text-[var(--color-text-primary)]" id="quota-workers-ai">0 / 10,000 neuronas</div>
+          <div
+            class="text-sm font-bold text-[var(--color-text-primary)]"
+            id="quota-workers-ai"
+          >
+            0 / 10,000 neuronas
+          </div>
           <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-            <div id="quota-workers-ai-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 1%;"></div>
+            <div
+              id="quota-workers-ai-bar"
+              class="h-full bg-cyan-400 transition-all duration-300"
+              style="width: 1%;"
+            ></div>
           </div>
           <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
             <span>Inferencia Edge</span>
@@ -666,10 +789,31 @@ const description = isEs
             </p>
           </div>
           <div class="flex items-center gap-2 font-mono text-xs">
-            <span id="top-pages-count" class="text-[var(--color-text-muted)]">--</span>
-            <span id="paths-page-info" class="text-[var(--color-accent-gold)] px-1">1 / 1</span>
-            <button type="button" id="btn-paths-prev" onclick="changePathsPage(-1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&lsaquo;</button>
-            <button type="button" id="btn-paths-next" onclick="changePathsPage(1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&rsaquo;</button>
+            <span id="top-pages-count" class="text-[var(--color-text-muted)]">
+              --
+            </span>
+            <span
+              id="paths-page-info"
+              class="text-[var(--color-accent-gold)] px-1"
+            >
+              1 / 1
+            </span>
+            <button
+              type="button"
+              id="btn-paths-prev"
+              onclick="changePathsPage(-1)"
+              class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer"
+            >
+              &lsaquo;
+            </button>
+            <button
+              type="button"
+              id="btn-paths-next"
+              onclick="changePathsPage(1)"
+              class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer"
+            >
+              &rsaquo;
+            </button>
           </div>
         </div>
 
@@ -723,9 +867,28 @@ const description = isEs
             </p>
           </div>
           <div class="flex items-center gap-2 font-mono text-xs">
-            <span id="countries-page-info" class="text-[var(--color-accent-gold)] px-1">1 / 1</span>
-            <button type="button" id="btn-countries-prev" onclick="changeCountriesPage(-1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&lsaquo;</button>
-            <button type="button" id="btn-countries-next" onclick="changeCountriesPage(1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&rsaquo;</button>
+            <span
+              id="countries-page-info"
+              class="text-[var(--color-accent-gold)] px-1"
+            >
+              1 / 1
+            </span>
+            <button
+              type="button"
+              id="btn-countries-prev"
+              onclick="changeCountriesPage(-1)"
+              class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer"
+            >
+              &lsaquo;
+            </button>
+            <button
+              type="button"
+              id="btn-countries-next"
+              onclick="changeCountriesPage(1)"
+              class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer"
+            >
+              &rsaquo;
+            </button>
           </div>
         </div>
 
@@ -758,9 +921,28 @@ const description = isEs
             </p>
           </div>
           <div class="flex items-center gap-2 font-mono text-xs">
-            <span id="referrers-page-info" class="text-[var(--color-accent-gold)] px-1">1 / 1</span>
-            <button type="button" id="btn-referrers-prev" onclick="changeReferrersPage(-1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&lsaquo;</button>
-            <button type="button" id="btn-referrers-next" onclick="changeReferrersPage(1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&rsaquo;</button>
+            <span
+              id="referrers-page-info"
+              class="text-[var(--color-accent-gold)] px-1"
+            >
+              1 / 1
+            </span>
+            <button
+              type="button"
+              id="btn-referrers-prev"
+              onclick="changeReferrersPage(-1)"
+              class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer"
+            >
+              &lsaquo;
+            </button>
+            <button
+              type="button"
+              id="btn-referrers-next"
+              onclick="changeReferrersPage(1)"
+              class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer"
+            >
+              &rsaquo;
+            </button>
           </div>
         </div>
 
@@ -822,10 +1004,31 @@ const description = isEs
           </p>
         </div>
         <div class="flex items-center gap-2 font-mono text-xs">
-          <span id="leads-count-badge" class="text-[var(--color-text-muted)]">0 leads</span>
-          <span id="leads-page-info" class="text-[var(--color-accent-gold)] px-1">1 / 1</span>
-          <button type="button" id="btn-leads-prev" onclick="changeLeadsPage(-1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&lsaquo;</button>
-          <button type="button" id="btn-leads-next" onclick="changeLeadsPage(1)" class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer">&rsaquo;</button>
+          <span id="leads-count-badge" class="text-[var(--color-text-muted)]">
+            0 leads
+          </span>
+          <span
+            id="leads-page-info"
+            class="text-[var(--color-accent-gold)] px-1"
+          >
+            1 / 1
+          </span>
+          <button
+            type="button"
+            id="btn-leads-prev"
+            onclick="changeLeadsPage(-1)"
+            class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer"
+          >
+            &lsaquo;
+          </button>
+          <button
+            type="button"
+            id="btn-leads-next"
+            onclick="changeLeadsPage(1)"
+            class="btn-mini rounded px-1.5 py-0.5 border border-[var(--color-surface-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] cursor-pointer"
+          >
+            &rsaquo;
+          </button>
         </div>
       </div>
 
@@ -834,9 +1037,15 @@ const description = isEs
           <thead>
             <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
               <th class="py-2 px-3">{isEs ? "Fecha y Hora" : "Date & Time"}</th>
-              <th class="py-2 px-3">{isEs ? "Nombre / Empresa" : "Name / Company"}</th>
-              <th class="py-2 px-3">{isEs ? "Email & Teléfono" : "Email & Phone"}</th>
-              <th class="py-2 px-3">{isEs ? "Ubicación / Idioma" : "Location / Locale"}</th>
+              <th class="py-2 px-3">
+                {isEs ? "Nombre / Empresa" : "Name / Company"}
+              </th>
+              <th class="py-2 px-3">
+                {isEs ? "Email & Teléfono" : "Email & Phone"}
+              </th>
+              <th class="py-2 px-3">
+                {isEs ? "Ubicación / Idioma" : "Location / Locale"}
+              </th>
               <th class="py-2 px-3">{isEs ? "Asunto" : "Subject"}</th>
               <th class="py-2 px-3">{isEs ? "Mensaje" : "Message"}</th>
             </tr>
@@ -897,9 +1106,15 @@ const description = isEs
               <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
                 <th class="py-2 px-3">{isEs ? "Fecha" : "Date"}</th>
                 <th class="py-2 px-3">{isEs ? "Subsistema" : "Subsystem"}</th>
-                <th class="py-2 px-3">{isEs ? "Motivo Trip" : "Trip Reason"}</th>
-                <th class="py-2 px-3">{isEs ? "Eventos Mitigados" : "Mitigated Events"}</th>
-                <th class="py-2 px-3">{isEs ? "Completitud Datos" : "Data Completeness"}</th>
+                <th class="py-2 px-3">
+                  {isEs ? "Motivo Trip" : "Trip Reason"}
+                </th>
+                <th class="py-2 px-3">
+                  {isEs ? "Eventos Mitigados" : "Mitigated Events"}
+                </th>
+                <th class="py-2 px-3">
+                  {isEs ? "Completitud Datos" : "Data Completeness"}
+                </th>
               </tr>
             </thead>
             <tbody id="cb-tbody">
@@ -926,7 +1141,9 @@ const description = isEs
               <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
                 <th class="py-2 px-3">{isEs ? "Versión" : "Version"}</th>
                 <th class="py-2 px-3">Git Commit</th>
-                <th class="py-2 px-3">{isEs ? "Fecha Despliegue" : "Deploy Date"}</th>
+                <th class="py-2 px-3">
+                  {isEs ? "Fecha Despliegue" : "Deploy Date"}
+                </th>
                 <th class="py-2 px-3">{isEs ? "Entorno" : "Environment"}</th>
                 <th class="py-2 px-3">{isEs ? "Estado" : "Status"}</th>
               </tr>
@@ -972,12 +1189,18 @@ const description = isEs
         <table class="w-full text-left font-mono text-xs border-collapse">
           <thead>
             <tr class="border-b border-[var(--color-surface-border)] text-[10px] uppercase text-[var(--color-text-muted)]">
-              <th class="py-2 px-2.5" id="th-time-header">{isEs ? "Fecha y Hora (UTC)" : "Date & Time (UTC)"}</th>
+              <th class="py-2 px-2.5" id="th-time-header">
+                {isEs ? "Fecha y Hora (UTC)" : "Date & Time (UTC)"}
+              </th>
               <th class="py-2 px-2.5">{isEs ? "Tipo" : "Type"}</th>
               <th class="py-2 px-2.5">{isEs ? "Ruta" : "Path"}</th>
               <th class="py-2 px-2.5">{isEs ? "País" : "Country"}</th>
-              <th class="py-2 px-2.5">{isEs ? "Referrer / Origen" : "Referrer / Source"}</th>
-              <th class="py-2 px-2.5">{isEs ? "Campaña UTM" : "UTM Campaign"}</th>
+              <th class="py-2 px-2.5">
+                {isEs ? "Referrer / Origen" : "Referrer / Source"}
+              </th>
+              <th class="py-2 px-2.5">
+                {isEs ? "Campaña UTM" : "UTM Campaign"}
+              </th>
               <th class="py-2 px-2.5">Hash GDPR</th>
             </tr>
           </thead>
@@ -998,16 +1221,57 @@ const description = isEs
 
       <!-- Server-side Pagination Bar -->
       <div class="border-t border-[var(--color-surface-border)] pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
-        <span id="pagination-info" class="text-[var(--color-text-muted)]">Página 1 de 1 (0 eventos)</span>
+        <span id="pagination-info" class="text-[var(--color-text-muted)]">
+          Página 1 de 1 (0 eventos)
+        </span>
         <div class="flex items-center gap-1.5">
-          <button type="button" id="btn-page-first" onclick="goToPage(1)" class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]">&laquo; Primero</button>
-          <button type="button" id="btn-page-prev" onclick="goToPage(currentPage - 1)" class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]">&lsaquo; Anterior</button>
-          <span id="page-indicator" class="px-2 font-bold text-[var(--color-accent-gold)]">1 / 1</span>
-          <button type="button" id="btn-page-next" onclick="goToPage(currentPage + 1)" class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]">Siguiente &rsaquo;</button>
-          <button type="button" id="btn-page-last" onclick="goToPage(totalPages)" class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]">Último &raquo;</button>
-          <select id="select-limit" onchange="setLimit(this.value)" class="ml-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-primary)]">
+          <button
+            type="button"
+            id="btn-page-first"
+            onclick="goToPage(1)"
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]"
+          >
+            &laquo; Primero
+          </button>
+          <button
+            type="button"
+            id="btn-page-prev"
+            onclick="goToPage(currentPage - 1)"
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]"
+          >
+            &lsaquo; Anterior
+          </button>
+          <span
+            id="page-indicator"
+            class="px-2 font-bold text-[var(--color-accent-gold)]"
+          >
+            1 / 1
+          </span>
+          <button
+            type="button"
+            id="btn-page-next"
+            onclick="goToPage(currentPage + 1)"
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]"
+          >
+            Siguiente &rsaquo;
+          </button>
+          <button
+            type="button"
+            id="btn-page-last"
+            onclick="goToPage(totalPages)"
+            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]"
+          >
+            Último &raquo;
+          </button>
+          <select
+            id="select-limit"
+            onchange="setLimit(this.value)"
+            class="ml-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-primary)]"
+          >
             <option value="25">25 / pág</option>
-            <option value="50" selected>50 / pág</option>
+            <option value="50" selected>
+              50 / pág
+            </option>
             <option value="100">100 / pág</option>
           </select>
         </div>
@@ -1017,19 +1281,45 @@ const description = isEs
     <!-- Clean Administrative Surface Footer -->
     <footer class="mt-8 pt-4 pb-6 border-t border-[var(--color-surface-border)] font-mono text-xs text-[var(--color-text-dim)] flex flex-col sm:flex-row items-center justify-between gap-3">
       <div>
-        <p>&copy; 2026 Arturo Nava. Isolated Administrative Surface &bull; Cloudflare Access Zero Trust &bull; 0 KB Baseline Client JS</p>
-        <p class="text-[10px] text-[var(--color-text-muted)] mt-0.5">Edge Telemetry &amp; Quota Safeguards &bull; D1 Distributed Database</p>
+        <p>
+          &copy; 2026 Arturo Nava. Isolated Administrative Surface &bull;
+          Cloudflare Access Zero Trust &bull; 0 KB Baseline Client JS
+        </p>
+        <p class="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+          Edge Telemetry &amp; Quota Safeguards &bull; D1 Distributed Database
+        </p>
       </div>
       <div class="flex items-center gap-4 text-xs">
-        <a href="https://github.com/arturonavax" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-accent-gold)] transition-colors">GitHub</a>
-        <a href="https://linkedin.com/in/arturonava" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--color-accent-gold)] transition-colors">LinkedIn</a>
-        <span class="text-[var(--color-text-muted)]">admin.arturonavax.dev</span>
+        <a
+          href="https://github.com/arturonavax"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hover:text-[var(--color-accent-gold)] transition-colors"
+        >
+          GitHub
+        </a>
+        <a
+          href="https://linkedin.com/in/arturonava"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hover:text-[var(--color-accent-gold)] transition-colors"
+        >
+          LinkedIn
+        </a>
+        <span class="text-[var(--color-text-muted)]">
+          admin.arturonavax.dev
+        </span>
       </div>
     </footer>
   </div>
 
   <!-- Floating Country Tooltip -->
-  <div id="country-tooltip" class="country-tooltip" role="tooltip" aria-hidden="true"></div>
+  <div
+    id="country-tooltip"
+    class="country-tooltip"
+    role="tooltip"
+    aria-hidden="true"
+  ></div>
 </BaseLayout>
 
 <style>
@@ -1049,8 +1339,13 @@ const description = isEs
     animation: pulse-border 1.5s infinite;
   }
   @keyframes pulse-border {
-    0%, 100% { box-shadow: 0 0 4px rgba(229, 163, 82, 0.3); }
-    50% { box-shadow: 0 0 12px rgba(229, 163, 82, 0.7); }
+    0%,
+    100% {
+      box-shadow: 0 0 4px rgba(229, 163, 82, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 12px rgba(229, 163, 82, 0.7);
+    }
   }
   .country-tooltip {
     position: fixed;
@@ -1082,14 +1377,26 @@ const description = isEs
     var isEs = document.documentElement.lang === "es";
 
     // Automatic device/saved language detection for root /admin
-    if (window.location.pathname === "/admin" || window.location.pathname === "/admin/") {
+    if (
+      window.location.pathname === "/admin" ||
+      window.location.pathname === "/admin/"
+    ) {
       try {
-        var savedAdminLang = localStorage.getItem("preferred_locale") || localStorage.getItem("admin_lang");
-        var userLangs = (navigator.languages || [navigator.language || ""]).map(function (l) {
-          return (l || "").toLowerCase().split("-")[0];
-        });
-        if (savedAdminLang === "es" || (!savedAdminLang && userLangs[0] === "es")) {
-          window.location.replace("/es/admin/" + window.location.search + window.location.hash);
+        var savedAdminLang =
+          localStorage.getItem("preferred_locale") ||
+          localStorage.getItem("admin_lang");
+        var userLangs = (navigator.languages || [navigator.language || ""]).map(
+          function (l) {
+            return (l || "").toLowerCase().split("-")[0];
+          },
+        );
+        if (
+          savedAdminLang === "es" ||
+          (!savedAdminLang && userLangs[0] === "es")
+        ) {
+          window.location.replace(
+            "/es/admin/" + window.location.search + window.location.hash,
+          );
           return;
         }
       } catch (_) {}
@@ -1154,14 +1461,20 @@ const description = isEs
       var badge = document.getElementById("badge-sync-time");
       if (!badge) return;
       if (pollDelay === 0) {
-        badge.textContent = isEs ? "Sincronizado: manual (Pausado)" : "Synced: manual (Paused)";
+        badge.textContent = isEs
+          ? "Sincronizado: manual (Pausado)"
+          : "Synced: manual (Paused)";
         return;
       }
       var elapsedSec = Math.floor((Date.now() - lastSyncTimestamp) / 1000);
       if (elapsedSec < 3) {
-        badge.textContent = isEs ? "Sincronizado: justo ahora" : "Synced: just now";
+        badge.textContent = isEs
+          ? "Sincronizado: justo ahora"
+          : "Synced: just now";
       } else {
-        badge.textContent = isEs ? "Sincronizado: hace " + elapsedSec + "s" : "Synced: " + elapsedSec + "s ago";
+        badge.textContent = isEs
+          ? "Sincronizado: hace " + elapsedSec + "s"
+          : "Synced: " + elapsedSec + "s ago";
       }
     }, 1000);
 
@@ -1174,8 +1487,12 @@ const description = isEs
       var th = document.getElementById("th-time-header");
       if (!th) return;
       th.textContent = useLocalTimezone
-        ? (isEs ? "Fecha y Hora (Local)" : "Date & Time (Local)")
-        : (isEs ? "Fecha y Hora (UTC)" : "Date & Time (UTC)");
+        ? isEs
+          ? "Fecha y Hora (Local)"
+          : "Date & Time (Local)"
+        : isEs
+          ? "Fecha y Hora (UTC)"
+          : "Date & Time (UTC)";
     }
 
     function toggleTimezone(checked) {
@@ -1193,7 +1510,9 @@ const description = isEs
       try {
         var s = String(isoStr).trim();
         var cleanIso = s.includes("T")
-          ? ((s.endsWith("Z") || s.includes("+") || (s.lastIndexOf("-") > 10)) ? s : s + "Z")
+          ? s.endsWith("Z") || s.includes("+") || s.lastIndexOf("-") > 10
+            ? s
+            : s + "Z"
           : s.replace(" ", "T") + "Z";
         var d = new Date(cleanIso);
         if (isNaN(d.getTime())) return isoStr;
@@ -1206,9 +1525,11 @@ const description = isEs
           minute: "2-digit",
           second: "2-digit",
           hour12: true,
-          ...(useLocalTimezone ? {} : { timeZone: "UTC" })
+          ...(useLocalTimezone ? {} : { timeZone: "UTC" }),
         };
-        return new Intl.DateTimeFormat(isEs ? "es-ES" : "en-US", opts).format(d);
+        return new Intl.DateTimeFormat(isEs ? "es-ES" : "en-US", opts).format(
+          d,
+        );
       } catch (_) {
         return isoStr;
       }
@@ -1227,7 +1548,9 @@ const description = isEs
       var key = (isEs ? "es" : "en") + ":" + code;
       if (countryNameCache[key]) return countryNameCache[key];
       try {
-        var dn = new Intl.DisplayNames([isEs ? "es" : "en"], { type: "region" });
+        var dn = new Intl.DisplayNames([isEs ? "es" : "en"], {
+          type: "region",
+        });
         var name = dn.of(code.toUpperCase()) || code;
         countryNameCache[key] = name;
         return name;
@@ -1240,11 +1563,18 @@ const description = isEs
       var tooltip = document.getElementById("country-tooltip");
       if (!tooltip) return;
       var name = getCountryFullName(code);
-      tooltip.textContent = (code && code !== "XX" ? code.toUpperCase() + " — " : "") + name;
+      tooltip.textContent =
+        (code && code !== "XX" ? code.toUpperCase() + " — " : "") + name;
       tooltip.classList.add("active");
 
-      var x = (e && typeof e.clientX === "number") ? e.clientX : ((e && e.touches && e.touches[0] && e.touches[0].clientX) || 0);
-      var y = (e && typeof e.clientY === "number") ? e.clientY : ((e && e.touches && e.touches[0] && e.touches[0].clientY) || 0);
+      var x =
+        e && typeof e.clientX === "number"
+          ? e.clientX
+          : (e && e.touches && e.touches[0] && e.touches[0].clientX) || 0;
+      var y =
+        e && typeof e.clientY === "number"
+          ? e.clientY
+          : (e && e.touches && e.touches[0] && e.touches[0].clientY) || 0;
 
       var tooltipRect = tooltip.getBoundingClientRect();
       var left = x + 12;
@@ -1268,8 +1598,12 @@ const description = isEs
     function attachCountryTooltipEvents() {
       document.querySelectorAll(".country-tag").forEach(function (el) {
         var code = el.getAttribute("data-country");
-        el.onmouseenter = function (e) { showCountryTooltip(e, code); };
-        el.onmousemove = function (e) { showCountryTooltip(e, code); };
+        el.onmouseenter = function (e) {
+          showCountryTooltip(e, code);
+        };
+        el.onmousemove = function (e) {
+          showCountryTooltip(e, code);
+        };
         el.onmouseleave = hideCountryTooltip;
         el.onclick = function (e) {
           e.stopPropagation();
@@ -1318,14 +1652,26 @@ const description = isEs
       var list = rawTopPages || [];
       var maxPages = Math.max(1, Math.ceil(list.length / PATHS_PAGE_SIZE));
       pathsPage = Math.max(1, Math.min(maxPages, pathsPage + delta));
-      renderTopPages(rawTopPages, (cachedTelemetryData && cachedTelemetryData.stats && cachedTelemetryData.stats.total_pageviews) || 0);
+      renderTopPages(
+        rawTopPages,
+        (cachedTelemetryData &&
+          cachedTelemetryData.stats &&
+          cachedTelemetryData.stats.total_pageviews) ||
+          0,
+      );
     }
 
     function changeCountriesPage(delta) {
       var list = rawTopCountries || [];
       var maxPages = Math.max(1, Math.ceil(list.length / COUNTRIES_PAGE_SIZE));
       countriesPage = Math.max(1, Math.min(maxPages, countriesPage + delta));
-      renderCountries(rawTopCountries, (cachedTelemetryData && cachedTelemetryData.stats && cachedTelemetryData.stats.total_pageviews) || 0);
+      renderCountries(
+        rawTopCountries,
+        (cachedTelemetryData &&
+          cachedTelemetryData.stats &&
+          cachedTelemetryData.stats.total_pageviews) ||
+          0,
+      );
     }
 
     function changeReferrersPage(delta) {
@@ -1361,9 +1707,12 @@ const description = isEs
       try {
         var queryParams = new URLSearchParams();
         queryParams.set("range", currentRange);
-        if (currentCountry !== "all") queryParams.set("country", currentCountry);
-        if (currentSegment !== "all") queryParams.set("segment", currentSegment);
-        if (currentPathFilter !== "all") queryParams.set("path", currentPathFilter);
+        if (currentCountry !== "all")
+          queryParams.set("country", currentCountry);
+        if (currentSegment !== "all")
+          queryParams.set("segment", currentSegment);
+        if (currentPathFilter !== "all")
+          queryParams.set("path", currentPathFilter);
         if (searchQuery.trim()) queryParams.set("search", searchQuery.trim());
         queryParams.set("page", String(currentPage));
         queryParams.set("limit", String(currentLimit));
@@ -1375,7 +1724,9 @@ const description = isEs
         }
 
         var results = await Promise.allSettled([
-          fetch("/api/telemetry?" + queryParams.toString(), { cache: "no-store" }),
+          fetch("/api/telemetry?" + queryParams.toString(), {
+            cache: "no-store",
+          }),
           fetch("/api/metrics", { cache: "no-store" }),
           fetch("/api/deployments", { cache: "no-store" }),
           fetch("/api/leads", { cache: "no-store" }),
@@ -1434,64 +1785,148 @@ const description = isEs
         var q1 = cachedQuotas.workers_daily;
         var el1 = document.getElementById("quota-workers-daily");
         var bar1 = document.getElementById("quota-workers-daily-bar");
-        if (el1) el1.textContent = (q1.used || 0).toLocaleString() + " / " + (q1.limit || 100000).toLocaleString();
-        if (bar1) bar1.style.width = Math.min(100, Math.round(((q1.used || 0) / (q1.limit || 100000)) * 100)) + "%";
+        if (el1)
+          el1.textContent =
+            (q1.used || 0).toLocaleString() +
+            " / " +
+            (q1.limit || 100000).toLocaleString();
+        if (bar1)
+          bar1.style.width =
+            Math.min(
+              100,
+              Math.round(((q1.used || 0) / (q1.limit || 100000)) * 100),
+            ) + "%";
       }
       if (cachedQuotas.workers_monthly) {
         var q2 = cachedQuotas.workers_monthly;
         var el2 = document.getElementById("quota-workers-monthly");
         var bar2 = document.getElementById("quota-workers-monthly-bar");
-        if (el2) el2.textContent = (q2.used || 0).toLocaleString() + " / " + (q2.limit || 3000000).toLocaleString();
-        if (bar2) bar2.style.width = Math.min(100, Math.round(((q2.used || 0) / (q2.limit || 3000000)) * 100)) + "%";
+        if (el2)
+          el2.textContent =
+            (q2.used || 0).toLocaleString() +
+            " / " +
+            (q2.limit || 3000000).toLocaleString();
+        if (bar2)
+          bar2.style.width =
+            Math.min(
+              100,
+              Math.round(((q2.used || 0) / (q2.limit || 3000000)) * 100),
+            ) + "%";
       }
       if (cachedQuotas.d1_reads_daily) {
         var q3 = cachedQuotas.d1_reads_daily;
         var el3 = document.getElementById("quota-d1-reads");
         var bar3 = document.getElementById("quota-d1-reads-bar");
-        if (el3) el3.textContent = (q3.used || 0).toLocaleString() + " / " + (q3.limit || 5000000).toLocaleString();
-        if (bar3) bar3.style.width = Math.min(100, Math.round(((q3.used || 0) / (q3.limit || 5000000)) * 100)) + "%";
+        if (el3)
+          el3.textContent =
+            (q3.used || 0).toLocaleString() +
+            " / " +
+            (q3.limit || 5000000).toLocaleString();
+        if (bar3)
+          bar3.style.width =
+            Math.min(
+              100,
+              Math.round(((q3.used || 0) / (q3.limit || 5000000)) * 100),
+            ) + "%";
       }
       if (cachedQuotas.d1_storage) {
         var q4 = cachedQuotas.d1_storage;
         var el4 = document.getElementById("quota-d1-storage");
         var bar4 = document.getElementById("quota-d1-storage-bar");
-        if (el4) el4.textContent = (q4.used_mb || 12.4) + " MB / " + (q4.limit_gb || 5) + " GB";
-        if (bar4) bar4.style.width = Math.min(100, Math.max(1, Math.round(((q4.used_mb || 12.4) / ((q4.limit_gb || 5) * 1024)) * 100))) + "%";
+        if (el4)
+          el4.textContent =
+            (q4.used_mb || 12.4) + " MB / " + (q4.limit_gb || 5) + " GB";
+        if (bar4)
+          bar4.style.width =
+            Math.min(
+              100,
+              Math.max(
+                1,
+                Math.round(
+                  ((q4.used_mb || 12.4) / ((q4.limit_gb || 5) * 1024)) * 100,
+                ),
+              ),
+            ) + "%";
       }
       if (cachedQuotas.r2_class_a_monthly) {
         var q5 = cachedQuotas.r2_class_a_monthly;
         var el5 = document.getElementById("quota-r2-class-a");
         var bar5 = document.getElementById("quota-r2-class-a-bar");
-        if (el5) el5.textContent = (q5.used || 0).toLocaleString() + " / " + (q5.limit || 1000000).toLocaleString();
-        if (bar5) bar5.style.width = Math.min(100, Math.round(((q5.used || 0) / (q5.limit || 1000000)) * 100)) + "%";
+        if (el5)
+          el5.textContent =
+            (q5.used || 0).toLocaleString() +
+            " / " +
+            (q5.limit || 1000000).toLocaleString();
+        if (bar5)
+          bar5.style.width =
+            Math.min(
+              100,
+              Math.round(((q5.used || 0) / (q5.limit || 1000000)) * 100),
+            ) + "%";
       }
       if (cachedQuotas.r2_class_b_monthly) {
         var q6 = cachedQuotas.r2_class_b_monthly;
         var el6 = document.getElementById("quota-r2-class-b");
         var bar6 = document.getElementById("quota-r2-class-b-bar");
-        if (el6) el6.textContent = (q6.used || 0).toLocaleString() + " / " + (q6.limit || 10000000).toLocaleString();
-        if (bar6) bar6.style.width = Math.min(100, Math.round(((q6.used || 0) / (q6.limit || 10000000)) * 100)) + "%";
+        if (el6)
+          el6.textContent =
+            (q6.used || 0).toLocaleString() +
+            " / " +
+            (q6.limit || 10000000).toLocaleString();
+        if (bar6)
+          bar6.style.width =
+            Math.min(
+              100,
+              Math.round(((q6.used || 0) / (q6.limit || 10000000)) * 100),
+            ) + "%";
       }
       if (cachedQuotas.r2_storage) {
         var q7 = cachedQuotas.r2_storage;
         var el7 = document.getElementById("quota-r2-storage");
         var bar7 = document.getElementById("quota-r2-storage-bar");
-        if (el7) el7.textContent = (q7.used_gb || 0.18) + " GB / " + (q7.limit_gb || 10) + " GB";
-        if (bar7) bar7.style.width = Math.min(100, Math.max(1, Math.round(((q7.used_gb || 0.18) / (q7.limit_gb || 10)) * 100))) + "%";
+        if (el7)
+          el7.textContent =
+            (q7.used_gb || 0.18) + " GB / " + (q7.limit_gb || 10) + " GB";
+        if (bar7)
+          bar7.style.width =
+            Math.min(
+              100,
+              Math.max(
+                1,
+                Math.round(((q7.used_gb || 0.18) / (q7.limit_gb || 10)) * 100),
+              ),
+            ) + "%";
       }
       if (cachedQuotas.zero_trust_seats) {
         var q8 = cachedQuotas.zero_trust_seats;
         var el8 = document.getElementById("quota-zero-trust");
         var bar8 = document.getElementById("quota-zero-trust-bar");
-        if (el8) el8.textContent = (q8.used || 1) + " / " + (q8.limit || 50) + " asientos";
-        if (bar8) bar8.style.width = Math.min(100, Math.round(((q8.used || 1) / (q8.limit || 50)) * 100)) + "%";
+        if (el8)
+          el8.textContent =
+            (q8.used || 1) + " / " + (q8.limit || 50) + " asientos";
+        if (bar8)
+          bar8.style.width =
+            Math.min(
+              100,
+              Math.round(((q8.used || 1) / (q8.limit || 50)) * 100),
+            ) + "%";
       }
       if (cachedQuotas.workers_ai_daily) {
         var q9 = cachedQuotas.workers_ai_daily;
         var el9 = document.getElementById("quota-workers-ai");
         var bar9 = document.getElementById("quota-workers-ai-bar");
-        if (el9) el9.textContent = (q9.used || 0).toLocaleString() + " / " + (q9.limit || 10000).toLocaleString() + " neuronas";
-        if (bar9) bar9.style.width = Math.min(100, Math.round(((q9.used || 0) / (q9.limit || 10000)) * 100)) + "%";
+        if (el9)
+          el9.textContent =
+            (q9.used || 0).toLocaleString() +
+            " / " +
+            (q9.limit || 10000).toLocaleString() +
+            " neuronas";
+        if (bar9)
+          bar9.style.width =
+            Math.min(
+              100,
+              Math.round(((q9.used || 0) / (q9.limit || 10000)) * 100),
+            ) + "%";
       }
     }
 
@@ -1506,8 +1941,10 @@ const description = isEs
       var prefetchesCount = stats.prefetches_count || 0;
       var leadsCount = rawLeads.length;
 
-      var humanPct = totalViews > 0 ? Math.round((humanViews / totalViews) * 100) : 0;
-      var botPct = totalViews > 0 ? Math.round((botViews / totalViews) * 100) : 0;
+      var humanPct =
+        totalViews > 0 ? Math.round((humanViews / totalViews) * 100) : 0;
+      var botPct =
+        totalViews > 0 ? Math.round((botViews / totalViews) * 100) : 0;
 
       // 1. KPIs
       var kpiTotal = document.getElementById("kpi-total");
@@ -1515,31 +1952,47 @@ const description = isEs
       var kpiTotalSub = document.getElementById("kpi-total-sub");
       if (kpiTotalSub) {
         kpiTotalSub.textContent = stats.all_time_pageviews
-          ? (isEs ? "Histórico acumulado: " : "All-time total: ") + stats.all_time_pageviews.toLocaleString()
-          : (isEs ? "Tráfico del período" : "Period traffic");
+          ? (isEs ? "Histórico acumulado: " : "All-time total: ") +
+            stats.all_time_pageviews.toLocaleString()
+          : isEs
+            ? "Tráfico del período"
+            : "Period traffic";
       }
 
       var kpiHuman = document.getElementById("kpi-human");
       if (kpiHuman) kpiHuman.textContent = humanViews.toLocaleString();
       var kpiHumanSub = document.getElementById("kpi-human-sub");
-      if (kpiHumanSub) kpiHumanSub.textContent = humanPct + (isEs ? "% del total" : "% of total");
+      if (kpiHumanSub)
+        kpiHumanSub.textContent =
+          humanPct + (isEs ? "% del total" : "% of total");
 
       var kpiBot = document.getElementById("kpi-bot");
       if (kpiBot) kpiBot.textContent = botViews.toLocaleString();
       var kpiBotSub = document.getElementById("kpi-bot-sub");
-      if (kpiBotSub) kpiBotSub.textContent = botPct + (isEs ? "% del total" : "% of total");
+      if (kpiBotSub)
+        kpiBotSub.textContent = botPct + (isEs ? "% del total" : "% of total");
 
       var kpiUnique = document.getElementById("kpi-unique");
       if (kpiUnique) kpiUnique.textContent = uniqueVisitors.toLocaleString();
       var kpiUniqueSub = document.getElementById("kpi-unique-sub");
       var uniqueHuman = (stats && stats.unique_human_visitors) || 0;
-      var uniqueHumanPct = uniqueVisitors > 0 ? Math.round((uniqueHuman / uniqueVisitors) * 100) : 0;
+      var uniqueHumanPct =
+        uniqueVisitors > 0
+          ? Math.round((uniqueHuman / uniqueVisitors) * 100)
+          : 0;
       if (kpiUniqueSub) {
-        kpiUniqueSub.textContent = uniqueHuman.toLocaleString() + " " + (isEs ? "humanos" : "humans") + " (" + uniqueHumanPct + "%)";
+        kpiUniqueSub.textContent =
+          uniqueHuman.toLocaleString() +
+          " " +
+          (isEs ? "humanos" : "humans") +
+          " (" +
+          uniqueHumanPct +
+          "%)";
       }
 
       var kpiPrefetch = document.getElementById("kpi-prefetch");
-      if (kpiPrefetch) kpiPrefetch.textContent = prefetchesCount.toLocaleString();
+      if (kpiPrefetch)
+        kpiPrefetch.textContent = prefetchesCount.toLocaleString();
 
       var kpiLeads = document.getElementById("kpi-leads");
       if (kpiLeads) kpiLeads.textContent = leadsCount.toLocaleString();
@@ -1547,7 +2000,14 @@ const description = isEs
       // Pagination indicators
       var pagInfo = document.getElementById("pagination-info");
       if (pagInfo) {
-        pagInfo.textContent = (isEs ? "Página " : "Page ") + currentPage + (isEs ? " de " : " of ") + totalPages + " (" + totalFiltered.toLocaleString() + (isEs ? " eventos)" : " events)");
+        pagInfo.textContent =
+          (isEs ? "Página " : "Page ") +
+          currentPage +
+          (isEs ? " de " : " of ") +
+          totalPages +
+          " (" +
+          totalFiltered.toLocaleString() +
+          (isEs ? " eventos)" : " events)");
       }
       var pageInd = document.getElementById("page-indicator");
       if (pageInd) {
@@ -1617,7 +2077,8 @@ const description = isEs
       if (pageInfo) pageInfo.textContent = pathsPage + " / " + totalP;
       if (btnPrev) btnPrev.disabled = pathsPage <= 1;
       if (btnNext) btnNext.disabled = pathsPage >= totalP;
-      if (countLabel) countLabel.textContent = pages.length + (isEs ? " rutas" : " routes");
+      if (countLabel)
+        countLabel.textContent = pages.length + (isEs ? " rutas" : " routes");
 
       if (!pages.length) {
         tbody.innerHTML =
@@ -1682,7 +2143,10 @@ const description = isEs
       var btnNext = document.getElementById("btn-countries-next");
       if (!container) return;
 
-      var totalP = Math.max(1, Math.ceil(countries.length / COUNTRIES_PAGE_SIZE));
+      var totalP = Math.max(
+        1,
+        Math.ceil(countries.length / COUNTRIES_PAGE_SIZE),
+      );
       countriesPage = Math.max(1, Math.min(totalP, countriesPage));
 
       if (pageInfo) pageInfo.textContent = countriesPage + " / " + totalP;
@@ -1703,7 +2167,8 @@ const description = isEs
 
       container.innerHTML = paged
         .map(function (c) {
-          var pct = totalViews > 0 ? Math.round((c.views / totalViews) * 100) : 0;
+          var pct =
+            totalViews > 0 ? Math.round((c.views / totalViews) * 100) : 0;
           var barPct = Math.round((c.views / maxC) * 100);
           var isCurrent = stagedCountry === c.country;
           var fullName = getCountryFullName(c.country);
@@ -1757,7 +2222,10 @@ const description = isEs
       var btnNext = document.getElementById("btn-referrers-next");
       if (!container) return;
 
-      var totalP = Math.max(1, Math.ceil(referrers.length / REFERRERS_PAGE_SIZE));
+      var totalP = Math.max(
+        1,
+        Math.ceil(referrers.length / REFERRERS_PAGE_SIZE),
+      );
       referrersPage = Math.max(1, Math.min(totalP, referrersPage));
 
       if (pageInfo) pageInfo.textContent = referrersPage + " / " + totalP;
@@ -1842,7 +2310,8 @@ const description = isEs
       var badge = document.getElementById("prefetch-ratio-badge");
       if (!container) return;
 
-      if (badge) badge.textContent = totalCount + (isEs ? " precargas" : " prefetches");
+      if (badge)
+        badge.textContent = totalCount + (isEs ? " precargas" : " prefetches");
 
       if (!prefetches.length) {
         container.innerHTML =
@@ -1891,7 +2360,12 @@ const description = isEs
       var totalP = Math.max(1, Math.ceil(rawLeads.length / LEADS_PAGE_SIZE));
       leadsPage = Math.max(1, Math.min(totalP, leadsPage));
 
-      if (pageInfo) pageInfo.textContent = (isEs ? "Página " : "Page ") + leadsPage + (isEs ? " de " : " of ") + totalP;
+      if (pageInfo)
+        pageInfo.textContent =
+          (isEs ? "Página " : "Page ") +
+          leadsPage +
+          (isEs ? " de " : " of ") +
+          totalP;
       if (btnPrev) btnPrev.disabled = leadsPage <= 1;
       if (btnNext) btnNext.disabled = leadsPage >= totalP;
 
@@ -1915,11 +2389,24 @@ const description = isEs
           var dt = formatDateTime(l.created_at);
           var name = escapeHtml(l.name || "--");
           var email = escapeHtml(l.from_email || "--");
-          var phone = l.phone ? '<br><small class="text-[var(--color-text-dim)] font-mono">📞 ' + escapeHtml(l.phone) + "</small>" : "";
+          var phone = l.phone
+            ? '<br><small class="text-[var(--color-text-dim)] font-mono">📞 ' +
+              escapeHtml(l.phone) +
+              "</small>"
+            : "";
           var loc = escapeHtml((l.locale || "en").toUpperCase());
           var geoParts = [l.city, l.country].filter(Boolean);
-          var geoText = geoParts.length ? '<br><small class="text-[var(--color-text-primary)] font-semibold">📍 ' + escapeHtml(geoParts.join(", ")) + "</small>" : "";
-          var ipText = l.ip ? '<br><small class="text-[var(--color-text-dim)] text-[10px]">IP: ' + escapeHtml(l.ip) + (l.as_organization ? " · " + escapeHtml(l.as_organization) : "") + "</small>" : "";
+          var geoText = geoParts.length
+            ? '<br><small class="text-[var(--color-text-primary)] font-semibold">📍 ' +
+              escapeHtml(geoParts.join(", ")) +
+              "</small>"
+            : "";
+          var ipText = l.ip
+            ? '<br><small class="text-[var(--color-text-dim)] text-[10px]">IP: ' +
+              escapeHtml(l.ip) +
+              (l.as_organization ? " · " + escapeHtml(l.as_organization) : "") +
+              "</small>"
+            : "";
           var subj = escapeHtml(l.subject || "--");
           var rawBody = l.body || "";
           var msg = escapeHtml(rawBody.replace(/[\r\n]+/g, " ").slice(0, 100));
@@ -1963,7 +2450,8 @@ const description = isEs
       var searchCounter = document.getElementById("search-counter");
       if (!tbody) return;
 
-      if (counter) counter.textContent = totalFiltered + (isEs ? " eventos" : " events");
+      if (counter)
+        counter.textContent = totalFiltered + (isEs ? " eventos" : " events");
       if (searchCounter) searchCounter.textContent = totalFiltered + " hits";
 
       if (!items.length) {
@@ -1995,8 +2483,12 @@ const description = isEs
           if (typeof ref === "string" && ref.toLowerCase() === "invalid") {
             ref = "Direct";
           }
-          var campaign = item.utm_campaign ? escapeHtml(item.utm_campaign) : "--";
-          var hash = item.visitor_hash ? item.visitor_hash.slice(0, 10) + "..." : "--";
+          var campaign = item.utm_campaign
+            ? escapeHtml(item.utm_campaign)
+            : "--";
+          var hash = item.visitor_hash
+            ? item.visitor_hash.slice(0, 10) + "..."
+            : "--";
 
           return (
             '<tr class="border-b border-[var(--color-surface-border)] hover:bg-[var(--color-accent-gold-subtle)] transition-colors">' +

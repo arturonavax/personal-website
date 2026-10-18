@@ -38,19 +38,17 @@ const tools = [
 
 <BaseLayout
   title={isEs ? "Arturo Nava - Herramientas" : "Arturo Nava - Tools"}
-  description={isEs
-    ? "Herramientas ligeras y sin dependencias: creador de currículum y generador de enlaces de atribución."
-    : "Lightweight, dependency-free tools: resume maker and attribution link generator."}
+  description={
+    isEs
+      ? "Herramientas ligeras y sin dependencias: creador de currículum y generador de enlaces de atribución."
+      : "Lightweight, dependency-free tools: resume maker and attribution link generator."
+  }
   locale={locale}
 >
-  <div
-    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-6 sm:space-y-8"
-  >
+  <div class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-6 sm:space-y-8">
     <BackToHomeButton locale={locale} />
     <header class="border-b border-[var(--color-surface-border-subtle)] pb-4">
-      <h1
-        class="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)]"
-      >
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
         {isEs ? "Herramientas" : "Tools"}
       </h1>
       <p class="mt-2 text-[var(--color-text-secondary)]">
@@ -60,23 +58,21 @@ const tools = [
       </p>
     </header>
     <ul class="grid gap-3 sm:grid-cols-2">
-      {
-        tools.map((tool) => (
-          <li>
-            <a
-              href={tool.href}
-              class="block h-full rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 transition-colors hover:border-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
-            >
-              <span class="font-mono text-sm font-semibold text-[var(--color-accent-gold)]">
-                {tool.name}
-              </span>
-              <span class="mt-1.5 block text-sm leading-relaxed text-[var(--color-text-secondary)]">
-                {tool.description}
-              </span>
-            </a>
-          </li>
-        ))
-      }
+      {tools.map((tool) => (
+        <li>
+          <a
+            href={tool.href}
+            class="block h-full rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 transition-colors hover:border-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+          >
+            <span class="font-mono text-sm font-semibold text-[var(--color-accent-gold)]">
+              {tool.name}
+            </span>
+            <span class="mt-1.5 block text-sm leading-relaxed text-[var(--color-text-secondary)]">
+              {tool.description}
+            </span>
+          </a>
+        </li>
+      ))}
     </ul>
   </div>
 </BaseLayout>

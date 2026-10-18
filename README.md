@@ -4,7 +4,7 @@
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?style=flat&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Core Web Vitals](https://img.shields.io/badge/Core%20Web%20Vitals-100%2F100-00C853?style=flat&logo=googlechrome&logoColor=white)](https://pagespeed.web.dev)
-[![Client JS](https://img.shields.io/badge/Client%20JS-0%20KB%20Baseline-success?style=flat)]()
+[![Client JS](https://img.shields.io/badge/Client%20JS-0%20KB%20Baseline-success?style=flat)](<>)
 [![License](https://img.shields.io/badge/License-Custom%20Non--Commercial-blue.svg)](./LICENSE)
 
 An ultra-high performance, edge-first web portal and personal brand platform engineered for Senior Software Engineers, Technical Architects, and Distributed Systems Leaders. Built on **Astro 5 Static Site Generation (SSG)**, **Cloudflare Workers with Static Assets**, **Hexagonal Architecture (Ports & Adapters)**, and **Cloudflare R2 Content Decoupling**.
@@ -34,26 +34,28 @@ Designed from the ground up to guarantee a **certified 100/100 across all Core W
 
 Exhaustive technical guides and implementation specifications are located in [`docs/`](./docs/):
 
-| Guide | Description |
-| :--- | :--- |
-| 📐 [**Architecture & System Design**](./docs/architecture.md) | Hexagonal Architecture, Ports & Adapters, Astro SSG, and Fast-Path execution. |
-| ☁️ [**Cloudflare Edge & Quota Guards**](./docs/cloudflare-edge.md) | D1 write shielding, edge caching, Vectorize/AI fail-open, and Zero Trust admin. |
-| 🔄 [**R2 Content Synchronization**](./docs/content-sync.md) | R2 sync engine, 3-tier transport, bundle caching, and lossless CV PDF pipeline. |
-| 🌍 [**SEO & Multilingual (i18n) Engine**](./docs/seo-and-i18n.md) | Reciprocal hreflangs, sitemaps, canonical trailing slashes, and JSON-LD schemas. |
-| 🛡️ [**Security & Abuse Protection**](./docs/security.md) | CSP headers, Turnstile captcha, honeypots, rate limiting, and static audit gates. |
-| 🚀 [**Template Customization Guide**](./docs/template-customization.md) | Step-by-step instructions for forking and deploying as your own personal site. |
+| Guide                                                                   | Description                                                                       |
+| :---------------------------------------------------------------------- | :-------------------------------------------------------------------------------- |
+| 📐 [**Architecture & System Design**](./docs/architecture.md)           | Hexagonal Architecture, Ports & Adapters, Astro SSG, and Fast-Path execution.     |
+| ☁️ [**Cloudflare Edge & Quota Guards**](./docs/cloudflare-edge.md)      | D1 write shielding, edge caching, Vectorize/AI fail-open, and Zero Trust admin.   |
+| 🔄 [**R2 Content Synchronization**](./docs/content-sync.md)             | R2 sync engine, 3-tier transport, bundle caching, and lossless CV PDF pipeline.   |
+| 🌍 [**SEO & Multilingual (i18n) Engine**](./docs/seo-and-i18n.md)       | Reciprocal hreflangs, sitemaps, canonical trailing slashes, and JSON-LD schemas.  |
+| 🛡️ [**Security & Abuse Protection**](./docs/security.md)                | CSP headers, Turnstile captcha, honeypots, rate limiting, and static audit gates. |
+| 🚀 [**Template Customization Guide**](./docs/template-customization.md) | Step-by-step instructions for forking and deploying as your own personal site.    |
 
 ---
 
 ## Quick Start (New Machine Setup)
 
 ### 1. Requirements
+
 - Node.js 22+, `pnpm` (`npm i -g pnpm`)
 - Cloudflare CLI (`npm i -g cf@latest`)
 - `tar` (for bundle extraction)
 - Optional: `bun` (for tests/audits), `qpdf` (for CV PDF optimization)
 
 ### 2. Installation & First Run
+
 ```sh
 # Clone the repository
 git clone https://github.com/arturonavax/personal-website.git
@@ -78,30 +80,30 @@ pnpm dev
 
 ### Content Directory Layout
 
-| In R2 Bucket (`personal-website-content`, private) | Local Path (Ignored by `.gitignore`) | Purpose |
-| :--- | :--- | :--- |
-| `content/<collection>/<locale>/<file>.md(x)` | `src/content/<collection>/<locale>/<file>` | Content collections (`posts`, `projects`, `services`, `experience`, `resume`) |
-| `assets/<path>` | `public/remote-assets/<path>` | Images, diagrams, and figures referenced by posts |
-| `downloads/ArturoNava-CV-{en,es}.pdf` | `public/downloads/ArturoNava-CV-{en,es}.pdf` | Downloadable CV PDFs in `/resume/` |
-| `_manifest.json`, `_bundle.tar.gz` | (Stored in R2 only) | Incremental SHA-256 catalogue and fast-pull archive |
+| In R2 Bucket (`personal-website-content`, private) | Local Path (Ignored by `.gitignore`)         | Purpose                                                                       |
+| :------------------------------------------------- | :------------------------------------------- | :---------------------------------------------------------------------------- |
+| `content/<collection>/<locale>/<file>.md(x)`       | `src/content/<collection>/<locale>/<file>`   | Content collections (`posts`, `projects`, `services`, `experience`, `resume`) |
+| `assets/<path>`                                    | `public/remote-assets/<path>`                | Images, diagrams, and figures referenced by posts                             |
+| `downloads/ArturoNava-CV-{en,es}.pdf`              | `public/downloads/ArturoNava-CV-{en,es}.pdf` | Downloadable CV PDFs in `/resume/`                                            |
+| `_manifest.json`, `_bundle.tar.gz`                 | (Stored in R2 only)                          | Incremental SHA-256 catalogue and fast-pull archive                           |
 
 > Only `.gitkeep` placeholder files under `src/content/*/` and `public/{downloads,remote-assets}/` are tracked in Git.
 
 ### Daily Command Cheatsheet
 
-| Task | Command | Description |
-| :--- | :--- | :--- |
-| **Dev (Smart)** | `pnpm dev` | Starts server; auto-pulls R2 only if local content is absent. |
-| **Dev (Force R2)** | `pnpm dev:r2` | Pulls latest remote content from R2, then launches Astro. |
-| **Dev (Offline)** | `pnpm dev:local` | Launches Astro immediately using existing disk content. |
-| **Dev (Worker)** | `pnpm dev:worker` | Runs local Cloudflare Worker with D1/R2 local persistence on `0.0.0.0:8788`. |
-| **Build Preview** | `pnpm dev-prod` | Builds static production bundle and serves via local Worker. |
-| **Download Content** | `pnpm content:pull` | Pulls incremental changes from R2 (uses tarball bundle if > 8 files). |
-| **Dry Run Upload** | `pnpm content:push:dry` | Lists files that would be uploaded without modifying R2. |
-| **Upload Content** | `pnpm content:push` | Pushes local changes to R2 and generates a fresh `_bundle.tar.gz`. |
-| **Upload + Prune** | `node scripts/r2-push.mjs --prune` | Pushes local changes and removes remote objects deleted locally. |
-| **Optimize & Publish CV**| `pnpm cv:publish` | Optimizes PDFs via `qpdf` (-19% size, crisp text) and syncs to R2. |
-| **Deploy to Edge** | `pnpm run deploy` | Auto-pulls content from R2, compiles Astro SSG, and deploys Worker. |
+| Task                      | Command                            | Description                                                                  |
+| :------------------------ | :--------------------------------- | :--------------------------------------------------------------------------- |
+| **Dev (Smart)**           | `pnpm dev`                         | Starts server; auto-pulls R2 only if local content is absent.                |
+| **Dev (Force R2)**        | `pnpm dev:r2`                      | Pulls latest remote content from R2, then launches Astro.                    |
+| **Dev (Offline)**         | `pnpm dev:local`                   | Launches Astro immediately using existing disk content.                      |
+| **Dev (Worker)**          | `pnpm dev:worker`                  | Runs local Cloudflare Worker with D1/R2 local persistence on `0.0.0.0:8788`. |
+| **Build Preview**         | `pnpm dev-prod`                    | Builds static production bundle and serves via local Worker.                 |
+| **Download Content**      | `pnpm content:pull`                | Pulls incremental changes from R2 (uses tarball bundle if > 8 files).        |
+| **Dry Run Upload**        | `pnpm content:push:dry`            | Lists files that would be uploaded without modifying R2.                     |
+| **Upload Content**        | `pnpm content:push`                | Pushes local changes to R2 and generates a fresh `_bundle.tar.gz`.           |
+| **Upload + Prune**        | `node scripts/r2-push.mjs --prune` | Pushes local changes and removes remote objects deleted locally.             |
+| **Optimize & Publish CV** | `pnpm cv:publish`                  | Optimizes PDFs via `qpdf` (-19% size, crisp text) and syncs to R2.           |
+| **Deploy to Edge**        | `pnpm run deploy`                  | Auto-pulls content from R2, compiles Astro SSG, and deploys Worker.          |
 
 ---
 
@@ -117,6 +119,7 @@ pnpm audit        # Runs SPEC-004 static architectural gates (scripts/audit-code
 ```
 
 ### Static Architecture Gates:
+
 1. **0 Unmanaged `<img>` tags:** Enforces `<Image/>` or `<Picture/>` with explicit layout dimensions.
 2. **0 Layout Transitions:** Banned CSS animations on `width`, `height`, `padding`, `margin` to prevent Cumulative Layout Shift (CLS).
 3. **0 Static `will-change`:** Enforces compositor isolation via WAAPI.

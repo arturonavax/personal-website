@@ -75,9 +75,22 @@ const { html, items, rawMarkdown, json, toml, xml } = getResumeData(locale);
             download={`ArturoNava-CV-${locale}.pdf`}
             rel="noopener noreferrer"
             class="inline-flex items-center gap-2 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-5 py-2.5 font-mono text-xs font-semibold text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
-            aria-label={isEs ? "Descargar CV de Arturo Nava en PDF" : "Download Arturo Nava Resume PDF"}
+            aria-label={
+              isEs
+                ? "Descargar CV de Arturo Nava en PDF"
+                : "Download Arturo Nava Resume PDF"
+            }
           >
-            <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg
+              class="h-4 w-4 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />

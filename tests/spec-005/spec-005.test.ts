@@ -3,6 +3,7 @@ import worker, {
   type Env,
   handleAdminDashboardRequest,
   recordAnalyticsNonBlocking,
+  clearRecentPageviewsCache,
 } from "../../cloudflare/worker";
 import {
   CloudflareEdgeRoutingPolicy,
@@ -38,6 +39,8 @@ const createMockDb = (shouldThrow = false) => {
   return {
     prepare: (sql: string) => ({
       bind: (...params: any[]) => ({
+        sql,
+        params,
         run: async () => {
           if (shouldThrow) {
             throw new Error("D1 Catastrophic Database Failure Simulation");
@@ -55,6 +58,14 @@ const createMockDb = (shouldThrow = false) => {
         },
       }),
     }),
+    batch: async (stmts: { sql: string; params: any[] }[]) => {
+      if (shouldThrow) {
+        throw new Error("D1 Catastrophic Database Failure Simulation");
+      }
+      for (const s of stmts)
+        executedQueries.push({ sql: s.sql, params: s.params });
+      return stmts.map(() => ({ success: true }));
+    },
     executedQueries,
   } as unknown as D1Database & {
     executedQueries: { sql: string; params: any[] }[];
@@ -163,14 +174,18 @@ describe("SPEC-005 REQ-PCD-03: Subdomain Canonicalization Engine", () => {
     expect(resolveSubdomainPath("maker.arturonavax.dev", "/designer")).toBe(
       "/tools/resume-maker/designer",
     );
-    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es")).toBe("/es/blog/");
-    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es/")).toBe("/es/blog/");
-    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es/sub-50ms-fraud")).toBe(
-      "/es/blog/sub-50ms-fraud",
+    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es")).toBe(
+      "/es/blog/",
     );
-    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es/blog/sub-50ms-fraud")).toBe(
-      "/es/blog/sub-50ms-fraud",
+    expect(resolveSubdomainPath("blog.arturonavax.dev", "/es/")).toBe(
+      "/es/blog/",
     );
+    expect(
+      resolveSubdomainPath("blog.arturonavax.dev", "/es/sub-50ms-fraud"),
+    ).toBe("/es/blog/sub-50ms-fraud");
+    expect(
+      resolveSubdomainPath("blog.arturonavax.dev", "/es/blog/sub-50ms-fraud"),
+    ).toBe("/es/blog/sub-50ms-fraud");
     expect(resolveSubdomainPath("arturonavax.dev", "/blog/")).toBeNull();
   });
 
@@ -369,13 +384,17 @@ describe("SPEC-005 REQ-PCD-04 & REQ-PCD-05: Non-Blocking Telemetry & Fail-Open R
     const db = createMockDb();
     const env: Env = { ASSETS: dummyAssets, DB: db };
 
+    clearRecentPageviewsCache();
     const req = new Request("https://arturonavax.dev/api/v1/telemetry", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Sec-Fetch-Site": "same-origin",
+      },
       body: JSON.stringify({
         path: "/projects",
         locale: "en",
-        visitorHash: "hash-1234",
+        visitorHash: "client-supplied-hash-must-be-ignored",
       }),
     });
 
@@ -386,7 +405,87 @@ describe("SPEC-005 REQ-PCD-04 & REQ-PCD-05: Non-Blocking Telemetry & Fail-Open R
     expect(data.queued).toBe(true);
 
     await Promise.all(ctx.promises);
-    expect(db.executedQueries.length).toBe(2);
+    // Only edge_telemetry_events: pageview_events rollups belong exclusively to the server-side pipeline.
+    expect(db.executedQueries.length).toBe(1);
+    expect(db.executedQueries[0].sql).toContain("edge_telemetry_events");
+    expect(db.executedQueries[0].params).not.toContain(
+      "client-supplied-hash-must-be-ignored",
+    );
+  });
+
+  it("rejects cross-origin telemetry beacons with 403 and never touches D1", async () => {
+    const ctx = createMockCtx();
+    const db = createMockDb();
+    const env: Env = { ASSETS: dummyAssets, DB: db };
+
+    const res = await worker.fetch(
+      new Request("https://arturonavax.dev/api/v1/telemetry", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "https://evil.example",
+          "Sec-Fetch-Site": "cross-site",
+        },
+        body: JSON.stringify({ path: "/blog" }),
+      }),
+      env,
+      ctx,
+    );
+    expect(res.status).toBe(403);
+    expect(ctx.promises.length).toBe(0);
+    expect(db.executedQueries.length).toBe(0);
+  });
+
+  it("rejects oversized telemetry payloads with 413", async () => {
+    const ctx = createMockCtx();
+    const db = createMockDb();
+    const env: Env = { ASSETS: dummyAssets, DB: db };
+
+    const res = await worker.fetch(
+      new Request("https://arturonavax.dev/api/v1/telemetry", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Sec-Fetch-Site": "same-origin",
+          "Content-Length": "999999",
+        },
+        body: JSON.stringify({ path: "/blog" }),
+      }),
+      env,
+      ctx,
+    );
+    expect(res.status).toBe(413);
+    expect(db.executedQueries.length).toBe(0);
+  });
+
+  it("silently drops beacons with scanner, static-asset or malformed paths (no D1 writes)", async () => {
+    for (const badPath of [
+      "/.env",
+      "/wp-login.php",
+      "/_astro/app.js",
+      "no-leading-slash",
+      "/blog/<script>",
+    ]) {
+      clearRecentPageviewsCache();
+      const ctx = createMockCtx();
+      const db = createMockDb();
+      const env: Env = { ASSETS: dummyAssets, DB: db };
+      const res = await worker.fetch(
+        new Request("https://arturonavax.dev/api/v1/telemetry", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Sec-Fetch-Site": "same-origin",
+          },
+          body: JSON.stringify({ path: badPath }),
+        }),
+        env,
+        ctx,
+      );
+      expect(res.status).toBe(202);
+      await Promise.all(ctx.promises);
+      expect(db.executedQueries.length).toBe(0);
+    }
   });
 });
 

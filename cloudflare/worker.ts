@@ -58,8 +58,11 @@ const STATIC_EXT_REGEX =
 export const SCANNER_EXTENSION_REGEX =
   /\.(?:php|asp|aspx|jsp|jspx|cgi|env|git|sql|bak|old|backup|ini|conf|config|yml|yaml|action|do|sh|pl)$/i;
 
+// Root-anchored. Short/ambiguous tokens require a segment boundary (/, end, or .) so that
+// legitimate future root routes (e.g. /storage-guide) are never flagged. Legitimate
+// /.well-known/ endpoints (security.txt, ACME HTTP-01, passkeys, app links) are allowlisted.
 export const SCANNER_PATH_PREFIX_REGEX =
-  /^\/(?:\.git|\.env|\.aws|\.ssh|\.vscode|\.well-known\/(?!security\.txt$)|wp-|wordpress|phpmyadmin|pma|adminer|actuator|solr|cgi-bin|console|boaform|telescope|vendor|storage|shell|cmd)/i;
+  /^\/(?:\.git|\.env|\.aws|\.ssh|\.vscode|\.well-known\/(?!(?:security\.txt|acme-challenge\/|apple-app-site-association|assetlinks\.json|change-password|openid-configuration)$|acme-challenge\/)|wp-|wordpress|phpmyadmin|(?:pma|adminer|actuator|solr|cgi-bin|console|boaform|telescope|vendor|storage|shell|cmd)(?:\/|$|\.))/i;
 
 export const HONEYPOT_CANARY_PATHS = new Set<string>([
   "/.env",
@@ -221,7 +224,10 @@ export default {
     // -------------------------------------------------------------------------
     // 5. FAST-PATH: Public Document Delivery & Non-Blocking Telemetry (REQ-PCD-01, REQ-PCD-04)
     // -------------------------------------------------------------------------
-    // Fast Rejection: Vulnerability Scanner & Exploit Probes (Tier 1)
+    // Fast Rejection: Vulnerability Scanner & Exploit Probes (Tier 1).
+    // Defense-in-depth behind the Tier 0 WAF rule. Never touches ASSETS or D1.
+    // Note: Worker-generated responses are not auto-cached by the CDN; max-age only
+    // benefits clients, the O(1) check itself is the performance guarantee.
     if (isVulnerabilityScannerPath(pathname)) {
       return new Response("Not Found", {
         status: 404,
@@ -297,7 +303,8 @@ export default {
               env as unknown as Record<string, unknown>,
             )
           ) {
-            prefetchCircuitBreaker.recordVisit();
+            // recordVisit() is invoked inside recordAnalyticsNonBlocking only after the
+            // dedupe gate passes, so discarded duplicates never burn quota budget.
             ctx.waitUntil(
               recordAnalyticsNonBlocking(request, pathname, env.DB, env),
             );
@@ -642,7 +649,9 @@ export async function handleContactFormSubmission(
     const name = (data.name || "").toString().trim().slice(0, 100);
     const email = (data.email || "").toString().trim().slice(0, 120);
     const phone = (data.phone || "").toString().trim().slice(0, 35);
-    const rawSubject = (data.subject || "Distributed Architecture & Performance Consulting")
+    const rawSubject = (
+      data.subject || "Distributed Architecture & Performance Consulting"
+    )
       .toString()
       .trim()
       .slice(0, 150);
@@ -861,7 +870,9 @@ export async function handleContactFormSubmission(
     const cf = (request as unknown as { cf?: Record<string, any> }).cf;
     const country = (cf?.country || "").toString().slice(0, 10);
     const city = (cf?.city || "").toString().slice(0, 100);
-    const region = (cf?.region || cf?.regionCode || "").toString().slice(0, 100);
+    const region = (cf?.region || cf?.regionCode || "")
+      .toString()
+      .slice(0, 100);
     const timezone = (cf?.timezone || "").toString().slice(0, 100);
     const asn = typeof cf?.asn === "number" ? cf.asn : null;
     const asOrganization = (cf?.asOrganization || "").toString().slice(0, 150);
@@ -917,8 +928,12 @@ export async function handleContactFormSubmission(
     // Webhook & Push dispatch if configured (Discord/Slack/Telegram)
     const webhookUrl = env.DISCORD_WEBHOOK_URL || env.SLACK_WEBHOOK_URL;
     const geoSummary = [city, country].filter(Boolean).join(", ");
-    const networkSummary = [asOrganization, asn ? `AS${asn}` : ""].filter(Boolean).join(" · ");
-    const shieldStatus = isTurnstileVerified ? "✅ Verified" : "🛡️ Fallback (Ad-blocker / Shield)";
+    const networkSummary = [asOrganization, asn ? `AS${asn}` : ""]
+      .filter(Boolean)
+      .join(" · ");
+    const shieldStatus = isTurnstileVerified
+      ? "✅ Verified"
+      : "🛡️ Fallback (Ad-blocker / Shield)";
 
     if (webhookUrl && ctx && typeof ctx.waitUntil === "function") {
       const webhookPromise = fetch(webhookUrl, {
@@ -1126,11 +1141,7 @@ export function classifyVisitor(
   const secFetchDest = request.headers.get("sec-fetch-dest");
 
   // 2. Missing or Trivial User-Agent Check
-  if (
-    userAgent === "-" ||
-    userAgent === "null" ||
-    userAgent === "undefined"
-  ) {
+  if (userAgent === "-" || userAgent === "null" || userAgent === "undefined") {
     return {
       isBot: true,
       classification: "automated_client",
@@ -1344,8 +1355,18 @@ export function classifyVisitor(
   };
 }
 
+const TELEMETRY_MAX_BODY_BYTES = 2_048;
+const TELEMETRY_PATH_REGEX = /^\/[A-Za-z0-9\-._~/%]{0,199}$/;
+
 /**
  * Telemetry Ingestion Handler with Immediate 202 Queued Response (REQ-PCD-04)
+ *
+ * Hardened (ODD edge telemetry): the endpoint is an unauthenticated write surface, so
+ *  - only same-origin browser beacons are accepted (Sec-Fetch-Site / Origin),
+ *  - the body is size-capped and the path strictly validated (no scanner probes, no static assets),
+ *  - the visitor hash is derived server-side (client-supplied hashes are ignored),
+ *  - it writes only to edge_telemetry_events. `pageview_events` rollups are fed exclusively by the
+ *    server-side pageview pipeline, which removes any double-counting between both ingestion paths.
  */
 async function handleTelemetryIngestion(
   request: Request,
@@ -1357,11 +1378,38 @@ async function handleTelemetryIngestion(
     return new Response(null, { status: 204 });
   }
 
+  const jsonHeaders = { "Content-Type": "application/json" };
+
+  const fetchSite = request.headers.get("sec-fetch-site");
+  const origin = request.headers.get("origin");
+  let sameOrigin = fetchSite === "same-origin";
+  if (!sameOrigin && !fetchSite && origin) {
+    try {
+      sameOrigin = new URL(origin).host === new URL(request.url).host;
+    } catch {
+      sameOrigin = false;
+    }
+  }
+  if (!sameOrigin) {
+    return new Response(
+      JSON.stringify({ status: "rejected", reason: "cross_origin" }),
+      { status: 403, headers: jsonHeaders },
+    );
+  }
+
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > TELEMETRY_MAX_BODY_BYTES) {
+    return new Response(
+      JSON.stringify({ status: "rejected", reason: "payload_too_large" }),
+      { status: 413, headers: jsonHeaders },
+    );
+  }
+
   const visitorClassification = classifyVisitor(request);
   if (visitorClassification.isBot) {
     return new Response(JSON.stringify({ status: "bypassed", reason: "bot" }), {
       status: 202,
-      headers: { "Content-Type": "application/json" },
+      headers: jsonHeaders,
     });
   }
 
@@ -1373,32 +1421,44 @@ async function handleTelemetryIngestion(
   ) {
     return new Response(
       JSON.stringify({ status: "bypassed", reason: "budget_limit" }),
-      {
-        status: 202,
-        headers: { "Content-Type": "application/json" },
-      },
+      { status: 202, headers: jsonHeaders },
     );
   }
 
   ctx.waitUntil(
     (async () => {
       try {
-        const payload = (await request.json()) as Record<string, unknown>;
-        const userAgent =
-          request.headers.get("user-agent")?.slice(0, 512) || "unknown";
+        const raw = await request.text();
+        if (raw.length > TELEMETRY_MAX_BODY_BYTES) return;
+        const payload = JSON.parse(raw) as Record<string, unknown>;
+
+        const rawPath = String(payload.path || "");
+        if (
+          !TELEMETRY_PATH_REGEX.test(rawPath) ||
+          isVulnerabilityScannerPath(rawPath) ||
+          STATIC_EXT_REGEX.test(rawPath)
+        ) {
+          return;
+        }
+        const normalizedPath = rawPath.toLowerCase().replace(/\/+$/, "") || "/";
+        const locale = String(payload.locale || "en").slice(0, 10);
+
+        const ip = request.headers.get("cf-connecting-ip") || "127.0.0.1";
+        const userAgent = request.headers.get("user-agent") || "";
+        const visitorHash = await computeVisitorHash(ip, userAgent);
+        const now = Date.now();
+
+        if (isDuplicatePageview(visitorHash, `beacon:${normalizedPath}`, now)) {
+          return;
+        }
+        if (!env.DB) return;
+
         const country =
           (request as unknown as { cf?: { country?: string } }).cf?.country ||
           request.headers.get("cf-ipcountry") ||
           "XX";
 
-        const now = Date.now();
-        const path = String(payload.path || "").slice(0, 255);
-        const locale = String(payload.locale || "en").slice(0, 10);
-        const visitorHash = String(payload.visitorHash || "").slice(0, 32);
-
-        if (!env.DB) return;
-
-        const telemetryPromise = env.DB.prepare(
+        await env.DB.prepare(
           `INSERT INTO edge_telemetry_events (
             id, timestamp, path, locale, country, user_agent, visitor_hash
           ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -1406,28 +1466,13 @@ async function handleTelemetryIngestion(
           .bind(
             crypto.randomUUID(),
             now,
-            path,
+            normalizedPath,
             locale,
             country,
-            userAgent,
+            userAgent.slice(0, 512) || "unknown",
             visitorHash,
           )
           .run();
-
-        const rollupEventPromise = env.DB.prepare(
-          `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
-           VALUES (?, ?, ?, ?, ?)`,
-        )
-          .bind(
-            path,
-            locale,
-            country,
-            String(payload.referrer || "Direct").slice(0, 255),
-            now,
-          )
-          .run();
-
-        await Promise.all([telemetryPromise, rollupEventPromise]);
       } catch {
         // Fail-open: Telemetry errors discarded defensively
       }
@@ -1436,7 +1481,7 @@ async function handleTelemetryIngestion(
 
   return new Response(JSON.stringify({ status: "queued", queued: true }), {
     status: 202,
-    headers: { "Content-Type": "application/json" },
+    headers: jsonHeaders,
   });
 }
 
@@ -1714,7 +1759,11 @@ export async function handleAdminDashboardRequest(
     // 1. Edge In-Memory Cache Check (TTL: 120s) - Prevents burning D1 row read quota
     const cacheKey = `${range}:${countryParam}:${segmentParam}:${pathFilter}:${searchParam}:${page}:${limit}`;
     const cachedHit = telemetryCache.get(cacheKey);
-    if (!isFresh && cachedHit && Date.now() - cachedHit.timestamp < TELEMETRY_CACHE_TTL_MS) {
+    if (
+      !isFresh &&
+      cachedHit &&
+      Date.now() - cachedHit.timestamp < TELEMETRY_CACHE_TTL_MS
+    ) {
       return new Response(JSON.stringify(cachedHit.data), {
         status: 200,
         headers: {
@@ -1828,7 +1877,9 @@ export async function handleAdminDashboardRequest(
         if (whereClauses.length === 0) {
           stats.all_time_pageviews = stats.total_pageviews;
         } else {
-          const allRes = await runQuery("SELECT COUNT(*) AS all_views FROM pageviews");
+          const allRes = await runQuery(
+            "SELECT COUNT(*) AS all_views FROM pageviews",
+          );
           if (allRes.length > 0) {
             stats.all_time_pageviews = Number(allRes[0].all_views || 0);
           }
@@ -1843,16 +1894,18 @@ export async function handleAdminDashboardRequest(
         topCountries = await runQuery(countriesSql, bindValues);
 
         // 5. Exact Top Referrers (1:1 with D1, sanitizing legacy Invalid entries)
-        const refWhere = whereClauses.length > 0
-          ? `${whereSql} AND referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''`
-          : "WHERE referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''";
+        const refWhere =
+          whereClauses.length > 0
+            ? `${whereSql} AND referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''`
+            : "WHERE referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''";
         const refSql = `SELECT referrer, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${refWhere} GROUP BY referrer ORDER BY count DESC LIMIT 15`;
         topReferrers = await runQuery(refSql, bindValues);
 
         // 6. Exact Top UTM Attributions (1:1 with D1, sanitizing legacy Invalid entries)
-        const utmWhere = whereClauses.length > 0
-          ? `${whereSql} AND utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''`
-          : "WHERE utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''";
+        const utmWhere =
+          whereClauses.length > 0
+            ? `${whereSql} AND utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''`
+            : "WHERE utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''";
         const utmSql = `SELECT utm_source, utm_medium, utm_campaign, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${utmWhere} GROUP BY utm_source, utm_medium, utm_campaign ORDER BY count DESC LIMIT 15`;
         utmAttributions = await runQuery(utmSql, bindValues);
 
@@ -1865,8 +1918,14 @@ export async function handleAdminDashboardRequest(
         ]);
         pageviews = (rawPageviews || []).map((p: any) => ({
           ...p,
-          referrer: (!p.referrer || p.referrer.toLowerCase() === "invalid") ? "Direct" : p.referrer,
-          utm_source: (!p.utm_source || p.utm_source.toLowerCase() === "invalid") ? "direct" : p.utm_source,
+          referrer:
+            !p.referrer || p.referrer.toLowerCase() === "invalid"
+              ? "Direct"
+              : p.referrer,
+          utm_source:
+            !p.utm_source || p.utm_source.toLowerCase() === "invalid"
+              ? "direct"
+              : p.utm_source,
         }));
 
         // 8. Prefetches
@@ -1883,7 +1942,6 @@ export async function handleAdminDashboardRequest(
         console.warn("[D1 Telemetry Quota Safeguard - Fail-Open]:", err);
       }
     }
-
 
     // Mock fallback when D1 is unavailable or empty (e.g. local development)
     if (pageviews.length === 0 && stats.total_pageviews === 0) {
@@ -2133,13 +2191,17 @@ export async function handleAdminDashboardRequest(
         workers_requests: {
           daily_used: stats.total_pageviews + prefetches.length,
           daily_limit: 100000,
-          monthly_used: Math.round((stats.total_pageviews + prefetches.length) * 28 + 2400),
+          monthly_used: Math.round(
+            (stats.total_pageviews + prefetches.length) * 28 + 2400,
+          ),
           monthly_limit: 3000000,
           reset: "00:00 UTC",
           unit: "requests",
         },
         d1_operations: {
-          reads_today: Math.round((stats.total_pageviews + prefetches.length) * 3.2),
+          reads_today: Math.round(
+            (stats.total_pageviews + prefetches.length) * 3.2,
+          ),
           reads_daily_limit: 5000000,
           writes_today: stats.total_pageviews + prefetches.length,
           writes_daily_limit: 100000,
@@ -2175,7 +2237,10 @@ export async function handleAdminDashboardRequest(
     };
 
     // Store in edge memory cache for 120s to safeguard D1 limits
-    telemetryCache.set(cacheKey, { timestamp: Date.now(), data: responsePayload });
+    telemetryCache.set(cacheKey, {
+      timestamp: Date.now(),
+      data: responsePayload,
+    });
 
     return new Response(JSON.stringify(responsePayload), {
       status: 200,
@@ -5146,10 +5211,16 @@ export function parseAttribution(
   let utmTerm = params["utm_term"] || params["term"] || "";
 
   // Detección de Click IDs de Campañas Pagadas y Plataformas
-  if (params["gclid"] || params["gbraid"] || params["wbraid"] || params["dclid"]) {
+  if (
+    params["gclid"] ||
+    params["gbraid"] ||
+    params["wbraid"] ||
+    params["dclid"]
+  ) {
     if (!utmSource) utmSource = "google";
     if (!utmMedium) utmMedium = "cpc";
-    if (!utmContent) utmContent = params["gclid"] || params["gbraid"] || "google-ads";
+    if (!utmContent)
+      utmContent = params["gclid"] || params["gbraid"] || "google-ads";
   } else if (params["fbclid"]) {
     if (!utmSource) utmSource = "facebook";
     if (!utmMedium) utmMedium = utmCampaign ? "paid-social" : "social";
@@ -5188,7 +5259,9 @@ export function parseAttribution(
     refHeader.toLowerCase() !== "none"
   ) {
     if (refHeader.startsWith("android-app://")) {
-      const pkg = refHeader.replace("android-app://", "").split("/")[0]?.toLowerCase() || "";
+      const pkg =
+        refHeader.replace("android-app://", "").split("/")[0]?.toLowerCase() ||
+        "";
       if (pkg.includes("google")) {
         referrer = "google.com";
         if (!utmSource) utmSource = "google";
@@ -5230,9 +5303,13 @@ export function parseAttribution(
       }
     } else {
       try {
-        const fullRef = refHeader.includes("://") ? refHeader : `https://${refHeader}`;
+        const fullRef = refHeader.includes("://")
+          ? refHeader
+          : `https://${refHeader}`;
         const refParsed = new URL(fullRef);
-        const cleanRefHost = refParsed.hostname.toLowerCase().replace(/^www\./, "");
+        const cleanRefHost = refParsed.hostname
+          .toLowerCase()
+          .replace(/^www\./, "");
         const cleanReqHost = url.hostname.toLowerCase().replace(/^www\./, "");
 
         // Excluir navegación interna
@@ -5307,7 +5384,11 @@ export function parseAttribution(
     ) {
       utmSource = "x";
       utmMedium = utmMedium || "social";
-    } else if (ref.includes("facebook.com") || ref.includes("fb.com") || ref.includes("fb.me")) {
+    } else if (
+      ref.includes("facebook.com") ||
+      ref.includes("fb.com") ||
+      ref.includes("fb.me")
+    ) {
       utmSource = "facebook";
       utmMedium = utmMedium || "social";
     } else if (ref.includes("instagram.com")) {
@@ -5394,8 +5475,82 @@ export function parseAttribution(
 }
 
 /**
+ * Edge pageview deduplication — two layers:
+ *
+ *  L1 (this in-memory map): per-isolate fast path that avoids a D1 round-trip for rapid
+ *      double-clicks, pre-render races and instant reloads. It is an optimization only: isolates
+ *      are many and ephemeral, so it can never be the source of truth.
+ *  L2 (authoritative, D1): `pageviews.dedupe_key` UNIQUE index (migration 0010). The key is
+ *      sha256(visitor_hash | normalized_path | time_bucket). Correct across every isolate/POP.
+ */
+export const recentPageviewsCache = new Map<string, number>();
+export const PAGEVIEW_DEDUPE_WINDOW_MS = 5_000;
+const PAGEVIEW_CACHE_MAX_ENTRIES = 5_000;
+
+export function clearRecentPageviewsCache(): void {
+  recentPageviewsCache.clear();
+}
+
+export function isDuplicatePageview(
+  visitorHash: string,
+  normalizedPath: string,
+  now: number = Date.now(),
+): boolean {
+  const key = `${visitorHash}:${normalizedPath}`;
+  const lastTime = recentPageviewsCache.get(key);
+  if (lastTime !== undefined && now - lastTime < PAGEVIEW_DEDUPE_WINDOW_MS) {
+    return true;
+  }
+  recentPageviewsCache.set(key, now);
+  if (recentPageviewsCache.size > PAGEVIEW_CACHE_MAX_ENTRIES) {
+    for (const [k, ts] of recentPageviewsCache) {
+      if (now - ts > PAGEVIEW_DEDUPE_WINDOW_MS) {
+        recentPageviewsCache.delete(k);
+      }
+    }
+  }
+  return false;
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(input),
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/** Daily-rotating anonymized visitor hash (GDPR compliant, no raw IP/UA stored). */
+export async function computeVisitorHash(
+  ip: string,
+  userAgent: string,
+  day: string = new Date().toISOString().slice(0, 10),
+): Promise<string> {
+  return (await sha256Hex(`${ip}-${userAgent}-${day}`)).slice(0, 16);
+}
+
+/** Deterministic dedupe key for a (visitor, path, time-bucket) triple. */
+export async function computeDedupeKey(
+  visitorHash: string,
+  normalizedPath: string,
+  bucket: number,
+): Promise<string> {
+  return (await sha256Hex(`${visitorHash}|${normalizedPath}|${bucket}`)).slice(
+    0,
+    32,
+  );
+}
+
+/**
  * Asynchronous Non-Blocking Analytics Logger (REQ-PCD-04, REQ-PCD-05)
  * Runs strictly within ctx.waitUntil without adding any latency to the critical response path.
+ *
+ * Write path = ONE atomic D1 batch (single round-trip):
+ *   1. INSERT INTO pageviews ... guarded by NOT EXISTS(previous bucket) + ON CONFLICT(dedupe_key) DO NOTHING
+ *   2. INSERT INTO pageview_events ... SELECT ... WHERE changes() > 0   (humans only)
+ * so the rollup row is written if and only if the pageview row was actually inserted.
  */
 export async function recordAnalyticsNonBlocking(
   request: Request,
@@ -5420,9 +5575,20 @@ export async function recordAnalyticsNonBlocking(
     const utmTerm = attribution.term;
     const referrer = attribution.referrer;
 
-    const visitorInfo = classifyVisitor(request);
+    const visitorInfo = classifyVisitor(request, path);
     const isBot = visitorInfo.isBot ? 1 : 0;
     const today = new Date().toISOString().slice(0, 10);
+
+    const visitorHash = await computeVisitorHash(ip, userAgent, today);
+
+    // Normalización canónica de la ruta para agregación consistente
+    const normalizedPath = path.toLowerCase().replace(/\/+$/, "") || "/";
+    const now = Date.now();
+
+    // L1 dedupe (per-isolate). Skips the D1 round-trip for rapid repeats.
+    if (isDuplicatePageview(visitorHash, normalizedPath, now)) {
+      return;
+    }
 
     if (isBot) {
       // Bot Telemetry Circuit Breaker: Bots are secondary priority compared to human visits (P0).
@@ -5448,29 +5614,28 @@ export async function recordAnalyticsNonBlocking(
       botCircuitBreaker.recordBot();
     }
 
-    // Hash diario anonimizado (GDPR compliant)
-    const signature = `${ip}-${userAgent}-${today}`;
-    const encoder = new TextEncoder();
-    const digestBuffer = await crypto.subtle.digest(
-      "SHA-256",
-      encoder.encode(signature),
-    );
-    const visitorHash = Array.from(new Uint8Array(digestBuffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
-      .slice(0, 16);
+    // Quota accounting happens only for visits that survived the L1 dedupe gate.
+    prefetchCircuitBreaker.recordVisit();
 
     const locale = path.startsWith("/es") ? "es" : "en";
-    const now = Date.now();
 
-    // 1. Inserción en D1 pageviews
+    // L2 dedupe: current bucket key (UNIQUE) + previous bucket probe so two hits that straddle a
+    // bucket boundary within the window are still collapsed.
+    const bucket = Math.floor(now / PAGEVIEW_DEDUPE_WINDOW_MS);
+    const [dedupeKey, prevDedupeKey] = await Promise.all([
+      computeDedupeKey(visitorHash, normalizedPath, bucket),
+      computeDedupeKey(visitorHash, normalizedPath, bucket - 1),
+    ]);
+
     const pageviewsInsert = db
       .prepare(
         `INSERT INTO pageviews (
-           path, visitor_hash, referrer, country, 
+           path, visitor_hash, referrer, country,
            utm_source, utm_medium, utm_campaign, utm_content, utm_term,
-           is_bot, created_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+           is_bot, created_at, dedupe_key
+         ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?
+         WHERE NOT EXISTS (SELECT 1 FROM pageviews WHERE dedupe_key = ?)
+         ON CONFLICT(dedupe_key) DO NOTHING`,
       )
       .bind(
         path.slice(0, 200),
@@ -5483,29 +5648,31 @@ export async function recordAnalyticsNonBlocking(
         utmContent.slice(0, 100),
         utmTerm.slice(0, 100),
         isBot,
-      )
-      .run();
+        dedupeKey,
+        prevDedupeKey,
+      );
 
-    // 2. Inserción en pageview_events para Daily Rollups si no es bot
+    const statements = [pageviewsInsert];
+
+    // Rollup row only for humans, and only if the pageview row above was really inserted.
     if (!isBot) {
-      const rollupInsert = db
-        .prepare(
-          `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
-           VALUES (?, ?, ?, ?, ?)`,
-        )
-        .bind(
-          path.slice(0, 200),
-          locale,
-          country.slice(0, 10),
-          referrer.slice(0, 100),
-          now,
-        )
-        .run();
-
-      await Promise.all([pageviewsInsert, rollupInsert]);
-    } else {
-      await pageviewsInsert;
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
+             SELECT ?, ?, ?, ?, ? WHERE changes() > 0`,
+          )
+          .bind(
+            path.slice(0, 200),
+            locale,
+            country.slice(0, 10),
+            referrer.slice(0, 100),
+            now,
+          ),
+      );
     }
+
+    await db.batch(statements);
   } catch (err) {
     // Fail-open resilience: Never bubble database errors to client
     console.error("[Analytics Background Error - Fail-Open]:", err);

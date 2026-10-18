@@ -11,7 +11,8 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
           accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
           "accept-language": "en-US,en;q=0.9,es;q=0.8",
-          "sec-ch-ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+          "sec-ch-ua":
+            '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"Windows"',
           "sec-fetch-dest": "document",
@@ -103,7 +104,8 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
         headers: {
           "user-agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 YaBrowser/24.1.1.940 Yandex/24.1.1.940 Safari/537.36",
-          accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "accept-language": "ru,en;q=0.9",
           "sec-fetch-dest": "document",
         },
@@ -120,7 +122,8 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
         headers: {
           "user-agent":
             "Mozilla/5.0 (Linux; Android 13; CUBOT KINGKONG POWER Build/TP1A.220624.014) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36",
-          accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "accept-language": "es-ES,es;q=0.9",
           "sec-fetch-dest": "document",
         },
@@ -158,7 +161,8 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
         headers: {
           "user-agent":
             "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBDV/iPhone15,2;FBMD/iPhone;FBSN/iOS;FBSV/17.5.1;FBSS/3;FBID/phone;FBLC/en_US;FBOP/5]",
-          accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "accept-language": "en-US,en;q=0.9",
         },
       });
@@ -205,12 +209,17 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
 
     it("identifies Baiduspider and DuckDuckBot", () => {
       const reqBaidu = new Request("https://arturonavax.dev/", {
-        headers: { "user-agent": "Baiduspider+(+http://www.baidu.com/search/spider.htm)" },
+        headers: {
+          "user-agent": "Baiduspider+(+http://www.baidu.com/search/spider.htm)",
+        },
       });
       expect(classifyVisitor(reqBaidu).isBot).toBe(true);
 
       const reqDdg = new Request("https://arturonavax.dev/", {
-        headers: { "user-agent": "DuckDuckBot/1.0; (+http://duckduckgo.com/duckduckbot.html)" },
+        headers: {
+          "user-agent":
+            "DuckDuckBot/1.0; (+http://duckduckgo.com/duckduckbot.html)",
+        },
       });
       expect(classifyVisitor(reqDdg).isBot).toBe(true);
     });
@@ -228,7 +237,10 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
       expect(classifyVisitor(reqGpt).classification).toBe("ai_scraper");
 
       const reqUser = new Request("https://arturonavax.dev/", {
-        headers: { "user-agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ChatGPT-User/1.0; +https://openai.com/bot)" },
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ChatGPT-User/1.0; +https://openai.com/bot)",
+        },
       });
       expect(classifyVisitor(reqUser).isBot).toBe(true);
       expect(classifyVisitor(reqUser).classification).toBe("ai_scraper");
@@ -257,7 +269,8 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
 
       const reqByte = new Request("https://arturonavax.dev/", {
         headers: {
-          "user-agent": "Mozilla/5.0 (compatible; Bytespider; https://zhanzhang.toutiao.com/)",
+          "user-agent":
+            "Mozilla/5.0 (compatible; Bytespider; https://zhanzhang.toutiao.com/)",
         },
       });
       expect(classifyVisitor(reqByte).isBot).toBe(true);
@@ -410,7 +423,8 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
     it("respects Cloudflare Bot Management low score (< 30)", () => {
       const req = new Request("https://arturonavax.dev/", {
         headers: {
-          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         },
       });
       (req as any).cf = {
@@ -482,6 +496,49 @@ describe("Edge Telemetry Visitor Classification Engine (Human vs Bot)", () => {
       const res = classifyVisitor(req, "/blog/");
       expect(res.isBot).toBe(false);
       expect(res.classification).toBe("human");
+    });
+
+    it("correctly identifies AI crawlers and indexing agents as bots without false-positives", () => {
+      const aiBots = [
+        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)",
+        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +claudebot@anthropic.com)",
+        "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Applebot/0.1",
+      ];
+
+      for (const ua of aiBots) {
+        const req = new Request("https://arturonavax.dev/blog/", {
+          headers: { "user-agent": ua, accept: "text/html" },
+        });
+        const res = classifyVisitor(req, "/blog/");
+        expect(res.isBot).toBe(true);
+      }
+    });
+
+    it("verifies edge in-memory pageview deduplication window", () => {
+      const {
+        isDuplicatePageview,
+        clearRecentPageviewsCache,
+      } = require("../../cloudflare/worker");
+      clearRecentPageviewsCache();
+
+      const visitor = "test-visitor-hash-1";
+      const path = "/blog";
+      const t0 = 1000000;
+
+      // First hit -> not duplicate
+      expect(isDuplicatePageview(visitor, path, t0)).toBe(false);
+
+      // Rapid second hit within 2000ms -> is duplicate
+      expect(isDuplicatePageview(visitor, path, t0 + 2000)).toBe(true);
+
+      // Hit after 6000ms (beyond 5000ms window) -> not duplicate
+      expect(isDuplicatePageview(visitor, path, t0 + 6000)).toBe(false);
+
+      // Different path from same visitor within window -> not duplicate
+      expect(isDuplicatePageview(visitor, "/experience", t0 + 7000)).toBe(
+        false,
+      );
     });
   });
 });

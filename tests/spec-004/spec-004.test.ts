@@ -282,11 +282,11 @@ describe("SPEC-004 ODD: Cloudflare Edge Prefetch Shielding & Cache API Optimizat
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Sec-Fetch-Site": "same-origin",
       },
       body: JSON.stringify({
         path: "/blog",
         locale: "en",
-        visitorHash: "abc12345",
       }),
     });
 

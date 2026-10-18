@@ -46,7 +46,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("recognizes Google Ad Click IDs (gclid, gbraid, wbraid, dclid)", () => {
       const resGclid = parseAttribution(
         "https://arturonavax.dev/?gclid=CjwKCAjwsA6_BhBCEiwA5Vv_5g",
-        null
+        null,
       );
       expect(resGclid.source).toBe("google");
       expect(resGclid.medium).toBe("cpc");
@@ -54,14 +54,14 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
 
       const resGbraid = parseAttribution(
         "https://arturonavax.dev/?gbraid=test-gbraid-123",
-        null
+        null,
       );
       expect(resGbraid.source).toBe("google");
       expect(resGbraid.medium).toBe("cpc");
 
       const resWbraid = parseAttribution(
         "https://arturonavax.dev/?wbraid=test-wbraid-456",
-        null
+        null,
       );
       expect(resWbraid.source).toBe("google");
       expect(resWbraid.medium).toBe("cpc");
@@ -70,7 +70,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("recognizes Meta/Facebook click ID (fbclid)", () => {
       const res = parseAttribution(
         "https://arturonavax.dev/?fbclid=IwAR2V8d43_fb",
-        null
+        null,
       );
       expect(res.source).toBe("facebook");
       expect(res.medium).toBe("social");
@@ -80,7 +80,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("recognizes Bing click ID (msclkid)", () => {
       const res = parseAttribution(
         "https://arturonavax.dev/?msclkid=bing_click_token",
-        null
+        null,
       );
       expect(res.source).toBe("bing");
       expect(res.medium).toBe("cpc");
@@ -88,12 +88,25 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     });
 
     it("recognizes other ad/platform click IDs", () => {
-      expect(parseAttribution("https://arturonavax.dev/?ttclid=tik123", null).source).toBe("tiktok");
-      expect(parseAttribution("https://arturonavax.dev/?twclid=tw123", null).source).toBe("x");
-      expect(parseAttribution("https://arturonavax.dev/?li_fat_id=li123", null).source).toBe("linkedin");
-      expect(parseAttribution("https://arturonavax.dev/?igshid=ig123", null).source).toBe("instagram");
-      expect(parseAttribution("https://arturonavax.dev/?mc_cid=mc123", null).source).toBe("mailchimp");
-      expect(parseAttribution("https://arturonavax.dev/?mc_cid=mc123", null).medium).toBe("email");
+      expect(
+        parseAttribution("https://arturonavax.dev/?ttclid=tik123", null).source,
+      ).toBe("tiktok");
+      expect(
+        parseAttribution("https://arturonavax.dev/?twclid=tw123", null).source,
+      ).toBe("x");
+      expect(
+        parseAttribution("https://arturonavax.dev/?li_fat_id=li123", null)
+          .source,
+      ).toBe("linkedin");
+      expect(
+        parseAttribution("https://arturonavax.dev/?igshid=ig123", null).source,
+      ).toBe("instagram");
+      expect(
+        parseAttribution("https://arturonavax.dev/?mc_cid=mc123", null).source,
+      ).toBe("mailchimp");
+      expect(
+        parseAttribution("https://arturonavax.dev/?mc_cid=mc123", null).medium,
+      ).toBe("email");
     });
   });
 
@@ -101,7 +114,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("maps Google Quick Search Box app to google.com organic", () => {
       const res = parseAttribution(
         "https://arturonavax.dev/",
-        "android-app://com.google.android.googlequicksearchbox/https/www.google.com"
+        "android-app://com.google.android.googlequicksearchbox/https/www.google.com",
       );
       expect(res.referrer).toBe("google.com");
       expect(res.source).toBe("google");
@@ -111,7 +124,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("maps LinkedIn Android app to linkedin.com social", () => {
       const res = parseAttribution(
         "https://arturonavax.dev/resume/",
-        "android-app://com.linkedin.android/"
+        "android-app://com.linkedin.android/",
       );
       expect(res.referrer).toBe("linkedin.com");
       expect(res.source).toBe("linkedin");
@@ -121,21 +134,21 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("maps Twitter/X, Facebook, and WhatsApp Android apps", () => {
       const resTw = parseAttribution(
         "https://arturonavax.dev/",
-        "android-app://com.twitter.android"
+        "android-app://com.twitter.android",
       );
       expect(resTw.referrer).toBe("x.com");
       expect(resTw.source).toBe("x");
 
       const resFb = parseAttribution(
         "https://arturonavax.dev/",
-        "android-app://com.facebook.katana"
+        "android-app://com.facebook.katana",
       );
       expect(resFb.referrer).toBe("facebook.com");
       expect(resFb.source).toBe("facebook");
 
       const resWa = parseAttribution(
         "https://arturonavax.dev/",
-        "android-app://com.whatsapp"
+        "android-app://com.whatsapp",
       );
       expect(resWa.referrer).toBe("whatsapp.com");
       expect(resWa.source).toBe("whatsapp");
@@ -145,7 +158,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("handles generic package names cleanly", () => {
       const res = parseAttribution(
         "https://arturonavax.dev/",
-        "android-app://com.example.customreader/news/item"
+        "android-app://com.example.customreader/news/item",
       );
       expect(res.referrer).toBe("com.example.customreader");
       expect(res.source).toBe("com.example.customreader");
@@ -156,7 +169,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("categorizes organic search engines", () => {
       const resGoogle = parseAttribution(
         "https://arturonavax.dev/",
-        "https://www.google.com.mx/"
+        "https://www.google.com.mx/",
       );
       expect(resGoogle.referrer).toBe("google.com.mx");
       expect(resGoogle.source).toBe("google");
@@ -164,7 +177,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
 
       const resDdg = parseAttribution(
         "https://arturonavax.dev/",
-        "https://duckduckgo.com/"
+        "https://duckduckgo.com/",
       );
       expect(resDdg.referrer).toBe("duckduckgo.com");
       expect(resDdg.source).toBe("duckduckgo");
@@ -174,7 +187,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("categorizes AI search bots and platforms", () => {
       const resPerplexity = parseAttribution(
         "https://arturonavax.dev/",
-        "https://www.perplexity.ai/"
+        "https://www.perplexity.ai/",
       );
       expect(resPerplexity.referrer).toBe("perplexity.ai");
       expect(resPerplexity.source).toBe("perplexity");
@@ -182,7 +195,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
 
       const resChatGpt = parseAttribution(
         "https://arturonavax.dev/",
-        "https://chatgpt.com/"
+        "https://chatgpt.com/",
       );
       expect(resChatGpt.referrer).toBe("chatgpt.com");
       expect(resChatGpt.source).toBe("chatgpt");
@@ -192,7 +205,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("categorizes developer communities and portals", () => {
       const resGh = parseAttribution(
         "https://arturonavax.dev/",
-        "https://github.com/arturonavax"
+        "https://github.com/arturonavax",
       );
       expect(resGh.referrer).toBe("github.com");
       expect(resGh.source).toBe("github");
@@ -200,7 +213,7 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
 
       const resHn = parseAttribution(
         "https://arturonavax.dev/",
-        "https://news.ycombinator.com/item?id=4321"
+        "https://news.ycombinator.com/item?id=4321",
       );
       expect(resHn.referrer).toBe("news.ycombinator.com");
       expect(resHn.source).toBe("hackernews");
@@ -212,21 +225,21 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
     it("normalizes same-origin and subdomain referrers to Direct", () => {
       const resSame = parseAttribution(
         "https://arturonavax.dev/blog/",
-        "https://arturonavax.dev/resume/"
+        "https://arturonavax.dev/resume/",
       );
       expect(resSame.referrer).toBe("Direct");
       expect(resSame.source).toBe("direct");
 
       const resAdmin = parseAttribution(
         "https://arturonavax.dev/",
-        "https://admin.arturonavax.dev/"
+        "https://admin.arturonavax.dev/",
       );
       expect(resAdmin.referrer).toBe("Direct");
       expect(resAdmin.source).toBe("direct");
 
       const resLocal = parseAttribution(
         "http://localhost:4321/resume/",
-        "http://localhost:4321/experience/"
+        "http://localhost:4321/experience/",
       );
       expect(resLocal.referrer).toBe("Direct");
       expect(resLocal.source).toBe("direct");
@@ -253,14 +266,17 @@ describe("Telemetry Attribution Engine & UTM Hardening (SPEC-005)", () => {
         const res = parseAttribution("https://arturonavax.dev/", hdr);
         expect(res.referrer.toLowerCase()).not.toBe("invalid");
         expect(res.source.toLowerCase()).not.toBe("invalid");
-        expect(["direct", hdr.toLowerCase()].includes(res.source.toLowerCase()) || res.source.length > 0).toBe(true);
+        expect(
+          ["direct", hdr.toLowerCase()].includes(res.source.toLowerCase()) ||
+            res.source.length > 0,
+        ).toBe(true);
       }
     });
 
     it("sanitizes queries explicitly passing utm_source=invalid", () => {
       const res = parseAttribution(
         "https://arturonavax.dev/?utm_source=invalid",
-        null
+        null,
       );
       expect(res.source).toBe("direct");
       expect(res.referrer).toBe("Direct");

@@ -24,7 +24,9 @@ async function main() {
   try {
     await run("qpdf", ["--version"]);
   } catch {
-    throw new Error("qpdf not found. Install it (e.g. `sudo apt install qpdf` / `brew install qpdf`).");
+    throw new Error(
+      "qpdf not found. Install it (e.g. `sudo apt install qpdf` / `brew install qpdf`).",
+    );
   }
   await mkdir(outDir, { recursive: true });
   for (const input of await inputs()) {
@@ -41,7 +43,9 @@ async function main() {
     const [a, b] = [(await stat(input)).size, (await stat(out)).size];
     if (b >= a) await copyFile(input, out);
     const final = Math.min(a, b);
-    console.log(`[pdf] ${path.basename(input)}: ${(a / 1024).toFixed(1)} KB -> ${(final / 1024).toFixed(1)} KB (-${(((a - final) / a) * 100).toFixed(1)}%)`);
+    console.log(
+      `[pdf] ${path.basename(input)}: ${(a / 1024).toFixed(1)} KB -> ${(final / 1024).toFixed(1)} KB (-${(((a - final) / a) * 100).toFixed(1)}%)`,
+    );
   }
 }
 

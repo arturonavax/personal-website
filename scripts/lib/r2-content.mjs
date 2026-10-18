@@ -15,7 +15,15 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createReadStream, existsSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile, stat, rm, mkdtemp } from "node:fs/promises";
+import {
+  mkdir,
+  readdir,
+  readFile,
+  writeFile,
+  stat,
+  rm,
+  mkdtemp,
+} from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 
@@ -74,10 +82,12 @@ export async function collectLocalFiles() {
       const full = path.join(dir, entry.name);
       const key = `${prefix}${entry.name}`;
       if (entry.isDirectory()) await walk(full, `${key}/`);
-      else if (entry.isFile()) out.push({ file: full, key, rel: path.relative(ROOT, full) });
+      else if (entry.isFile())
+        out.push({ file: full, key, rel: path.relative(ROOT, full) });
     }
   }
-  for (const [prefix, dir] of MAPPINGS) await walk(path.join(ROOT, dir), prefix);
+  for (const [prefix, dir] of MAPPINGS)
+    await walk(path.join(ROOT, dir), prefix);
   return out.sort((a, b) => a.key.localeCompare(b.key));
 }
 
@@ -100,12 +110,15 @@ export function sha256File(file) {
 /** Runs fn over items with bounded parallelism; throws on the first failure. */
 export async function pool(items, fn, limit = CONCURRENCY) {
   let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++;
-      await fn(items[i], i);
-    }
-  });
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (next < items.length) {
+        const i = next++;
+        await fn(items[i], i);
+      }
+    },
+  );
   await Promise.all(workers);
 }
 
@@ -114,14 +127,20 @@ export async function readManifest(driver) {
   return buf ? JSON.parse(buf.toString("utf8")) : null;
 }
 
-
 /** Picks the transport: S3 if credentials exist, cf CLI if available, or wrangler as fallback. */
 export async function createDriver() {
-  const { CLOUDFLARE_ACCOUNT_ID: acc, R2_ACCESS_KEY_ID: id, R2_SECRET_ACCESS_KEY: secret } =
-    process.env;
+  const {
+    CLOUDFLARE_ACCOUNT_ID: acc,
+    R2_ACCESS_KEY_ID: id,
+    R2_SECRET_ACCESS_KEY: secret,
+  } = process.env;
   if (
     process.env.R2_DRIVER === "s3" ||
-    (process.env.R2_DRIVER !== "cf" && process.env.R2_DRIVER !== "wrangler" && acc && id && secret)
+    (process.env.R2_DRIVER !== "cf" &&
+      process.env.R2_DRIVER !== "wrangler" &&
+      acc &&
+      id &&
+      secret)
   ) {
     return createS3Driver(acc, id, secret);
   }
@@ -147,20 +166,31 @@ export async function createDriver() {
   }
 }
 
-
 function createWranglerDriver() {
   const wrBin = existsSync(path.join(ROOT, "node_modules/.bin/wrangler"))
     ? path.join(ROOT, "node_modules/.bin/wrangler")
     : "wrangler";
   const wr = (args) =>
-    run(wrBin, args, { cwd: ROOT, maxBuffer: 128 * 1024 * 1024, env: process.env });
+    run(wrBin, args, {
+      cwd: ROOT,
+      maxBuffer: 128 * 1024 * 1024,
+      env: process.env,
+    });
   return {
     name: "wrangler",
     async getBuffer(key) {
       const dir = await mkdtemp(path.join(tmpdir(), "r2-wr-"));
       const file = path.join(dir, "temp");
       try {
-        await wr(["r2", "object", "get", `${BUCKET}/${key}`, "--remote", "--file", file]);
+        await wr([
+          "r2",
+          "object",
+          "get",
+          `${BUCKET}/${key}`,
+          "--remote",
+          "--file",
+          file,
+        ]);
         return await readFile(file);
       } catch {
         return null;
@@ -170,7 +200,15 @@ function createWranglerDriver() {
     },
     async getFile(key, target) {
       await mkdir(path.dirname(target), { recursive: true });
-      await wr(["r2", "object", "get", `${BUCKET}/${key}`, "--remote", "--file", target]);
+      await wr([
+        "r2",
+        "object",
+        "get",
+        `${BUCKET}/${key}`,
+        "--remote",
+        "--file",
+        target,
+      ]);
     },
     async put(key, file) {
       await wr([
@@ -193,11 +231,14 @@ function createWranglerDriver() {
   };
 }
 
-
 function createCfDriver() {
   const base = ["--bucket-name", BUCKET];
   const cf = (args, opts = {}) =>
-    run("cf", args, { maxBuffer: 512 * 1024 * 1024, encoding: "buffer", ...opts });
+    run("cf", args, {
+      maxBuffer: 512 * 1024 * 1024,
+      encoding: "buffer",
+      ...opts,
+    });
   return {
     name: "cf",
     /** Returns the object body, or null when the key does not exist. */
@@ -216,20 +257,38 @@ function createCfDriver() {
       await writeFile(target, body);
     },
     async put(key, file) {
-      await cf(["r2", "objects", "put", key, ...base, "--file", file, "--content-type", contentTypeFor(file), "-q"]);
+      await cf([
+        "r2",
+        "objects",
+        "put",
+        key,
+        ...base,
+        "--file",
+        file,
+        "--content-type",
+        contentTypeFor(file),
+        "-q",
+      ]);
     },
     async deleteMany(keys) {
       for (let i = 0; i < keys.length; i += 1000) {
-        await cf(["r2", "objects", "bulk-delete", ...base, "--body", JSON.stringify(keys.slice(i, i + 1000)), "-q"]);
+        await cf([
+          "r2",
+          "objects",
+          "bulk-delete",
+          ...base,
+          "--body",
+          JSON.stringify(keys.slice(i, i + 1000)),
+          "-q",
+        ]);
       }
     },
   };
 }
 
 async function createS3Driver(accountId, accessKeyId, secretAccessKey) {
-  const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectsCommand } = await import(
-    "@aws-sdk/client-s3"
-  );
+  const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectsCommand } =
+    await import("@aws-sdk/client-s3");
   const s3 = new S3Client({
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -239,7 +298,9 @@ async function createS3Driver(accountId, accessKeyId, secretAccessKey) {
     name: "s3",
     async getBuffer(key) {
       try {
-        const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+        const res = await s3.send(
+          new GetObjectCommand({ Bucket: BUCKET, Key: key }),
+        );
         return Buffer.from(await res.Body.transformToByteArray());
       } catch (err) {
         if (err?.name === "NoSuchKey") return null;
@@ -267,7 +328,9 @@ async function createS3Driver(accountId, accessKeyId, secretAccessKey) {
         await s3.send(
           new DeleteObjectsCommand({
             Bucket: BUCKET,
-            Delete: { Objects: keys.slice(i, i + 1000).map((Key) => ({ Key })) },
+            Delete: {
+              Objects: keys.slice(i, i + 1000).map((Key) => ({ Key })),
+            },
           }),
         );
       }
@@ -292,7 +355,9 @@ export async function createBundle(relPaths, outFile) {
 
 /** Extracts a bundle into ROOT after validating every entry stays inside the synced dirs. */
 export async function extractBundle(bundleFile) {
-  const { stdout } = await run("tar", ["-tzf", bundleFile], { maxBuffer: 64 * 1024 * 1024 });
+  const { stdout } = await run("tar", ["-tzf", bundleFile], {
+    maxBuffer: 64 * 1024 * 1024,
+  });
   const entries = stdout.split("\n").filter(Boolean);
   for (const entry of entries) {
     const safe =

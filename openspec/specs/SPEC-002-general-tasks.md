@@ -73,7 +73,7 @@ Flujo único de trabajo: Authorize → Explore → Resolve Uncertainty → Class
 | **REQ-09** | **Scroll-Margin Offset Normalization** | `src/styles/global.css`, `PageIndexNav.astro`  | Anclas y encabezados con `scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem)`. Cero oclusiones con sticky header.                    |
 | **REQ-10** | **WAAPI Circular Reveal Hardening**    | `src/components/common/ThemeToggle.astro`      | Aislamiento en `::view-transition-group(root)` con contención explícita. Cero parpadeos en Firefox 129+ y Safari iOS.                          |
 | **REQ-11** | **Multi-Format Serializers**           | `src/utils/resumeExporters.ts`                 | Serialización reactiva a Markdown puro, JSON tipado (Schema.org), TOML y XML estructurado con inyección dinámica de UTM.                       |
-| **REQ-12** | **Resume Maker Studio Route**          | `src/pages/[...lang]/tools/resume-maker.astro`       | Editor monospace en tiempo real, selector de teléfono, sanitización de enlaces y vista previa idéntica a `/resume`.                            |
+| **REQ-12** | **Resume Maker Studio Route**          | `src/pages/[...lang]/tools/resume-maker.astro` | Editor monospace en tiempo real, selector de teléfono, sanitización de enlaces y vista previa idéntica a `/resume`.                            |
 
 ### 2.2. Criterios de Aceptación Cuantitativos y Umbrales de Rendimiento
 
@@ -918,7 +918,7 @@ const initialBody = activeEntry?.body || "";
 | **VAL-05** | Filtro Exclusivo         | Clic alternado entre empresas en Timeline               | Máximo 1 empresa activa; retorno a "All" al presionar botón activo.                             |
 | **VAL-06** | Router SPA en Búsqueda   | Seleccionar resultado en modal y presionar `Enter`      | Cambio de ruta instantáneo mediante `ClientRouter` sin flash de recarga.                        |
 | **VAL-07** | Límites de Impresión     | `window.print()` en Chrome, Firefox y Safari            | Nombre `ArturoNava-CV-{lang}.pdf`, cero elementos UI visibles, sin saltos de página en bloques. |
-| **VAL-08** | Paridad de Estudio Maker | Edición de markdown en `/tools/resume-maker`                  | Renderizado sub-16 ms en DOM preview; estilos tipográficos 1:1 con `/resume`.                   |
+| **VAL-08** | Paridad de Estudio Maker | Edición de markdown en `/tools/resume-maker`            | Renderizado sub-16 ms en DOM preview; estilos tipográficos 1:1 con `/resume`.                   |
 
 ---
 

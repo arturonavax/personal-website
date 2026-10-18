@@ -250,7 +250,12 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
             <a
               id="desktop-cv-download-btn"
               data-no-beacon="true"
-              href={downloadUrl || (isEs ? "/downloads/ArturoNava-CV-es.pdf" : "/downloads/ArturoNava-CV-en.pdf")}
+              href={
+                downloadUrl ||
+                (isEs
+                  ? "/downloads/ArturoNava-CV-es.pdf"
+                  : "/downloads/ArturoNava-CV-en.pdf")
+              }
               download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
               aria-label={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
               title={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
@@ -276,12 +281,8 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
             type="button"
             id="desktop-cv-print-btn"
             onclick="typeof window.printCleanCV === 'function' ? window.printCleanCV() : window.print()"
-            aria-label={
-              isEs ? "Imprimir CV en PDF (p)" : "Print CV as PDF (p)"
-            }
-            title={
-              isEs ? "Imprimir CV en PDF (p)" : "Print CV as PDF (p)"
-            }
+            aria-label={isEs ? "Imprimir CV en PDF (p)" : "Print CV as PDF (p)"}
+            title={isEs ? "Imprimir CV en PDF (p)" : "Print CV as PDF (p)"}
             class="w-full flex items-center justify-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
           >
             <svg
@@ -472,11 +473,7 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           type="button"
           id="mobile-cv-print-btn"
           onclick="typeof window.printCleanCV === 'function' ? window.printCleanCV() : window.print()"
-          aria-label={
-            isEs
-              ? "Imprimir CV en PDF"
-              : "Print CV as PDF"
-          }
+          aria-label={isEs ? "Imprimir CV en PDF" : "Print CV as PDF"}
           title={isEs ? "Imprimir CV en PDF" : "Print CV as PDF"}
           class="flex min-h-[44px] min-w-[48px] w-auto items-center justify-center gap-1.5 rounded-full border border-[var(--color-accent-gold)] bg-[var(--color-surface-card)]/95 px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-accent-gold)] backdrop-blur-md hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] self-end"
         >
@@ -499,7 +496,12 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           <a
             id="mobile-cv-download-btn"
             data-no-beacon="true"
-            href={downloadUrl || (isEs ? "/downloads/ArturoNava-CV-es.pdf" : "/downloads/ArturoNava-CV-en.pdf")}
+            href={
+              downloadUrl ||
+              (isEs
+                ? "/downloads/ArturoNava-CV-es.pdf"
+                : "/downloads/ArturoNava-CV-en.pdf")
+            }
             download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
             aria-label={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
             title={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
@@ -627,11 +629,15 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         var targetId = desktopAside.getAttribute("data-align-target");
         var targetEl = targetId ? document.getElementById(targetId) : null;
         if (!targetEl) {
-          targetEl = document.querySelector("#role-header, #cv-document-sheet, #about, main article, article, main > div");
+          targetEl = document.querySelector(
+            "#role-header, #cv-document-sheet, #about, main article, article, main > div",
+          );
         }
         if (!targetEl) return;
 
-        var headerEl = document.getElementById("site-header") || document.querySelector("header");
+        var headerEl =
+          document.getElementById("site-header") ||
+          document.querySelector("header");
         var headerH = headerEl ? headerEl.offsetHeight : 56;
         var minTop = headerH + 16;
 
@@ -790,7 +796,9 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
               function (entries) {
                 entries.forEach(function (entry) {
                   var printBtn = document.getElementById("mobile-cv-print-btn");
-                  var downloadBtn = document.getElementById("mobile-cv-download-btn");
+                  var downloadBtn = document.getElementById(
+                    "mobile-cv-download-btn",
+                  );
                   if (entry.isIntersecting) {
                     floatingBtn.classList.add("footer-tucked");
                     if (printBtn) printBtn.classList.add("footer-tucked");
@@ -799,7 +807,8 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
                   } else {
                     floatingBtn.classList.remove("footer-tucked");
                     if (printBtn) printBtn.classList.remove("footer-tucked");
-                    if (downloadBtn) downloadBtn.classList.remove("footer-tucked");
+                    if (downloadBtn)
+                      downloadBtn.classList.remove("footer-tucked");
                   }
                 });
               },

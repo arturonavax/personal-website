@@ -150,11 +150,15 @@ const turnstileSiteKey =
               <select
                 id="contact-country-code"
                 name="country_code"
-                aria-label={isEs ? "Código de área telefónico" : "Phone country code"}
+                aria-label={
+                  isEs ? "Código de área telefónico" : "Phone country code"
+                }
                 class="w-full rounded-sm border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-2 text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent-gold)] focus:outline-none transition-colors cursor-pointer"
               >
                 <option value="+1">+1 (US/CA)</option>
-                <option value="+57" selected={isEs ? true : false}>+57 (CO)</option>
+                <option value="+57" selected={isEs ? true : false}>
+                  +57 (CO)
+                </option>
                 <option value="+34">+34 (ES)</option>
                 <option value="+52">+52 (MX)</option>
                 <option value="+54">+54 (AR)</option>
@@ -262,7 +266,11 @@ const turnstileSiteKey =
               class="flex items-center justify-center gap-2 text-[11px] font-mono text-[var(--color-text-muted)] py-2"
             >
               <span class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--color-accent-gold)]/40 border-t-[var(--color-accent-gold)]"></span>
-              <span>{isEs ? "Inicializando verificación de seguridad..." : "Initializing security check..."}</span>
+              <span>
+                {isEs
+                  ? "Inicializando verificación de seguridad..."
+                  : "Initializing security check..."}
+              </span>
             </div>
 
             <!-- Fallback Badge when ad-blocker, Brave Shields or strict privacy blocks Turnstile -->
@@ -272,7 +280,11 @@ const turnstileSiteKey =
             >
               <div class="flex items-center justify-center gap-2 font-semibold text-[11px]">
                 <span class="text-sm">🛡️</span>
-                <span>{isEs ? "Escudo Perimetral Activo (Edge Shield)" : "Edge Shield Active"}</span>
+                <span>
+                  {isEs
+                    ? "Escudo Perimetral Activo (Edge Shield)"
+                    : "Edge Shield Active"}
+                </span>
               </div>
               <p class="text-[10px] text-[var(--color-text-muted)] mt-0.5">
                 {isEs
@@ -324,7 +336,9 @@ const turnstileSiteKey =
 
         <!-- Direct Email Fallback (100% Availability Guarantee) -->
         <div class="pt-3 border-t border-[var(--color-surface-border)]/40 flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
-          <span>{isEs ? "¿Prefieres email directo?" : "Prefer direct email?"}</span>
+          <span>
+            {isEs ? "¿Prefieres email directo?" : "Prefer direct email?"}
+          </span>
           <a
             href="mailto:arturo@arturonavax.dev"
             class="font-mono text-[var(--color-accent-gold)] hover:underline flex items-center gap-1"
@@ -360,7 +374,8 @@ const turnstileSiteKey =
       var fallback = document.getElementById("cf-turnstile-fallback");
       if (loading) loading.classList.add("hidden");
       if (fallback) fallback.classList.remove("hidden");
-      if (container) container.setAttribute("data-shield-mode", "edge-fallback");
+      if (container)
+        container.setAttribute("data-shield-mode", "edge-fallback");
     }
 
     window.onTurnstileScriptError = function () {
@@ -600,9 +615,14 @@ const turnstileSiteKey =
                   ? "Por favor completa la verificación de seguridad arriba."
                   : "Please complete the security check above.",
               );
-              var tContainer = document.getElementById("cf-turnstile-container");
+              var tContainer = document.getElementById(
+                "cf-turnstile-container",
+              );
               if (tContainer) {
-                tContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+                tContainer.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
               }
               return;
             }

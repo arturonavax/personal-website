@@ -45,7 +45,9 @@ src/pages/
 ```
 
 ### Static Path Generation
+
 For every page, `getStaticPaths` emits:
+
 - `{ params: { lang: undefined }, props: { locale: "en" } }` -> Serves English at apex root `/`.
 - `{ params: { lang: "es" }, props: { locale: "es" } }` -> Serves Spanish under `/es/`.
 
@@ -62,7 +64,8 @@ export async function getCounterpartUrl(
   currentLocale: Locale,
   targetLocale: Locale,
   currentPathname: string,
-  collectionName?: "posts" | "projects" | "experience" | "services" | "case-studies",
+  collectionName?:
+    "posts" | "projects" | "experience" | "services" | "case-studies",
   translationKey?: string,
 ): Promise<string | undefined> {
   // If viewing a collection entry, verify counterpart exists by translationKey
@@ -70,7 +73,9 @@ export async function getCounterpartUrl(
     const entries = await getVisibleCollection(collectionName as CollectionKey);
     const targetEntry = entries.find((entry) => {
       const data = entry.data as { locale?: string; translationKey?: string };
-      return data.locale === targetLocale && data.translationKey === translationKey;
+      return (
+        data.locale === targetLocale && data.translationKey === translationKey
+      );
     });
 
     if (targetEntry) {
@@ -89,7 +94,9 @@ export async function getCounterpartUrl(
   const withTrailing = ensureTrailingSlash(currentPathname);
   const cleanPath = withTrailing.replace(/^\/es(?:\/|$)/, "/") || "/";
   return targetLocale === "es"
-    ? (cleanPath === "/" ? "/es/" : `/es${cleanPath}`)
+    ? cleanPath === "/"
+      ? "/es/"
+      : `/es${cleanPath}`
     : cleanPath;
 }
 ```
@@ -100,7 +107,9 @@ In `src/components/common/SEOHead.astro`, the tags are emitted conditionally:
 <!-- Alternate Multilingual Hreflang Tags -->
 {enUrl && <link rel="alternate" hreflang="en" href={enUrl} />}
 {esUrl && <link rel="alternate" hreflang="es" href={esUrl} />}
-{xDefaultUrl && <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />}
+{xDefaultUrl && (
+  <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
+)}
 ```
 
 ---
@@ -110,6 +119,7 @@ In `src/components/common/SEOHead.astro`, the tags are emitted conditionally:
 The build generates an RFC-compliant sitemap index (`dist/sitemap-index.xml`) with localized alternates in `dist/sitemap-0.xml`.
 
 Configured in `astro.config.mjs`:
+
 - Filters out non-content endpoints (`/search/`, `/404`, `/admin/`, `/case-studies/`).
 - Emits `<xhtml:link rel="alternate" hreflang="en" .../>` and `hreflang="es"`.
 - Dynamically injects `hreflang="x-default"` pointing to the default English canonical URL.
@@ -122,7 +132,9 @@ Configured in `astro.config.mjs`:
 All pages inject validated JSON-LD schema conforming to Schema.org standards:
 
 ### 5.1. `Person` & `ProfilePage`
+
 On the homepage and resume, JSON-LD defines:
+
 - `@type: ["Person", "ProfilePage"]`
 - `@id: "https://arturonavax.dev/#person"`
 - `name: "Arturo Nava"`
@@ -131,7 +143,9 @@ On the homepage and resume, JSON-LD defines:
 - `sameAs`: GitHub, LinkedIn, Twitter/X, and professional profiles.
 
 ### 5.2. `TechArticle` / `BlogPosting`
+
 On blog posts:
+
 - `@type: "TechArticle"`
 - `headline`, `description`, `datePublished`, `dateModified`
 - `author: { "@id": "https://arturonavax.dev/#person" }`
@@ -139,6 +153,7 @@ On blog posts:
 - `mainEntityOfPage`: Canonical post URL.
 
 ### 5.3. `ItemList`
+
 On taxonomy and catalogue pages (`/projects/`, `/services/`, `/experience/`), `ItemList` structured data outlines the items with explicit position indexes for rich search snippets.
 
 ---
@@ -146,6 +161,7 @@ On taxonomy and catalogue pages (`/projects/`, `/services/`, `/experience/`), `I
 ## 6. Machine Readability for AI Agents (`llms.txt`)
 
 To ensure AI search engines (Perplexity, ChatGPT Search, Claude, Google Gemini) index the portfolio with maximal context:
+
 - `/llms.txt`: Structured plain-text summary of the engineer's core competencies, architecture, bio, and key project links.
 - `/llms-full.txt`: Full-text machine-readable concatenation of all technical articles, services, and system specifications.
 - `public/_headers` injects `Link: </llms.txt>; rel="describedby"` and `X-Llms-Txt: /llms.txt` on all public HTML responses.
@@ -156,6 +172,7 @@ To ensure AI search engines (Perplexity, ChatGPT Search, Claude, Google Gemini) 
 ## 7. Discreet Language Suggestion Banner
 
 Rather than using invasive forced redirects (which break deep links and hurt SEO ranking), the site features a subtle, non-intrusive language suggestion banner:
+
 - Compares the visitor's `navigator.language` with the current page locale.
-- If a Spanish-speaking user lands on an English page, a discrete top banner offers: *"¿Prefieres leer en español? Ver versión en español"*.
+- If a Spanish-speaking user lands on an English page, a discrete top banner offers: _"¿Prefieres leer en español? Ver versión en español"_.
 - State is isolated per session in `sessionStorage` (`lang_suggestion_dismissed`), ensuring it never re-appears after dismissal.

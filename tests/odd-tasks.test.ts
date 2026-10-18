@@ -309,8 +309,8 @@ describe("ODD Task 4: Removal of Top Loading Bar in Favor of Fetching Beacon", (
     // Must ignore download attribute, data-no-beacon, and non-navigational file extensions
     expect(layoutContent).toContain('anchor.hasAttribute("download")');
     expect(layoutContent).toContain('anchor.hasAttribute("data-no-beacon")');
-    expect(layoutContent).toContain('BEACON_MAX_DURATION_MS');
-    expect(layoutContent).toContain('beaconSafetyTimeout');
+    expect(layoutContent).toContain("BEACON_MAX_DURATION_MS");
+    expect(layoutContent).toContain("beaconSafetyTimeout");
   });
 
   it("ensures CV download buttons in PageIndexNav and /resume/ index declare data-no-beacon", () => {
@@ -542,7 +542,9 @@ describe("ODD Task: Refined Contact Container, Form Modal & Cloudflare Free Tier
 
     const res = await worker.fetch(req, mockEnv, mockCtx);
     expect(res.status).toBe(200);
-    expect(insertedParams[1]).toBe("[Web] Distributed Architecture & Performance Consulting");
+    expect(insertedParams[1]).toBe(
+      "[Web] Distributed Architecture & Performance Consulting",
+    );
     expect(insertedParams[3]).toBe("Carlos Developer");
     expect(insertedParams[4]).toBe("+34 600 123 456");
     expect(insertedParams[5]).toBe("es");
@@ -577,7 +579,8 @@ describe("ODD Task: Refined Contact Container, Form Modal & Cloudflare Free Tier
         phone: "+49 30 123456",
         subject: "Distributed Architecture & Performance Consulting",
         locale: "en",
-        message: "We need an assessment on our high-throughput payment gateway.",
+        message:
+          "We need an assessment on our high-throughput payment gateway.",
       }),
     });
     // Attach simulated Cloudflare request.cf properties
@@ -658,7 +661,8 @@ describe("ODD Task: Refined Contact Container, Form Modal & Cloudflare Free Tier
       body: JSON.stringify({
         name: "AdBlock User",
         email: "adblock@privacy.net",
-        message: "This is a legitimate user whose browser blocked challenge domains.",
+        message:
+          "This is a legitimate user whose browser blocked challenge domains.",
         turnstileToken: "fallback_adblock",
         t_sig: Date.now() - 4000,
       }),
@@ -1290,7 +1294,9 @@ describe("ODD Task: Comprehensive Security Audit Hardening", () => {
       },
     } as any;
 
-    const req = new Request("https://admin.arturonavax.dev/api/telemetry?range=24h");
+    const req = new Request(
+      "https://admin.arturonavax.dev/api/telemetry?range=24h",
+    );
     const res = await worker.fetch(req, mockEnv, mockCtx);
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -1320,7 +1326,7 @@ describe("ODD Task: Comprehensive Security Audit Hardening", () => {
       "PageIndexNav.astro",
     );
     const content = fs.readFileSync(pageIndexNavPath, "utf8");
-    expect(content).toContain('flex flex-col items-end gap-2.5 self-end');
+    expect(content).toContain("flex flex-col items-end gap-2.5 self-end");
     expect(content).toContain('id="mobile-cv-print-btn"');
     expect(content).toContain('id="mobile-cv-download-btn"');
   });
@@ -1334,9 +1340,9 @@ describe("ODD Task: Comprehensive Security Audit Hardening", () => {
       "Header.astro",
     );
     const content = fs.readFileSync(headerPath, "utf8");
-    expect(content).toContain('reset-page-filters');
-    expect(content).toContain('reset-exp-filter-btn');
-    expect(content).toContain('navSection');
+    expect(content).toContain("reset-page-filters");
+    expect(content).toContain("reset-exp-filter-btn");
+    expect(content).toContain("navSection");
   });
 
   it("Task 9: dynamically aligns desktop Page Index with alignTargetId in PageIndexNav.astro", () => {

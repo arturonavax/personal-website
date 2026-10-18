@@ -58,27 +58,31 @@ src/
 
 ### Pluggable Adapter Matrix
 
-| Port Domain | Cloudflare Adapter | Local / Memory / Fallback Adapter | Switch Mechanism |
-| :--- | :--- | :--- | :--- |
-| **Edge Delivery** | `CloudflareEdgeRoutingPolicy` | In-memory path normalizer | Runtime classification |
-| **Semantic Search** | `CloudflareVectorizeSearchAdapter` | `StaticMemorySearchAdapter` | `APP_SEARCH_DRIVER` / timeout failover |
-| **Telemetry & Metrics**| `CloudflareD1TelemetryAdapter` | `InMemoryTelemetryAdapter` | `APP_TELEMETRY_DRIVER` |
-| **Captcha Verification**| `CloudflareTurnstileAdapter` | `PassThroughCaptchaAdapter` | `APP_CAPTCHA_DRIVER` |
-| **Asset Storage** | `CloudflareR2StorageAdapter` | Local filesystem / S3 | `APP_STORAGE_DRIVER` |
-| **Transactional Email** | `CloudflareEmailRoutingAdapter`| Console / Webhook fallback | `ENABLE_EMAIL_ROUTING` |
+| Port Domain              | Cloudflare Adapter                 | Local / Memory / Fallback Adapter | Switch Mechanism                       |
+| :----------------------- | :--------------------------------- | :-------------------------------- | :------------------------------------- |
+| **Edge Delivery**        | `CloudflareEdgeRoutingPolicy`      | In-memory path normalizer         | Runtime classification                 |
+| **Semantic Search**      | `CloudflareVectorizeSearchAdapter` | `StaticMemorySearchAdapter`       | `APP_SEARCH_DRIVER` / timeout failover |
+| **Telemetry & Metrics**  | `CloudflareD1TelemetryAdapter`     | `InMemoryTelemetryAdapter`        | `APP_TELEMETRY_DRIVER`                 |
+| **Captcha Verification** | `CloudflareTurnstileAdapter`       | `PassThroughCaptchaAdapter`       | `APP_CAPTCHA_DRIVER`                   |
+| **Asset Storage**        | `CloudflareR2StorageAdapter`       | Local filesystem / S3             | `APP_STORAGE_DRIVER`                   |
+| **Transactional Email**  | `CloudflareEmailRoutingAdapter`    | Console / Webhook fallback        | `ENABLE_EMAIL_ROUTING`                 |
 
 ---
 
 ## 3. Astro 7 Static Site Generation (SSG)
 
 ### 0 KB Baseline Client JavaScript
+
 Public documents (Blog posts, Case Studies, Experience entries, Project showcases, Services, and Resume) ship with **0 KB client JavaScript**. All interactions on content pages are implemented using modern web standards:
+
 - **Navigation & Collapsibles:** CSS `:has()`, `<details>`, `<dialog>`, and `:popover`.
 - **Keyboard Shortcuts:** Single vanilla script tag executing in `<script is:inline>` with zero external frameworks.
 - **Micro-State Management:** Nano Stores (< 1.5 KB) only when reactive state is strictly necessary (e.g. dynamic CV filter studio).
 
 ### Dynamic Parameterized Routing (`[...lang]`)
+
 All pages leverage Astro's catch-all parameterized routing in `src/pages/[...lang]/` to eliminate duplicate templates:
+
 - `params: { lang: undefined }` compiles to `/` (default English canonical).
 - `params: { lang: "es" }` compiles to `/es/` (Spanish localized canonical).
 
@@ -109,6 +113,7 @@ Requests arriving at the Cloudflare Edge are evaluated deterministically in `clo
 ## 5. Build-Time Static Architecture Gates
 
 Quality is enforced through automated static analysis before any build or commit:
+
 - `scripts/audit-codebase.ts`: Scans for banned CSS transitions (`width`, `height`, `padding`, `margin` to prevent layout shifts), checks for unmanaged `<img>` tags, and bans legacy Tailwind configurations.
 - `bun test`: Validates all hexagonal adapters, circuit breakers, routing policies, and fallback mechanics.
 - `pnpm check`: Validates full TypeScript schema compliance across all Astro components.

@@ -9,6 +9,7 @@ Follow this guide to fork, customize, and deploy your own instance to Cloudflare
 ## 1. Prerequisites
 
 Before starting, ensure you have the following installed locally:
+
 - **Node.js**: v22.0.0 or higher
 - **pnpm**: v9.0.0 or higher (`npm install -g pnpm`)
 - **Cloudflare CLI (`cf`)**: `npm install -g cf@latest`
@@ -21,6 +22,7 @@ Before starting, ensure you have the following installed locally:
 ## 2. Quick Setup & Local Run
 
 ### Step 1: Fork and Clone
+
 ```sh
 git clone https://github.com/<your-username>/personal-website.git
 cd personal-website
@@ -28,12 +30,15 @@ pnpm install
 ```
 
 ### Step 2: Environment Configuration
+
 Copy `.env.example` to `.env`:
+
 ```sh
 cp .env.example .env
 ```
 
 Review the key settings:
+
 ```ini
 # Domain & General Configuration
 SITE_URL="https://yourdomain.dev"
@@ -55,9 +60,11 @@ SLACK_WEBHOOK_URL=""
 ```
 
 ### Step 3: Run the Development Server
+
 ```sh
 pnpm dev:local
 ```
+
 The server will start on `http://0.0.0.0:4321`. Because `--host` is enabled by default, you can preview the site simultaneously on your mobile phone and local network by opening `http://<your-lan-ip>:4321`.
 
 ---
@@ -65,15 +72,19 @@ The server will start on `http://0.0.0.0:4321`. Because `--host` is enabled by d
 ## 3. Customizing Your Personal Identity & Branding
 
 ### 3.1. General Metadata & Links
+
 Edit `src/data/` to match your personal identity:
+
 - `src/data/shortcuts.ts`: Global keyboard navigation commands (Ctrl+K, G+H, etc.).
 - `src/data/sponsorships.ts`: Coffee / GitHub Sponsors links.
 - `src/data/onlineJudges.ts`: Codeforces, LeetCode, Kaggle, GitHub handles.
 
 ### 3.2. Multilingual UI Strings
+
 Edit `src/i18n/ui.ts` to customize labels, navigation titles, and footer copy in English and Spanish.
 
 ### 3.3. Headshot & Favicons
+
 - Replace `src/assets/arturonava.jpg` with your own square portrait image.
 - Replace `public/favicon.svg`, `public/favicon-48x48.png`, and `public/apple-touch-icon.png` with your personal logo or monogram.
 - Update `public/site.webmanifest` with your name and theme color preferences.
@@ -83,16 +94,21 @@ Edit `src/i18n/ui.ts` to customize labels, navigation titles, and footer copy in
 ## 4. Setting up Cloudflare Services
 
 ### 4.1. Create the R2 Bucket
+
 Create a private R2 bucket for your editorial content:
+
 ```sh
 cf r2 bucket create your-content-bucket
 ```
 
 ### 4.2. Create the D1 Database (Analytics)
+
 ```sh
 pnpm exec wrangler d1 create your-website-analytics
 ```
+
 Copy the generated `database_id` into your `wrangler.jsonc`:
+
 ```jsonc
 "d1_databases": [
   {
@@ -103,13 +119,17 @@ Copy the generated `database_id` into your `wrangler.jsonc`:
   }
 ]
 ```
+
 Apply the database migrations:
+
 ```sh
 pnpm exec wrangler d1 migrations apply your-website-analytics --remote
 ```
 
 ### 4.3. Configure `wrangler.jsonc`
+
 Open `wrangler.jsonc` and update:
+
 - `name`: Name of your Cloudflare Worker.
 - `routes`: Set your domain patterns (e.g. `yourdomain.dev`, `admin.yourdomain.dev`, `blog.yourdomain.dev`).
 - `r2_buckets`: Set `bucket_name` to your R2 bucket.
@@ -119,6 +139,7 @@ Open `wrangler.jsonc` and update:
 ## 5. Adding Your Content
 
 You can add Markdown and MDX files directly into `src/content/`:
+
 - `src/content/posts/`: Technical articles and thoughts.
 - `src/content/projects/`: Featured engineering case studies.
 - `src/content/services/`: Consulting offerings and competencies.
@@ -127,11 +148,15 @@ You can add Markdown and MDX files directly into `src/content/`:
 - `public/downloads/`: Your English and Spanish CV PDFs.
 
 ### Pushing Content to R2:
+
 Once you have written or customized your content locally, upload it to your private R2 bucket:
+
 ```sh
 pnpm content:push
 ```
+
 To preview the files that would be uploaded first:
+
 ```sh
 pnpm content:push:dry
 ```
@@ -147,6 +172,7 @@ pnpm run deploy
 ```
 
 The pre-deploy hook will:
+
 1. Automatically pull the latest remote content from R2 if needed.
 2. Compile the static site via Astro (`pnpm run build`).
 3. Deploy the unified Worker and static assets to Cloudflare's Edge network via Wrangler.
