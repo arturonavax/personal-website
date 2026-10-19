@@ -21,12 +21,14 @@ Designed from the ground up to guarantee a **certified 100/100 across all Core W
 - 📦 **Git-Decoupled Content (R2 Sync):** Editorial Markdown/MDX, case studies, and CV PDFs are **never tracked in Git**. A private Cloudflare R2 bucket (`personal-website-content`) serves as the single source of truth with automated 3-tier sync (`cf` CLI, S3 API, Wrangler) and tarball bundle acceleration.
 - 🔍 **Impeccable Multilingual Technical SEO:** Strict trailing-slash normalization, reciprocal bidirectional `hreflang` tags (`en`, `es`, `x-default`) with zero phantom 404s, dynamic XML sitemaps, and Schema.org Knowledge Graph structured data (`@id: "https://arturonavax.dev/#person"`).
 - 🏷️ **Thematic Vanity Subdomains:** Native 0ms Edge HTTP 308 canonicalization redirects `blog.arturonavax.dev`, `projects.`, `services.`, and `resume.` to apex canonical paths, consolidating 100% of SEO PageRank.
-- 🔒 **Enterprise Edge Security & Free-Tier Quota Guards:**
+- 🔒 **Enterprise Edge Security & Zero-Trust Vault:**
   - Automated circuit breakers (`PrefetchQuotaCircuitBreaker`, `BotQuotaCircuitBreaker`) shield D1 database writes from speculative browser prefetching and search crawlers.
+  - Selective `assets.run_worker_first` glob array bypassing Worker compute on immutable static assets (`/_astro/*`, `/fonts/*`, etc.).
+  - Post-build admin vault relocation (`scripts/isolate-admin-build.mjs`) to internal path `dist/__admin_vault__/` eliminating static asset exposure.
+  - Fail-closed Zero-Trust identity verification (Cloudflare Access RSASSA-PKCS1-v1_5 JWT & constant-time SHA-256 Bearer tokens).
   - 120-second edge in-memory caching for telemetry queries.
   - Cloudflare Turnstile captcha validation, honeypot traps, and IP sliding rate limiting on contact forms.
   - Strict Content-Security-Policy (CSP), HSTS preload, and permissions isolation.
-  - Dedicated administrative dashboard on isolated Zero Trust subdomain (`admin.arturonavax.dev`).
 
 ---
 
@@ -114,9 +116,9 @@ pnpm dev
 The repository includes a comprehensive automated quality suite:
 
 ```sh
-pnpm build        # Compiles Astro SSG (auto-pulls R2 content if missing)
+pnpm build        # Compiles Astro SSG & isolates admin vault (auto-pulls R2 content if missing)
 pnpm check        # Runs Astro & TypeScript type check (0 errors, 0 warnings)
-pnpm test         # Runs 296 unit/integration tests via Bun (< 700 ms)
+pnpm test         # Runs 307 unit/integration tests via Bun (< 700 ms)
 pnpm audit        # Runs static architectural gates & content hydration checks
 ```
 

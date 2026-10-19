@@ -35,19 +35,29 @@ const description = isEs
 >
   <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-6 space-y-6">
     <!-- Admin Auth Notice (shown when 401 Unauthorized occurs) -->
-    <div id="admin-auth-notice" class="hidden p-4 rounded-sm border border-red-500/40 bg-red-950/20 text-red-300 font-mono text-xs space-y-2">
+    <div
+      id="admin-auth-notice"
+      class="hidden p-4 rounded-sm border border-red-500/40 bg-red-950/20 text-red-300 font-mono text-xs space-y-2"
+    >
       <div class="flex items-center gap-2 font-bold text-red-400">
         <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-        {isEs ? "401 ACCESO RESTRINGIDO // AUTENTICACIÓN ZERO TRUST REQUERIDA" : "401 UNAUTHORIZED // ZERO TRUST AUTHENTICATION REQUIRED"}
+        {isEs
+          ? "401 ACCESO RESTRINGIDO // AUTENTICACIÓN ZERO TRUST REQUERIDA"
+          : "401 UNAUTHORIZED // ZERO TRUST AUTHENTICATION REQUIRED"}
       </div>
       <p class="text-xs text-[var(--color-text-secondary)]">
-        {isEs 
+        {isEs
           ? "Esta superficie administrativa está protegida por Cloudflare Access Zero Trust. Inicie sesión para ver la telemetría perimetral."
           : "This administrative surface is protected by Cloudflare Access Zero Trust. Please sign in to access edge telemetry."}
       </p>
       <div class="flex flex-wrap items-center gap-3 pt-2">
-        <a href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/admin.arturonavax.dev" class="px-3 py-1.5 rounded-xs bg-[var(--color-accent-gold)] text-[var(--color-bg-primary)] font-bold text-xs hover:bg-[var(--color-accent-gold-hover)] transition-colors">
-          {isEs ? "Autenticar con Cloudflare Access" : "Authenticate with Cloudflare Access"}
+        <a
+          href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/admin.arturonavax.dev"
+          class="px-3 py-1.5 rounded-xs bg-[var(--color-accent-gold)] text-[var(--color-bg-primary)] font-bold text-xs hover:bg-[var(--color-accent-gold-hover)] transition-colors"
+        >
+          {isEs
+            ? "Autenticar con Cloudflare Access"
+            : "Authenticate with Cloudflare Access"}
         </a>
       </div>
     </div>
@@ -537,30 +547,53 @@ const description = isEs
               : "Daily and monthly usage tracking for Workers, D1, R2, Zero Trust, and Workers AI"}
           </p>
         </div>
-        <span id="quotas-global-badge" class="font-mono text-[11px] text-emerald-400 font-semibold">
+        <span
+          id="quotas-global-badge"
+          class="font-mono text-[11px] text-emerald-400 font-semibold"
+        >
           100% Free Tier Compliant
         </span>
       </div>
 
       <!-- Overrun Alert Banner -->
-      <div id="quota-d1-overrun-banner" class="hidden p-3 rounded-sm border border-red-500/50 bg-red-950/30 text-red-300 font-mono text-xs flex items-center gap-2.5">
+      <div
+        id="quota-d1-overrun-banner"
+        class="hidden p-3 rounded-sm border border-red-500/50 bg-red-950/30 text-red-300 font-mono text-xs flex items-center gap-2.5"
+      >
         <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
         <span>
           <strong>{isEs ? "ALERTA DE CUPO:" : "QUOTA ALERT:"}</strong>
-          {isEs ? " Límite diario de escrituras D1 alcanzado/excedido (" : " D1 daily writes limit reached/exceeded ("}<span id="quota-d1-overrun-detail" class="font-bold underline"></span>{isEs ? "). Modo degradación R2 WAL activado para absorber telemetría sin coste adicional." : "). R2 WAL fallback activated to absorb telemetry without additional costs."}
+          {isEs
+            ? " Límite diario de escrituras D1 alcanzado/excedido ("
+            : " D1 daily writes limit reached/exceeded ("}
+          <span id="quota-d1-overrun-detail" class="font-bold underline"></span>
+          {isEs
+            ? "). Modo degradación R2 WAL activado para absorber telemetría sin coste adicional."
+            : "). R2 WAL fallback activated to absorb telemetry without additional costs."}
         </span>
       </div>
 
       <!-- Collapsible Technology Groups -->
       <div class="space-y-3 font-mono text-xs">
         <!-- Group 1: Cloudflare D1 Database -->
-        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+        <details
+          open
+          class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3"
+        >
           <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
             <span class="flex items-center gap-2">
-              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
-              <span>{isEs ? "Cloudflare D1 Database (SQLite Edge)" : "Cloudflare D1 Database (Edge SQLite)"}</span>
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">
+                ▶
+              </span>
+              <span>
+                {isEs
+                  ? "Cloudflare D1 Database (SQLite Edge)"
+                  : "Cloudflare D1 Database (Edge SQLite)"}
+              </span>
             </span>
-            <span class="text-[11px] text-emerald-400 font-semibold lowercase">serverless sql</span>
+            <span class="text-[11px] text-emerald-400 font-semibold lowercase">
+              serverless sql
+            </span>
           </summary>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
             <!-- Quota 3B: D1 Database Writes -->
@@ -585,7 +618,15 @@ const description = isEs
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-                <span>{isEs ? "Degradación:" : "Tier:"} <span id="quota-d1-writes-status" class="text-emerald-400 font-semibold">NOMINAL</span></span>
+                <span>
+                  {isEs ? "Degradación:" : "Tier:"}{" "}
+                  <span
+                    id="quota-d1-writes-status"
+                    class="text-emerald-400 font-semibold"
+                  >
+                    NOMINAL
+                  </span>
+                </span>
                 <span>00:00 UTC</span>
               </div>
             </div>
@@ -613,7 +654,9 @@ const description = isEs
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>{isEs ? "Caché Edge: 120s" : "Edge Cache: 120s"}</span>
-                <span class="text-emerald-400 font-semibold">{isEs ? "Optimizado" : "Optimized"}</span>
+                <span class="text-emerald-400 font-semibold">
+                  {isEs ? "Optimizado" : "Optimized"}
+                </span>
               </div>
             </div>
 
@@ -647,13 +690,24 @@ const description = isEs
         </details>
 
         <!-- Group 2: Cloudflare Workers -->
-        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+        <details
+          open
+          class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3"
+        >
           <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
             <span class="flex items-center gap-2">
-              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
-              <span>{isEs ? "Cloudflare Workers Execution" : "Cloudflare Workers Execution"}</span>
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">
+                ▶
+              </span>
+              <span>
+                {isEs
+                  ? "Cloudflare Workers Execution"
+                  : "Cloudflare Workers Execution"}
+              </span>
             </span>
-            <span class="text-[11px] text-emerald-400 font-semibold lowercase">v8 isolates</span>
+            <span class="text-[11px] text-emerald-400 font-semibold lowercase">
+              v8 isolates
+            </span>
           </summary>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
             <!-- Quota 1: Workers Requests Daily -->
@@ -679,7 +733,12 @@ const description = isEs
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>{isEs ? "Reinicio: 00:00 UTC" : "Reset: 00:00 UTC"}</span>
-                <span id="quota-workers-daily-status" class="text-emerald-400 font-semibold">OK</span>
+                <span
+                  id="quota-workers-daily-status"
+                  class="text-emerald-400 font-semibold"
+                >
+                  OK
+                </span>
               </div>
             </div>
 
@@ -706,20 +765,33 @@ const description = isEs
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>{isEs ? "Ventana 30 días" : "30-day window"}</span>
-                <span class="text-emerald-400 font-semibold">{isEs ? "Capa Gratuita" : "Free Tier"}</span>
+                <span class="text-emerald-400 font-semibold">
+                  {isEs ? "Capa Gratuita" : "Free Tier"}
+                </span>
               </div>
             </div>
           </div>
         </details>
 
         <!-- Group 3: Cloudflare R2 Object Storage & WAL -->
-        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+        <details
+          open
+          class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3"
+        >
           <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
             <span class="flex items-center gap-2">
-              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
-              <span>{isEs ? "Cloudflare R2 Object Storage & WAL" : "Cloudflare R2 Object Storage & WAL"}</span>
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">
+                ▶
+              </span>
+              <span>
+                {isEs
+                  ? "Cloudflare R2 Object Storage & WAL"
+                  : "Cloudflare R2 Object Storage & WAL"}
+              </span>
             </span>
-            <span class="text-[11px] text-emerald-400 font-semibold lowercase">s3 compatible (0 egress)</span>
+            <span class="text-[11px] text-emerald-400 font-semibold lowercase">
+              s3 compatible (0 egress)
+            </span>
           </summary>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
             <!-- Quota 5: R2 Class A Ops -->
@@ -744,8 +816,12 @@ const description = isEs
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-                <span>{isEs ? "Mutaciones / Uploads" : "Mutations / Uploads"}</span>
-                <span class="text-emerald-400 font-semibold">{isEs ? "Preservado" : "Preserved"}</span>
+                <span>
+                  {isEs ? "Mutaciones / Uploads" : "Mutations / Uploads"}
+                </span>
+                <span class="text-emerald-400 font-semibold">
+                  {isEs ? "Preservado" : "Preserved"}
+                </span>
               </div>
             </div>
 
@@ -806,13 +882,24 @@ const description = isEs
         </details>
 
         <!-- Group 4: Cloudflare Workers AI & Vectorize -->
-        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+        <details
+          open
+          class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3"
+        >
           <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
             <span class="flex items-center gap-2">
-              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
-              <span>{isEs ? "Cloudflare Workers AI & Vectorize" : "Cloudflare Workers AI & Vectorize"}</span>
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">
+                ▶
+              </span>
+              <span>
+                {isEs
+                  ? "Cloudflare Workers AI & Vectorize"
+                  : "Cloudflare Workers AI & Vectorize"}
+              </span>
             </span>
-            <span class="text-[11px] text-cyan-400 font-semibold lowercase">edge ml & embeddings</span>
+            <span class="text-[11px] text-cyan-400 font-semibold lowercase">
+              edge ml & embeddings
+            </span>
           </summary>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
             <!-- Quota 9: Workers AI Neurons -->
@@ -838,7 +925,9 @@ const description = isEs
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>{isEs ? "Inferencia Edge" : "Edge Inference"}</span>
-                <span class="text-emerald-400 font-semibold">{isEs ? "Disponible" : "Ready"}</span>
+                <span class="text-emerald-400 font-semibold">
+                  {isEs ? "Disponible" : "Ready"}
+                </span>
               </div>
             </div>
 
@@ -865,20 +954,33 @@ const description = isEs
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>{isEs ? "Búsqueda Semántica" : "Semantic Search"}</span>
-                <span class="text-emerald-400 font-semibold">{isEs ? "Disponible" : "Ready"}</span>
+                <span class="text-emerald-400 font-semibold">
+                  {isEs ? "Disponible" : "Ready"}
+                </span>
               </div>
             </div>
           </div>
         </details>
 
         <!-- Group 5: Zero Trust & Deployments -->
-        <details open class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3">
+        <details
+          open
+          class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3"
+        >
           <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
             <span class="flex items-center gap-2">
-              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
-              <span>{isEs ? "Cloudflare Zero Trust & Access" : "Cloudflare Zero Trust & Access"}</span>
+              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">
+                ▶
+              </span>
+              <span>
+                {isEs
+                  ? "Cloudflare Zero Trust & Access"
+                  : "Cloudflare Zero Trust & Access"}
+              </span>
             </span>
-            <span class="text-[11px] text-[var(--color-accent-gold)] font-semibold lowercase">identity & security</span>
+            <span class="text-[11px] text-[var(--color-accent-gold)] font-semibold lowercase">
+              identity & security
+            </span>
           </summary>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
             <!-- Quota 8: Zero Trust Access Seats -->
@@ -904,7 +1006,9 @@ const description = isEs
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>Cloudflare Access</span>
-                <span class="text-emerald-400 font-semibold">Admin aislado</span>
+                <span class="text-emerald-400 font-semibold">
+                  Admin aislado
+                </span>
               </div>
             </div>
           </div>
@@ -1894,12 +1998,16 @@ const description = isEs
         var deployRes = results[2];
         var leadsRes = results[3];
 
-        if (telemetryRes.status === "fulfilled" && telemetryRes.value.status === 401) {
+        if (
+          telemetryRes.status === "fulfilled" &&
+          telemetryRes.value.status === 401
+        ) {
           var authNotice = document.getElementById("admin-auth-notice");
           if (authNotice) authNotice.classList.remove("hidden");
           var cacheBadge = document.getElementById("badge-cache-mode");
           if (cacheBadge) {
-            cacheBadge.textContent = "● 401 No Autorizado (Zero Trust Requerido)";
+            cacheBadge.textContent =
+              "● 401 No Autorizado (Zero Trust Requerido)";
             cacheBadge.style.color = "#ef4444";
           }
           return;
@@ -1949,7 +2057,8 @@ const description = isEs
 
     function fmtK(n) {
       if (typeof n !== "number" || isNaN(n)) return "0";
-      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 2) + "M";
+      if (n >= 1000000)
+        return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 2) + "M";
       if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 2) + "k";
       return n.toLocaleString();
     }
@@ -2023,12 +2132,19 @@ const description = isEs
         if (barw) {
           barw.style.width = Math.max(1, isExceeded ? 100 : pctw) + "%";
           if (isExceeded) {
-            barw.className = "h-full bg-red-500 animate-pulse transition-all duration-300";
-          } else if (pctw >= 95) barw.className = "h-full bg-red-500 transition-all duration-300";
-          else if (pctw >= 85) barw.className = "h-full bg-orange-500 transition-all duration-300";
-          else if (pctw >= 70) barw.className = "h-full bg-amber-400 transition-all duration-300";
-          else if (pctw >= 50) barw.className = "h-full bg-cyan-400 transition-all duration-300";
-          else barw.className = "h-full bg-emerald-400 transition-all duration-300";
+            barw.className =
+              "h-full bg-red-500 animate-pulse transition-all duration-300";
+          } else if (pctw >= 95)
+            barw.className = "h-full bg-red-500 transition-all duration-300";
+          else if (pctw >= 85)
+            barw.className = "h-full bg-orange-500 transition-all duration-300";
+          else if (pctw >= 70)
+            barw.className = "h-full bg-amber-400 transition-all duration-300";
+          else if (pctw >= 50)
+            barw.className = "h-full bg-cyan-400 transition-all duration-300";
+          else
+            barw.className =
+              "h-full bg-emerald-400 transition-all duration-300";
         }
 
         if (statusw) {
@@ -2038,10 +2154,14 @@ const description = isEs
           } else {
             var tierw = cachedQuotas.degradation_tier_name || "NOMINAL";
             statusw.textContent = tierw;
-            if (tierw === "NOMINAL") statusw.className = "text-emerald-400 font-semibold";
-            else if (tierw === "CONSERVATIVE") statusw.className = "text-cyan-400 font-semibold";
-            else if (tierw === "COMPACT_ROLLUP") statusw.className = "text-amber-400 font-semibold";
-            else if (tierw === "CRITICAL_SURVIVAL") statusw.className = "text-orange-400 font-semibold";
+            if (tierw === "NOMINAL")
+              statusw.className = "text-emerald-400 font-semibold";
+            else if (tierw === "CONSERVATIVE")
+              statusw.className = "text-cyan-400 font-semibold";
+            else if (tierw === "COMPACT_ROLLUP")
+              statusw.className = "text-amber-400 font-semibold";
+            else if (tierw === "CRITICAL_SURVIVAL")
+              statusw.className = "text-orange-400 font-semibold";
             else statusw.className = "text-red-400 font-semibold";
           }
         }
@@ -2062,10 +2182,12 @@ const description = isEs
             globalBadge.textContent = isEs
               ? "⚠️ CUPO D1 EXCEDIDO // R2 WAL ACTIVO"
               : "⚠️ D1 QUOTA EXCEEDED // R2 WAL ACTIVE";
-            globalBadge.className = "font-mono text-[11px] text-red-400 font-bold animate-pulse";
+            globalBadge.className =
+              "font-mono text-[11px] text-red-400 font-bold animate-pulse";
           } else {
             globalBadge.textContent = "100% Free Tier Compliant";
-            globalBadge.className = "font-mono text-[11px] text-emerald-400 font-semibold";
+            globalBadge.className =
+              "font-mono text-[11px] text-emerald-400 font-semibold";
           }
         }
       }
@@ -2153,7 +2275,8 @@ const description = isEs
         var bar9 = document.getElementById("quota-workers-ai-bar");
         var limit9 = q9.limit || 10000;
         var used9 = q9.used || 0;
-        if (el9) el9.textContent = fmtK(used9) + " / " + fmtK(limit9) + " neuronas";
+        if (el9)
+          el9.textContent = fmtK(used9) + " / " + fmtK(limit9) + " neuronas";
         if (bar9)
           bar9.style.width =
             Math.min(100, Math.round((used9 / limit9) * 100)) + "%";
@@ -2168,7 +2291,8 @@ const description = isEs
         if (elv) elv.textContent = fmtK(usedv) + " / " + fmtK(limitv) + " dims";
         if (barv)
           barv.style.width =
-            Math.min(100, Math.max(1, Math.round((usedv / limitv) * 100))) + "%";
+            Math.min(100, Math.max(1, Math.round((usedv / limitv) * 100))) +
+            "%";
       }
     }
 

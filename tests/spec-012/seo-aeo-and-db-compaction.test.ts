@@ -513,10 +513,13 @@ describe("SPEC-012: Edge AEO, AI Content Negotiation & Automated IndexNow (TASK 
       INDEXNOW_KEY: "prod-dynamic-indexnow-secret-999",
       ASSETS: {
         fetch: async () =>
-          new Response("<!doctype html><html><body><h1>Blog Post</h1></body></html>", {
-            status: 200,
-            headers: { "Content-Type": "text/html; charset=utf-8" },
-          }),
+          new Response(
+            "<!doctype html><html><body><h1>Blog Post</h1></body></html>",
+            {
+              status: 200,
+              headers: { "Content-Type": "text/html; charset=utf-8" },
+            },
+          ),
       } as unknown as Fetcher,
     };
 
@@ -673,10 +676,13 @@ describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants"
         fetch: async (req: Request | string) => {
           const u = typeof req === "string" ? req : req.url;
           if (u.includes("__admin_vault__") || u.includes("admin")) {
-            return new Response("<html><head><title>Admin Vault Shell</title></head><body><h1>Vault Dashboard</h1></body></html>", {
-              status: 200,
-              headers: { "Content-Type": "text/html; charset=utf-8" },
-            });
+            return new Response(
+              "<html><head><title>Admin Vault Shell</title></head><body><h1>Vault Dashboard</h1></body></html>",
+              {
+                status: 200,
+                headers: { "Content-Type": "text/html; charset=utf-8" },
+              },
+            );
           }
           return new Response("Not Found", { status: 404 });
         },

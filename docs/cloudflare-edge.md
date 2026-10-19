@@ -56,7 +56,7 @@ Cloudflare Workers run globally across hundreds of independent ephemeral isolate
 - **Layer 1 (L1 Edge Cache API Absorption):** `computeVisitDedupeKey(ip, userAgent, path, timestamp)` computes a deterministic SHA-256 hash across a 30-minute bucket (`VISIT_DEDUPE_WINDOW_MS = 1_800_000`). Lookups check `caches.default` (`https://telemetry.internal/dedupe/${key}`). On cache hits, the visit is discarded immediately with **0 D1 reads and 0 D1 writes**.
 - **Layer 2 (L2 Authoritative Database Deduplication):** A deterministic dedupe key is stored in `pageviews.dedupe_key` and `telemetry_events.dedupe_key` backed by `UNIQUE INDEX idx_pageviews_dedupe_key`. D1 automatically discards duplicates cross-isolate using `INSERT OR IGNORE`.
 - **Atomic Batch Rollups:** Daily rollup counters are updated in the same transaction using `db.batch([pageviewInsert, rollupInsert])` with atomic upsert `INSERT INTO analytics_rollups ... ON CONFLICT DO UPDATE`, eliminating read-before-write race conditions.
-- **SSR/ClientRouter Coordination:** On initial HTML document navigation, the Edge Worker emits `X-Edge-Visit-Logged: 1` and cookie `ev_init=1`. `EdgeViewCounter.astro` detects `ev_init=1` on initial load and suppresses duplicate client beaconing, while firing beacon telemetry only on subsequent `ClientRouter` SPA transitions and `pageshow` `bfcache` restores.
+- **SSR/ClientRouter Coordination & Immediate `ev_init` Expiration:** On initial HTML document navigation, the Edge Worker emits `X-Edge-Visit-Logged: 1` and cookie `ev_init=1`. `EdgeViewCounter.astro` detects `ev_init=1` on initial load, immediately expires the cookie (`Max-Age=0`) so it never lingers, and suppresses duplicate client beaconing, while firing beacon telemetry on subsequent `ClientRouter` SPA transitions and `pageshow` `bfcache` restores (`event.persisted`).
 
 ### 2.6. 5-Tier Progressive Degradation State Machine & R2 WAL (Zero Data Loss)
 
@@ -134,40 +134,78 @@ In `wrangler.jsonc`, custom domain routes ensure direct routing into the worker:
 
 The administration and analytics portal is completely decoupled and shielded behind a multi-layered security perimeter:
 
-### 4.1. Universal Worker Interception (`run_worker_first: true`)
-- In `wrangler.jsonc`, `"run_worker_first": true` ensures that the Cloudflare Worker intercepts **100% of incoming requests** before Static Assets can serve files from disk.
-- Any attempt to access `arturonavax.dev/admin`, `arturonavax.dev/admin/`, or `arturonavax.dev/*/admin*` is immediately intercepted and permanently redirected via **HTTP 308** to `https://admin.arturonavax.dev/`. Static HTML is never served without passing through worker verification.
+### 4.1. Selective Worker Interception (`assets.run_worker_first`) & `workers_dev: false`
 
-### 4.2. Dual-Method Strict Authentication (`verifyAdminAuthorization`)
-The worker enforces strict identity verification across both document navigations and API endpoints:
-1. **Cloudflare Access Zero Trust Identity:**
-   - Validates `cf-access-authenticated-user-email` against the authorized admin whitelist configured in `ADMIN_AUTHORIZED_EMAILS`.
-   - Rejects unauthorized or spoofed emails with HTTP 401/403.
-   - Inspects `cf-access-jwt-assertion` cryptographically.
-2. **Admin API Key / Secret Token (`ADMIN_API_KEY`):**
-   - Allows authorized administrators to authenticate via `Authorization: Bearer <key>`, query parameter `?token=<key>`, or secure session cookie `admin_session=<key>`.
-   - Passing `?token=<key>` automatically sets an `HttpOnly`, `SameSite=Lax`, `Secure` session cookie for seamless 24-hour administration.
+- **Zone Enforcement (`workers_dev: false`):** The public preview endpoint is disabled in production at the top level of `wrangler.jsonc`, ensuring 100% of traffic must enter through Cloudflare zones (`arturonavax.dev` / `admin.arturonavax.dev`) protected by WAF and Zero Trust.
+- **Selective `run_worker_first` Glob Array:** Instead of intercepting every single static file, `wrangler.jsonc` specifies an explicit glob array prioritizing administrative and dynamic API routes while strictly bypassing Worker execution on immutable assets:
+  ```jsonc
+  "workers_dev": false,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/admin*",
+      "/*/admin*",
+      "/__admin_vault__*",
+      "/api/*",
+      "/*",
+      "!/_astro/*",
+      "!/fonts/*",
+      "!/remote-assets/*",
+      "!/downloads/*",
+      "!/favicon*",
+      "!/apple-touch-icon*",
+      "!/icon-*",
+      "!/og-default.png",
+      "!/site.webmanifest",
+      "!/robots.txt",
+      "!/sitemap*.xml",
+      "!/llms.txt"
+    ]
+  }
+  ```
+- **Post-Build Vault Relocation (`scripts/isolate-admin-build.mjs`):** HTML files generated for `/admin` are relocated post-build into `dist/__admin_vault__/default/index.html` and `dist/__admin_vault__/{locale}/index.html`. Public `dist/admin` and `dist/{locale}/admin` directories are pruned, preventing accidental direct static exposure.
+- **Fail-Closed Access Control:** External requests to `/__admin_vault__*` receive an immediate **HTTP 404 Not Found**. Unauthenticated requests to `/admin`, `/:lang/admin`, or `admin.arturonavax.dev/` are stopped at the edge and receive **HTTP 401 Unauthorized** (or **403 Forbidden** if unconfigured).
+
+### 4.2. Dual-Method Cryptographic Authentication (`verifyAdminAccess`)
+
+The edge worker enforces fail-closed cryptographic verification across document navigations and API calls:
+
+1. **Cloudflare Access Zero Trust JWT (Method A):**
+   - Inspects `Cf-Access-Jwt-Assertion` header or `CF_Authorization` cookie.
+   - Retrieves public JWKS from `https://${CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs` (cached in `caches.default` for 3,600s).
+   - Validates the cryptographic signature with Web Crypto `RSASSA-PKCS1-v1_5`, asserting `aud`, `iss`, `exp`, and whitelisted email.
+2. **Constant-Time Bearer / Admin Token (`ADMIN_ACCESS_TOKEN` / `ADMIN_API_KEY`):**
+   - Allows authorized administrators to authenticate via `Authorization: Bearer <token>`, `X-Admin-Token`, query parameter `?token=<key>`, or session cookie `admin_session=<key>`.
+   - Uses constant-time SHA-256 byte-by-byte XOR comparison (`timingSafeEqualSha256`), preventing timing analysis attacks.
+   - Query token authentication automatically establishes an `HttpOnly`, `SameSite=Lax`, `Secure` session cookie for seamless 24-hour administration.
 
 ### 4.3. Universal API Shielding
-All administrative endpoints are strictly protected:
-- `/api/telemetry`
+
+All administrative and operational endpoints are strictly protected:
+
+- `/api/admin/*`
+- `/api/telemetry` (except the public telemetry collector and public counter)
 - `/api/metrics`
 - `/api/leads`
 - `/api/deployments`
-- `/api/status`
-- `/status`
+- `/api/quota*`
 
-Unauthenticated requests to any of these endpoints return **HTTP 401 Unauthorized** with `X-Robots-Tag: noindex, nofollow, noarchive` and `Cache-Control: no-store, private`.
+Unauthenticated requests return **HTTP 401 Unauthorized** with `X-Robots-Tag: noindex, nofollow, noarchive` and `Cache-Control: private, no-store, no-cache, must-revalidate`.
 
 ### 4.4. 401 Authentication Challenge Screen
-When an unauthenticated browser navigates to `https://admin.arturonavax.dev/`:
+
+When an unauthenticated browser navigates to `https://admin.arturonavax.dev/` or `/admin`:
+
 - The server responds with **HTTP 401 Unauthorized** and a clean, dark-mode challenge screen.
 - Provides direct single-click redirection to the Cloudflare Zero Trust authentication gateway.
-- Includes a secure token entry form to unlock the console via `ADMIN_API_KEY`.
+- Includes a secure token entry form to unlock the console via `ADMIN_ACCESS_TOKEN`.
 - **Zero data leakage:** No metrics, charts, visitor logs, or database rows are emitted in unauthenticated responses.
 
 ### 4.5. Comprehensive Cloudflare Quota Telemetry in Admin UI
+
 The admin dashboard surfaces live usage, limits, and degradation tiers across all Cloudflare primitives:
+
 - **Workers Requests:** Daily (100k limit) & 30-day cumulative rolling usage.
 - **D1 Database Reads:** Daily rows read (5M limit) with edge memory cache indicators.
 - **D1 Database Writes:** Daily rows written (100k limit) with color-coded degradation tier indicators (`NOMINAL`, `CONSERVATIVE`, `COMPACT_ROLLUP`, `CRITICAL_SURVIVAL`, `R2_WAL_FALLBACK`).

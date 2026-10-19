@@ -458,7 +458,10 @@ export class EdgeQuotaTracker {
               row.estimated_rows_read,
             );
           }
-          if (typeof row.degradation_tier === "number" && row.degradation_tier === QuotaDegradationTier.R2_WAL_FALLBACK) {
+          if (
+            typeof row.degradation_tier === "number" &&
+            row.degradation_tier === QuotaDegradationTier.R2_WAL_FALLBACK
+          ) {
             this.d1HardBlocked = true;
           }
         }

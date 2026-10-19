@@ -402,7 +402,8 @@ export default {
     const isAdminHost =
       host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev";
     const isAdminPage =
-      isAdminHost || /^\/(?:[a-z]{2}\/)?admin(?:\/|$)/.test(normalizedLowerPath);
+      isAdminHost ||
+      /^\/(?:[a-z]{2}\/)?admin(?:\/|$)/.test(normalizedLowerPath);
     const isProtectedApi = isProtectedApiSurface(
       normalizedLowerPath,
       request.method.toUpperCase(),
@@ -440,8 +441,7 @@ export default {
             message:
               auth.reason ||
               "Cloudflare Access Zero Trust authentication required to access admin surface.",
-            docs:
-              "https://developers.cloudflare.com/cloudflare-one/access-controls/",
+            docs: "https://developers.cloudflare.com/cloudflare-one/access-controls/",
           }),
           {
             status: auth.status || 401,
@@ -523,7 +523,8 @@ export default {
           headers.set("X-Frame-Options", "DENY");
           headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
           const queryToken =
-            url.searchParams.get("token") || url.searchParams.get("admin_token");
+            url.searchParams.get("token") ||
+            url.searchParams.get("admin_token");
           if (queryToken && auth.method === "admin_token") {
             headers.set(
               "Set-Cookie",
@@ -2394,7 +2395,10 @@ export function base64UrlDecode(str: string): Uint8Array {
   return bytes;
 }
 
-export async function timingSafeEqualSha256(a: string, b: string): Promise<boolean> {
+export async function timingSafeEqualSha256(
+  a: string,
+  b: string,
+): Promise<boolean> {
   const encoder = new TextEncoder();
   const aDigest = await crypto.subtle.digest("SHA-256", encoder.encode(a));
   const bDigest = await crypto.subtle.digest("SHA-256", encoder.encode(b));
@@ -2408,7 +2412,9 @@ export async function timingSafeEqualSha256(a: string, b: string): Promise<boole
   return diff === 0;
 }
 
-export async function fetchJwksWithCache(teamDomain: string): Promise<any[] | null> {
+export async function fetchJwksWithCache(
+  teamDomain: string,
+): Promise<any[] | null> {
   const nowSec = Math.floor(Date.now() / 1000);
   const cachedMem = jwksMemoryCache.get(teamDomain);
   if (cachedMem && cachedMem.expiresAt > nowSec) {
@@ -2503,13 +2509,19 @@ export async function verifyCloudflareAccessJwt(
     }
 
     if (allowedEmail) {
-      const email = typeof payload.email === "string" ? payload.email.toLowerCase().trim() : "";
+      const email =
+        typeof payload.email === "string"
+          ? payload.email.toLowerCase().trim()
+          : "";
       const allowed = allowedEmail
         .split(",")
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
       if (!allowed.includes(email)) {
-        return { valid: false, reason: `Email ${payload.email} is not authorized` };
+        return {
+          valid: false,
+          reason: `Email ${payload.email} is not authorized`,
+        };
       }
     }
 
@@ -2548,7 +2560,10 @@ export async function verifyCloudflareAccessJwt(
       return { valid: false, reason: "Invalid cryptographic signature" };
     }
 
-    return { valid: true, email: payload.email || "access-jwt@arturonavax.dev" };
+    return {
+      valid: true,
+      email: payload.email || "access-jwt@arturonavax.dev",
+    };
   } catch (err) {
     return {
       valid: false,
@@ -2565,7 +2580,11 @@ export async function verifyAdminAccess(
   const expectedAud = env.CF_ACCESS_AUD?.trim();
   const hasCfAccessConfig = Boolean(teamDomain && expectedAud);
 
-  const configuredToken = (env.ADMIN_ACCESS_TOKEN || env.ADMIN_API_KEY || "").trim();
+  const configuredToken = (
+    env.ADMIN_ACCESS_TOKEN ||
+    env.ADMIN_API_KEY ||
+    ""
+  ).trim();
   const hasTokenConfig = configuredToken.length >= 20;
 
   const requireAuth =
@@ -2614,7 +2633,9 @@ export async function verifyAdminAccess(
 
   // Fallback for mock environments with CF_Authorization or cf-access-authenticated-user-email
   if (!hasCfAccessConfig) {
-    const cfUserEmail = request.headers.get("cf-access-authenticated-user-email");
+    const cfUserEmail = request.headers.get(
+      "cf-access-authenticated-user-email",
+    );
     if (cfUserEmail) {
       const cleanEmail = cfUserEmail.trim().toLowerCase();
       const authorizedEmails = (
@@ -2626,7 +2647,12 @@ export async function verifyAdminAccess(
         .filter(Boolean);
 
       if (authorizedEmails.includes(cleanEmail)) {
-        return { authorized: true, status: 200, email: cleanEmail, method: "cf_access" };
+        return {
+          authorized: true,
+          status: 200,
+          email: cleanEmail,
+          method: "cf_access",
+        };
       } else {
         return {
           authorized: false,
@@ -2638,7 +2664,12 @@ export async function verifyAdminAccess(
       }
     }
     if (cfJwt) {
-      return { authorized: true, status: 200, email: "access-jwt@arturonavax.dev", method: "cf_access" };
+      return {
+        authorized: true,
+        status: 200,
+        email: "access-jwt@arturonavax.dev",
+        method: "cf_access",
+      };
     }
   }
 
@@ -2658,13 +2689,17 @@ export async function verifyAdminAccess(
       } else {
         try {
           const u = new URL(request.url);
-          candidateToken = u.searchParams.get("token") || u.searchParams.get("admin_token");
+          candidateToken =
+            u.searchParams.get("token") || u.searchParams.get("admin_token");
         } catch {}
       }
     }
 
     if (candidateToken) {
-      const isValid = await timingSafeEqualSha256(candidateToken, configuredToken);
+      const isValid = await timingSafeEqualSha256(
+        candidateToken,
+        configuredToken,
+      );
       if (isValid) {
         return {
           authorized: true,
@@ -2953,8 +2988,7 @@ export async function handleAdminDashboardRequest(
         message:
           auth.reason ||
           "Cloudflare Access Zero Trust authentication required to access admin surface.",
-        docs:
-          "https://developers.cloudflare.com/cloudflare-one/access-controls/",
+        docs: "https://developers.cloudflare.com/cloudflare-one/access-controls/",
       }),
       {
         status: auth.status || 401,
@@ -3147,10 +3181,22 @@ export async function handleAdminDashboardRequest(
         unit: "dimensions",
       },
       // Flat aliases for /admin UI renderQuotas() compatibility
-      workers_daily: { used: dailyUsedRequests, limit: workersDailyLimit, is_exceeded: isWorkersExceeded },
+      workers_daily: {
+        used: dailyUsedRequests,
+        limit: workersDailyLimit,
+        is_exceeded: isWorkersExceeded,
+      },
       workers_monthly: { used: monthlyUsed, limit: workersMonthlyLimit },
-      d1_reads_daily: { used: effectiveReads, limit: d1ReadsDailyLimit, is_exceeded: isReadsExceeded },
-      d1_writes_daily: { used: effectiveWrites, limit: d1WritesDailyLimit, is_exceeded: isWritesExceeded },
+      d1_reads_daily: {
+        used: effectiveReads,
+        limit: d1ReadsDailyLimit,
+        is_exceeded: isReadsExceeded,
+      },
+      d1_writes_daily: {
+        used: effectiveWrites,
+        limit: d1WritesDailyLimit,
+        is_exceeded: isWritesExceeded,
+      },
       d1_storage: { used_mb: 12.4, limit_gb: 5 },
       r2_class_a_monthly: { used: 240, limit: 1000000 },
       r2_class_b_monthly: { used: 3420, limit: 10000000 },

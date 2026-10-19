@@ -42,7 +42,7 @@
       "!/site.webmanifest",
       "!/robots.txt",
       "!/sitemap*.xml",
-      "!/llms.txt"
+      "!/llms.txt",
     ],
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page",

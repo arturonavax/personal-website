@@ -48,7 +48,10 @@ async function listR2Keys(
       keys.push(obj.key);
       if (limit && keys.length >= limit) break;
     }
-    cursor = listed.truncated && (!limit || keys.length < limit) ? listed.cursor : undefined;
+    cursor =
+      listed.truncated && (!limit || keys.length < limit)
+        ? listed.cursor
+        : undefined;
   } while (cursor && (!limit || keys.length < limit));
   return keys;
 }

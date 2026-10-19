@@ -841,7 +841,9 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     );
     const content = fs.readFileSync(componentPath, "utf8");
 
-    expect(content).toContain('document.cookie = "ev_init=; Max-Age=0; Path=/; SameSite=Lax"');
+    expect(content).toContain(
+      'document.cookie = "ev_init=; Max-Age=0; Path=/; SameSite=Lax"',
+    );
     expect(content).toContain('window.addEventListener("pageshow"');
     expect(content).toContain("event.persisted");
     expect(content).toContain('sendEdgeVisitBeacon("bfcache")');
