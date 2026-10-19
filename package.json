@@ -21,6 +21,7 @@
     "preview": "astro preview --host",
     "check": "astro check",
     "typecheck": "astro check",
+    "types:worker": "wrangler types -c wrangler.jsonc",
     "test": "bun test",
     "audit": "bun scripts/audit-codebase.ts",
     "build:assets": "node scripts/generate-assets.mjs",
