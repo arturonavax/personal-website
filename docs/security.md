@@ -69,34 +69,44 @@ All fields are constrained and sanitized against buffer overflow and injection a
 The administration dashboard (`/admin`, `/:lang/admin`, `admin.arturonavax.dev`) provides real-time telemetry, lead management, and deployment controls. It is fortified with an airtight, multi-layered Zero-Trust architecture:
 
 ### 3.1. Canonical Path Normalization
+
 Before route matching or authentication checks, the edge Worker normalizes the incoming URL path:
+
 - Safely decodes percent-encoded characters (`decodeURIComponent`).
 - Collapses redundant slashes (`/\/+/g` → `'/'`).
 - Strips trailing `.html` extensions.
 - Evaluates a canonical lowercase copy (`normalizedLowerPath`), eliminating bypass vectors such as `/ADMIN`, `/Es//Admin`, or `/%61dmin/index.html`.
 
 ### 3.2. Post-Build HTML Vault Relocation (`scripts/isolate-admin-build.mjs`)
+
 Astro compiles admin templates into `dist/admin/index.html` and `dist/{locale}/admin/index.html`. To guarantee that static assets can **never** be served directly to unauthorized clients:
+
 - A post-build script runs immediately after `astro build`.
 - Moves the files to `dist/__admin_vault__/default/index.html` and `dist/__admin_vault__/{locale}/index.html`.
 - Purges the unvaulted `dist/admin` and `dist/{locale}/admin` directories.
 - External requests directly targeting `/__admin_vault__*` are rejected immediately with `HTTP 404 Not Found`.
 
 ### 3.3. Cryptographic Fail-Closed Authentication (`verifyAdminAccess`)
+
 Every request to an admin surface (`isAdminPage`) or protected endpoint (`isProtectedApi`) undergoes cryptographic verification:
+
 - **Cloudflare Access JWT (Method A):** Inspects `Cf-Access-Jwt-Assertion` header or `CF_Authorization` cookie. Public JWKS are retrieved from `https://${CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs` and cached in `caches.default` for 3,600s. The token signature is verified cryptographically using Web Crypto `RSASSA-PKCS1-v1_5`, alongside claims validation (`aud`, `iss`, `exp`, and email whitelist).
 - **Constant-Time Bearer Token (Method B):** Inspects `Authorization: Bearer <token>`, `X-Admin-Token`, or session cookie. Compares SHA-256 digests in constant time (`timingSafeEqualSha256`) via byte-by-byte XOR to prevent side-channel timing attacks.
 - **Fail-Closed Guarantee:** If authentication is unconfigured in `env`, the Worker immediately returns `HTTP 403 Forbidden`. Unauthenticated requests return `HTTP 401 Unauthorized` (or a Zero-Trust HTML challenge for browser document requests).
 - **Headers:** All unauthorized responses and admin surfaces enforce `Cache-Control: private, no-store, no-cache, must-revalidate`, `X-Robots-Tag: noindex, nofollow, noarchive`, and `X-Frame-Options: DENY`.
 
 ### 3.4. Internal Vault Rewrite
+
 Authorized admin page requests are rewritten internally:
+
 - The Worker determines the requested locale (`en`, `es`, or `default`).
 - Fetches the HTML shell internally from `env.ASSETS.fetch(new Request('/__admin_vault__/${localeKey}/index.html'))`.
 - Injects private no-store headers and sets `admin_session` cookies when authenticating via query token parameters (`?token=...`).
 
 ### 3.5. Universal Protected API Surfaces
+
 The following endpoints require valid Zero-Trust authentication:
+
 - Any endpoint matching `/api/admin/*`.
 - `/api/telemetry` (except the public telemetry collector `POST /api/telemetry/collect` and views count `GET /api/telemetry/views`).
 - `/api/metrics`, `/api/leads`, `/api/deployments`, and `/api/quota*`.

@@ -169,3 +169,23 @@ Rather than using invasive forced redirects (which break deep links and hurt SEO
 - Compares the visitor's `navigator.language` with the current page locale.
 - If a Spanish-speaking user lands on an English page, a discrete top banner offers: _"¿Prefieres leer en español? Ver versión en español"_.
 - State is isolated per session in `sessionStorage` (`lang_suggestion_dismissed`), ensuring it never re-appears after dismissal.
+
+---
+
+## 8. Google Search Console & Canonical Hardening (ODD Task 7)
+
+To resolve all GSC indexation exclusions and eliminate crawl-budget waste:
+
+1. **Strict Trailing Slash Normalization (`trailingSlash: "always"`):**
+   - All internal links in UI components (`Header.astro`, `BackToHomeButton.astro`, `PageIndexNav.astro`) and search index (`src/data/searchIndex.ts`) enforce trailing slashes (e.g. `/es/`, `/projects/fyld/`, `/resume/`).
+   - The Cloudflare Edge routing policy (`resolveCanonicalRedirect`) automatically executes a `301 Moved Permanently` redirect for any non-trailing-slash public HTML document request (`GET`/`HEAD`) to its canonical counterpart with trailing slash.
+   - All content detail layouts (`ArticleLayout.astro`, `BaseLayout.astro`) receive explicit canonical URLs.
+
+2. **Crawl Budget & Query Parameter Shielding:**
+   - Client-side company and category filter triggers on `/experience/` use `rel="nofollow"` and `data-company-filter` attributes to prevent search engine crawlers from entering combinatorial parameter traps (`?company=...`, `?filters=...`).
+   - `public/robots.txt` disallows all query parameter permutations across all search engines (`/*?q=`, `/*?company=`, `/*?filters=`, `/*?skill=`, `/*?tag=`).
+   - The edge Worker dynamically applies `X-Robots-Tag: noindex, nofollow` to any URL requested with search or filter parameters.
+
+3. **Case Studies & Search Route Directives:**
+   - `/case-studies/` and `/es/case-studies/` are unlocked in `public/robots.txt` and automatically included in `@astrojs/sitemap` with full multilingual `xhtml:link` alternates.
+   - `/search/` and `/es/search/` are allowed in `robots.txt` so crawlers can read their explicit `noindex, nofollow` headers (`X-Robots-Tag` and `<meta name="robots">`) without raising "Blocked by robots.txt" in GSC.

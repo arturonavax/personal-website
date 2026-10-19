@@ -234,3 +234,21 @@ Incoming emails sent to `@arturonavax.dev` (e.g. `arturo@arturonavax.dev`) are i
 - Processed by `email-worker.ts` via the `email(message, env, ctx)` handler.
 - Automatically validates SPF, DKIM, and DMARC headers.
 - Parses incoming messages and forwards authorized leads to verified personal destinations or webhook channels (Discord / Slack / Telegram).
+
+---
+
+## 7. Edge Trailing Slash Canonical 301 Redirects
+
+To prevent duplicate pageview telemetry and eliminate SEO cannibalization across non-canonical URLs:
+
+- **Hexagonal Delivery Port (`EdgeDeliveryPort`):** Extended with `resolveCanonicalRedirect(url: URL, method?: string)`.
+- **Cloudflare Edge Routing Policy:** In `cloudflare/worker.ts` and `src/lib/adapters/cloudflare/edge-routing-policy.adapter.ts`, `GET` and `HEAD` requests to HTML document paths lacking a trailing slash (excluding `/api/*`, `/admin*`, and static asset extensions) immediately return an HTTP 301 Moved Permanently redirect to the canonical path with a trailing slash (`https://arturonavax.dev${pathname}/${search}`).
+
+---
+
+## 8. TypeScript Bindings & Type Synchronization
+
+The project synchronizes Cloudflare Worker runtime bindings directly from `wrangler.jsonc` into `worker-configuration.d.ts`:
+
+- **Command:** `pnpm run types:worker` (executes `wrangler types -c wrangler.jsonc`).
+- Generates `__BaseEnv_Env` and ambient `Cloudflare.Env` types for D1, R2, Vectorize, Workers AI, Email Routing, and environment variables, keeping strict TypeScript checking 100% synchronized with the edge configuration.
