@@ -59,6 +59,10 @@ const initialCompanyFilterUrl = initialSim
             <a
               id="viewer-company-link"
               href={initialCompanyFilterUrl}
+              rel="nofollow"
+              data-company-filter={
+                initialSim ? initialSim.company.toLowerCase().trim() : undefined
+              }
               title={
                 isEs
                   ? `Ver trayectoria filtrada para ${initialSim.company}`
@@ -663,6 +667,11 @@ const initialCompanyFilterUrl = initialSim
             if (companyLinkEl) {
               companyLinkEl.textContent = "@" + comp;
               companyLinkEl.href = compFilterUrl;
+              companyLinkEl.rel = "nofollow";
+              companyLinkEl.setAttribute(
+                "data-company-filter",
+                comp.toLowerCase().trim(),
+              );
               companyLinkEl.title = isEs
                 ? "Ver trayectoria filtrada para " + comp
                 : "Filter timeline for " + comp;

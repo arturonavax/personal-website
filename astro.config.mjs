@@ -160,8 +160,7 @@ export default defineConfig({
         !page.includes("/admin/") &&
         !page.includes("/admin") &&
         !page.includes("/search") &&
-        !page.includes("/404") &&
-        !page.includes("/case-studies/"),
+        !page.includes("/404"),
 
       i18n: {
         defaultLocale: "en",

@@ -121,7 +121,11 @@ const {
             height: window.innerHeight,
             dpr: window.devicePixelRatio || 1,
           });
-        } else if (state.animationFrameId === null && !document.hidden && window.innerWidth >= 768) {
+        } else if (
+          state.animationFrameId === null &&
+          !document.hidden &&
+          window.innerWidth >= 768
+        ) {
           this.startRainLoop();
         }
         return;
@@ -392,10 +396,7 @@ const {
       const FRAME_INTERVAL = 60;
 
       const render = (now: number) => {
-        if (
-          document.hidden ||
-          window.innerWidth < 768
-        ) {
+        if (document.hidden || window.innerWidth < 768) {
           state.animationFrameId = null;
           return;
         }
@@ -474,7 +475,13 @@ const {
       });
     } else {
       const layer = document.querySelector("matrix-canvas-layer") as any;
-      if (layer && typeof layer.startRainLoop === "function" && state.animationFrameId === null && !document.hidden && window.innerWidth >= 768) {
+      if (
+        layer &&
+        typeof layer.startRainLoop === "function" &&
+        state.animationFrameId === null &&
+        !document.hidden &&
+        window.innerWidth >= 768
+      ) {
         layer.startRainLoop();
       }
     }

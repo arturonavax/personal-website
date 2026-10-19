@@ -385,9 +385,9 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     expect(spaBeaconRes.status).toBe(202);
     expect(count("telemetry_events")).toBe(2);
 
-    // (b) Real SSR navigation (/en/projects with Sec-Fetch-Mode: navigate) sets X-Edge-Visit-Logged: 1
+    // (b) Real SSR navigation (/en/projects/ with Sec-Fetch-Mode: navigate) sets X-Edge-Visit-Logged: 1
     //     and ev_init=1 cookie, and an immediate duplicate beacon from the same visitor is deduplicated at L1.
-    const ssrNavReq = new Request("https://arturonavax.dev/en/projects", {
+    const ssrNavReq = new Request("https://arturonavax.dev/en/projects/", {
       headers: {
         "user-agent": CHROME_UA,
         accept: "text/html",

@@ -1021,7 +1021,9 @@ html.lang-text-reacting .copy-feedback,
 #mobile-cv-print-btn,
 #mobile-cv-download-btn,
 #back-to-top-btn {
-  box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.3) !important;
+  box-shadow:
+    0 8px 24px -2px rgba(0, 0, 0, 0.45),
+    0 2px 6px -1px rgba(0, 0, 0, 0.3) !important;
 }
 
 .floating-hud-btn:hover,
@@ -1030,7 +1032,9 @@ html.lang-text-reacting .copy-feedback,
 #mobile-cv-print-btn:hover,
 #mobile-cv-download-btn:hover,
 #back-to-top-btn:hover {
-  box-shadow: 0 12px 28px -2px rgba(0, 0, 0, 0.6), 0 4px 10px -1px rgba(0, 0, 0, 0.4) !important;
+  box-shadow:
+    0 12px 28px -2px rgba(0, 0, 0, 0.6),
+    0 4px 10px -1px rgba(0, 0, 0, 0.4) !important;
 }
 
 html[data-theme="light"] .floating-hud-btn,
@@ -1039,7 +1043,9 @@ html[data-theme="light"] #open-index-floating-btn,
 html[data-theme="light"] #mobile-cv-print-btn,
 html[data-theme="light"] #mobile-cv-download-btn,
 html[data-theme="light"] #back-to-top-btn {
-  box-shadow: 0 8px 24px -2px rgba(15, 23, 42, 0.12), 0 2px 6px -1px rgba(15, 23, 42, 0.06) !important;
+  box-shadow:
+    0 8px 24px -2px rgba(15, 23, 42, 0.12),
+    0 2px 6px -1px rgba(15, 23, 42, 0.06) !important;
 }
 
 html[data-theme="light"] .floating-hud-btn:hover,
@@ -1048,7 +1054,9 @@ html[data-theme="light"] #open-index-floating-btn:hover,
 html[data-theme="light"] #mobile-cv-print-btn:hover,
 html[data-theme="light"] #mobile-cv-download-btn:hover,
 html[data-theme="light"] #back-to-top-btn:hover {
-  box-shadow: 0 12px 28px -2px rgba(15, 23, 42, 0.18), 0 4px 10px -1px rgba(15, 23, 42, 0.08) !important;
+  box-shadow:
+    0 12px 28px -2px rgba(15, 23, 42, 0.18),
+    0 4px 10px -1px rgba(15, 23, 42, 0.08) !important;
 }
 
 /* Strict Responsive Isolation between Desktop Page Index Sidebar and Floating HUD Button */
@@ -1057,7 +1065,9 @@ html[data-theme="light"] #back-to-top-btn:hover {
   display: none !important;
 }
 @media (min-width: 1600px) {
-  #desktop-page-index-root:not([data-has-sections="false"]):not(.is-empty):not(.force-hide-desktop) {
+  #desktop-page-index-root:not([data-has-sections="false"]):not(.is-empty):not(
+      .force-hide-desktop
+    ) {
     display: block !important;
   }
 }

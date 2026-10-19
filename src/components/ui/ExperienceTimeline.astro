@@ -113,6 +113,8 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
                 <!-- Click @Company links directly to timeline with company filter -->
                 <a
                   href={companyFilterUrl}
+                  rel="nofollow"
+                  data-company-filter={company.toLowerCase().trim()}
                   title={
                     locale === "es"
                       ? `Ver trayectoria filtrada para ${company}`

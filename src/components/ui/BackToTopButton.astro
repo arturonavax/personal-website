@@ -60,11 +60,7 @@ const isEs = locale === "es";
           "opacity-100",
           "translate-y-0",
         );
-        btn.classList.add(
-          "pointer-events-none",
-          "opacity-0",
-          "translate-y-2",
-        );
+        btn.classList.add("pointer-events-none", "opacity-0", "translate-y-2");
         if (!animate) {
           btn.classList.add("hidden");
         } else {
@@ -136,9 +132,13 @@ const isEs = locale === "es";
         }, 900);
       });
 
-      window.addEventListener("scroll", function () {
-        updateBackToTopVisibility(true);
-      }, { passive: true });
+      window.addEventListener(
+        "scroll",
+        function () {
+          updateBackToTopVisibility(true);
+        },
+        { passive: true },
+      );
 
       updateBackToTopVisibility(false);
     }

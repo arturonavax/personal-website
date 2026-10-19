@@ -19,6 +19,7 @@ interface Props {
   translationKey?: string | undefined;
   collectionName?: "posts" | "projects" | "experience" | "services" | undefined;
   availableLocales?: readonly Locale[] | undefined;
+  canonicalUrl?: string | undefined;
   bodyText?: string | undefined;
   repoUrl?: string | undefined;
   liveUrl?: string | undefined;
@@ -37,6 +38,7 @@ const {
   translationKey,
   collectionName,
   availableLocales,
+  canonicalUrl: customCanonicalUrl,
   bodyText,
   repoUrl,
   liveUrl,
@@ -48,7 +50,7 @@ const {
 const siteUrl = "https://arturonavax.dev";
 const rawPath = Astro.url.pathname;
 const normalizedPath = rawPath.endsWith("/") ? rawPath : `${rawPath}/`;
-const canonicalUrl = `${siteUrl}${normalizedPath}`;
+const canonicalUrl = customCanonicalUrl ?? `${siteUrl}${normalizedPath}`;
 
 const jsonLd =
   customJsonLd ??
@@ -79,6 +81,7 @@ const jsonLd =
 <BaseLayout
   title={title}
   description={description}
+  canonicalUrl={canonicalUrl}
   locale={locale}
   type="article"
   translationKey={translationKey}

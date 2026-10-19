@@ -42,11 +42,17 @@ export async function getStaticPaths() {
 const { post, currentLocale, availableLocales } = Astro.props;
 const { Content } = await render(post);
 const isEs = currentLocale === "es";
+
+const siteUrl = "https://arturonavax.dev";
+const rawPath = Astro.url.pathname;
+const normalizedPath = rawPath.endsWith("/") ? rawPath : `${rawPath}/`;
+const canonicalUrl = `${siteUrl}${normalizedPath}`;
 ---
 
 <ArticleLayout
   title={post.data.title}
   description={post.data.description}
+  canonicalUrl={canonicalUrl}
   locale={currentLocale}
   pubDate={post.data.pubDate}
   tags={post.data.tags}

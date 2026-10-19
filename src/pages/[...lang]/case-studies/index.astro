@@ -9,9 +9,6 @@ import { useTranslations } from "@/i18n/utils";
 import type { SupportedLocale } from "@/i18n/config";
 
 export function getStaticPaths() {
-  if (!simulationsData || simulationsData.length === 0) {
-    return [];
-  }
   return [
     { params: { lang: undefined }, props: { locale: "en" as const } },
     { params: { lang: "es" }, props: { locale: "es" as const } },
@@ -50,6 +47,13 @@ const companies = Object.entries(companyCounts).map(([name, count]) => ({
       ? "Simulaciones interactivas de arquitectura, telemetría de cargas en tiempo real y desgloses de métricas en producción para sistemas distribuidos y alta concurrencia."
       : "Interactive architectural simulations, real-time workload telemetry, and production metrics breakdowns across distributed systems and high-concurrency backends."
   }
+  canonicalUrl={
+    isEs
+      ? "https://arturonavax.dev/es/case-studies/"
+      : "https://arturonavax.dev/case-studies/"
+  }
+  availableLocales={["en", "es"]}
+  collectionName="case-studies"
   locale={locale}
 >
   <div class="mx-auto max-w-5xl px-2 min-[360px]:px-4 pt-1 sm:pt-3.5 lg:pt-5 pb-8 sm:pb-12 sm:px-6 space-y-5 sm:space-y-8">

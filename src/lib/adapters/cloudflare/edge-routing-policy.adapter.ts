@@ -123,7 +123,10 @@ export class CloudflareEdgeRoutingPolicy implements EdgeRoutingPolicyPort {
     return "PASSTHROUGH";
   }
 
-  resolveCanonicalRedirect(url: URL): CanonicalRedirectResult {
+  resolveCanonicalRedirect(
+    url: URL,
+    method: string = "GET",
+  ): CanonicalRedirectResult {
     const host = url.hostname.toLowerCase();
     const pathname = url.pathname;
 
@@ -147,6 +150,25 @@ export class CloudflareEdgeRoutingPolicy implements EdgeRoutingPolicyPort {
           statusCode: 308,
         };
       }
+    }
+
+    // Enforce 301 trailing-slash canonical redirects for public HTML document routes
+    const isGetOrHead = method === "GET" || method === "HEAD";
+    if (
+      isGetOrHead &&
+      pathname !== "/" &&
+      !pathname.endsWith("/") &&
+      !pathname.startsWith("/api/") &&
+      !pathname.startsWith("/__admin_vault__") &&
+      pathname !== "/admin" &&
+      !pathname.startsWith("/admin/") &&
+      !STATIC_EXT_REGEX.test(pathname)
+    ) {
+      return {
+        shouldRedirect: true,
+        targetUrl: `https://arturonavax.dev${pathname}/${url.search}`,
+        statusCode: 301,
+      };
     }
 
     return {

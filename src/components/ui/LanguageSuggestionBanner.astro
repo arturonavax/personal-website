@@ -45,7 +45,10 @@ const i18nData = {
     <span class="text-base select-none shrink-0" aria-hidden="true">
       🌐
     </span>
-    <span id="lang-suggestion-text" class="text-[11px] sm:text-xs font-normal leading-tight min-w-0">
+    <span
+      id="lang-suggestion-text"
+      class="text-[11px] sm:text-xs font-normal leading-tight min-w-0"
+    >
       {currentLocale === "en" ? (
         <>
           Contenido disponible en{" "}
@@ -74,7 +77,9 @@ const i18nData = {
       id="lang-suggestion-accept"
       class="inline-flex h-7 items-center justify-center rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2.5 text-[11px] font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer whitespace-nowrap"
     >
-      <span id="lang-suggestion-cta-text">{currentLocale === "en" ? "Cambiar" : "Switch"} &rarr;</span>
+      <span id="lang-suggestion-cta-text">
+        {currentLocale === "en" ? "Cambiar" : "Switch"} &rarr;
+      </span>
     </a>
 
     <button
@@ -186,11 +191,11 @@ const i18nData = {
       } catch (_) {}
 
       // 3. Detect device/browser language
-      var userLangs = (
-        navigator.languages || [navigator.language || ""]
-      ).map(function (l) {
-        return (l || "").toLowerCase().split("-")[0];
-      });
+      var userLangs = (navigator.languages || [navigator.language || ""]).map(
+        function (l) {
+          return (l || "").toLowerCase().split("-")[0];
+        },
+      );
 
       var deviceLang = null;
       for (var i = 0; i < userLangs.length; i++) {
@@ -265,11 +270,16 @@ const i18nData = {
       if (state.hasAnimatedIn) {
         // Ya se animó previamente en esta sesión: mantener visible y sólido sin re-animar ni saltos
         if (!banner.classList.contains("flex")) banner.classList.add("flex");
-        if (banner.classList.contains("hidden")) banner.classList.remove("hidden");
-        if (!banner.classList.contains("translate-y-0")) banner.classList.add("translate-y-0");
-        if (banner.classList.contains("translate-y-3")) banner.classList.remove("translate-y-3");
-        if (!banner.classList.contains("opacity-100")) banner.classList.add("opacity-100");
-        if (banner.classList.contains("opacity-0")) banner.classList.remove("opacity-0");
+        if (banner.classList.contains("hidden"))
+          banner.classList.remove("hidden");
+        if (!banner.classList.contains("translate-y-0"))
+          banner.classList.add("translate-y-0");
+        if (banner.classList.contains("translate-y-3"))
+          banner.classList.remove("translate-y-3");
+        if (!banner.classList.contains("opacity-100"))
+          banner.classList.add("opacity-100");
+        if (banner.classList.contains("opacity-0"))
+          banner.classList.remove("opacity-0");
       } else {
         // Primera aparición: animar entrada
         banner.classList.remove("hidden");

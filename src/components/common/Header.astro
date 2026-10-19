@@ -66,7 +66,7 @@ const hasAnyMoreCandidate =
   hasStaticMoreItems || hasServices || hasCaseStudies || hasProjects;
 
 const navBase = locale === "es" ? "/es" : "";
-const homeUrl = locale === "es" ? "/es" : "/";
+const homeUrl = locale === "es" ? "/es/" : "/";
 
 // Normalización con slash estricto para comprobaciones fiables de rutas
 const pathWithSlash = Astro.url.pathname.endsWith("/")
@@ -753,7 +753,10 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 }
               } else if (!link.hash || link.hash === "#about") {
                 e.preventDefault();
-                var isHome = currentPath === "/" || currentPath === "/es";
+                var isHome =
+                  currentPath === "/" ||
+                  currentPath === "/es" ||
+                  currentPath === "/es/";
                 if (isHome) {
                   setActiveSection("about");
                 } else {
@@ -1036,12 +1039,14 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
             }
           });
 
-          document.querySelectorAll("[data-lang-switch]").forEach(function (el) {
-            var lang = el.getAttribute("data-lang-switch");
-            if (lang && targetUrls[lang]) {
-              el.setAttribute("href", targetUrls[lang]);
-            }
-          });
+          document
+            .querySelectorAll("[data-lang-switch]")
+            .forEach(function (el) {
+              var lang = el.getAttribute("data-lang-switch");
+              if (lang && targetUrls[lang]) {
+                el.setAttribute("href", targetUrls[lang]);
+              }
+            });
         }
       }
     }

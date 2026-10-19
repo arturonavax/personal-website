@@ -494,9 +494,7 @@ describe("SPEC-012: Edge AEO, AI Content Negotiation & Automated IndexNow (TASK 
       "utf8",
     );
 
-    expect(headers).toContain(
-      "X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
-    );
+    expect(headers).toContain("X-Robots-Tag: noindex, nofollow");
     expect(headers).toContain("X-Robots-Tag: noindex, nofollow, noarchive");
     expect(headers).toContain("Vary: Accept");
     expect(headers).toContain(
@@ -584,7 +582,9 @@ describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants"
     expect(wrangler.main).toBe("./cloudflare/entrypoint.ts");
     const entrypointModule = await import("../../cloudflare/entrypoint");
     expect(typeof entrypointModule.default?.fetch).toBe("function");
-    const namedExports = Object.keys(entrypointModule).filter((k) => k !== "default");
+    const namedExports = Object.keys(entrypointModule).filter(
+      (k) => k !== "default",
+    );
     expect(namedExports).toHaveLength(0);
     expect(Array.isArray(wrangler.assets.run_worker_first)).toBe(true);
     expect(wrangler.assets.run_worker_first).toContain("/admin*");

@@ -60,7 +60,7 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         meta: p.data.company ?? p.data.role,
         tags: p.data.techStack,
         keywords,
-        url: `/projects/${slug}`,
+        url: `/projects/${slug}/`,
         priority: p.data.featured
           ? 95
           : Math.max(50, 90 - (p.data.order || 0) * 5),
@@ -196,7 +196,7 @@ export async function getSegmentedSearchDocuments(): Promise<SegmentedSearchInde
         meta: `${exp.data.company} • ${exp.data.companyIndustry || compInfo.industryEs || compInfo.industry}`,
         tags: exp.data.skills,
         keywords,
-        url: `/es/experience/${slug}`,
+        url: `/es/experience/${slug}/`,
         priority: 75,
       };
     }),

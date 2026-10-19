@@ -543,7 +543,10 @@ export default {
       }
     }
 
-    const redirect = routingPolicy.resolveCanonicalRedirect(url);
+    const redirect = routingPolicy.resolveCanonicalRedirect(
+      url,
+      request.method,
+    );
     if (redirect.shouldRedirect && redirect.targetUrl) {
       return Response.redirect(redirect.targetUrl, redirect.statusCode);
     }
@@ -855,8 +858,20 @@ export default {
         headers.set("Vary", "Accept");
       }
 
+      const isSearchRoute = /^\/(?:es\/)?search(?:\/|$)/.test(
+        normalizedLowerPath,
+      );
+      const hasFilterOrSearchQuery =
+        url.searchParams.has("q") ||
+        url.searchParams.has("company") ||
+        url.searchParams.has("filters") ||
+        url.searchParams.has("skill") ||
+        url.searchParams.has("tag");
+
       if (isAdminSurfacePath(pathname)) {
         headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+      } else if (isSearchRoute || hasFilterOrSearchQuery) {
+        headers.set("X-Robots-Tag", "noindex, nofollow");
       } else if (response.status === 200) {
         headers.set(
           "X-Robots-Tag",

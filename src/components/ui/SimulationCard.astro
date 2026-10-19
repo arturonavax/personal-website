@@ -50,6 +50,8 @@ const jobDetailUrl = isEs
         >
           <a
             href={companyFilterUrl}
+            rel="nofollow"
+            data-company-filter={simulation.company.toLowerCase().trim()}
             title={
               isEs
                 ? `Ver trayectoria filtrada para ${simulation.company}`

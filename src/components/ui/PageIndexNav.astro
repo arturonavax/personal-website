@@ -27,8 +27,12 @@ interface Props {
   downloadUrl?: string | undefined;
 }
 
-const currentPath = (Astro.url.pathname || "").replace(/\/+$/, "") || "/";
-const isResumeRoute = currentPath === "/resume" || currentPath === "/es/resume";
+const normalizedPath = Astro.url.pathname.endsWith("/")
+  ? Astro.url.pathname
+  : `${Astro.url.pathname}/`;
+const currentPath = normalizedPath;
+const isResumeRoute =
+  normalizedPath === "/resume/" || normalizedPath === "/es/resume/";
 
 const {
   locale,
@@ -180,7 +184,8 @@ const i18nEs = {
 };
 
 const isCvPage = containerMaxWidth === "cv";
-const isJobPage = containerMaxWidth === "4xl" || currentPath.includes("/experience/");
+const isJobPage =
+  containerMaxWidth === "4xl" || currentPath.includes("/experience/");
 const topValue = isCvPage
   ? "calc(5rem + 1px)"
   : isJobPage
@@ -211,7 +216,10 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
     class="page-index-fixed fixed inset-x-0 pointer-events-none z-30 select-none transition-[opacity,transform] duration-200"
     style={`top: ${topValue};`}
   >
-    <div id="desktop-page-index-maxw" class={`mx-auto ${containerMaxClass} relative`}>
+    <div
+      id="desktop-page-index-maxw"
+      class={`mx-auto ${containerMaxClass} relative`}
+    >
       <aside
         id="desktop-page-index"
         aria-label={isEs ? i18nEs.indexAria : i18nEn.indexAria}
@@ -222,14 +230,20 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
           <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2.5 mb-3 text-[11px] uppercase tracking-wider text-[var(--color-text-muted)]">
             <span class="flex items-center gap-2">
               <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
-              <span id="desktop-index-title" class="font-bold text-[var(--color-text-primary)]">
+              <span
+                id="desktop-index-title"
+                class="font-bold text-[var(--color-text-primary)]"
+              >
                 {isEs ? i18nEs.indexTitle : i18nEn.indexTitle}
               </span>
             </span>
             <span class="text-[10px] text-[var(--color-accent-gold)]">NAV</span>
           </div>
 
-          <nav id="desktop-toc-nav" class="space-y-2 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-[var(--color-surface-border-subtle)]">
+          <nav
+            id="desktop-toc-nav"
+            class="space-y-2 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-[var(--color-surface-border-subtle)]"
+          >
             {indexItems.map((item) => (
               <div>
                 <a
@@ -266,7 +280,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
           </nav>
 
           <div class="mt-3 pt-2.5 border-t border-[var(--color-surface-border-subtle)] flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none">
-            <span id="desktop-scroll-label">{isEs ? i18nEs.scroll : i18nEn.scroll}</span>
+            <span id="desktop-scroll-label">
+              {isEs ? i18nEs.scroll : i18nEn.scroll}
+            </span>
             <span class="flex items-center gap-1 font-semibold">
               <kbd
                 data-vim-key="j"
@@ -315,7 +331,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            <span class="truncate">{isEs ? i18nEs.download : i18nEn.download}</span>
+            <span class="truncate">
+              {isEs ? i18nEs.download : i18nEn.download}
+            </span>
           </a>
 
           <button
@@ -349,10 +367,7 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
   </div>
 
   <!-- MODE B: FLOATING ACCORDION BUTTON (<1600px Viewport) -->
-  <div
-    id="mobile-page-index-root"
-    class="contents pointer-events-none"
-  >
+  <div id="mobile-page-index-root" class="contents pointer-events-none">
     <div
       id="mobile-page-index-container"
       data-has-sections="true"
@@ -384,7 +399,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
               <line x1="3" y1="12" x2="3.01" y2="12"></line>
               <line x1="3" y1="18" x2="3.01" y2="18"></line>
             </svg>
-            <span id="mobile-panel-title">{isEs ? i18nEs.sectionsTitle : i18nEn.sectionsTitle}</span>
+            <span id="mobile-panel-title">
+              {isEs ? i18nEs.sectionsTitle : i18nEn.sectionsTitle}
+            </span>
           </span>
           <button
             type="button"
@@ -458,7 +475,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
         </div>
 
         <div class="hidden sm:flex border-t border-[var(--color-surface-border-subtle)] px-3.5 py-2 items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none shrink-0 bg-[var(--color-surface-card)] z-20">
-          <span id="mobile-scroll-label">{isEs ? i18nEs.scroll : i18nEn.scroll}</span>
+          <span id="mobile-scroll-label">
+            {isEs ? i18nEs.scroll : i18nEn.scroll}
+          </span>
           <span class="flex items-center gap-1 font-semibold">
             <kbd
               data-vim-key="j"
@@ -501,7 +520,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
           <line x1="3" y1="12" x2="3.01" y2="12"></line>
           <line x1="3" y1="18" x2="3.01" y2="18"></line>
         </svg>
-        <span id="mobile-index-label" class="shrink-0">{isEs ? i18nEs.indexTitle : i18nEn.indexTitle}</span>
+        <span id="mobile-index-label" class="shrink-0">
+          {isEs ? i18nEs.indexTitle : i18nEn.indexTitle}
+        </span>
         <kbd class="hidden sm:inline-block rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] font-semibold shrink-0">
           i
         </kbd>
@@ -562,7 +583,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          <span class="shrink-0">{isEs ? i18nEs.download : i18nEn.download}</span>
+          <span class="shrink-0">
+            {isEs ? i18nEs.download : i18nEn.download}
+          </span>
         </a>
       </div>
     </div>
@@ -575,7 +598,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
     display: none !important;
   }
   @media (min-width: 1600px) {
-    #desktop-page-index-root:not([data-has-sections="false"]):not(.is-empty):not(.force-hide-desktop) {
+    #desktop-page-index-root:not([data-has-sections="false"]):not(
+        .is-empty
+      ):not(.force-hide-desktop) {
       display: block !important;
     }
   }
@@ -611,7 +636,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
   }
 
   #mobile-page-index-container {
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    transition:
+      transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 0.2s ease;
   }
   #open-index-floating-btn,
   #mobile-cv-print-btn,
@@ -736,7 +763,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
 
     function syncResponsiveMode() {
       var desktopRoot = document.getElementById("desktop-page-index-root");
-      var mobileContainer = document.getElementById("mobile-page-index-container");
+      var mobileContainer = document.getElementById(
+        "mobile-page-index-container",
+      );
       var maxw = document.getElementById("desktop-page-index-maxw");
       if (!desktopRoot || !mobileContainer) return;
 
@@ -998,7 +1027,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
         if (span) span.textContent = i18n.print;
       }
 
-      var desktopDownloadBtn = document.getElementById("desktop-cv-download-btn");
+      var desktopDownloadBtn = document.getElementById(
+        "desktop-cv-download-btn",
+      );
       if (desktopDownloadBtn) {
         desktopDownloadBtn.setAttribute("aria-label", i18n.downloadTitle);
         desktopDownloadBtn.setAttribute("title", i18n.downloadTitle);
@@ -1017,7 +1048,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
 
     function scanSections(main, isEs) {
       // 1. Check for page-index-custom-items JSON override (e.g. from /resume/ or /experience/[slug])
-      var customScript = (main && main.querySelector("#page-index-custom-items")) || document.getElementById("page-index-custom-items");
+      var customScript =
+        (main && main.querySelector("#page-index-custom-items")) ||
+        document.getElementById("page-index-custom-items");
       if (customScript && customScript.textContent) {
         try {
           var parsed = JSON.parse(customScript.textContent);
@@ -1029,17 +1062,61 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
 
       // 2. Default homepage sections check
       var defaultHomeItems = [
-        { id: "about", label: "Profile / Executive Summary", labelEs: "Perfil / Resumen Ejecutivo" },
-        { id: "metrics", label: "Operational Metrics Grid", labelEs: "Métricas Operacionales" },
-        { id: "philosophies", label: "Architectural Principles", labelEs: "Principios de Arquitectura" },
-        { id: "ai-workflow", label: "AI Engineering Workflow", labelEs: "Flujo de Ingeniería con IA" },
-        { id: "experience", label: "Engineering Timeline", labelEs: "Trayectoria & Experiencia" },
-        { id: "projects", label: "Distributed Architectures", labelEs: "Sistemas Distribuidos" },
-        { id: "services", label: "Technical Services & Advisory", labelEs: "Servicios Técnicos & Asesoría" },
-        { id: "telemetry", label: "Architecture Case Studies & Telemetry", labelEs: "Casos de Estudio & Telemetría" },
-        { id: "blog", label: "Blog & Systems Notes", labelEs: "Blog & Notas de Sistemas" },
-        { id: "contact", label: "Direct Channels & Contact", labelEs: "Canales Directos & Contacto" },
-        { id: "coffee", label: "Buy Me a Coffee & Support ☕", labelEs: "Invítame un Café ☕" },
+        {
+          id: "about",
+          label: "Profile / Executive Summary",
+          labelEs: "Perfil / Resumen Ejecutivo",
+        },
+        {
+          id: "metrics",
+          label: "Operational Metrics Grid",
+          labelEs: "Métricas Operacionales",
+        },
+        {
+          id: "philosophies",
+          label: "Architectural Principles",
+          labelEs: "Principios de Arquitectura",
+        },
+        {
+          id: "ai-workflow",
+          label: "AI Engineering Workflow",
+          labelEs: "Flujo de Ingeniería con IA",
+        },
+        {
+          id: "experience",
+          label: "Engineering Timeline",
+          labelEs: "Trayectoria & Experiencia",
+        },
+        {
+          id: "projects",
+          label: "Distributed Architectures",
+          labelEs: "Sistemas Distribuidos",
+        },
+        {
+          id: "services",
+          label: "Technical Services & Advisory",
+          labelEs: "Servicios Técnicos & Asesoría",
+        },
+        {
+          id: "telemetry",
+          label: "Architecture Case Studies & Telemetry",
+          labelEs: "Casos de Estudio & Telemetría",
+        },
+        {
+          id: "blog",
+          label: "Blog & Systems Notes",
+          labelEs: "Blog & Notas de Sistemas",
+        },
+        {
+          id: "contact",
+          label: "Direct Channels & Contact",
+          labelEs: "Canales Directos & Contacto",
+        },
+        {
+          id: "coffee",
+          label: "Buy Me a Coffee & Support ☕",
+          labelEs: "Invítame un Café ☕",
+        },
       ];
 
       var foundHomeItems = [];
@@ -1054,22 +1131,35 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       }
 
       // 3. Dynamic scan of sections/headings inside <main id="main-content">
-      var candidates = main.querySelectorAll("section[id], article[id], h2[id], h2, [data-index-section]");
+      var candidates = main.querySelectorAll(
+        "section[id], article[id], h2[id], h2, [data-index-section]",
+      );
       var dynamicItems = [];
       candidates.forEach(function (el) {
         if (el.closest("dialog, [aria-hidden='true'], footer, aside")) return;
         var id = el.id || el.getAttribute("data-index-section");
         if (!id && el.tagName === "H2" && el.textContent) {
-          id = el.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+          id = el.textContent
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
           if (id) el.id = id;
         }
         if (!id || id === "main-content") return;
-        var label = el.getAttribute("data-index-title") ||
-                    el.getAttribute("aria-label") ||
-                    el.querySelector("h2, h3, h1")?.textContent ||
-                    el.textContent || "";
+        var label =
+          el.getAttribute("data-index-title") ||
+          el.getAttribute("aria-label") ||
+          el.querySelector("h2, h3, h1")?.textContent ||
+          el.textContent ||
+          "";
         var clean = sanitizeNavLabel(label);
-        if (clean.length > 0 && !dynamicItems.some(function (d) { return d.id === id; })) {
+        if (
+          clean.length > 0 &&
+          !dynamicItems.some(function (d) {
+            return d.id === id;
+          })
+        ) {
           dynamicItems.push({ id: id, label: clean, labelEs: clean });
         }
       });
@@ -1078,88 +1168,157 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
     }
 
     function rebuildToc(items, isEs) {
-      sectionIds = items.map(function (it) { return it.id; });
+      sectionIds = items.map(function (it) {
+        return it.id;
+      });
       var desktopNav = document.getElementById("desktop-toc-nav");
       var mobileNav = document.getElementById("mobile-toc-nav");
 
       if (desktopNav) {
-        desktopNav.innerHTML = items.map(function (item) {
-          var label = sanitizeNavLabel(isEs ? (item.labelEs || item.label) : (item.label || item.labelEs));
-          var subHtml = "";
-          if (item.subitems && item.subitems.length > 0) {
-            subHtml = '<div class="pl-4 space-y-2 mt-2">' +
-              item.subitems.map(function (sub) {
-                var subLabel = sanitizeNavLabel(isEs ? (sub.labelEs || sub.label) : (sub.label || sub.labelEs));
-                return '<a href="#' + sub.id + '" data-index-link="' + sub.id + '" class="group flex min-h-[28px] items-center gap-1.5 py-1 pl-3 pr-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors rounded">' +
-                  '<span class="text-[var(--color-surface-border)] group-hover:text-[var(--color-accent-gold)]">-</span>' +
-                  '<span class="truncate">' + subLabel + '</span>' +
-                '</a>';
-              }).join("") +
-            '</div>';
-          }
-          return '<div>' +
-            '<a href="#' + item.id + '" data-index-link="' + item.id + '" class="group flex min-h-[32px] items-center gap-2 py-1.5 pl-3.5 pr-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors">' +
-              '<span class="h-1 w-1 rounded-full bg-[var(--color-surface-border)] group-hover:bg-[var(--color-accent-gold)] transition-colors shrink-0"></span>' +
-              '<span class="truncate">' + label + '</span>' +
-            '</a>' + subHtml +
-          '</div>';
-        }).join("");
-
-        desktopNav.querySelectorAll("[data-index-link]").forEach(function (link) {
-          link.addEventListener("click", function (e) {
-            var targetId = link.getAttribute("data-index-link");
-            if (targetId) {
-              e.preventDefault();
-              scrollToTarget(targetId);
+        desktopNav.innerHTML = items
+          .map(function (item) {
+            var label = sanitizeNavLabel(
+              isEs ? item.labelEs || item.label : item.label || item.labelEs,
+            );
+            var subHtml = "";
+            if (item.subitems && item.subitems.length > 0) {
+              subHtml =
+                '<div class="pl-4 space-y-2 mt-2">' +
+                item.subitems
+                  .map(function (sub) {
+                    var subLabel = sanitizeNavLabel(
+                      isEs
+                        ? sub.labelEs || sub.label
+                        : sub.label || sub.labelEs,
+                    );
+                    return (
+                      '<a href="#' +
+                      sub.id +
+                      '" data-index-link="' +
+                      sub.id +
+                      '" class="group flex min-h-[28px] items-center gap-1.5 py-1 pl-3 pr-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors rounded">' +
+                      '<span class="text-[var(--color-surface-border)] group-hover:text-[var(--color-accent-gold)]">-</span>' +
+                      '<span class="truncate">' +
+                      subLabel +
+                      "</span>" +
+                      "</a>"
+                    );
+                  })
+                  .join("") +
+                "</div>";
             }
+            return (
+              "<div>" +
+              '<a href="#' +
+              item.id +
+              '" data-index-link="' +
+              item.id +
+              '" class="group flex min-h-[32px] items-center gap-2 py-1.5 pl-3.5 pr-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors">' +
+              '<span class="h-1 w-1 rounded-full bg-[var(--color-surface-border)] group-hover:bg-[var(--color-accent-gold)] transition-colors shrink-0"></span>' +
+              '<span class="truncate">' +
+              label +
+              "</span>" +
+              "</a>" +
+              subHtml +
+              "</div>"
+            );
+          })
+          .join("");
+
+        desktopNav
+          .querySelectorAll("[data-index-link]")
+          .forEach(function (link) {
+            link.addEventListener("click", function (e) {
+              var targetId = link.getAttribute("data-index-link");
+              if (targetId) {
+                e.preventDefault();
+                scrollToTarget(targetId);
+              }
+            });
           });
-        });
       }
 
       if (mobileNav) {
-        mobileNav.innerHTML = items.map(function (item) {
-          var label = sanitizeNavLabel(isEs ? (item.labelEs || item.label) : (item.label || item.labelEs));
-          var subHtml = "";
-          if (item.subitems && item.subitems.length > 0) {
-            subHtml = '<div class="pl-3.5 space-y-0.5 mt-0.5 border-l border-[var(--color-surface-border-subtle)] ml-2">' +
-              item.subitems.map(function (sub) {
-                var subLabel = sanitizeNavLabel(isEs ? (sub.labelEs || sub.label) : (sub.label || sub.labelEs));
-                return '<a href="#' + sub.id + '" data-mobile-index-link="' + sub.id + '" class="flex min-h-[38px] items-center gap-2 py-1.5 px-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors rounded active:scale-[0.99]">' +
-                  '<span class="text-[var(--color-accent-gold)] text-sm">&bull;</span>' +
-                  '<span class="truncate">' + subLabel + '</span>' +
-                '</a>';
-              }).join("") +
-            '</div>';
-          }
-          return '<div>' +
-            '<a href="#' + item.id + '" data-mobile-index-link="' + item.id + '" class="flex min-h-[44px] items-center justify-between py-2 px-2.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/50 transition-colors active:scale-[0.99]">' +
-              '<span class="truncate">' + label + '</span>' +
-              '<span class="text-xs text-[var(--color-text-muted)] ml-2">&rarr;</span>' +
-            '</a>' + subHtml +
-          '</div>';
-        }).join("");
-
-        mobileNav.querySelectorAll("[data-mobile-index-link]").forEach(function (link) {
-          link.addEventListener("click", function (e) {
-            var targetId = link.getAttribute("data-mobile-index-link");
-            if (targetId) {
-              e.preventDefault();
-              var panel = document.getElementById("index-expanded-panel");
-              var floatingBtn = document.getElementById("open-index-floating-btn");
-              if (panel) panel.classList.add("hidden");
-              if (floatingBtn) floatingBtn.setAttribute("aria-expanded", "false");
-              scrollToTarget(targetId);
+        mobileNav.innerHTML = items
+          .map(function (item) {
+            var label = sanitizeNavLabel(
+              isEs ? item.labelEs || item.label : item.label || item.labelEs,
+            );
+            var subHtml = "";
+            if (item.subitems && item.subitems.length > 0) {
+              subHtml =
+                '<div class="pl-3.5 space-y-0.5 mt-0.5 border-l border-[var(--color-surface-border-subtle)] ml-2">' +
+                item.subitems
+                  .map(function (sub) {
+                    var subLabel = sanitizeNavLabel(
+                      isEs
+                        ? sub.labelEs || sub.label
+                        : sub.label || sub.labelEs,
+                    );
+                    return (
+                      '<a href="#' +
+                      sub.id +
+                      '" data-mobile-index-link="' +
+                      sub.id +
+                      '" class="flex min-h-[38px] items-center gap-2 py-1.5 px-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors rounded active:scale-[0.99]">' +
+                      '<span class="text-[var(--color-accent-gold)] text-sm">&bull;</span>' +
+                      '<span class="truncate">' +
+                      subLabel +
+                      "</span>" +
+                      "</a>"
+                    );
+                  })
+                  .join("") +
+                "</div>";
             }
+            return (
+              "<div>" +
+              '<a href="#' +
+              item.id +
+              '" data-mobile-index-link="' +
+              item.id +
+              '" class="flex min-h-[44px] items-center justify-between py-2 px-2.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/50 transition-colors active:scale-[0.99]">' +
+              '<span class="truncate">' +
+              label +
+              "</span>" +
+              '<span class="text-xs text-[var(--color-text-muted)] ml-2">&rarr;</span>' +
+              "</a>" +
+              subHtml +
+              "</div>"
+            );
+          })
+          .join("");
+
+        mobileNav
+          .querySelectorAll("[data-mobile-index-link]")
+          .forEach(function (link) {
+            link.addEventListener("click", function (e) {
+              var targetId = link.getAttribute("data-mobile-index-link");
+              if (targetId) {
+                e.preventDefault();
+                var panel = document.getElementById("index-expanded-panel");
+                var floatingBtn = document.getElementById(
+                  "open-index-floating-btn",
+                );
+                if (panel) panel.classList.add("hidden");
+                if (floatingBtn)
+                  floatingBtn.setAttribute("aria-expanded", "false");
+                scrollToTarget(targetId);
+              }
+            });
           });
-        });
       }
     }
 
     function checkIsResumePage() {
-      var rawPath = (window.location.pathname || "").replace(/\/+$/, "") || "/";
-      var isExactResumePath = rawPath === "/resume" || rawPath === "/es/resume";
+      var rawPath = window.location.pathname || "/";
+      var pathWithSlash = rawPath.endsWith("/") ? rawPath : rawPath + "/";
+      var isExactResumePath =
+        pathWithSlash === "/resume/" || pathWithSlash === "/es/resume/";
       var hasCvSheet = Boolean(document.getElementById("cv-document-sheet"));
-      var isResumeMaker = rawPath.indexOf("/tools/resume-maker") !== -1 || Boolean(document.getElementById("resume-maker-app"));
+      var isResumeMaker =
+        pathWithSlash.indexOf("/tools/resume-maker") !== -1 ||
+        Boolean(document.getElementById("resume-maker-app"));
       return (isExactResumePath || hasCvSheet) && !isResumeMaker;
     }
 
@@ -1187,7 +1346,10 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       }
 
       var rawPath = (window.location.pathname || "").replace(/\/+$/, "") || "/";
-      var isJob = (rawPath.indexOf("/experience/") !== -1 || /^\/(es\/)?experience\/.+/.test(rawPath)) && !isCv;
+      var isJob =
+        (rawPath.indexOf("/experience/") !== -1 ||
+          /^\/(es\/)?experience\/.+/.test(rawPath)) &&
+        !isCv;
 
       if (maxwContainer) {
         if (isCv) {
@@ -1212,23 +1374,33 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       alignDesktopIndex();
 
       if (isCv) {
-        var downloadUrl = isEs ? "/downloads/ArturoNava-CV-es.pdf" : "/downloads/ArturoNava-CV-en.pdf";
+        var downloadUrl = isEs
+          ? "/downloads/ArturoNava-CV-es.pdf"
+          : "/downloads/ArturoNava-CV-en.pdf";
         var desktopDown = document.getElementById("desktop-cv-download-btn");
         if (desktopDown) {
           desktopDown.setAttribute("href", downloadUrl);
-          desktopDown.setAttribute("download", isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf");
+          desktopDown.setAttribute(
+            "download",
+            isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf",
+          );
         }
         var mobileDown = document.getElementById("mobile-cv-download-btn");
         if (mobileDown) {
           mobileDown.setAttribute("href", downloadUrl);
-          mobileDown.setAttribute("download", isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf");
+          mobileDown.setAttribute(
+            "download",
+            isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf",
+          );
         }
       }
     }
 
     function attachScrollSpy() {
       var sectionEls = sectionIds
-        .map(function (id) { return document.getElementById(id); })
+        .map(function (id) {
+          return document.getElementById(id);
+        })
         .filter(Boolean);
 
       if (sectionEls.length === 0) return;
@@ -1326,7 +1498,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
         };
         window.addEventListener("resize", onResize, { passive: true });
         if (window.visualViewport) {
-          window.visualViewport.addEventListener("resize", onResize, { passive: true });
+          window.visualViewport.addEventListener("resize", onResize, {
+            passive: true,
+          });
         }
         var mql = window.matchMedia("(min-width: 1600px)");
         if (mql && typeof mql.addEventListener === "function") {
@@ -1446,7 +1620,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
               e.preventDefault();
               e.stopPropagation();
               togglePanel(false);
-              var currentBtn = document.getElementById("open-index-floating-btn");
+              var currentBtn = document.getElementById(
+                "open-index-floating-btn",
+              );
               if (currentBtn) currentBtn.focus();
               return;
             }
@@ -1492,7 +1668,11 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
             var printBtn =
               document.getElementById("desktop-cv-print-btn") ||
               document.getElementById("mobile-cv-print-btn");
-            if (printBtn && !printBtn.closest(".hidden") && printBtn.style.display !== "none") {
+            if (
+              printBtn &&
+              !printBtn.closest(".hidden") &&
+              printBtn.style.display !== "none"
+            ) {
               e.preventDefault();
               printBtn.click();
             }
@@ -1584,13 +1764,21 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
 
       // Run two-phase lifecycle pre-paint synchronization
       var desktopRoot = document.getElementById("desktop-page-index-root");
-      var mobileContainer = document.getElementById("mobile-page-index-container");
+      var mobileContainer = document.getElementById(
+        "mobile-page-index-container",
+      );
       var shell = document.getElementById("page-index-nav-shell");
-      var main = document.getElementById("main-content") || document.querySelector("main");
+      var main =
+        document.getElementById("main-content") ||
+        document.querySelector("main");
 
-      var currentLang = document.documentElement.getAttribute("data-current-locale") ||
-                        document.documentElement.getAttribute("lang") ||
-                        (window.location.pathname.indexOf("/es/") === 0 || window.location.pathname === "/es" ? "es" : "en");
+      var currentLang =
+        document.documentElement.getAttribute("data-current-locale") ||
+        document.documentElement.getAttribute("lang") ||
+        (window.location.pathname.indexOf("/es/") === 0 ||
+        window.location.pathname === "/es"
+          ? "es"
+          : "en");
       var isLangEs = currentLang === "es";
 
       // ALWAYS update CV button visibility first thing before anything else
@@ -1611,20 +1799,50 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
         var scanned = scanSections(main, isLangEs);
         var hasSections = scanned.length > 0;
 
-        if (shell) shell.setAttribute("data-has-sections", hasSections ? "true" : "false");
-        if (desktopRoot) desktopRoot.setAttribute("data-has-sections", hasSections ? "true" : "false");
-        if (mobileContainer) mobileContainer.setAttribute("data-has-sections", hasSections ? "true" : "false");
+        if (shell)
+          shell.setAttribute(
+            "data-has-sections",
+            hasSections ? "true" : "false",
+          );
+        if (desktopRoot)
+          desktopRoot.setAttribute(
+            "data-has-sections",
+            hasSections ? "true" : "false",
+          );
+        if (mobileContainer)
+          mobileContainer.setAttribute(
+            "data-has-sections",
+            hasSections ? "true" : "false",
+          );
         window.__hasPageIndex = hasSections;
 
         if (hasSections) {
           if (desktopRoot) {
-            desktopRoot.classList.remove("opacity-0", "pointer-events-none", "translate-y-2", "is-empty");
-            desktopRoot.classList.add("opacity-100", "pointer-events-auto", "translate-y-0");
+            desktopRoot.classList.remove(
+              "opacity-0",
+              "pointer-events-none",
+              "translate-y-2",
+              "is-empty",
+            );
+            desktopRoot.classList.add(
+              "opacity-100",
+              "pointer-events-auto",
+              "translate-y-0",
+            );
             desktopRoot.setAttribute("data-has-sections", "true");
           }
           if (mobileContainer) {
-            mobileContainer.classList.remove("opacity-0", "pointer-events-none", "translate-y-2", "is-empty");
-            mobileContainer.classList.add("opacity-100", "pointer-events-auto", "translate-y-0");
+            mobileContainer.classList.remove(
+              "opacity-0",
+              "pointer-events-none",
+              "translate-y-2",
+              "is-empty",
+            );
+            mobileContainer.classList.add(
+              "opacity-100",
+              "pointer-events-auto",
+              "translate-y-0",
+            );
             mobileContainer.setAttribute("data-has-sections", "true");
           }
           rebuildToc(scanned, isLangEs);
@@ -1633,13 +1851,31 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
           syncResponsiveMode();
         } else {
           if (desktopRoot) {
-            desktopRoot.classList.remove("opacity-100", "pointer-events-auto", "translate-y-0");
-            desktopRoot.classList.add("opacity-0", "pointer-events-none", "translate-y-2", "is-empty");
+            desktopRoot.classList.remove(
+              "opacity-100",
+              "pointer-events-auto",
+              "translate-y-0",
+            );
+            desktopRoot.classList.add(
+              "opacity-0",
+              "pointer-events-none",
+              "translate-y-2",
+              "is-empty",
+            );
             desktopRoot.setAttribute("data-has-sections", "false");
           }
           if (mobileContainer) {
-            mobileContainer.classList.remove("opacity-100", "pointer-events-auto", "translate-y-0");
-            mobileContainer.classList.add("opacity-0", "pointer-events-none", "translate-y-2", "is-empty");
+            mobileContainer.classList.remove(
+              "opacity-100",
+              "pointer-events-auto",
+              "translate-y-0",
+            );
+            mobileContainer.classList.add(
+              "opacity-0",
+              "pointer-events-none",
+              "translate-y-2",
+              "is-empty",
+            );
             mobileContainer.setAttribute("data-has-sections", "false");
           }
         }
@@ -1650,7 +1886,8 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
         if (isAfterSwap) {
           requestAnimationFrame(function () {
             if (desktopRoot) desktopRoot.classList.remove("no-transition");
-            if (mobileContainer) mobileContainer.classList.remove("no-transition");
+            if (mobileContainer)
+              mobileContainer.classList.remove("no-transition");
           });
         }
       }
@@ -1660,13 +1897,18 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
 
     // Immediate pre-mount sync for CV action buttons
     try {
-      var initialLang = (document.documentElement.getAttribute("lang") || "en").indexOf("es") === 0;
+      var initialLang =
+        (document.documentElement.getAttribute("lang") || "en").indexOf(
+          "es",
+        ) === 0;
       updateCvButtons(checkIsResumePage(), initialLang);
     } catch (_) {}
 
     // Initial Mount
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", function () { setupPageIndex(false); });
+      document.addEventListener("DOMContentLoaded", function () {
+        setupPageIndex(false);
+      });
     } else {
       setupPageIndex(false);
     }

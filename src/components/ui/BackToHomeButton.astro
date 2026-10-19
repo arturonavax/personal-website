@@ -8,7 +8,7 @@ interface Props {
 
 const { locale, class: className = "" } = Astro.props;
 const isEs = locale === "es";
-const homeHref = isEs ? "/es" : "/";
+const homeHref = isEs ? "/es/" : "/";
 ---
 
 <div class={`pt-2.5 sm:pt-4 mb-3.5 sm:mb-6 ${className}`}>

@@ -1437,12 +1437,23 @@ describe("ODD Task: Comprehensive Security Audit Hardening", () => {
 
 describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", () => {
   it("declares transition:persist on PageIndexNav, LanguageSuggestionBanner, BackToTopButton, and global modals in BaseLayout.astro", () => {
-    const layoutPath = path.join(ROOT_DIR, "src", "layouts", "BaseLayout.astro");
+    const layoutPath = path.join(
+      ROOT_DIR,
+      "src",
+      "layouts",
+      "BaseLayout.astro",
+    );
     const content = fs.readFileSync(layoutPath, "utf8");
 
-    expect(content).toMatch(/<PageIndexNav[^>]*transition:persist="page-index-nav"/);
-    expect(content).toMatch(/<LanguageSuggestionBanner[^>]*transition:persist="language-banner"/);
-    expect(content).toMatch(/<BackToTopButton[^>]*transition:persist="backtotop"/);
+    expect(content).toMatch(
+      /<PageIndexNav[^>]*transition:persist="page-index-nav"/,
+    );
+    expect(content).toMatch(
+      /<LanguageSuggestionBanner[^>]*transition:persist="language-banner"/,
+    );
+    expect(content).toMatch(
+      /<BackToTopButton[^>]*transition:persist="backtotop"/,
+    );
     expect(content).toMatch(/<UniversalSearchModal[^>]*transition:persist/);
     expect(content).toMatch(/<ShortcutsModal[^>]*transition:persist/);
     expect(content).toMatch(/<CoffeeSponsorshipModal[^>]*transition:persist/);
@@ -1452,7 +1463,12 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
   });
 
   it("exposes current page metadata and synchronizes in astro:after-swap in BaseLayout.astro", () => {
-    const layoutPath = path.join(ROOT_DIR, "src", "layouts", "BaseLayout.astro");
+    const layoutPath = path.join(
+      ROOT_DIR,
+      "src",
+      "layouts",
+      "BaseLayout.astro",
+    );
     const content = fs.readFileSync(layoutPath, "utf8");
 
     expect(content).toContain("data-current-locale");
@@ -1461,7 +1477,13 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
   });
 
   it("synchronizes PageIndexNav state on astro:after-swap before paint and stores localized strings", () => {
-    const navPath = path.join(ROOT_DIR, "src", "components", "ui", "PageIndexNav.astro");
+    const navPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
     const content = fs.readFileSync(navPath, "utf8");
 
     expect(content).toContain('transition:persist="page-index-nav"');
@@ -1474,7 +1496,13 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
   });
 
   it("implements zero-flicker session state machine in LanguageSuggestionBanner.astro", () => {
-    const bannerPath = path.join(ROOT_DIR, "src", "components", "ui", "LanguageSuggestionBanner.astro");
+    const bannerPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "LanguageSuggestionBanner.astro",
+    );
     const content = fs.readFileSync(bannerPath, "utf8");
 
     expect(content).toContain('transition:persist="language-banner"');
@@ -1488,17 +1516,35 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
   });
 
   it("coordinates BackToTopButton, Header, LanguageSwitcher, and global.css view-transition isolation", () => {
-    const btnPath = path.join(ROOT_DIR, "src", "components", "ui", "BackToTopButton.astro");
+    const btnPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "BackToTopButton.astro",
+    );
     const btnContent = fs.readFileSync(btnPath, "utf8");
     expect(btnContent).toContain("window.__backToTopInitialized");
     expect(btnContent).toContain("astro:after-swap");
 
-    const headerPath = path.join(ROOT_DIR, "src", "components", "common", "Header.astro");
+    const headerPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "common",
+      "Header.astro",
+    );
     const headerContent = fs.readFileSync(headerPath, "utf8");
     expect(headerContent).toContain("syncHeaderStatePrePaint");
     expect(headerContent).toContain("astro:after-swap");
 
-    const switcherPath = path.join(ROOT_DIR, "src", "components", "common", "LanguageSwitcher.astro");
+    const switcherPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "common",
+      "LanguageSwitcher.astro",
+    );
     const switcherContent = fs.readFileSync(switcherPath, "utf8");
     expect(switcherContent).toContain("astro:after-swap");
 
@@ -1506,7 +1552,9 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     const cssContent = fs.readFileSync(cssPath, "utf8");
     expect(cssContent).toContain("view-transition-name: site-header");
     expect(cssContent).toContain("view-transition-name: page-index-nav");
-    expect(cssContent).toContain("view-transition-name: lang-suggestion-banner");
+    expect(cssContent).toContain(
+      "view-transition-name: lang-suggestion-banner",
+    );
     expect(cssContent).toContain("view-transition-name: back-to-top");
     expect(cssContent).toContain(".no-transition");
   });
@@ -1520,18 +1568,34 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     expect(cssContent).toContain("#mobile-page-index-container");
     expect(cssContent).toContain("display: flex !important");
 
-    const navPath = path.join(ROOT_DIR, "src", "components", "ui", "PageIndexNav.astro");
+    const navPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
     const navContent = fs.readFileSync(navPath, "utf8");
     expect(navContent).toContain("function alignDesktopIndex");
-    expect(navContent).not.toMatch(/desktopRoot\.classList\.remove\([^)]*['"]hidden['"][^)]*\)/);
+    expect(navContent).not.toMatch(
+      /desktopRoot\.classList\.remove\([^)]*['"]hidden['"][^)]*\)/,
+    );
   });
 
   it("strictly restricts CV actions (Download and Print) to /resume/ and excludes /tools/resume-maker/ and other routes", () => {
-    const navPath = path.join(ROOT_DIR, "src", "components", "ui", "PageIndexNav.astro");
+    const navPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
     const navContent = fs.readFileSync(navPath, "utf8");
 
     // Route detection checks
-    expect(navContent).toContain("isResumeRoute = currentPath === \"/resume\" || currentPath === \"/es/resume\"");
+    expect(navContent).toContain(
+      'normalizedPath === "/resume/" || normalizedPath === "/es/resume/"',
+    );
     expect(navContent).toContain("showPdfPrint = isResumeRoute");
     expect(navContent).toContain("showPdfDownload = isResumeRoute");
     expect(navContent).toContain("function checkIsResumePage");
@@ -1540,12 +1604,20 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     // Element display guards
     expect(navContent).toContain('id="desktop-cv-actions"');
     expect(navContent).toContain('id="mobile-cv-actions"');
-    expect(navContent).toContain('style={showPdfPrint ? undefined : "display: none;"}');
-    expect(navContent).toContain('updateCvButtons(isCv, isLangEs)');
+    expect(navContent).toContain(
+      'style={showPdfPrint ? undefined : "display: none;"}',
+    );
+    expect(navContent).toContain("updateCvButtons(isCv, isLangEs)");
   });
 
   it("adapts PageIndex dynamically on zoom and resize via syncResponsiveMode and clearance check", () => {
-    const navPath = path.join(ROOT_DIR, "src", "components", "ui", "PageIndexNav.astro");
+    const navPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
     const navContent = fs.readFileSync(navPath, "utf8");
 
     expect(navContent).toContain("function syncResponsiveMode");
@@ -1558,12 +1630,22 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     const cssPath = path.join(ROOT_DIR, "src", "styles", "global.css");
     const cssContent = fs.readFileSync(cssPath, "utf8");
     expect(cssContent).toContain("#desktop-page-index-root.force-hide-desktop");
-    expect(cssContent).toContain("#mobile-page-index-container.force-hide-mobile");
-    expect(cssContent).toContain("#mobile-page-index-container:not(.force-show-mobile)");
+    expect(cssContent).toContain(
+      "#mobile-page-index-container.force-hide-mobile",
+    );
+    expect(cssContent).toContain(
+      "#mobile-page-index-container:not(.force-show-mobile)",
+    );
   });
 
   it("eliminates LanguageSuggestionBanner shadow flicker by avoiding transition-all and dropping old view-transition snapshot", () => {
-    const bannerPath = path.join(ROOT_DIR, "src", "components", "ui", "LanguageSuggestionBanner.astro");
+    const bannerPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "LanguageSuggestionBanner.astro",
+    );
     const bannerContent = fs.readFileSync(bannerPath, "utf8");
 
     // Must not transition all (which animates box-shadow and causes flickering during DOM swap)
@@ -1572,12 +1654,19 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
 
     const cssPath = path.join(ROOT_DIR, "src", "styles", "global.css");
     const cssContent = fs.readFileSync(cssPath, "utf8");
-    expect(cssContent).toContain("::view-transition-old(lang-suggestion-banner)");
+    expect(cssContent).toContain(
+      "::view-transition-old(lang-suggestion-banner)",
+    );
     expect(cssContent).toContain("display: none !important");
   });
 
   it("elevates floating actions stack only on colliding viewports when LanguageSuggestionBanner is active", () => {
-    const layoutPath = path.join(ROOT_DIR, "src", "layouts", "BaseLayout.astro");
+    const layoutPath = path.join(
+      ROOT_DIR,
+      "src",
+      "layouts",
+      "BaseLayout.astro",
+    );
     const layoutContent = fs.readFileSync(layoutPath, "utf8");
 
     expect(layoutContent).toContain("function updateToastCollision");
@@ -1591,17 +1680,32 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
   });
 
   it("prevents MatrixBackground from freezing on page transition from Experience to About by resuming on navigation", () => {
-    const matrixPath = path.join(ROOT_DIR, "src", "components", "ui", "MatrixBackground.astro");
+    const matrixPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "MatrixBackground.astro",
+    );
     const matrixContent = fs.readFileSync(matrixPath, "utf8");
 
     expect(matrixContent).toContain("function resumeMatrixOnNav");
-    expect(matrixContent).toContain("state.worker.postMessage({ type: \"resume\" })");
+    expect(matrixContent).toContain(
+      'state.worker.postMessage({ type: "resume" })',
+    );
     expect(matrixContent).toContain("astro:page-load");
     expect(matrixContent).toContain("astro:after-swap");
 
-    const workerPath = path.join(ROOT_DIR, "src", "scripts", "matrix.worker.ts");
+    const workerPath = path.join(
+      ROOT_DIR,
+      "src",
+      "scripts",
+      "matrix.worker.ts",
+    );
     const workerContent = fs.readFileSync(workerPath, "utf8");
-    expect(workerContent).toMatch(/case\s*"resize":\s*layout\([^)]*\);\s*scheduleNextFrame\(\);/);
+    expect(workerContent).toMatch(
+      /case\s*"resize":\s*layout\([^)]*\);\s*scheduleNextFrame\(\);/,
+    );
   });
 
   it("prevents TOC flicker during timeline arrow navigation and synchronizes page-index-custom-items", () => {
@@ -1619,11 +1723,15 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     expect(slugContent).not.toContain("oldNav.innerHTML = newNav.innerHTML");
     // Must synchronize page-index-custom-items script
     expect(slugContent).toContain("page-index-custom-items");
-    expect(slugContent).toContain("oldCustomScript.textContent = newCustomScript.textContent");
+    expect(slugContent).toContain(
+      "oldCustomScript.textContent = newCustomScript.textContent",
+    );
     expect(slugContent).toContain("window.__setupPageIndex()");
 
     // Must have compact spacing between milestone bar and role-header
-    expect(slugContent).toContain('class="relative isolate py-0 mt-1 sm:mt-1.5 mb-2 sm:mb-4"');
+    expect(slugContent).toContain(
+      'class="relative isolate py-0 mt-1 sm:mt-1.5 mb-2 sm:mb-4"',
+    );
   });
 
   it("aligns desktop page index to role-header and provides horizontal clearance for timeline axis and dot", () => {
@@ -1637,13 +1745,307 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     const navContent = fs.readFileSync(navPath, "utf8");
 
     // SSR gap and alignment
-    expect(navContent).toContain('asideGapClass = isJobPage ? "mr-16" : "mr-6"');
-    expect(navContent).toContain('data-align-target={isJobPage ? "role-header" : alignTargetId}');
+    expect(navContent).toContain(
+      'asideGapClass = isJobPage ? "mr-16" : "mr-6"',
+    );
+    expect(navContent).toContain(
+      'data-align-target={isJobPage ? "role-header" : alignTargetId}',
+    );
 
     // Client-side dynamic updates
-    expect(navContent).toContain('desktopAside.classList.toggle("mr-16", isJob)');
-    expect(navContent).toContain('desktopAside.setAttribute(');
-    expect(navContent).toContain('isJob ? "role-header" : isCv ? "cv-document-sheet" : "about"');
+    expect(navContent).toContain(
+      'desktopAside.classList.toggle("mr-16", isJob)',
+    );
+    expect(navContent).toContain("desktopAside.setAttribute(");
+    expect(navContent).toContain(
+      'isJob ? "role-header" : isCv ? "cv-document-sheet" : "about"',
+    );
     expect(navContent).toContain("alignDesktopIndex()");
+  });
+});
+
+describe("ODD Task 7: SEO Canonical Indexing, Trailing Slashes & Robots Directives", () => {
+  it("enforces trailing slashes on Header.astro and BackToHomeButton.astro home links", () => {
+    const headerPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "common",
+      "Header.astro",
+    );
+    const headerContent = fs.readFileSync(headerPath, "utf8");
+    expect(headerContent).toContain(
+      'const homeUrl = locale === "es" ? "/es/" : "/";',
+    );
+    expect(headerContent).not.toContain(
+      'const homeUrl = locale === "es" ? "/es" : "/";',
+    );
+    expect(headerContent).toContain("${homeUrl}#contact");
+
+    const backBtnPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "BackToHomeButton.astro",
+    );
+    const backBtnContent = fs.readFileSync(backBtnPath, "utf8");
+    expect(backBtnContent).toContain('const homeHref = isEs ? "/es/" : "/";');
+    expect(backBtnContent).not.toContain(
+      'const homeHref = isEs ? "/es" : "/";',
+    );
+  });
+
+  it("emits trailing slashes on 100% of generated document URLs in searchIndex.ts", () => {
+    const searchIndexPath = path.join(
+      ROOT_DIR,
+      "src",
+      "data",
+      "searchIndex.ts",
+    );
+    const searchIndexContent = fs.readFileSync(searchIndexPath, "utf8");
+
+    expect(searchIndexContent).toContain("url: `/projects/${slug}/`");
+    expect(searchIndexContent).toContain("url: `/es/experience/${slug}/`");
+    expect(searchIndexContent).not.toContain("url: `/projects/${slug}`");
+    expect(searchIndexContent).not.toContain("url: `/es/experience/${slug}`");
+
+    const urlMatches = Array.from(
+      searchIndexContent.matchAll(/url:\s*[`"']([^`"']+)`?["']?/g),
+    );
+    expect(urlMatches.length).toBeGreaterThan(0);
+    for (const match of urlMatches) {
+      expect(match[1].endsWith("/")).toBe(true);
+    }
+  });
+
+  it("replaces crawlable ?company= filter anchors with rel='nofollow' and data-company-filter", () => {
+    const timelinePath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "ExperienceTimeline.astro",
+    );
+    const timelineContent = fs.readFileSync(timelinePath, "utf8");
+    expect(timelineContent).toContain("href={companyFilterUrl}");
+    expect(timelineContent).toContain('rel="nofollow"');
+    expect(timelineContent).toContain(
+      "data-company-filter={company.toLowerCase().trim()}",
+    );
+
+    const simCardPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "SimulationCard.astro",
+    );
+    const simCardContent = fs.readFileSync(simCardPath, "utf8");
+    expect(simCardContent).toContain("href={companyFilterUrl}");
+    expect(simCardContent).toContain('rel="nofollow"');
+    expect(simCardContent).toContain(
+      "data-company-filter={simulation.company.toLowerCase().trim()}",
+    );
+
+    const telemetryPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "SystemTelemetryDemo.astro",
+    );
+    const telemetryContent = fs.readFileSync(telemetryPath, "utf8");
+    expect(telemetryContent).toContain('id="viewer-company-link"');
+    expect(telemetryContent).toContain('rel="nofollow"');
+
+    const expSlugPath = path.join(
+      ROOT_DIR,
+      "src",
+      "pages",
+      "[...lang]",
+      "experience",
+      "[slug].astro",
+    );
+    const expSlugContent = fs.readFileSync(expSlugPath, "utf8");
+    expect(expSlugContent).toContain("href={companyFilterUrl}");
+    expect(expSlugContent).toContain('rel="nofollow"');
+    expect(expSlugContent).toContain(
+      "data-company-filter={company.toLowerCase().trim()}",
+    );
+  });
+
+  it("unlocks /case-studies/ in sitemap and robots.txt while disallowing search/filter queries", () => {
+    const astroConfigPath = path.join(ROOT_DIR, "astro.config.mjs");
+    const astroConfig = fs.readFileSync(astroConfigPath, "utf8");
+    expect(astroConfig).not.toContain('!page.includes("/case-studies/")');
+
+    const robotsPath = path.join(ROOT_DIR, "public", "robots.txt");
+    const robots = fs.readFileSync(robotsPath, "utf8");
+    expect(robots).not.toContain("Disallow: /case-studies");
+    expect(robots).not.toContain("Disallow: /es/case-studies");
+    expect(robots).not.toContain("Disallow: /search\n");
+    expect(robots).not.toContain("Disallow: /es/search\n");
+    expect(robots).toContain("Disallow: /*?company=");
+    expect(robots).toContain("Disallow: /*?filters=");
+    expect(robots).toContain("Disallow: /*?q=");
+  });
+
+  it("enforces 301 trailing-slash canonical redirects on worker.ts for public document routes", async () => {
+    const mockCtx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as any;
+    const mockEnv = {
+      ASSETS: {
+        fetch: async () =>
+          new Response(
+            "<!doctype html><html><body><h1>Document</h1></body></html>",
+            {
+              status: 200,
+              headers: { "Content-Type": "text/html; charset=utf-8" },
+            },
+          ),
+      },
+    } as any;
+
+    const res1 = await worker.fetch(
+      new Request("https://arturonavax.dev/experience"),
+      mockEnv,
+      mockCtx,
+    );
+    expect(res1.status).toBe(301);
+    expect(res1.headers.get("Location")).toBe(
+      "https://arturonavax.dev/experience/",
+    );
+
+    const res2 = await worker.fetch(
+      new Request("https://arturonavax.dev/projects?page=2"),
+      mockEnv,
+      mockCtx,
+    );
+    expect(res2.status).toBe(301);
+    expect(res2.headers.get("Location")).toBe(
+      "https://arturonavax.dev/projects/?page=2",
+    );
+
+    const res3 = await worker.fetch(
+      new Request("https://arturonavax.dev/es/blog/distributed-systems"),
+      mockEnv,
+      mockCtx,
+    );
+    expect(res3.status).toBe(301);
+    expect(res3.headers.get("Location")).toBe(
+      "https://arturonavax.dev/es/blog/distributed-systems/",
+    );
+  });
+
+  it("sets X-Robots-Tag: noindex, nofollow on /search/ and query parameter filter URLs", async () => {
+    const mockCtx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as any;
+    const mockEnv = {
+      ASSETS: {
+        fetch: async () =>
+          new Response(
+            "<!doctype html><html><body><h1>Search Page</h1></body></html>",
+            {
+              status: 200,
+              headers: { "Content-Type": "text/html; charset=utf-8" },
+            },
+          ),
+      },
+    } as any;
+
+    const searchRes = await worker.fetch(
+      new Request("https://arturonavax.dev/search/"),
+      mockEnv,
+      mockCtx,
+    );
+    expect(searchRes.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+
+    const esSearchRes = await worker.fetch(
+      new Request("https://arturonavax.dev/es/search/"),
+      mockEnv,
+      mockCtx,
+    );
+    expect(esSearchRes.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+
+    const companyRes = await worker.fetch(
+      new Request("https://arturonavax.dev/experience/?company=acme"),
+      mockEnv,
+      mockCtx,
+    );
+    expect(companyRes.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+
+    const filterRes = await worker.fetch(
+      new Request("https://arturonavax.dev/experience/?filters=rust"),
+      mockEnv,
+      mockCtx,
+    );
+    expect(filterRes.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+
+    const queryRes = await worker.fetch(
+      new Request("https://arturonavax.dev/projects/?q=kafka"),
+      mockEnv,
+      mockCtx,
+    );
+    expect(queryRes.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+
+    const publicRes = await worker.fetch(
+      new Request("https://arturonavax.dev/projects/"),
+      mockEnv,
+      mockCtx,
+    );
+    expect(publicRes.headers.get("X-Robots-Tag")).toContain("index, follow");
+  });
+
+  it("passes explicit canonicalUrl props in services, projects, blog and case-studies pages", () => {
+    const servicesPath = path.join(
+      ROOT_DIR,
+      "src",
+      "pages",
+      "[...lang]",
+      "services",
+      "[slug].astro",
+    );
+    const servicesContent = fs.readFileSync(servicesPath, "utf8");
+    expect(servicesContent).toContain("canonicalUrl={canonicalUrl}");
+
+    const projectsPath = path.join(
+      ROOT_DIR,
+      "src",
+      "pages",
+      "[...lang]",
+      "projects",
+      "[slug].astro",
+    );
+    const projectsContent = fs.readFileSync(projectsPath, "utf8");
+    expect(projectsContent).toContain("canonicalUrl={canonicalUrl}");
+
+    const blogPath = path.join(
+      ROOT_DIR,
+      "src",
+      "pages",
+      "[...lang]",
+      "blog",
+      "[slug].astro",
+    );
+    const blogContent = fs.readFileSync(blogPath, "utf8");
+    expect(blogContent).toContain("canonicalUrl={canonicalUrl}");
+
+    const csPath = path.join(
+      ROOT_DIR,
+      "src",
+      "pages",
+      "[...lang]",
+      "case-studies",
+      "index.astro",
+    );
+    const csContent = fs.readFileSync(csPath, "utf8");
+    expect(csContent).toContain("canonicalUrl=");
+    expect(csContent).toContain("/case-studies/");
+    expect(csContent).toContain('availableLocales={["en", "es"]}');
   });
 });

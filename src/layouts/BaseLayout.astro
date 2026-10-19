@@ -242,9 +242,12 @@ const hasShortcuts = Boolean(shortcuts?.length);
         // 4. Sincronización y restauración de scroll
         try {
           var navReset = sessionStorage.getItem("nav_reset_scroll");
+          var currentPathname = window.location.pathname || "/";
+          var normalizedCurrentPath = currentPathname.endsWith("/")
+            ? currentPathname
+            : currentPathname + "/";
           var isSubpage =
-            window.location.pathname !== "/" &&
-            window.location.pathname !== "/es";
+            normalizedCurrentPath !== "/" && normalizedCurrentPath !== "/es/";
           var hasHash = !!window.location.hash;
           var hasContactPending =
             sessionStorage.getItem("pending_contact_scroll") === "1" ||
@@ -301,10 +304,22 @@ const hasShortcuts = Boolean(shortcuts?.length);
       aria-label="Floating Actions"
     >
       {hasShortcuts && (
-        <ShortcutsModal locale={locale} transition:persist="shortcuts-modal" data-semi=";" />
+        <ShortcutsModal
+          locale={locale}
+          transition:persist="shortcuts-modal"
+          data-semi=";"
+        />
       )}
-      <PageIndexNav locale={locale} transition:persist="page-index-nav" data-semi=";" />
-      <BackToTopButton locale={locale} transition:persist="backtotop" data-semi=";" />
+      <PageIndexNav
+        locale={locale}
+        transition:persist="page-index-nav"
+        data-semi=";"
+      />
+      <BackToTopButton
+        locale={locale}
+        transition:persist="backtotop"
+        data-semi=";"
+      />
     </aside>
 
     <script is:inline>
@@ -325,7 +340,10 @@ const hasShortcuts = Boolean(shortcuts?.length);
             if (stack.classList.contains("elevated-for-toast")) {
               stack.classList.remove("elevated-for-toast");
             }
-            if (mobileRoot && mobileRoot.classList.contains("elevated-for-toast")) {
+            if (
+              mobileRoot &&
+              mobileRoot.classList.contains("elevated-for-toast")
+            ) {
               mobileRoot.classList.remove("elevated-for-toast");
             }
             return;
@@ -340,14 +358,20 @@ const hasShortcuts = Boolean(shortcuts?.length);
             if (!stack.classList.contains("elevated-for-toast")) {
               stack.classList.add("elevated-for-toast");
             }
-            if (mobileRoot && !mobileRoot.classList.contains("elevated-for-toast")) {
+            if (
+              mobileRoot &&
+              !mobileRoot.classList.contains("elevated-for-toast")
+            ) {
               mobileRoot.classList.add("elevated-for-toast");
             }
           } else {
             if (stack.classList.contains("elevated-for-toast")) {
               stack.classList.remove("elevated-for-toast");
             }
-            if (mobileRoot && mobileRoot.classList.contains("elevated-for-toast")) {
+            if (
+              mobileRoot &&
+              mobileRoot.classList.contains("elevated-for-toast")
+            ) {
               mobileRoot.classList.remove("elevated-for-toast");
             }
           }
@@ -360,10 +384,14 @@ const hasShortcuts = Boolean(shortcuts?.length);
           if (!stack) return;
 
           var shortcutsEl = document.querySelector("shortcuts-modal");
-          var mobileContainer = document.getElementById("mobile-page-index-container");
+          var mobileContainer = document.getElementById(
+            "mobile-page-index-container",
+          );
           var backToTop = document.getElementById("back-to-top-btn");
 
-          var candidateItems = [shortcutsEl, mobileContainer, backToTop].filter(Boolean);
+          var candidateItems = [shortcutsEl, mobileContainer, backToTop].filter(
+            Boolean,
+          );
           var visibleItems = [];
           for (var i = 0; i < candidateItems.length; i++) {
             var el = candidateItems[i];
@@ -383,8 +411,14 @@ const hasShortcuts = Boolean(shortcuts?.length);
           }
 
           visibleItems.sort(function (a, b) {
-            var wA = a.offsetWidth || (a.firstElementChild && a.firstElementChild.offsetWidth) || 0;
-            var wB = b.offsetWidth || (b.firstElementChild && b.firstElementChild.offsetWidth) || 0;
+            var wA =
+              a.offsetWidth ||
+              (a.firstElementChild && a.firstElementChild.offsetWidth) ||
+              0;
+            var wB =
+              b.offsetWidth ||
+              (b.firstElementChild && b.firstElementChild.offsetWidth) ||
+              0;
             return wB - wA;
           });
 
@@ -418,9 +452,13 @@ const hasShortcuts = Boolean(shortcuts?.length);
             passive: true,
           });
           if (window.visualViewport) {
-            window.visualViewport.addEventListener("resize", handleStackResize, {
-              passive: true,
-            });
+            window.visualViewport.addEventListener(
+              "resize",
+              handleStackResize,
+              {
+                passive: true,
+              },
+            );
           }
           document.addEventListener("astro:page-load", function () {
             if (typeof window.__syncResponsiveMode === "function") {
@@ -454,7 +492,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
         }
       })();
     </script>
-
     <main id="main-content" class="relative z-10 flex-1">
       <slot />
       {!hideSubtleCoffee && hasSponsorships && (

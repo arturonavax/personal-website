@@ -349,7 +349,10 @@ export class EdgeQuotaTracker {
         Math.floor((tomorrowUtc - now.getTime()) / 1000),
       );
       await cache.put(
-        new Request(`https://arturonavax.dev/__cf_edge_quota_state/${snapshot.dateUtc}`, { method: "GET" }),
+        new Request(
+          `https://arturonavax.dev/__cf_edge_quota_state/${snapshot.dateUtc}`,
+          { method: "GET" },
+        ),
         new Response(JSON.stringify(snapshot), {
           status: 200,
           headers: {

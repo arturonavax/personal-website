@@ -106,16 +106,12 @@ async function auditCodebase(): Promise<void> {
     totalViolations++;
   }
 
-  // Rule 6: Verify Edge AEO headers in public/_headers (TASK SEO-4)
+  // Rule 6: Verify Edge AEO headers in public/_headers (TASK SEO-4 & TASK-7)
   if (fs.existsSync(HEADERS_PATH)) {
     const headersContent = fs.readFileSync(HEADERS_PATH, "utf8");
-    if (
-      !headersContent.includes(
-        "X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
-      )
-    ) {
+    if (!headersContent.includes("X-Robots-Tag: noindex, nofollow")) {
       console.error(
-        "[FAIL] public/_headers missing required X-Robots-Tag index directives.",
+        "[FAIL] public/_headers missing required X-Robots-Tag noindex directives for search routes.",
       );
       totalViolations++;
     }

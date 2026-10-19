@@ -27,7 +27,7 @@ export interface EdgeRoutingPolicyPort {
   /**
    * Resolve whether the request requires an immediate edge canonical redirect.
    */
-  resolveCanonicalRedirect(url: URL): CanonicalRedirectResult;
+  resolveCanonicalRedirect(url: URL, method?: string): CanonicalRedirectResult;
 
   /**
    * Determine if classification is eligible for Fast-Path execution without blocking I/O.

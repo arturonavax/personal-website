@@ -186,7 +186,11 @@ const jobIndexItems: IndexItem[] = [
 >
   <!-- Page Navigation Index for Job Page (Task 2 & 51) -->
   {jobIndexItems && jobIndexItems.length > 0 && (
-    <script type="application/json" id="page-index-custom-items" set:html={JSON.stringify(jobIndexItems)} />
+    <script
+      type="application/json"
+      id="page-index-custom-items"
+      set:html={JSON.stringify(jobIndexItems)}
+    />
   )}
 
   <!-- Sticky Experience Context Header (REQ-UXE-16) -->
@@ -312,6 +316,8 @@ const jobIndexItems: IndexItem[] = [
               <div class="flex items-center gap-2 font-mono text-sm">
                 <a
                   href={companyFilterUrl}
+                  rel="nofollow"
+                  data-company-filter={company.toLowerCase().trim()}
                   title={`${isEs ? "Filtrar trayectoria para" : "Filter career timeline for"} ${companyInfo.name}`}
                   class="font-bold text-[var(--color-accent-gold)] hover:underline"
                 >
@@ -793,9 +799,7 @@ const jobIndexItems: IndexItem[] = [
             var oldCustomScript = document.getElementById(
               "page-index-custom-items",
             );
-            var newCustomScript = doc.getElementById(
-              "page-index-custom-items",
-            );
+            var newCustomScript = doc.getElementById("page-index-custom-items");
             if (newCustomScript) {
               if (oldCustomScript) {
                 oldCustomScript.textContent = newCustomScript.textContent;
