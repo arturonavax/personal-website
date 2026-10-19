@@ -180,18 +180,18 @@ const i18nEs = {
 };
 
 const isCvPage = containerMaxWidth === "cv";
-const isJobPage = containerMaxWidth === "4xl";
+const isJobPage = containerMaxWidth === "4xl" || currentPath.includes("/experience/");
 const topValue = isCvPage
   ? "calc(5rem + 1px)"
   : isJobPage
-    ? "9.5rem"
+    ? "calc(var(--header-height, 3.5rem) + 3.25rem)"
     : "calc(5rem + 1px)";
 const containerMaxClass = isCvPage
   ? "max-w-[210mm]"
   : isJobPage
     ? "max-w-4xl"
     : "max-w-5xl";
-const asideGapClass = "mr-6";
+const asideGapClass = isJobPage ? "mr-16" : "mr-6";
 ---
 
 <!-- Persistent Page Navigation Shell -->
@@ -215,7 +215,7 @@ const asideGapClass = "mr-6";
       <aside
         id="desktop-page-index"
         aria-label={isEs ? i18nEs.indexAria : i18nEn.indexAria}
-        data-align-target={alignTargetId}
+        data-align-target={isJobPage ? "role-header" : alignTargetId}
         class={`absolute right-full top-0 ${asideGapClass} w-64 pointer-events-auto font-mono text-xs`}
       >
         <div class="geometric-box p-4 rounded bg-[var(--color-surface-card)]/90 backdrop-blur-md border border-[var(--color-surface-border)] shadow-card">
@@ -1187,7 +1187,7 @@ const asideGapClass = "mr-6";
       }
 
       var rawPath = (window.location.pathname || "").replace(/\/+$/, "") || "/";
-      var isJob = rawPath.indexOf("/experience/") !== -1;
+      var isJob = (rawPath.indexOf("/experience/") !== -1 || /^\/(es\/)?experience\/.+/.test(rawPath)) && !isCv;
 
       if (maxwContainer) {
         if (isCv) {
@@ -1199,9 +1199,17 @@ const asideGapClass = "mr-6";
         }
       }
 
-      if (desktopRoot) {
-        desktopRoot.style.top = isCv ? "calc(5rem + 1px)" : isJob ? "9.5rem" : "calc(5rem + 1px)";
+      var desktopAside = document.getElementById("desktop-page-index");
+      if (desktopAside) {
+        desktopAside.classList.toggle("mr-16", isJob);
+        desktopAside.classList.toggle("mr-6", !isJob);
+        desktopAside.setAttribute(
+          "data-align-target",
+          isJob ? "role-header" : isCv ? "cv-document-sheet" : "about",
+        );
       }
+
+      alignDesktopIndex();
 
       if (isCv) {
         var downloadUrl = isEs ? "/downloads/ArturoNava-CV-es.pdf" : "/downloads/ArturoNava-CV-en.pdf";

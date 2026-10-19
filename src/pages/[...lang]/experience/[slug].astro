@@ -214,7 +214,7 @@ const jobIndexItems: IndexItem[] = [
   </div>
 
   <!-- Top Milestone Bar (Decoupled, never slides, REQ-UXE-08) -->
-  <div class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3.5 lg:pt-5">
+  <div class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-2 lg:pt-3 pb-0">
     <div
       id="experience-milestone-bar"
       class="flex items-center justify-between gap-x-4 min-h-[1.75rem] h-[1.75rem] text-xs font-mono"
@@ -241,7 +241,7 @@ const jobIndexItems: IndexItem[] = [
 
   <article
     id="experience-article"
-    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-3 lg:pt-5 pb-8 sm:pb-12"
+    class="mx-auto max-w-4xl px-2 min-[360px]:px-4 pt-1 sm:pt-1.5 lg:pt-2 pb-8 sm:pb-12"
   >
     <div
       id="experience-article-content"
@@ -249,11 +249,11 @@ const jobIndexItems: IndexItem[] = [
     >
       <!-- Timeline Rail Container with Horizontal Line & Travel Navigation Steppers (Task 3 & 53) -->
       <div
-        class="relative isolate py-2 sm:py-4 my-1 sm:my-2"
+        class="relative isolate py-0 mt-1 sm:mt-1.5 mb-2 sm:mb-4"
         id="timeline-rail-container"
       >
         <!-- Horizontal Timeline Axis Line aligned behind header title row to prevent vertical jumping -->
-        <div class="absolute top-[5.5rem] sm:top-[7rem] -left-6 -right-6 sm:-left-12 sm:-right-12 -translate-y-1/2 h-0.5 bg-[var(--color-surface-border)] pointer-events-none -z-10">
+        <div class="absolute top-[5rem] sm:top-[6rem] -left-6 -right-6 sm:-left-12 sm:-right-12 -translate-y-1/2 h-0.5 bg-[var(--color-surface-border)] pointer-events-none -z-10">
           <div class="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--color-accent-gold)]/50 to-transparent"></div>
           <svg
             class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 h-3 w-3 text-[var(--color-accent-gold)] shrink-0 aspect-square"
@@ -411,7 +411,7 @@ const jobIndexItems: IndexItem[] = [
             data-timeline-nav="past"
             data-astro-prefetch="hover"
             title={`${isEs ? "Hito anterior:" : "Past timeline milestone:"} ${pastExperience.data.role} @ ${pastExperience.data.company}`}
-            class="group/timeline-nav absolute left-0 top-[5.5rem] sm:top-[7rem] -translate-x-1/2 -translate-y-1/2 z-50 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+            class="group/timeline-nav absolute left-0 top-[5rem] sm:top-[6rem] -translate-x-1/2 -translate-y-1/2 z-50 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
             aria-label={`${isEs ? "Rol anterior:" : "Past role:"} ${pastExperience.data.role} (press h)`}
           >
             <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
@@ -440,7 +440,7 @@ const jobIndexItems: IndexItem[] = [
             data-timeline-nav="future"
             data-astro-prefetch="hover"
             title={`${isEs ? "Siguiente hito:" : "Future timeline milestone:"} ${futureExperience.data.role} @ ${futureExperience.data.company}`}
-            class="group/timeline-nav absolute right-0 top-[5.5rem] sm:top-[7rem] translate-x-1/2 -translate-y-1/2 z-50 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+            class="group/timeline-nav absolute right-0 top-[5rem] sm:top-[6rem] translate-x-1/2 -translate-y-1/2 z-50 flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 aspect-square items-center justify-center rounded-full border-2 border-[var(--color-accent-gold)] bg-[var(--color-surface-card)] text-[var(--color-accent-gold)] shadow-2xl hover:scale-110 hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
             aria-label={`${isEs ? "Siguiente rol:" : "Future role:"} ${futureExperience.data.role} (press l)`}
           >
             <kbd class="hidden sm:inline-flex pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1.5 py-0.2 text-[10px] font-mono font-medium text-[var(--color-text-secondary)] shadow-sm group-hover/timeline-nav:border-[var(--color-accent-gold)] group-hover/timeline-nav:text-[var(--color-accent-gold)] transition-colors">
@@ -789,14 +789,25 @@ const jobIndexItems: IndexItem[] = [
               });
             }
 
-            var oldAside = document.getElementById("desktop-page-index");
-            var newAside = doc.getElementById("desktop-page-index");
-            if (oldAside && newAside) {
-              var oldNav = oldAside.querySelector("nav");
-              var newNav = newAside.querySelector("nav");
-              if (oldNav && newNav) {
-                oldNav.innerHTML = newNav.innerHTML;
+            // Synchronize page-index custom items script for the new page without default items flicker
+            var oldCustomScript = document.getElementById(
+              "page-index-custom-items",
+            );
+            var newCustomScript = doc.getElementById(
+              "page-index-custom-items",
+            );
+            if (newCustomScript) {
+              if (oldCustomScript) {
+                oldCustomScript.textContent = newCustomScript.textContent;
+              } else {
+                var mainEl =
+                  document.getElementById("main-content") ||
+                  document.querySelector("main") ||
+                  document.body;
+                mainEl.appendChild(newCustomScript.cloneNode(true));
               }
+            } else if (oldCustomScript) {
+              oldCustomScript.remove();
             }
 
             // Update decoupled milestone bar without sliding
@@ -817,6 +828,10 @@ const jobIndexItems: IndexItem[] = [
 
             article.innerHTML = newArticle.innerHTML;
             article.className = newArticle.className;
+
+            if (typeof window.__setupPageIndex === "function") {
+              window.__setupPageIndex();
+            }
 
             if (window.scrollY > 140) {
               window.scrollTo({ top: 0, behavior: "instant" });

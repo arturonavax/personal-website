@@ -1603,4 +1603,47 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     const workerContent = fs.readFileSync(workerPath, "utf8");
     expect(workerContent).toMatch(/case\s*"resize":\s*layout\([^)]*\);\s*scheduleNextFrame\(\);/);
   });
+
+  it("prevents TOC flicker during timeline arrow navigation and synchronizes page-index-custom-items", () => {
+    const slugPath = path.join(
+      ROOT_DIR,
+      "src",
+      "pages",
+      "[...lang]",
+      "experience",
+      "[slug].astro",
+    );
+    const slugContent = fs.readFileSync(slugPath, "utf8");
+
+    // Must NOT copy oldNav.innerHTML = newNav.innerHTML (which injected the 11 default homepage items)
+    expect(slugContent).not.toContain("oldNav.innerHTML = newNav.innerHTML");
+    // Must synchronize page-index-custom-items script
+    expect(slugContent).toContain("page-index-custom-items");
+    expect(slugContent).toContain("oldCustomScript.textContent = newCustomScript.textContent");
+    expect(slugContent).toContain("window.__setupPageIndex()");
+
+    // Must have compact spacing between milestone bar and role-header
+    expect(slugContent).toContain('class="relative isolate py-0 mt-1 sm:mt-1.5 mb-2 sm:mb-4"');
+  });
+
+  it("aligns desktop page index to role-header and provides horizontal clearance for timeline axis and dot", () => {
+    const navPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
+    const navContent = fs.readFileSync(navPath, "utf8");
+
+    // SSR gap and alignment
+    expect(navContent).toContain('asideGapClass = isJobPage ? "mr-16" : "mr-6"');
+    expect(navContent).toContain('data-align-target={isJobPage ? "role-header" : alignTargetId}');
+
+    // Client-side dynamic updates
+    expect(navContent).toContain('desktopAside.classList.toggle("mr-16", isJob)');
+    expect(navContent).toContain('desktopAside.setAttribute(');
+    expect(navContent).toContain('isJob ? "role-header" : isCv ? "cv-document-sheet" : "about"');
+    expect(navContent).toContain("alignDesktopIndex()");
+  });
 });
