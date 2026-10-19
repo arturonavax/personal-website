@@ -8,6 +8,10 @@ interface __BaseEnv_Env {
   EMAIL: SendEmail;
   AI: Ai;
   ASSETS: Fetcher;
+  CF_ACCESS_TEAM_DOMAIN?: string;
+  CF_ACCESS_AUD?: string;
+  ADMIN_ACCESS_TOKEN?: string;
+  ADMIN_ALLOWED_EMAIL?: string;
 }
 declare namespace Cloudflare {
   interface GlobalProps {

@@ -64,13 +64,14 @@ const { contentId } = Astro.props;
 
   document.addEventListener("astro:page-load", () => {
     const hasEvInitCookie = document.cookie.includes("ev_init=1");
-    if (isInitialLoad && hasEvInitCookie) {
+    if (isInitialLoad) {
       isInitialLoad = false;
-      document.cookie = "ev_init=; Max-Age=0; Path=/; SameSite=Lax";
+      if (hasEvInitCookie) {
+        document.cookie = "ev_init=; Max-Age=0; Path=/; SameSite=Lax";
+      }
       void refreshEdgeViewCounters();
       return;
     }
-    isInitialLoad = false;
     sendEdgeVisitBeacon("spa_transition");
     void refreshEdgeViewCounters();
   });

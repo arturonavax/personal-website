@@ -217,8 +217,16 @@ describe("Edge Worker Prefetch Telemetry Integration", () => {
       }),
     } as unknown as D1Database;
 
-    const env: Env = { ASSETS: dummyAssets, DB: db };
-    const req = new Request("https://admin.arturonavax.dev/api/metrics");
+    const env: Env = {
+      ASSETS: dummyAssets,
+      DB: db,
+      ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
+    };
+    const req = new Request("https://admin.arturonavax.dev/api/metrics", {
+      headers: {
+        Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
+      },
+    });
     const res = await worker.fetch(req, env, ctx);
     expect(res.status).toBe(200);
 

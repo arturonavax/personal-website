@@ -18,6 +18,12 @@ const dummyAssets: Fetcher = {
     if (url.includes("/404")) {
       return new Response("Not Found", { status: 404 });
     }
+    if (url.includes("/__admin_vault__") || url.includes("/admin")) {
+      return new Response(
+        "<html><head><title>Admin Management Surface</title></head><body><h1>Admin Management Surface // Zero Trust</h1></body></html>",
+        { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } },
+      );
+    }
     return new Response("<html><body>Fast-Path Content</body></html>", {
       status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8" },
@@ -219,18 +225,18 @@ describe("SPEC-005 REQ-PCD-03: Subdomain Canonicalization Engine", () => {
 });
 
 describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolation", () => {
-  it("redirects apex /admin immediately to isolated admin.arturonavax.dev with HTTP 308", async () => {
+  it("blocks unauthenticated apex /admin with fail-closed Zero Trust (HTTP 401/403)", async () => {
     const ctx = createMockCtx();
     const env: Env = { ASSETS: dummyAssets, DB: createMockDb() };
 
     const req = new Request("https://arturonavax.dev/admin");
     const res = await worker.fetch(req, env, ctx);
 
-    expect(res.status).toBe(308);
-    expect(res.headers.get("Location")).toBe("https://admin.arturonavax.dev/");
+    expect(res.status).toBe(403);
+    expect(res.headers.get("Cache-Control")).toContain("no-store");
   });
 
-  it("redirects nested /admin paths and query parameters to the isolated subdomain", async () => {
+  it("blocks unauthenticated nested /admin paths and query parameters with fail-closed Zero Trust", async () => {
     const ctx = createMockCtx();
     const env: Env = { ASSETS: dummyAssets, DB: createMockDb() };
 
@@ -239,17 +245,23 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     );
     const res = await worker.fetch(req, env, ctx);
 
-    expect(res.status).toBe(308);
-    expect(res.headers.get("Location")).toBe(
-      "https://admin.arturonavax.dev/analytics?range=30d&format=json",
-    );
+    expect(res.status).toBe(403);
+    expect(res.headers.get("Cache-Control")).toContain("no-store");
   });
 
-  it("serves isolated admin UI on admin.arturonavax.dev without redirecting to apex", async () => {
+  it("serves isolated admin UI on admin.arturonavax.dev when authenticated", async () => {
     const ctx = createMockCtx();
-    const env: Env = { ASSETS: dummyAssets, DB: createMockDb() };
+    const env: Env = {
+      ASSETS: dummyAssets,
+      DB: createMockDb(),
+      ADMIN_ACCESS_TOKEN: "super-secret-admin-token-min-32-chars-long",
+    };
 
-    const req = new Request("https://admin.arturonavax.dev/");
+    const req = new Request("https://admin.arturonavax.dev/", {
+      headers: {
+        Authorization: "Bearer super-secret-admin-token-min-32-chars-long",
+      },
+    });
     const res = await worker.fetch(req, env, ctx);
 
     expect(res.status).toBe(200);
@@ -259,11 +271,19 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     expect(res.headers.get("Cache-Control")).toContain("no-store");
   });
 
-  it("serves isolated admin status API on admin.arturonavax.dev", async () => {
+  it("serves isolated admin status API on admin.arturonavax.dev when authenticated", async () => {
     const ctx = createMockCtx();
-    const env: Env = { ASSETS: dummyAssets, DB: createMockDb() };
+    const env: Env = {
+      ASSETS: dummyAssets,
+      DB: createMockDb(),
+      ADMIN_ACCESS_TOKEN: "super-secret-admin-token-min-32-chars-long",
+    };
 
-    const req = new Request("https://admin.arturonavax.dev/api/status");
+    const req = new Request("https://admin.arturonavax.dev/api/status", {
+      headers: {
+        Authorization: "Bearer super-secret-admin-token-min-32-chars-long",
+      },
+    });
     const res = await worker.fetch(req, env, ctx);
 
     expect(res.status).toBe(200);
@@ -272,25 +292,40 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     expect(data.surface).toBe("admin-isolated");
   });
 
-  it("serves admin APIs on both apex domain and admin subdomain for dual-surface resilience", async () => {
+  it("serves admin APIs on both apex domain and admin subdomain when authenticated", async () => {
     const ctx = createMockCtx();
-    const env: Env = { ASSETS: dummyAssets, DB: createMockDb() };
+    const env: Env = {
+      ASSETS: dummyAssets,
+      DB: createMockDb(),
+      ADMIN_ACCESS_TOKEN: "super-secret-admin-token-min-32-chars-long",
+    };
+    const authHeaders = {
+      Authorization: "Bearer super-secret-admin-token-min-32-chars-long",
+    };
 
-    const apexTelReq = new Request("https://arturonavax.dev/api/telemetry?range=all");
+    const apexTelReq = new Request("https://arturonavax.dev/api/telemetry?range=all", {
+      headers: authHeaders,
+    });
     const apexTelRes = await worker.fetch(apexTelReq, env, ctx);
     expect(apexTelRes.status).toBe(200);
     const telData = (await apexTelRes.json()) as any;
     expect(telData.status).toBe("ok");
 
-    const apexMetricsReq = new Request("https://arturonavax.dev/api/metrics");
+    const apexMetricsReq = new Request("https://arturonavax.dev/api/metrics", {
+      headers: authHeaders,
+    });
     const apexMetricsRes = await worker.fetch(apexMetricsReq, env, ctx);
     expect(apexMetricsRes.status).toBe(200);
 
-    const apexLeadsReq = new Request("https://arturonavax.dev/api/leads");
+    const apexLeadsReq = new Request("https://arturonavax.dev/api/leads", {
+      headers: authHeaders,
+    });
     const apexLeadsRes = await worker.fetch(apexLeadsReq, env, ctx);
     expect(apexLeadsRes.status).toBe(200);
 
-    const apexDeployReq = new Request("https://arturonavax.dev/api/deployments");
+    const apexDeployReq = new Request("https://arturonavax.dev/api/deployments", {
+      headers: authHeaders,
+    });
     const apexDeployRes = await worker.fetch(apexDeployReq, env, ctx);
     expect(apexDeployRes.status).toBe(200);
   });

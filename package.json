@@ -12,7 +12,7 @@
     "dev:local": "astro dev --host",
     "dev:worker": "wrangler dev -c wrangler.jsonc --port 8788 --ip 0.0.0.0",
     "prebuild": "node scripts/r2-pull.mjs --auto",
-    "build": "astro build",
+    "build": "astro build && node scripts/isolate-admin-build.mjs",
     "content:pull": "node scripts/r2-pull.mjs",
     "content:push": "node scripts/r2-push.mjs",
     "content:push:dry": "node scripts/r2-push.mjs --dry-run",

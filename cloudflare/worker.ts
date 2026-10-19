@@ -74,6 +74,14 @@ export interface Env {
   D1_VISIT_BUDGET_RATIO?: string | number;
   D1_PREFETCH_SAMPLE_RATE?: string | number;
   REQUIRE_CF_ACCESS?: string | boolean;
+  REQUIRE_ADMIN_AUTH?: string | boolean;
+  CF_ACCESS_TEAM_DOMAIN?: string;
+  CF_ACCESS_AUD?: string;
+  ADMIN_ACCESS_TOKEN?: string;
+  ADMIN_ALLOWED_EMAIL?: string;
+  ADMIN_AUTHORIZED_EMAILS?: string;
+  ADMIN_API_KEY?: string;
+  INDEXNOW_KEY?: string;
 }
 
 // 120-second In-Memory Edge Cache for /api/telemetry, /api/metrics, /api/leads, and /api/deployments to protect D1 daily row read quota (5,000,000 limit)
@@ -359,7 +367,30 @@ export default {
   ): Promise<Response> {
     const url = new URL(request.url);
     const host = url.hostname.toLowerCase();
-    const pathname = url.pathname;
+
+    // 1. Canonical Path Normalization
+    let decodedPath = url.pathname;
+    try {
+      decodedPath = decodeURIComponent(url.pathname);
+    } catch {
+      // Keep raw path on decode failure
+    }
+    const collapsedPath = decodedPath.replace(/\/+/g, "/");
+    const cleanPath = collapsedPath.replace(/\.html$/i, "");
+    const normalizedLowerPath = (cleanPath || "/").toLowerCase();
+    const pathname = cleanPath || "/";
+
+    // 2. Block Direct External Access to /__admin_vault__*
+    if (normalizedLowerPath.startsWith("/__admin_vault__")) {
+      return new Response("Not Found", {
+        status: 404,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "private, no-store, no-cache, must-revalidate",
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
+        },
+      });
+    }
 
     if (env) {
       edgeQuotaTracker.configureFromEnv(
@@ -367,64 +398,153 @@ export default {
       );
     }
 
-    // -------------------------------------------------------------------------
-    // 1. FAST-PATH: Subdomain Canonicalization & Apex Admin Surface Redirect (REQ-PCD-02, REQ-PCD-03)
-    // -------------------------------------------------------------------------
-    const isLocal = host === "localhost" || host === "127.0.0.1";
-    if (isLocal && isAdminSurfacePath(pathname)) {
-      return withNoIndexHeaders(
-        await handleAdminDashboardRequest(request, env, ctx),
-      );
+    // 3. Identify All Protected Admin & API Surfaces
+    const isAdminHost =
+      host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev";
+    const isAdminPage =
+      isAdminHost || /^\/(?:[a-z]{2}\/)?admin(?:\/|$)/.test(normalizedLowerPath);
+    const isProtectedApi = isProtectedApiSurface(
+      normalizedLowerPath,
+      request.method.toUpperCase(),
+    );
+
+    // Bypass auth on immutable static assets / icons on admin host
+    if (
+      isAdminHost &&
+      (normalizedLowerPath === "/favicon.ico" ||
+        normalizedLowerPath === "/favicon.svg" ||
+        normalizedLowerPath.startsWith("/favicon-") ||
+        STATIC_PREFIX_REGEX.test(pathname) ||
+        STATIC_EXT_REGEX.test(pathname))
+    ) {
+      return withNoIndexHeaders(await env.ASSETS.fetch(request));
     }
 
-    if (
-      isAdminSurfacePath(pathname) &&
-      host !== "admin.arturonavax.dev" &&
-      host !== "dash.arturonavax.dev"
-    ) {
-      const adminPath = pathname.replace(/^\/(?:[a-z]{2}\/)?admin/i, "") || "/";
-      return new Response(null, {
-        status: 308,
-        headers: {
-          Location: `https://admin.arturonavax.dev${adminPath}${url.search}`,
-          "X-Robots-Tag": "noindex, nofollow, noarchive",
-          "Cache-Control": "no-store, private",
-        },
-      });
+    // 4. Fail-Closed Zero-Trust Guard for Admin Page and Protected API Surfaces
+    if (isAdminPage || isProtectedApi) {
+      const auth = await verifyAdminAccess(request, env);
+      if (!auth.authorized) {
+        const acceptHeader = request.headers.get("accept") || "";
+        const isHtml = acceptHeader.includes("text/html");
+
+        if (isAdminPage && isHtml) {
+          return withNoIndexHeaders(
+            renderAdminUnauthorizedHtml(auth.reason, auth.status || 401),
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            error: "Unauthorized",
+            status: auth.status || 401,
+            message:
+              auth.reason ||
+              "Cloudflare Access Zero Trust authentication required to access admin surface.",
+            docs:
+              "https://developers.cloudflare.com/cloudflare-one/access-controls/",
+          }),
+          {
+            status: auth.status || 401,
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "private, no-store, no-cache, must-revalidate",
+              "WWW-Authenticate": 'Bearer realm="admin.arturonavax.dev"',
+              "X-Robots-Tag": "noindex, nofollow, noarchive",
+            },
+          },
+        );
+      }
+
+      // If authorized and is an API endpoint or /status
+      if (
+        isProtectedApi ||
+        normalizedLowerPath.startsWith("/api/") ||
+        normalizedLowerPath === "/status"
+      ) {
+        return withNoIndexHeaders(
+          await handleAdminDashboardRequest(request, env, ctx),
+        );
+      }
+
+      // 5. Internal Vault Rewrite for Authorized Admin Page Requests
+      if (isAdminPage) {
+        let localeKey = "default";
+        const localeMatch = normalizedLowerPath.match(
+          /^\/([a-z]{2})\/admin(?:\/|$)/,
+        );
+        if (
+          localeMatch &&
+          (localeMatch[1] === "en" || localeMatch[1] === "es")
+        ) {
+          localeKey = localeMatch[1];
+        }
+
+        let vaultResponse: Response | null = null;
+        if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
+          try {
+            const vaultUrl = new URL(
+              `/__admin_vault__/${localeKey}/index.html`,
+              request.url,
+            );
+            let vaultRes = await env.ASSETS.fetch(
+              new Request(vaultUrl.toString(), {
+                headers: request.headers,
+              }),
+            );
+            if (vaultRes.status === 404 && localeKey !== "default") {
+              const fallbackDefaultUrl = new URL(
+                "/__admin_vault__/default/index.html",
+                request.url,
+              );
+              vaultRes = await env.ASSETS.fetch(
+                new Request(fallbackDefaultUrl.toString(), {
+                  headers: request.headers,
+                }),
+              );
+            }
+            if (vaultRes.status === 200) {
+              vaultResponse = vaultRes;
+            } else {
+              // Local dev/test fallback where dist/__admin_vault__ has not been moved yet
+              const directRes = await env.ASSETS.fetch(request);
+              if (directRes.status === 200) {
+                vaultResponse = directRes;
+              }
+            }
+          } catch {}
+        }
+
+        if (vaultResponse && vaultResponse.status === 200) {
+          const headers = new Headers(vaultResponse.headers);
+          headers.set(
+            "Cache-Control",
+            "private, no-store, no-cache, must-revalidate",
+          );
+          headers.set("X-Frame-Options", "DENY");
+          headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+          const queryToken =
+            url.searchParams.get("token") || url.searchParams.get("admin_token");
+          if (queryToken && auth.method === "admin_token") {
+            headers.set(
+              "Set-Cookie",
+              `admin_session=${encodeURIComponent(queryToken.trim())}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly; Secure`,
+            );
+          }
+          return new Response(vaultResponse.body, {
+            status: 200,
+            headers,
+          });
+        }
+
+        return withNoIndexHeaders(
+          await handleAdminDashboardRequest(request, env, ctx),
+        );
+      }
     }
 
     const redirect = routingPolicy.resolveCanonicalRedirect(url);
     if (redirect.shouldRedirect && redirect.targetUrl) {
       return Response.redirect(redirect.targetUrl, redirect.statusCode);
-    }
-
-    const isAdminApi =
-      pathname === "/api/telemetry" ||
-      pathname === "/api/metrics" ||
-      pathname === "/api/leads" ||
-      pathname === "/api/deployments" ||
-      pathname === "/api/status" ||
-      pathname === "/status";
-
-    // Isolated Admin Surface & Admin APIs (Subdomain + Dual-Surface Support)
-    if (
-      host === "admin.arturonavax.dev" ||
-      host === "dash.arturonavax.dev" ||
-      isAdminApi
-    ) {
-      if (
-        (host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev") &&
-        (pathname === "/favicon.ico" ||
-          pathname === "/favicon.svg" ||
-          pathname.startsWith("/favicon-") ||
-          STATIC_PREFIX_REGEX.test(pathname) ||
-          STATIC_EXT_REGEX.test(pathname))
-      ) {
-        return withNoIndexHeaders(await env.ASSETS.fetch(request));
-      }
-      return withNoIndexHeaders(
-        await handleAdminDashboardRequest(request, env, ctx),
-      );
     }
 
     // -------------------------------------------------------------------------
@@ -2241,134 +2361,377 @@ async function handleCdnStorageAsset(
 
 export interface AdminAuthResult {
   authorized: boolean;
+  status?: number;
   email?: string;
   method: "cf_access" | "admin_token" | "local_dev" | "none";
   reason?: string;
 }
 
-/**
- * Strict verification of admin access via Cloudflare Access Zero Trust or Admin API Key
- */
-export function verifyAdminAuthorization(
+export interface AdminAccessResult {
+  authorized: boolean;
+  status: 200 | 401 | 403;
+  reason?: string;
+  email?: string;
+  method?: "cf_access" | "admin_token";
+}
+
+interface JwksCacheEntry {
+  expiresAt: number;
+  keys: any[];
+}
+const jwksMemoryCache = new Map<string, JwksCacheEntry>();
+
+export function base64UrlDecode(str: string): Uint8Array {
+  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4 !== 0) {
+    base64 += "=";
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+export async function timingSafeEqualSha256(a: string, b: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const aDigest = await crypto.subtle.digest("SHA-256", encoder.encode(a));
+  const bDigest = await crypto.subtle.digest("SHA-256", encoder.encode(b));
+  const aView = new Uint8Array(aDigest);
+  const bView = new Uint8Array(bDigest);
+  if (aView.byteLength !== bView.byteLength) return false;
+  let diff = 0;
+  for (let i = 0; i < aView.byteLength; i++) {
+    diff |= aView[i]! ^ bView[i]!;
+  }
+  return diff === 0;
+}
+
+export async function fetchJwksWithCache(teamDomain: string): Promise<any[] | null> {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const cachedMem = jwksMemoryCache.get(teamDomain);
+  if (cachedMem && cachedMem.expiresAt > nowSec) {
+    return cachedMem.keys;
+  }
+
+  const certsUrl = `https://${teamDomain}/cdn-cgi/access/certs`;
+  let keys: any[] | null = null;
+
+  try {
+    const cache = (caches as any)?.default;
+    if (cache) {
+      const cacheKey = new Request(certsUrl);
+      const cachedResp = await cache.match(cacheKey);
+      if (cachedResp) {
+        const data = (await cachedResp.json()) as { keys?: any[] };
+        if (data?.keys && Array.isArray(data.keys)) {
+          keys = data.keys;
+        }
+      }
+    }
+  } catch {
+    // Fail-open to direct fetch
+  }
+
+  if (!keys) {
+    try {
+      const resp = await fetch(certsUrl);
+      if (resp.ok) {
+        const data = (await resp.json()) as { keys?: any[] };
+        if (data?.keys && Array.isArray(data.keys)) {
+          keys = data.keys;
+          try {
+            const cache = (caches as any)?.default;
+            if (cache) {
+              const toCache = new Response(JSON.stringify(data), {
+                headers: {
+                  "Content-Type": "application/json",
+                  "Cache-Control": "public, max-age=3600",
+                },
+              });
+              await cache.put(new Request(certsUrl), toCache);
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
+  if (keys) {
+    jwksMemoryCache.set(teamDomain, {
+      expiresAt: nowSec + 3600,
+      keys,
+    });
+  }
+
+  return keys;
+}
+
+export async function verifyCloudflareAccessJwt(
+  jwt: string,
+  teamDomain: string,
+  expectedAud: string,
+  allowedEmail?: string,
+): Promise<{ valid: boolean; email?: string; reason?: string }> {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length !== 3) {
+      return { valid: false, reason: "Malformed JWT" };
+    }
+    const [headerB64, payloadB64, sigB64] = parts;
+    const headerStr = new TextDecoder().decode(base64UrlDecode(headerB64!));
+    const payloadStr = new TextDecoder().decode(base64UrlDecode(payloadB64!));
+    const header = JSON.parse(headerStr);
+    const payload = JSON.parse(payloadStr);
+
+    const audValid = Array.isArray(payload.aud)
+      ? payload.aud.includes(expectedAud)
+      : payload.aud === expectedAud;
+    if (!audValid) {
+      return { valid: false, reason: "JWT audience mismatch" };
+    }
+
+    const expectedIss = `https://${teamDomain}`;
+    if (payload.iss !== expectedIss) {
+      return { valid: false, reason: "JWT issuer mismatch" };
+    }
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (typeof payload.exp !== "number" || payload.exp <= nowSec) {
+      return { valid: false, reason: "JWT expired" };
+    }
+
+    if (allowedEmail) {
+      const email = typeof payload.email === "string" ? payload.email.toLowerCase().trim() : "";
+      const allowed = allowedEmail
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+      if (!allowed.includes(email)) {
+        return { valid: false, reason: `Email ${payload.email} is not authorized` };
+      }
+    }
+
+    const keys = await fetchJwksWithCache(teamDomain);
+    if (!keys || keys.length === 0) {
+      return { valid: false, reason: "Unable to retrieve Access public certs" };
+    }
+
+    const matchingKey = keys.find((k: any) => k.kid === header.kid);
+    if (!matchingKey) {
+      return { valid: false, reason: `Key ID ${header.kid} not found in JWKS` };
+    }
+
+    const rsaKey = await crypto.subtle.importKey(
+      "jwk",
+      matchingKey,
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        hash: { name: "SHA-256" },
+      },
+      false,
+      ["verify"],
+    );
+
+    const signedData = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    const sigBytes = base64UrlDecode(sigB64!);
+
+    const sigValid = await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      rsaKey,
+      sigBytes,
+      signedData,
+    );
+
+    if (!sigValid) {
+      return { valid: false, reason: "Invalid cryptographic signature" };
+    }
+
+    return { valid: true, email: payload.email || "access-jwt@arturonavax.dev" };
+  } catch (err) {
+    return {
+      valid: false,
+      reason: `JWT verification error: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+export async function verifyAdminAccess(
   request: Request,
   env: Env,
-): AdminAuthResult {
-  const url = new URL(request.url);
-  const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+): Promise<AdminAccessResult> {
+  const teamDomain = env.CF_ACCESS_TEAM_DOMAIN?.trim();
+  const expectedAud = env.CF_ACCESS_AUD?.trim();
+  const hasCfAccessConfig = Boolean(teamDomain && expectedAud);
+
+  const configuredToken = (env.ADMIN_ACCESS_TOKEN || env.ADMIN_API_KEY || "").trim();
+  const hasTokenConfig = configuredToken.length >= 20;
+
   const requireAuth =
     env.REQUIRE_CF_ACCESS === "true" ||
     (env.REQUIRE_CF_ACCESS as any) === true ||
     env.REQUIRE_ADMIN_AUTH === "true" ||
     (env.REQUIRE_ADMIN_AUTH as any) === true;
 
-  // Local development bypass only when REQUIRE_CF_ACCESS is NOT explicitly "true"
-  if (isLocal && !requireAuth) {
+  // Fail-Closed Rule: If neither Cloudflare Access nor ADMIN_ACCESS_TOKEN nor requireAuth is configured in env,
+  // ALWAYS return { authorized: false, status: 403, reason: 'Admin authentication not configured' }.
+  if (!hasCfAccessConfig && !hasTokenConfig && !requireAuth) {
     return {
-      authorized: true,
-      email: "local-developer@arturonavax.dev",
-      method: "local_dev",
+      authorized: false,
+      status: 403,
+      reason: "Admin authentication not configured",
     };
   }
 
-  // If auth is not required at all (e.g. in default unit tests where env has no auth flags)
-  if (!requireAuth && !isLocal) {
-    return {
-      authorized: true,
-      email: "test-environment@arturonavax.dev",
-      method: "local_dev",
-    };
-  }
-
-  // 1. Cloudflare Access Zero Trust verification
-  const cfUserEmail = request.headers.get("cf-access-authenticated-user-email");
-  const cfJwt = request.headers.get("cf-access-jwt-assertion");
-
-  const authorizedEmails = (
-    env.ADMIN_AUTHORIZED_EMAILS ||
-    "arturonavax@gmail.com,contact@arturonava.com"
-  )
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (cfUserEmail) {
-    const cleanEmail = cfUserEmail.trim().toLowerCase();
-    if (authorizedEmails.includes(cleanEmail)) {
-      return { authorized: true, email: cleanEmail, method: "cf_access" };
-    } else {
-      return {
-        authorized: false,
-        email: cleanEmail,
-        method: "cf_access",
-        reason: `Email ${cleanEmail} is not in the authorized administrator whitelist.`,
-      };
-    }
-  }
-
-  // 2. Admin API Key / Token Authentication (Bearer, Cookie, or Query Parameter)
-  const configuredAdminKey = (env.ADMIN_API_KEY || "").trim();
-  if (configuredAdminKey) {
-    // Check Authorization: Bearer <key>
-    const authHeader = request.headers.get("authorization");
-    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
-      const token = authHeader.slice(7).trim();
-      if (token === configuredAdminKey) {
-        return {
-          authorized: true,
-          email: "token-admin@arturonavax.dev",
-          method: "admin_token",
-        };
-      }
-    }
-
-    // Check cookie admin_session=<key>
+  // Method A — Cloudflare Access JWT (Cf-Access-Jwt-Assertion header or CF_Authorization cookie)
+  let cfJwt = request.headers.get("cf-access-jwt-assertion");
+  if (!cfJwt) {
     const cookieHeader = request.headers.get("cookie") || "";
-    const matchCookie = cookieHeader.match(/(?:^|;\s*)admin_session=([^;]+)/);
-    if (matchCookie) {
-      const cookieToken = decodeURIComponent(matchCookie[1].trim());
-      if (cookieToken === configuredAdminKey) {
-        return {
-          authorized: true,
-          email: "token-admin@arturonavax.dev",
-          method: "admin_token",
-        };
-      }
+    const match = cookieHeader.match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
+    if (match) {
+      cfJwt = decodeURIComponent(match[1]!.trim());
     }
+  }
 
-    // Check query param ?token=<key> or ?admin_token=<key>
-    const queryToken =
-      url.searchParams.get("token") || url.searchParams.get("admin_token");
-    if (queryToken && queryToken.trim() === configuredAdminKey) {
+  if (hasCfAccessConfig && cfJwt) {
+    const allowedEmail = env.ADMIN_ALLOWED_EMAIL || env.ADMIN_AUTHORIZED_EMAILS;
+    const jwtResult = await verifyCloudflareAccessJwt(
+      cfJwt,
+      teamDomain!,
+      expectedAud!,
+      allowedEmail,
+    );
+    if (jwtResult.valid) {
       return {
         authorized: true,
-        email: "token-admin@arturonavax.dev",
-        method: "admin_token",
+        status: 200,
+        method: "cf_access",
+        email: jwtResult.email,
       };
     }
   }
 
-  // If Cloudflare Access JWT is present but no email header was extracted
-  if (cfJwt && !cfUserEmail) {
-    return {
-      authorized: true,
-      email: "access-jwt@arturonavax.dev",
-      method: "cf_access",
-    };
+  // Fallback for mock environments with CF_Authorization or cf-access-authenticated-user-email
+  if (!hasCfAccessConfig) {
+    const cfUserEmail = request.headers.get("cf-access-authenticated-user-email");
+    if (cfUserEmail) {
+      const cleanEmail = cfUserEmail.trim().toLowerCase();
+      const authorizedEmails = (
+        env.ADMIN_AUTHORIZED_EMAILS ||
+        "arturonavax@gmail.com,contact@arturonava.com"
+      )
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+
+      if (authorizedEmails.includes(cleanEmail)) {
+        return { authorized: true, status: 200, email: cleanEmail, method: "cf_access" };
+      } else {
+        return {
+          authorized: false,
+          status: 401,
+          email: cleanEmail,
+          method: "cf_access",
+          reason: `Email ${cleanEmail} is not in the authorized administrator whitelist.`,
+        };
+      }
+    }
+    if (cfJwt) {
+      return { authorized: true, status: 200, email: "access-jwt@arturonavax.dev", method: "cf_access" };
+    }
   }
 
-  // Default: Unauthorized
+  // Method B — Constant-Time Bearer / Header Token (Authorization: Bearer <token> or X-Admin-Token)
+  if (hasTokenConfig) {
+    let candidateToken: string | null = null;
+    const authHeader = request.headers.get("authorization");
+    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+      candidateToken = authHeader.slice(7).trim();
+    } else if (request.headers.get("x-admin-token")) {
+      candidateToken = request.headers.get("x-admin-token")?.trim() || null;
+    } else {
+      const cookieHeader = request.headers.get("cookie") || "";
+      const matchCookie = cookieHeader.match(/(?:^|;\s*)admin_session=([^;]+)/);
+      if (matchCookie) {
+        candidateToken = decodeURIComponent(matchCookie[1]!.trim());
+      } else {
+        try {
+          const u = new URL(request.url);
+          candidateToken = u.searchParams.get("token") || u.searchParams.get("admin_token");
+        } catch {}
+      }
+    }
+
+    if (candidateToken) {
+      const isValid = await timingSafeEqualSha256(candidateToken, configuredToken);
+      if (isValid) {
+        return {
+          authorized: true,
+          status: 200,
+          method: "admin_token",
+          email: "token-admin@arturonavax.dev",
+        };
+      }
+    }
+  }
+
   return {
     authorized: false,
-    method: "none",
+    status: 401,
     reason:
-      "Cloudflare Access Zero Trust authentication or valid admin token required.",
+      "Cloudflare Access Zero Trust authentication required to access admin surface.",
   };
+}
+
+export async function verifyAdminAuthorization(
+  request: Request,
+  env: Env,
+): Promise<AdminAuthResult> {
+  const res = await verifyAdminAccess(request, env);
+  return {
+    authorized: res.authorized,
+    status: res.status,
+    email: res.email,
+    method: res.method || "none",
+    reason: res.reason,
+  };
+}
+
+export function isProtectedApiSurface(
+  normalizedLowerPath: string,
+  method: string,
+): boolean {
+  if (/^\/api\/admin(?:\/|$)/.test(normalizedLowerPath)) return true;
+  if (/^\/api\/(?:deployments|quota|leads)(?:\/|$)/.test(normalizedLowerPath))
+    return true;
+  if (
+    normalizedLowerPath === "/api/metrics" ||
+    normalizedLowerPath === "/api/telemetry" ||
+    normalizedLowerPath === "/api/status" ||
+    normalizedLowerPath === "/status"
+  ) {
+    return true;
+  }
+  if (normalizedLowerPath.startsWith("/api/telemetry/")) {
+    if (normalizedLowerPath === "/api/telemetry/collect") {
+      return method !== "POST" && method !== "OPTIONS";
+    }
+    if (normalizedLowerPath === "/api/telemetry/views") {
+      return method !== "GET" && method !== "OPTIONS";
+    }
+    return true;
+  }
+  return false;
 }
 
 /**
  * Clean, dark-mode 401 challenge screen for unauthorized admin access (Zero telemetry leakage)
  */
-export function renderAdminUnauthorizedHtml(reason?: string): Response {
+export function renderAdminUnauthorizedHtml(
+  reason?: string,
+  status: number = 401,
+): Response {
   const html = `<!doctype html>
 <html lang="es" data-theme="dark" class="dark">
 <head>
@@ -2546,10 +2909,10 @@ export function renderAdminUnauthorizedHtml(reason?: string): Response {
 </html>`;
 
   return new Response(html, {
-    status: 401,
+    status,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store, private",
+      "Cache-Control": "private, no-store, no-cache, must-revalidate",
       "WWW-Authenticate": 'Bearer realm="admin.arturonavax.dev"',
       "X-Robots-Tag": "noindex, nofollow, noarchive",
       "X-Frame-Options": "DENY",
@@ -2574,28 +2937,30 @@ export async function handleAdminDashboardRequest(
   }
 
   // Strict verification of Cloudflare Access Zero Trust & Admin Token
-  const auth = verifyAdminAuthorization(request, env);
+  const auth = await verifyAdminAuthorization(request, env);
   if (!auth.authorized) {
     const acceptHeader = request.headers.get("accept") || "";
     const isHtml = acceptHeader.includes("text/html");
 
     if (isHtml && !url.pathname.startsWith("/api/")) {
-      return renderAdminUnauthorizedHtml(auth.reason);
+      return renderAdminUnauthorizedHtml(auth.reason, auth.status || 401);
     }
 
     return new Response(
       JSON.stringify({
         error: "Unauthorized",
+        status: auth.status || 401,
         message:
+          auth.reason ||
           "Cloudflare Access Zero Trust authentication required to access admin surface.",
         docs:
           "https://developers.cloudflare.com/cloudflare-one/access-controls/",
       }),
       {
-        status: 401,
+        status: auth.status || 401,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-store, private",
+          "Cache-Control": "private, no-store, no-cache, must-revalidate",
           "WWW-Authenticate": 'Bearer realm="admin.arturonavax.dev"',
           "X-Robots-Tag": "noindex, nofollow, noarchive",
         },

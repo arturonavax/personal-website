@@ -9,7 +9,21 @@ import worker, {
 const ROOT_DIR = process.cwd();
 
 describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard)", () => {
-  it("generates static admin pages in build output for both default and Spanish locales", () => {
+  it("generates static admin pages in build output for both default and Spanish locales (isolated in vault)", () => {
+    const vaultEnPath = path.join(
+      ROOT_DIR,
+      "dist",
+      "__admin_vault__",
+      "default",
+      "index.html",
+    );
+    const vaultEsPath = path.join(
+      ROOT_DIR,
+      "dist",
+      "__admin_vault__",
+      "es",
+      "index.html",
+    );
     const adminEnPath = path.join(ROOT_DIR, "dist", "admin", "index.html");
     const adminEsPath = path.join(
       ROOT_DIR,
@@ -19,15 +33,27 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
       "index.html",
     );
 
-    expect(fs.existsSync(adminEnPath)).toBe(true);
-    expect(fs.existsSync(adminEsPath)).toBe(true);
-
-    const enHtml = fs.readFileSync(adminEnPath, "utf8");
-    expect(enHtml).toContain("Admin Management Surface");
-    expect(enHtml).toContain("Zero Trust");
-    expect(enHtml).toContain('id="site-header"');
-    expect(enHtml).toContain('id="theme-toggle"');
-    expect(enHtml).toContain('aria-label="Language selector"');
+    const isVaultIsolated =
+      fs.existsSync(vaultEnPath) && fs.existsSync(vaultEsPath);
+    if (isVaultIsolated) {
+      expect(fs.existsSync(adminEnPath)).toBe(false);
+      expect(fs.existsSync(adminEsPath)).toBe(false);
+      const enHtml = fs.readFileSync(vaultEnPath, "utf8");
+      expect(enHtml).toContain("Admin Management Surface");
+      expect(enHtml).toContain("Zero Trust");
+      expect(enHtml).toContain('id="site-header"');
+      expect(enHtml).toContain('id="theme-toggle"');
+      expect(enHtml).toContain('aria-label="Language selector"');
+    } else {
+      expect(fs.existsSync(adminEnPath)).toBe(true);
+      expect(fs.existsSync(adminEsPath)).toBe(true);
+      const enHtml = fs.readFileSync(adminEnPath, "utf8");
+      expect(enHtml).toContain("Admin Management Surface");
+      expect(enHtml).toContain("Zero Trust");
+      expect(enHtml).toContain('id="site-header"');
+      expect(enHtml).toContain('id="theme-toggle"');
+      expect(enHtml).toContain('aria-label="Language selector"');
+    }
   });
 
   it("enforces private no-store headers and robots disallow for /admin routes", () => {
@@ -67,6 +93,7 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
       passThroughOnException: () => {},
     } as any;
     const mockEnv = {
+      ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
       ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
       DB: {
         prepare: () => ({
@@ -76,7 +103,11 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
       },
     } as any;
 
-    const req = new Request("https://admin.arturonavax.dev/");
+    const req = new Request("https://admin.arturonavax.dev/", {
+      headers: {
+        Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
+      },
+    });
     const res = await worker.fetch(req, mockEnv, mockCtx);
 
     expect(res.status).toBe(200);
@@ -104,6 +135,7 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
       passThroughOnException: () => {},
     } as any;
     const mockEnv = {
+      ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
       ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
       DB: {
         prepare: () => ({
@@ -122,7 +154,11 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
       },
     } as any;
 
-    const req = new Request("https://admin.arturonavax.dev/api/leads");
+    const req = new Request("https://admin.arturonavax.dev/api/leads", {
+      headers: {
+        Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
+      },
+    });
     const res = await worker.fetch(req, mockEnv, mockCtx);
 
     expect(res.status).toBe(200);
@@ -1027,6 +1063,7 @@ describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
       passThroughOnException: () => {},
     } as any;
     const mockEnv = {
+      ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
       DB: {
         prepare: () => ({
           bind: () => ({ all: async () => ({ results: [] }) }),
@@ -1035,7 +1072,12 @@ describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
       },
     } as any;
 
-    const telReq = new Request("https://admin.arturonavax.dev/api/telemetry");
+    const authHeaders = {
+      Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
+    };
+    const telReq = new Request("https://admin.arturonavax.dev/api/telemetry", {
+      headers: authHeaders,
+    });
     const telRes = await worker.fetch(telReq, mockEnv, mockCtx);
     expect(telRes.status).toBe(200);
     const telData = await telRes.json();
@@ -1045,7 +1087,9 @@ describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
     expect(telData.circuit_breakers.prefetch).toBeDefined();
     expect(telData.circuit_breakers.prefetch.maxPrefetchBudget).toBe(25000);
 
-    const metReq = new Request("https://admin.arturonavax.dev/api/metrics");
+    const metReq = new Request("https://admin.arturonavax.dev/api/metrics", {
+      headers: authHeaders,
+    });
     const metRes = await worker.fetch(metReq, mockEnv, mockCtx);
     expect(metRes.status).toBe(200);
     const metData = await metRes.json();
@@ -1061,6 +1105,7 @@ describe("ODD Task: Real-Time Admin Telemetry Dashboard Overhaul", () => {
       passThroughOnException: () => {},
     } as any;
     const mockEnv = {
+      ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
       DB: {
         prepare: () => ({
           bind: () => ({ all: async () => ({ results: [] }) }),
@@ -1069,7 +1114,11 @@ describe("ODD Task: Real-Time Admin Telemetry Dashboard Overhaul", () => {
       },
     } as any;
 
-    const req = new Request("https://admin.arturonavax.dev/");
+    const req = new Request("https://admin.arturonavax.dev/", {
+      headers: {
+        Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
+      },
+    });
     const res = await worker.fetch(req, mockEnv, mockCtx);
     expect(res.status).toBe(200);
 
@@ -1111,6 +1160,7 @@ describe("ODD Task: Real-Time Admin Telemetry Dashboard Overhaul", () => {
       passThroughOnException: () => {},
     } as any;
     const mockEnv = {
+      ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
       DB: {
         prepare: () => ({
           bind: () => ({ all: async () => ({ results: [] }) }),
@@ -1121,6 +1171,11 @@ describe("ODD Task: Real-Time Admin Telemetry Dashboard Overhaul", () => {
 
     const req = new Request(
       "https://admin.arturonavax.dev/api/telemetry?page=2&limit=25&range=7d&segment=human&path=/blog/",
+      {
+        headers: {
+          Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
+        },
+      },
     );
     const res = await worker.fetch(req, mockEnv, mockCtx);
     expect(res.status).toBe(200);
@@ -1292,10 +1347,16 @@ describe("ODD Task: Comprehensive Security Audit Hardening", () => {
           };
         },
       },
+      ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
     } as any;
 
     const req = new Request(
       "https://admin.arturonavax.dev/api/telemetry?range=24h",
+      {
+        headers: {
+          Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
+        },
+      },
     );
     const res = await worker.fetch(req, mockEnv, mockCtx);
     expect(res.status).toBe(200);

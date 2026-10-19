@@ -563,3 +563,148 @@ describe("SPEC-012: Edge AEO, AI Content Negotiation & Automated IndexNow (TASK 
     );
   });
 });
+
+describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants", () => {
+  it("1. wrangler.jsonc sets workers_dev to false and configures selective run_worker_first glob array", () => {
+    const wranglerRaw = fs.readFileSync(
+      path.join(ROOT_DIR, "wrangler.jsonc"),
+      "utf8",
+    );
+    const cleaned = wranglerRaw
+      .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "")
+      .replace(/,(\s*[}\]])/g, "$1");
+    const wrangler = JSON.parse(cleaned);
+
+    expect(wrangler.workers_dev).toBe(false);
+    expect(Array.isArray(wrangler.assets.run_worker_first)).toBe(true);
+    expect(wrangler.assets.run_worker_first).toContain("/admin*");
+    expect(wrangler.assets.run_worker_first).toContain("/*/admin*");
+    expect(wrangler.assets.run_worker_first).toContain("/api/*");
+    expect(wrangler.assets.run_worker_first).toContain("!/_astro/*");
+    expect(wrangler.assets.run_worker_first).toContain("!/fonts/*");
+  });
+
+  it("2. Unauthenticated requests to /admin, /es/admin, /en/admin, /ADMIN, /es//admin, /%61dmin, https://admin.arturonavax.dev/, and /__admin_vault__/default/index.html all return 401, 403, or 404 and never invoke env.ASSETS.fetch for the admin HTML shell", async () => {
+    const workerModule = await import("../../cloudflare/worker");
+    const worker = workerModule.default;
+
+    let assetsFetchCalledForAdmin = false;
+    const mockEnv = {
+      ASSETS: {
+        fetch: async (req: Request | string) => {
+          const u = typeof req === "string" ? req : req.url;
+          if (u.includes("admin") || u.includes("__admin_vault__")) {
+            assetsFetchCalledForAdmin = true;
+          }
+          return new Response("Not Found", { status: 404 });
+        },
+      } as unknown as Fetcher,
+    };
+
+    const mockCtx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+
+    const testUrls = [
+      "https://arturonavax.dev/admin",
+      "https://arturonavax.dev/es/admin",
+      "https://arturonavax.dev/en/admin",
+      "https://arturonavax.dev/ADMIN",
+      "https://arturonavax.dev/es//admin",
+      "https://arturonavax.dev/%61dmin",
+      "https://admin.arturonavax.dev/",
+      "https://arturonavax.dev/__admin_vault__/default/index.html",
+    ];
+
+    for (const testUrl of testUrls) {
+      assetsFetchCalledForAdmin = false;
+      const req = new Request(testUrl, {
+        headers: { Accept: "text/html" },
+      });
+      const res = await worker.fetch(req, mockEnv as any, mockCtx);
+      expect([401, 403, 404]).toContain(res.status);
+      expect(assetsFetchCalledForAdmin).toBe(false);
+    }
+  });
+
+  it("3. Unauthenticated requests to protected admin APIs return 401 or 403 with Cache-Control: private, no-store", async () => {
+    const workerModule = await import("../../cloudflare/worker");
+    const worker = workerModule.default;
+
+    const mockEnv = {
+      ASSETS: {
+        fetch: async () => new Response("Not Found", { status: 404 }),
+      } as unknown as Fetcher,
+    };
+
+    const mockCtx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+
+    const apiUrls = [
+      "https://arturonavax.dev/api/admin/metrics",
+      "https://arturonavax.dev/api/telemetry/summary",
+      "https://arturonavax.dev/api/telemetry",
+      "https://arturonavax.dev/api/metrics",
+      "https://arturonavax.dev/api/leads",
+      "https://arturonavax.dev/api/deployments",
+    ];
+
+    for (const apiUrl of apiUrls) {
+      const req = new Request(apiUrl);
+      const res = await worker.fetch(req, mockEnv as any, mockCtx);
+      expect([401, 403]).toContain(res.status);
+      const cacheControl = res.headers.get("Cache-Control") || "";
+      expect(cacheControl).toContain("private");
+      expect(cacheControl).toContain("no-store");
+    }
+  });
+
+  it("4. Authenticated requests to /admin and /es/admin succeed (200 OK) and serve the isolated admin shell with Cache-Control: private, no-store", async () => {
+    const workerModule = await import("../../cloudflare/worker");
+    const worker = workerModule.default;
+
+    const token = "super-secret-admin-token-min-32-chars-long";
+    const mockEnv = {
+      ADMIN_ACCESS_TOKEN: token,
+      ASSETS: {
+        fetch: async (req: Request | string) => {
+          const u = typeof req === "string" ? req : req.url;
+          if (u.includes("__admin_vault__") || u.includes("admin")) {
+            return new Response("<html><head><title>Admin Vault Shell</title></head><body><h1>Vault Dashboard</h1></body></html>", {
+              status: 200,
+              headers: { "Content-Type": "text/html; charset=utf-8" },
+            });
+          }
+          return new Response("Not Found", { status: 404 });
+        },
+      } as unknown as Fetcher,
+    };
+
+    const mockCtx = {
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+
+    for (const adminUrl of [
+      "https://arturonavax.dev/admin",
+      "https://arturonavax.dev/es/admin",
+    ]) {
+      const req = new Request(adminUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "text/html",
+        },
+      });
+      const res = await worker.fetch(req, mockEnv as any, mockCtx);
+      expect(res.status).toBe(200);
+      const body = await res.text();
+      expect(body).toContain("Vault Dashboard");
+      const cacheControl = res.headers.get("Cache-Control") || "";
+      expect(cacheControl).toContain("private");
+      expect(cacheControl).toContain("no-store");
+    }
+  });
+});
