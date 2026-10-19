@@ -656,6 +656,125 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
       window.__headerBoundElements ||
       (window.__headerBoundElements = new WeakSet());
 
+    function setActiveSection(currentSection, force) {
+      if (
+        !currentSection ||
+        (!force && window.__currentActiveNavSection === currentSection)
+      )
+        return;
+      window.__currentActiveNavSection = currentSection;
+
+      document.querySelectorAll("a[data-nav-section]").forEach(function (a) {
+        var sec = a.getAttribute("data-nav-section");
+        var isCurrent = sec === currentSection;
+
+        if (isCurrent) {
+          a.setAttribute("aria-current", "page");
+          a.classList.add("text-[var(--color-accent-gold)]");
+          if (a.classList.contains("border-b-2")) {
+            a.classList.add("border-b-[var(--color-accent-gold)]");
+            a.classList.remove("border-transparent");
+          }
+          a.classList.remove("text-[var(--color-text-secondary)]");
+        } else {
+          a.removeAttribute("aria-current");
+          a.classList.remove(
+            "text-[var(--color-accent-gold)]",
+            "border-b-[var(--color-accent-gold)]",
+          );
+          if (a.classList.contains("border-b-2")) {
+            a.classList.add("border-transparent");
+          }
+          a.classList.add("text-[var(--color-text-secondary)]");
+        }
+      });
+
+      // Cascada estricta: 'Más' se enciende si la sección activa está replegada dentro del desplegable.
+      // SPEC-007 REQ-4: 'services' queda excluida; solo se resalta su propio enlace.
+      var width = window.innerWidth;
+      var isProjectsInMore = width < 1000;
+      var isCaseStudiesInMore = width < 1160;
+      var isContactInMore = width < 1380;
+
+      var isMoreActive =
+        currentSection === "blog" ||
+        (currentSection === "projects" && isProjectsInMore) ||
+        (currentSection === "case-studies" && isCaseStudiesInMore) ||
+        (currentSection === "contact" && isContactInMore);
+
+      var moreSummary = document.getElementById("header-more-summary");
+      if (moreSummary) {
+        if (isMoreActive) {
+          moreSummary.classList.add(
+            "text-[var(--color-accent-gold)]",
+            "border-b-[var(--color-accent-gold)]",
+          );
+          moreSummary.classList.remove("border-transparent");
+        } else {
+          moreSummary.classList.remove(
+            "text-[var(--color-accent-gold)]",
+            "border-b-[var(--color-accent-gold)]",
+          );
+          moreSummary.classList.add("border-transparent");
+        }
+      }
+    }
+    window.__setActiveNavSection = setActiveSection;
+
+    function updateActiveNavState(force) {
+      var rawPath = window.location.pathname;
+      var path = rawPath.endsWith("/") ? rawPath : rawPath + "/";
+      var currentSection = "";
+
+      if (path.indexOf("/experience/") !== -1) {
+        currentSection = "experience";
+      } else if (path.indexOf("/projects/") !== -1) {
+        currentSection = "projects";
+      } else if (path.indexOf("/case-studies/") !== -1) {
+        currentSection = "case-studies";
+      } else if (path.indexOf("/blog/") !== -1) {
+        currentSection = "blog";
+      } else if (path.indexOf("/resume/") !== -1) {
+        currentSection = "resume";
+      } else if (path.indexOf("/services/") !== -1) {
+        currentSection = "services";
+      } else if (path === "/" || path === "/es/") {
+        if (window.__isContactInView) {
+          currentSection = "contact";
+        } else {
+          currentSection = "about";
+        }
+      }
+
+      if (currentSection) {
+        setActiveSection(currentSection, force);
+      }
+    }
+    window.__updateActiveNavState = updateActiveNavState;
+
+    if (!window.__headerNavListenersBound) {
+      window.__headerNavListenersBound = true;
+      window.addEventListener(
+        "hashchange",
+        function () {
+          updateActiveNavState();
+        },
+        {
+          passive: true,
+        },
+      );
+
+      window.addEventListener(
+        "resize",
+        function () {
+          updateActiveNavState();
+        },
+        {
+          passive: true,
+        },
+      );
+    }
+
     function setupHeader() {
       var headerBtn = document.getElementById("header-search-btn");
       var mobileBtn = document.getElementById("mobile-search-btn");
@@ -857,109 +976,6 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           }
         });
 
-      function setActiveSection(currentSection) {
-        if (
-          !currentSection ||
-          window.__currentActiveNavSection === currentSection
-        )
-          return;
-        window.__currentActiveNavSection = currentSection;
-
-        document.querySelectorAll("a[data-nav-section]").forEach(function (a) {
-          var sec = a.getAttribute("data-nav-section");
-          var isCurrent = sec === currentSection;
-
-          if (isCurrent) {
-            a.setAttribute("aria-current", "page");
-            a.classList.add("text-[var(--color-accent-gold)]");
-            if (a.classList.contains("border-b-2")) {
-              a.classList.add("border-b-[var(--color-accent-gold)]");
-              a.classList.remove("border-transparent");
-            }
-            a.classList.remove("text-[var(--color-text-secondary)]");
-          } else {
-            a.removeAttribute("aria-current");
-            a.classList.remove(
-              "text-[var(--color-accent-gold)]",
-              "border-b-[var(--color-accent-gold)]",
-            );
-            if (a.classList.contains("border-b-2")) {
-              a.classList.add("border-transparent");
-            }
-            a.classList.add("text-[var(--color-text-secondary)]");
-          }
-        });
-
-        // Cascada estricta: 'Más' se enciende si la sección activa está replegada dentro del desplegable.
-        // SPEC-007 REQ-4: 'services' queda excluida; solo se resalta su propio enlace.
-        var width = window.innerWidth;
-        var isProjectsInMore = width < 1000;
-        var isCaseStudiesInMore = width < 1160;
-        var isContactInMore = width < 1380;
-
-        var isMoreActive =
-          currentSection === "blog" ||
-          (currentSection === "projects" && isProjectsInMore) ||
-          (currentSection === "case-studies" && isCaseStudiesInMore) ||
-          (currentSection === "contact" && isContactInMore);
-
-        var moreSummary = document.getElementById("header-more-summary");
-        if (moreSummary) {
-          if (isMoreActive) {
-            moreSummary.classList.add(
-              "text-[var(--color-accent-gold)]",
-              "border-b-[var(--color-accent-gold)]",
-            );
-            moreSummary.classList.remove("border-transparent");
-          } else {
-            moreSummary.classList.remove(
-              "text-[var(--color-accent-gold)]",
-              "border-b-[var(--color-accent-gold)]",
-            );
-            moreSummary.classList.add("border-transparent");
-          }
-        }
-      }
-      window.__setActiveNavSection = setActiveSection;
-
-      function updateActiveNavState() {
-        var rawPath = window.location.pathname;
-        var path = rawPath.endsWith("/") ? rawPath : rawPath + "/";
-        var currentSection = "";
-
-        if (path.indexOf("/experience/") !== -1) {
-          currentSection = "experience";
-        } else if (path.indexOf("/projects/") !== -1) {
-          currentSection = "projects";
-        } else if (path.indexOf("/case-studies/") !== -1) {
-          currentSection = "case-studies";
-        } else if (path.indexOf("/blog/") !== -1) {
-          currentSection = "blog";
-        } else if (path.indexOf("/resume/") !== -1) {
-          currentSection = "resume";
-        } else if (path.indexOf("/services/") !== -1) {
-          currentSection = "services";
-        } else if (path === "/" || path === "/es/") {
-          if (window.__isContactInView) {
-            currentSection = "contact";
-          } else {
-            currentSection = "about";
-          }
-        }
-
-        if (currentSection) {
-          setActiveSection(currentSection);
-        }
-      }
-
-      window.addEventListener("hashchange", updateActiveNavState, {
-        passive: true,
-      });
-
-      window.addEventListener("resize", updateActiveNavState, {
-        passive: true,
-      });
-
       var contactObsAttached = false;
       function attachContactObserver() {
         if (contactObsAttached) return;
@@ -1019,7 +1035,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
     }
 
     function syncHeaderStatePrePaint() {
-      updateActiveNavState();
+      updateActiveNavState(true);
 
       if (
         typeof document !== "undefined" &&

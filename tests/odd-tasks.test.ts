@@ -2048,4 +2048,68 @@ describe("ODD Task 7: SEO Canonical Indexing, Trailing Slashes & Robots Directiv
     expect(csContent).toContain("/case-studies/");
     expect(csContent).toContain('availableLocales={["en", "es"]}');
   });
+
+  it("ensures Header.astro declares updateActiveNavState at the outer script scope and calls it in syncHeaderStatePrePaint", () => {
+    const headerPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "common",
+      "Header.astro",
+    );
+    const headerContent = fs.readFileSync(headerPath, "utf8");
+    expect(headerContent).toContain("function updateActiveNavState");
+    expect(headerContent).toContain(
+      "window.__updateActiveNavState = updateActiveNavState;",
+    );
+    expect(headerContent).toContain("function syncHeaderStatePrePaint");
+    expect(headerContent).toContain("updateActiveNavState(true);");
+  });
+
+  it("ensures mobile Print button in PageIndexNav declares keyboard shortcut matching Index button resolution", () => {
+    const navPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
+    const navContent = fs.readFileSync(navPath, "utf8");
+
+    // Index button shortcut
+    expect(navContent).toContain('id="open-index-floating-btn"');
+    expect(navContent).toContain(
+      '<kbd class="hidden sm:inline-block rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] font-semibold shrink-0">',
+    );
+
+    // Print button shortcut matching resolution
+    expect(navContent).toContain('id="mobile-cv-print-btn"');
+    expect(navContent).toContain(
+      '<kbd class="hidden sm:inline-block rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-xs text-[var(--color-accent-gold)] font-semibold shrink-0">',
+    );
+  });
+
+  it("ensures PageIndexNav.astro toggles desktop and mobile download button visibility in updateCvButtons", () => {
+    const navPath = path.join(
+      ROOT_DIR,
+      "src",
+      "components",
+      "ui",
+      "PageIndexNav.astro",
+    );
+    const navContent = fs.readFileSync(navPath, "utf8");
+
+    expect(navContent).toContain(
+      'var desktopDown = document.getElementById("desktop-cv-download-btn");',
+    );
+    expect(navContent).toContain(
+      'var mobileDown = document.getElementById("mobile-cv-download-btn");',
+    );
+    expect(navContent).toContain(
+      'desktopDown.classList.toggle("hidden", !isCv);',
+    );
+    expect(navContent).toContain(
+      'mobileDown.classList.toggle("hidden", !isCv);',
+    );
+  });
 });

@@ -555,6 +555,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
             <path d="M6 14h12v8H6z"></path>
           </svg>
           <span class="shrink-0">{isEs ? i18nEs.print : i18nEn.print}</span>
+          <kbd class="hidden sm:inline-block rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-xs text-[var(--color-accent-gold)] font-semibold shrink-0">
+            p
+          </kbd>
         </button>
 
         <a
@@ -1325,6 +1328,8 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
     function updateCvButtons(isCv, isEs) {
       var desktopCv = document.getElementById("desktop-cv-actions");
       var mobileCv = document.getElementById("mobile-cv-actions");
+      var desktopDown = document.getElementById("desktop-cv-download-btn");
+      var mobileDown = document.getElementById("mobile-cv-download-btn");
       var maxwContainer = document.getElementById("desktop-page-index-maxw");
       var desktopRoot = document.getElementById("desktop-page-index-root");
 
@@ -1342,6 +1347,22 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
           mobileCv.style.display = "none";
         } else {
           mobileCv.style.removeProperty("display");
+        }
+      }
+      if (desktopDown) {
+        desktopDown.classList.toggle("hidden", !isCv);
+        if (!isCv) {
+          desktopDown.style.display = "none";
+        } else {
+          desktopDown.style.removeProperty("display");
+        }
+      }
+      if (mobileDown) {
+        mobileDown.classList.toggle("hidden", !isCv);
+        if (!isCv) {
+          mobileDown.style.display = "none";
+        } else {
+          mobileDown.style.removeProperty("display");
         }
       }
 
