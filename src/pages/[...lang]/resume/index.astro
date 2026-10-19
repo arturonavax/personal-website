@@ -1,6 +1,5 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import PageIndexNav from "@/components/ui/PageIndexNav.astro";
 import ResumeAttributionBar from "@/components/ui/ResumeAttributionBar.astro";
 import ResumeExportBar from "@/components/ui/ResumeExportBar.astro";
 import { getResumeData, hasResume } from "@/data/resume";
@@ -51,16 +50,8 @@ const jsonLd = buildResumeJsonLd({
   jsonLd={jsonLd}
   hideSubtleCoffee={true}
 >
-  {hasResume && (
-    <PageIndexNav
-      locale={locale}
-      customItems={items}
-      containerMaxWidth="cv"
-      alignTargetId="cv-document-sheet"
-      showPdfPrint={true}
-      showPdfDownload={true}
-      downloadUrl={`/downloads/ArturoNava-CV-${locale}.pdf`}
-    />
+  {hasResume && items && items.length > 0 && (
+    <script type="application/json" id="page-index-custom-items" set:html={JSON.stringify(items)} />
   )}
 
   <div

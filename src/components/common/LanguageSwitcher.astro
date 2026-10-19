@@ -240,13 +240,7 @@ const effectiveTargetUrl =
               oldDesktopIndex.innerHTML = newDesktopIndex.innerHTML;
             }
 
-            // 7. Page Index cleanup (Mobile panel in stack)
-            var oldMobileIndex = document.querySelector(
-              "#floating-actions-stack #mobile-page-index-container",
-            );
-            if (oldMobileIndex) {
-              oldMobileIndex.remove();
-            }
+            // 7. Page Index: Retained inside persistent shell; setupPageIndex on page-load synchronizes state.
 
             // 8. Shortcuts dialog
             var oldShortcuts = document.getElementById("shortcuts-dialog");
@@ -338,4 +332,34 @@ const effectiveTargetUrl =
       window.location.reload();
     });
   }
+
+  function syncLanguageSwitcherTargetUrls() {
+    if (
+      typeof document === "undefined" ||
+      !document.head ||
+      !document.head.querySelectorAll
+    )
+      return;
+    var altLinks = document.head.querySelectorAll(
+      'link[rel="alternate"][hreflang]',
+    );
+    if (!altLinks.length) return;
+    var targetUrls = {};
+    altLinks.forEach(function (link) {
+      var hreflang = link.getAttribute("hreflang");
+      var href = link.getAttribute("href");
+      if (hreflang && href) {
+        targetUrls[hreflang] = href;
+      }
+    });
+
+    document.querySelectorAll("[data-lang-switch]").forEach(function (el) {
+      var lang = el.getAttribute("data-lang-switch");
+      if (lang && targetUrls[lang]) {
+        el.setAttribute("href", targetUrls[lang]);
+      }
+    });
+  }
+
+  document.addEventListener("astro:after-swap", syncLanguageSwitcherTargetUrls);
 </script>

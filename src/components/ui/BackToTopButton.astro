@@ -12,7 +12,7 @@ const isEs = locale === "es";
   id="back-to-top-btn"
   aria-label={isEs ? "Volver arriba" : "Back to top"}
   title={isEs ? "Volver arriba" : "Back to top"}
-  class="pointer-events-none opacity-0 translate-y-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 text-[var(--color-text-secondary)] shadow-card backdrop-blur-md transition-all duration-300 hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer order-3"
+  class="pointer-events-none opacity-0 translate-y-2 hidden flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 text-[var(--color-text-secondary)] shadow-card backdrop-blur-md transition-all duration-300 hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer order-3"
 >
   <svg
     class="h-4 w-4 stroke-current fill-none shrink-0"
@@ -28,9 +28,78 @@ const isEs = locale === "es";
 
 <script is:inline>
   (function () {
+    function updateBackToTopVisibility(animate) {
+      var btn = document.getElementById("back-to-top-btn");
+      if (!btn) return;
+
+      var scrollY =
+        window.pageYOffset || document.documentElement.scrollTop || 0;
+      var shouldShow = scrollY > 400;
+
+      if (!animate) {
+        btn.classList.add("no-transition");
+      }
+
+      if (shouldShow) {
+        btn.classList.remove("hidden");
+        requestAnimationFrame(function () {
+          btn.classList.remove(
+            "pointer-events-none",
+            "opacity-0",
+            "translate-y-2",
+          );
+          btn.classList.add(
+            "pointer-events-auto",
+            "opacity-100",
+            "translate-y-0",
+          );
+        });
+      } else {
+        btn.classList.remove(
+          "pointer-events-auto",
+          "opacity-100",
+          "translate-y-0",
+        );
+        btn.classList.add(
+          "pointer-events-none",
+          "opacity-0",
+          "translate-y-2",
+        );
+        if (!animate) {
+          btn.classList.add("hidden");
+        } else {
+          setTimeout(function () {
+            var currScroll =
+              window.pageYOffset || document.documentElement.scrollTop || 0;
+            if (currScroll <= 400) {
+              btn.classList.add("hidden");
+            }
+          }, 300);
+        }
+      }
+
+      if (!animate) {
+        requestAnimationFrame(function () {
+          btn.classList.remove("no-transition");
+        });
+      }
+    }
+
+    function syncBackToTopLocale() {
+      var btn = document.getElementById("back-to-top-btn");
+      if (!btn) return;
+      var lang =
+        (document.documentElement &&
+          document.documentElement.getAttribute("lang")) ||
+        "en";
+      var isEs = lang.indexOf("es") === 0;
+      btn.setAttribute("aria-label", isEs ? "Volver arriba" : "Back to top");
+      btn.setAttribute("title", isEs ? "Volver arriba" : "Back to top");
+    }
+
     function setupBackToTop() {
       var btn = document.getElementById("back-to-top-btn");
-      if (!btn || btn.dataset.bound) return;
+      if (!btn) return;
 
       // Omit button on mobile browsers with built-in native Scroll-to-Top feature
       var ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
@@ -44,40 +113,13 @@ const isEs = locale === "es";
         return;
       }
 
-      btn.dataset.bound = "true";
+      syncBackToTopLocale();
 
-      var isVisible = false;
-      function onScroll() {
-        var scrollY =
-          window.pageYOffset || document.documentElement.scrollTop || 0;
-        var shouldShow = scrollY > 400;
-        if (shouldShow === isVisible) return;
-        isVisible = shouldShow;
-
-        if (shouldShow) {
-          btn.classList.remove(
-            "pointer-events-none",
-            "opacity-0",
-            "translate-y-2",
-          );
-          btn.classList.add(
-            "pointer-events-auto",
-            "opacity-100",
-            "translate-y-0",
-          );
-        } else {
-          btn.classList.remove(
-            "pointer-events-auto",
-            "opacity-100",
-            "translate-y-0",
-          );
-          btn.classList.add(
-            "pointer-events-none",
-            "opacity-0",
-            "translate-y-2",
-          );
-        }
+      if (window.__backToTopInitialized) {
+        updateBackToTopVisibility(false);
+        return;
       }
+      window.__backToTopInitialized = true;
 
       btn.addEventListener("click", function () {
         window.__isProgrammaticNav = true;
@@ -94,9 +136,18 @@ const isEs = locale === "es";
         }, 900);
       });
 
-      window.addEventListener("scroll", onScroll, { passive: true });
-      onScroll();
+      window.addEventListener("scroll", function () {
+        updateBackToTopVisibility(true);
+      }, { passive: true });
+
+      updateBackToTopVisibility(false);
     }
+
+    // Pre-paint sync on route transitions
+    document.addEventListener("astro:after-swap", function () {
+      syncBackToTopLocale();
+      updateBackToTopVisibility(false);
+    });
 
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", setupBackToTop);

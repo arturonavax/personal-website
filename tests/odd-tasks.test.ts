@@ -1434,3 +1434,173 @@ describe("ODD Task: Comprehensive Security Audit Hardening", () => {
     expect(content).toContain("window.__hideBeacon()");
   });
 });
+
+describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", () => {
+  it("declares transition:persist on PageIndexNav, LanguageSuggestionBanner, BackToTopButton, and global modals in BaseLayout.astro", () => {
+    const layoutPath = path.join(ROOT_DIR, "src", "layouts", "BaseLayout.astro");
+    const content = fs.readFileSync(layoutPath, "utf8");
+
+    expect(content).toMatch(/<PageIndexNav[^>]*transition:persist="page-index-nav"/);
+    expect(content).toMatch(/<LanguageSuggestionBanner[^>]*transition:persist="language-banner"/);
+    expect(content).toMatch(/<BackToTopButton[^>]*transition:persist="backtotop"/);
+    expect(content).toMatch(/<UniversalSearchModal[^>]*transition:persist/);
+    expect(content).toMatch(/<ShortcutsModal[^>]*transition:persist/);
+    expect(content).toMatch(/<CoffeeSponsorshipModal[^>]*transition:persist/);
+    expect(content).toMatch(/<ContactFormModal[^>]*transition:persist/);
+    expect(content).toMatch(/<OnlineJudgesModal[^>]*transition:persist/);
+    expect(content).toContain('<main id="main-content"');
+  });
+
+  it("exposes current page metadata and synchronizes in astro:after-swap in BaseLayout.astro", () => {
+    const layoutPath = path.join(ROOT_DIR, "src", "layouts", "BaseLayout.astro");
+    const content = fs.readFileSync(layoutPath, "utf8");
+
+    expect(content).toContain("data-current-locale");
+    expect(content).toContain("data-current-path");
+    expect(content).toContain("astro:after-swap");
+  });
+
+  it("synchronizes PageIndexNav state on astro:after-swap before paint and stores localized strings", () => {
+    const navPath = path.join(ROOT_DIR, "src", "components", "ui", "PageIndexNav.astro");
+    const content = fs.readFileSync(navPath, "utf8");
+
+    expect(content).toContain('transition:persist="page-index-nav"');
+    expect(content).toContain("data-i18n-en");
+    expect(content).toContain("data-i18n-es");
+    expect(content).toContain("data-has-sections");
+    expect(content).toContain("astro:after-swap");
+    expect(content).toContain("no-transition");
+    expect(content).toContain("togglePanel(false)");
+  });
+
+  it("implements zero-flicker session state machine in LanguageSuggestionBanner.astro", () => {
+    const bannerPath = path.join(ROOT_DIR, "src", "components", "ui", "LanguageSuggestionBanner.astro");
+    const content = fs.readFileSync(bannerPath, "utf8");
+
+    expect(content).toContain('transition:persist="language-banner"');
+    expect(content).toContain("data-i18n-en");
+    expect(content).toContain("data-i18n-es");
+    expect(content).toContain("window.__langBannerState");
+    expect(content).toContain("hasAnimatedIn");
+    expect(content).toContain("isDismissed");
+    expect(content).toContain("astro:after-swap");
+    expect(content).not.toContain("localStorage");
+  });
+
+  it("coordinates BackToTopButton, Header, LanguageSwitcher, and global.css view-transition isolation", () => {
+    const btnPath = path.join(ROOT_DIR, "src", "components", "ui", "BackToTopButton.astro");
+    const btnContent = fs.readFileSync(btnPath, "utf8");
+    expect(btnContent).toContain("window.__backToTopInitialized");
+    expect(btnContent).toContain("astro:after-swap");
+
+    const headerPath = path.join(ROOT_DIR, "src", "components", "common", "Header.astro");
+    const headerContent = fs.readFileSync(headerPath, "utf8");
+    expect(headerContent).toContain("syncHeaderStatePrePaint");
+    expect(headerContent).toContain("astro:after-swap");
+
+    const switcherPath = path.join(ROOT_DIR, "src", "components", "common", "LanguageSwitcher.astro");
+    const switcherContent = fs.readFileSync(switcherPath, "utf8");
+    expect(switcherContent).toContain("astro:after-swap");
+
+    const cssPath = path.join(ROOT_DIR, "src", "styles", "global.css");
+    const cssContent = fs.readFileSync(cssPath, "utf8");
+    expect(cssContent).toContain("view-transition-name: site-header");
+    expect(cssContent).toContain("view-transition-name: page-index-nav");
+    expect(cssContent).toContain("view-transition-name: lang-suggestion-banner");
+    expect(cssContent).toContain("view-transition-name: back-to-top");
+    expect(cssContent).toContain(".no-transition");
+  });
+
+  it("enforces strict responsive isolation between desktop page index and floating HUD button", () => {
+    const cssPath = path.join(ROOT_DIR, "src", "styles", "global.css");
+    const cssContent = fs.readFileSync(cssPath, "utf8");
+    expect(cssContent).toContain("#desktop-page-index-root");
+    expect(cssContent).toContain("display: none !important");
+    expect(cssContent).toContain("@media (min-width: 1600px)");
+    expect(cssContent).toContain("#mobile-page-index-container");
+    expect(cssContent).toContain("display: flex !important");
+
+    const navPath = path.join(ROOT_DIR, "src", "components", "ui", "PageIndexNav.astro");
+    const navContent = fs.readFileSync(navPath, "utf8");
+    expect(navContent).toContain("function alignDesktopIndex");
+    expect(navContent).not.toMatch(/desktopRoot\.classList\.remove\([^)]*['"]hidden['"][^)]*\)/);
+  });
+
+  it("strictly restricts CV actions (Download and Print) to /resume/ and excludes /tools/resume-maker/ and other routes", () => {
+    const navPath = path.join(ROOT_DIR, "src", "components", "ui", "PageIndexNav.astro");
+    const navContent = fs.readFileSync(navPath, "utf8");
+
+    // Route detection checks
+    expect(navContent).toContain("isResumeRoute = currentPath === \"/resume\" || currentPath === \"/es/resume\"");
+    expect(navContent).toContain("showPdfPrint = isResumeRoute");
+    expect(navContent).toContain("showPdfDownload = isResumeRoute");
+    expect(navContent).toContain("function checkIsResumePage");
+    expect(navContent).toContain("!isResumeMaker");
+
+    // Element display guards
+    expect(navContent).toContain('id="desktop-cv-actions"');
+    expect(navContent).toContain('id="mobile-cv-actions"');
+    expect(navContent).toContain('style={showPdfPrint ? undefined : "display: none;"}');
+    expect(navContent).toContain('updateCvButtons(isCv, isLangEs)');
+  });
+
+  it("adapts PageIndex dynamically on zoom and resize via syncResponsiveMode and clearance check", () => {
+    const navPath = path.join(ROOT_DIR, "src", "components", "ui", "PageIndexNav.astro");
+    const navContent = fs.readFileSync(navPath, "utf8");
+
+    expect(navContent).toContain("function syncResponsiveMode");
+    expect(navContent).toContain("window.visualViewport");
+    expect(navContent).toContain("spaceLeft >= 280");
+    expect(navContent).toContain("force-hide-desktop");
+    expect(navContent).toContain("force-show-mobile");
+    expect(navContent).toContain("force-hide-mobile");
+
+    const cssPath = path.join(ROOT_DIR, "src", "styles", "global.css");
+    const cssContent = fs.readFileSync(cssPath, "utf8");
+    expect(cssContent).toContain("#desktop-page-index-root.force-hide-desktop");
+    expect(cssContent).toContain("#mobile-page-index-container.force-hide-mobile");
+    expect(cssContent).toContain("#mobile-page-index-container:not(.force-show-mobile)");
+  });
+
+  it("eliminates LanguageSuggestionBanner shadow flicker by avoiding transition-all and dropping old view-transition snapshot", () => {
+    const bannerPath = path.join(ROOT_DIR, "src", "components", "ui", "LanguageSuggestionBanner.astro");
+    const bannerContent = fs.readFileSync(bannerPath, "utf8");
+
+    // Must not transition all (which animates box-shadow and causes flickering during DOM swap)
+    expect(bannerContent).toContain("transition-[transform,opacity]");
+    expect(bannerContent).not.toMatch(/transition-all[^"]*duration-300/);
+
+    const cssPath = path.join(ROOT_DIR, "src", "styles", "global.css");
+    const cssContent = fs.readFileSync(cssPath, "utf8");
+    expect(cssContent).toContain("::view-transition-old(lang-suggestion-banner)");
+    expect(cssContent).toContain("display: none !important");
+  });
+
+  it("elevates floating actions stack only on colliding viewports when LanguageSuggestionBanner is active", () => {
+    const layoutPath = path.join(ROOT_DIR, "src", "layouts", "BaseLayout.astro");
+    const layoutContent = fs.readFileSync(layoutPath, "utf8");
+
+    expect(layoutContent).toContain("function updateToastCollision");
+    expect(layoutContent).toContain("elevated-for-toast");
+    expect(layoutContent).toContain("bannerRect.right + 12 > stackRect.left");
+
+    const cssPath = path.join(ROOT_DIR, "src", "styles", "global.css");
+    const cssContent = fs.readFileSync(cssPath, "utf8");
+    expect(cssContent).toContain("#floating-actions-stack.elevated-for-toast");
+    expect(cssContent).toContain("@media (max-width: 640px)");
+  });
+
+  it("prevents MatrixBackground from freezing on page transition from Experience to About by resuming on navigation", () => {
+    const matrixPath = path.join(ROOT_DIR, "src", "components", "ui", "MatrixBackground.astro");
+    const matrixContent = fs.readFileSync(matrixPath, "utf8");
+
+    expect(matrixContent).toContain("function resumeMatrixOnNav");
+    expect(matrixContent).toContain("state.worker.postMessage({ type: \"resume\" })");
+    expect(matrixContent).toContain("astro:page-load");
+    expect(matrixContent).toContain("astro:after-swap");
+
+    const workerPath = path.join(ROOT_DIR, "src", "scripts", "matrix.worker.ts");
+    const workerContent = fs.readFileSync(workerPath, "utf8");
+    expect(workerContent).toMatch(/case\s*"resize":\s*layout\([^)]*\);\s*scheduleNextFrame\(\);/);
+  });
+});

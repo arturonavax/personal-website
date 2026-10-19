@@ -311,7 +311,7 @@ export function buildArticleJsonLd(
   return {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    "@id": PERSON_ENTITY_ID,
+    "@id": `${options.canonicalUrl}#article`,
     inLanguage: options.locale,
     headline: options.headline,
     description: options.description,
@@ -375,7 +375,7 @@ export function buildProjectJsonLd(
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareSourceCode",
-    "@id": PERSON_ENTITY_ID,
+    "@id": `${options.canonicalUrl}#software`,
     inLanguage: options.locale,
     name: options.title,
     headline: options.title,
@@ -430,7 +430,7 @@ export function buildServiceJsonLd(
   return {
     "@context": "https://schema.org",
     "@type": "Service",
-    "@id": PERSON_ENTITY_ID,
+    "@id": `${options.canonicalUrl}#service`,
     inLanguage: options.locale,
     name: options.title,
     description: options.description,
@@ -472,7 +472,7 @@ export function buildResumeJsonLd(
   return {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
-    "@id": PERSON_ENTITY_ID,
+    "@id": `${options.canonicalUrl}#webpage`,
     inLanguage: options.locale,
     name: options.title,
     description: options.description,
@@ -538,7 +538,7 @@ export function buildExperienceJsonLd(
   return {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    "@id": PERSON_ENTITY_ID,
+    "@id": `${options.canonicalUrl}#experience`,
     inLanguage: options.locale,
     headline,
     description: options.description,
@@ -576,7 +576,7 @@ export function ensureUnifiedGraphJsonLd(
   if (!inputJsonLd) {
     return {
       "@context": "https://schema.org",
-      "@id": PERSON_ENTITY_ID,
+      "@id": `${fallback.canonicalUrl}#webpage`,
       inLanguage: fallback.locale,
       "@graph": coreNodes,
     };
@@ -587,11 +587,25 @@ export function ensureUnifiedGraphJsonLd(
       ? { ...inputJsonLd[0] }
       : {
           "@context": "https://schema.org",
-          "@id": PERSON_ENTITY_ID,
           inLanguage: fallback.locale,
           "@graph": inputJsonLd,
         }
     : { ...inputJsonLd };
+
+  // Google Search Console invariant: A dependent entity (e.g. mainEntity) cannot reuse the ID of the parent entity
+  if (
+    rootObj.mainEntity &&
+    typeof rootObj.mainEntity === "object" &&
+    (rootObj.mainEntity as Record<string, unknown>)["@id"] === rootObj["@id"]
+  ) {
+    rootObj["@id"] = `${fallback.canonicalUrl}#webpage`;
+  }
+  if (
+    rootObj["@type"] === "ProfilePage" &&
+    rootObj["@id"] === PERSON_ENTITY_ID
+  ) {
+    rootObj["@id"] = `${fallback.canonicalUrl}#webpage`;
+  }
 
   const existingGraph = Array.isArray(rootObj["@graph"])
     ? ([...(rootObj["@graph"] as Array<Record<string, unknown>>)] as Array<
@@ -628,7 +642,7 @@ export function ensureUnifiedGraphJsonLd(
     return {
       ...rootObj,
       "@context": "https://schema.org",
-      "@id": rootObj["@id"] || PERSON_ENTITY_ID,
+      "@id": rootObj["@id"] || `${fallback.canonicalUrl}#webpage`,
       inLanguage: rootObj["inLanguage"] || fallback.locale,
       "@graph": mergedGraph,
     };
@@ -644,7 +658,7 @@ export function ensureUnifiedGraphJsonLd(
   return {
     ...rootObj,
     "@context": "https://schema.org",
-    "@id": rootObj["@id"] || PERSON_ENTITY_ID,
+    "@id": rootObj["@id"] || `${fallback.canonicalUrl}#webpage`,
     inLanguage: rootObj["inLanguage"] || fallback.locale,
     "@graph": existingGraph,
   };

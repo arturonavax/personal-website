@@ -27,13 +27,16 @@ interface Props {
   downloadUrl?: string | undefined;
 }
 
+const currentPath = (Astro.url.pathname || "").replace(/\/+$/, "") || "/";
+const isResumeRoute = currentPath === "/resume" || currentPath === "/es/resume";
+
 const {
   locale,
   customItems,
-  containerMaxWidth = "5xl",
+  containerMaxWidth = isResumeRoute ? "cv" : "5xl",
   alignTargetId = "about",
-  showPdfPrint = false,
-  showPdfDownload = false,
+  showPdfPrint = isResumeRoute,
+  showPdfDownload = isResumeRoute,
   downloadUrl,
 } = Astro.props;
 const isEs = locale === "es";
@@ -150,6 +153,32 @@ const defaultIndexItems: IndexItem[] = [
 
 const indexItems: IndexItem[] = customItems ?? defaultIndexItems;
 
+const i18nEn = {
+  indexTitle: "Page Index",
+  sectionsTitle: "Page Navigation",
+  scroll: "Scroll",
+  close: "Close index",
+  indexAria: "Page Navigation Index",
+  panelAria: "Index Panel",
+  print: "Print",
+  download: "Download",
+  printTitle: "Print CV as PDF (p)",
+  downloadTitle: "Download CV as PDF",
+};
+
+const i18nEs = {
+  indexTitle: "Índice",
+  sectionsTitle: "Índice de Secciones",
+  scroll: "Desplazamiento",
+  close: "Cerrar índice",
+  indexAria: "Índice de la página",
+  panelAria: "Panel del índice",
+  print: "Imprimir",
+  download: "Descargar",
+  printTitle: "Imprimir CV en PDF (p)",
+  downloadTitle: "Descargar CV en PDF",
+};
+
 const isCvPage = containerMaxWidth === "cv";
 const isJobPage = containerMaxWidth === "4xl";
 const topValue = isCvPage
@@ -162,71 +191,274 @@ const containerMaxClass = isCvPage
   : isJobPage
     ? "max-w-4xl"
     : "max-w-5xl";
-const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
+const asideGapClass = "mr-6";
 ---
 
-<!-- MODE A: DESKTOP LEFT SIDEBAR (>1600px Viewport Width) -->
+<!-- Persistent Page Navigation Shell -->
 <div
-  id="desktop-page-index-root"
-  class="page-index-fixed hidden min-[1600px]:block fixed inset-x-0 pointer-events-none z-30 select-none"
-  style={`top: ${topValue};`}
+  id="page-index-nav-shell"
+  transition:persist="page-index-nav"
+  data-semi=";"
+  data-has-sections="true"
+  data-i18n-en={JSON.stringify(i18nEn)}
+  data-i18n-es={JSON.stringify(i18nEs)}
+  class="contents"
 >
-  <div class={`mx-auto ${containerMaxClass} relative`}>
-    <aside
-      id="desktop-page-index"
-      aria-label={isEs ? "Índice de la página" : "Page Navigation Index"}
-      data-align-target={alignTargetId}
-      class={`absolute right-full top-0 ${asideGapClass} w-64 pointer-events-auto font-mono text-xs`}
-    >
-      <div class="geometric-box p-4 rounded bg-[var(--color-surface-card)]/90 backdrop-blur-md border border-[var(--color-surface-border)] shadow-card">
-        <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2.5 mb-3 text-[11px] uppercase tracking-wider text-[var(--color-text-muted)]">
-          <span class="flex items-center gap-2">
-            <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
-            <span class="font-bold text-[var(--color-text-primary)]">
-              {isEs ? "Índice" : "Page Index"}
+  <!-- MODE A: DESKTOP LEFT SIDEBAR (>1600px Viewport Width) -->
+  <div
+    id="desktop-page-index-root"
+    data-has-sections="true"
+    class="page-index-fixed fixed inset-x-0 pointer-events-none z-30 select-none transition-[opacity,transform] duration-200"
+    style={`top: ${topValue};`}
+  >
+    <div id="desktop-page-index-maxw" class={`mx-auto ${containerMaxClass} relative`}>
+      <aside
+        id="desktop-page-index"
+        aria-label={isEs ? i18nEs.indexAria : i18nEn.indexAria}
+        data-align-target={alignTargetId}
+        class={`absolute right-full top-0 ${asideGapClass} w-64 pointer-events-auto font-mono text-xs`}
+      >
+        <div class="geometric-box p-4 rounded bg-[var(--color-surface-card)]/90 backdrop-blur-md border border-[var(--color-surface-border)] shadow-card">
+          <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2.5 mb-3 text-[11px] uppercase tracking-wider text-[var(--color-text-muted)]">
+            <span class="flex items-center gap-2">
+              <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse"></span>
+              <span id="desktop-index-title" class="font-bold text-[var(--color-text-primary)]">
+                {isEs ? i18nEs.indexTitle : i18nEn.indexTitle}
+              </span>
             </span>
-          </span>
-          <span class="text-[10px] text-[var(--color-accent-gold)]">NAV</span>
+            <span class="text-[10px] text-[var(--color-accent-gold)]">NAV</span>
+          </div>
+
+          <nav id="desktop-toc-nav" class="space-y-2 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-[var(--color-surface-border-subtle)]">
+            {indexItems.map((item) => (
+              <div>
+                <a
+                  href={`#${item.id}`}
+                  data-index-link={item.id}
+                  class="group flex min-h-[32px] items-center gap-2 py-1.5 pl-3.5 pr-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors"
+                >
+                  <span class="h-1 w-1 rounded-full bg-[var(--color-surface-border)] group-hover:bg-[var(--color-accent-gold)] transition-colors shrink-0"></span>
+                  <span class="truncate">
+                    {sanitizeNavLabel(isEs ? item.labelEs : item.label)}
+                  </span>
+                </a>
+
+                {item.subitems && (
+                  <div class="pl-4 space-y-2 mt-2">
+                    {item.subitems.map((sub) => (
+                      <a
+                        href={`#${sub.id}`}
+                        data-index-link={sub.id}
+                        class="group flex min-h-[28px] items-center gap-1.5 py-1 pl-3 pr-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors rounded"
+                      >
+                        <span class="text-[var(--color-surface-border)] group-hover:text-[var(--color-accent-gold)]">
+                          -
+                        </span>
+                        <span class="truncate">
+                          {sanitizeNavLabel(isEs ? sub.labelEs : sub.label)}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
+
+          <div class="mt-3 pt-2.5 border-t border-[var(--color-surface-border-subtle)] flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none">
+            <span id="desktop-scroll-label">{isEs ? i18nEs.scroll : i18nEn.scroll}</span>
+            <span class="flex items-center gap-1 font-semibold">
+              <kbd
+                data-vim-key="j"
+                class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
+              >
+                j
+              </kbd>
+              <kbd
+                data-vim-key="k"
+                class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
+              >
+                k
+              </kbd>
+            </span>
+          </div>
         </div>
 
-        <nav class="space-y-2 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-[var(--color-surface-border-subtle)]">
-          {indexItems.map((item) => (
-            <div>
-              <a
-                href={`#${item.id}`}
-                data-index-link={item.id}
-                class="group flex min-h-[32px] items-center gap-2 py-1.5 pl-3.5 pr-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors"
-              >
-                <span class="h-1 w-1 rounded-full bg-[var(--color-surface-border)] group-hover:bg-[var(--color-accent-gold)] transition-colors shrink-0"></span>
-                <span class="truncate">
-                  {sanitizeNavLabel(isEs ? item.labelEs : item.label)}
-                </span>
-              </a>
+        <div
+          id="desktop-cv-actions"
+          class={`mt-3 flex flex-col gap-2 ${showPdfPrint ? "" : "hidden"}`}
+          style={showPdfPrint ? undefined : "display: none;"}
+        >
+          <a
+            id="desktop-cv-download-btn"
+            data-no-beacon="true"
+            href={
+              downloadUrl ||
+              (isEs
+                ? "/downloads/ArturoNava-CV-es.pdf"
+                : "/downloads/ArturoNava-CV-en.pdf")
+            }
+            download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
+            aria-label={isEs ? i18nEs.downloadTitle : i18nEn.downloadTitle}
+            title={isEs ? i18nEs.downloadTitle : i18nEn.downloadTitle}
+            class={`w-full flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] ${showPdfDownload ? "" : "hidden"}`}
+          >
+            <svg
+              class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span class="truncate">{isEs ? i18nEs.download : i18nEn.download}</span>
+          </a>
 
-              {item.subitems && (
-                <div class="pl-4 space-y-2 mt-2">
-                  {item.subitems.map((sub) => (
-                    <a
-                      href={`#${sub.id}`}
-                      data-index-link={sub.id}
-                      class="group flex min-h-[28px] items-center gap-1.5 py-1 pl-3 pr-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors rounded"
-                    >
-                      <span class="text-[var(--color-surface-border)] group-hover:text-[var(--color-accent-gold)]">
-                        -
-                      </span>
-                      <span class="truncate">
-                        {sanitizeNavLabel(isEs ? sub.labelEs : sub.label)}
-                      </span>
-                    </a>
-                  ))}
+          <button
+            type="button"
+            id="desktop-cv-print-btn"
+            onclick="typeof window.printCleanCV === 'function' ? window.printCleanCV() : window.print()"
+            aria-label={isEs ? i18nEs.printTitle : i18nEn.printTitle}
+            title={isEs ? i18nEs.printTitle : i18nEn.printTitle}
+            class="w-full flex items-center justify-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+          >
+            <svg
+              class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 9V2h12v7"></path>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <path d="M6 14h12v8H6z"></path>
+            </svg>
+            <span class="truncate">{isEs ? i18nEs.print : i18nEn.print}</span>
+            <kbd class="ml-1 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-accent-gold)] font-semibold shrink-0">
+              p
+            </kbd>
+          </button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- MODE B: FLOATING ACCORDION BUTTON (<1600px Viewport) -->
+  <div
+    id="mobile-page-index-root"
+    class="contents pointer-events-none"
+  >
+    <div
+      id="mobile-page-index-container"
+      data-has-sections="true"
+      class="relative pointer-events-auto flex flex-col-reverse items-end gap-2.5 order-2 transition-[opacity,transform] duration-200"
+    >
+      <!-- Upward Expanding Index Panel -->
+      <div
+        id="index-expanded-panel"
+        role="region"
+        aria-label={isEs ? i18nEs.panelAria : i18nEn.panelAria}
+        class="hidden absolute bottom-full mb-2.5 right-0 w-[min(21rem,calc(100vw-2.5rem))] max-h-[min(65vh,calc(100dvh-7.5rem))] rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 backdrop-blur-md shadow-2xl font-mono text-xs z-50 animate-fade-in flex flex-col overflow-hidden"
+        style="box-shadow: var(--shadow-modal);"
+      >
+        <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] px-3.5 py-2.5 shrink-0 bg-[var(--color-surface-card)] z-20">
+          <span class="font-bold text-[var(--color-text-primary)] flex items-center gap-1.5 select-none">
+            <svg
+              class="h-3.5 w-3.5 text-[var(--color-accent-gold)]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+            <span id="mobile-panel-title">{isEs ? i18nEs.sectionsTitle : i18nEn.sectionsTitle}</span>
+          </span>
+          <button
+            type="button"
+            id="close-index-panel-btn"
+            aria-label={isEs ? i18nEs.close : i18nEn.close}
+            class="rounded p-1.5 min-h-[38px] min-w-[38px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
+          >
+            <svg
+              class="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="relative flex-1 min-h-0 flex flex-col">
+          <div
+            id="index-scroll-body"
+            class="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2 custom-index-scrollbar"
+            data-scrollable
+          >
+            <nav id="mobile-toc-nav" class="space-y-1">
+              {indexItems.map((item) => (
+                <div>
+                  <a
+                    href={`#${item.id}`}
+                    data-mobile-index-link={item.id}
+                    class="flex min-h-[44px] items-center justify-between py-2 px-2.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/50 transition-colors active:scale-[0.99]"
+                  >
+                    <span class="truncate">
+                      {sanitizeNavLabel(isEs ? item.labelEs : item.label)}
+                    </span>
+                    <span class="text-xs text-[var(--color-text-muted)] ml-2">
+                      &rarr;
+                    </span>
+                  </a>
+
+                  {item.subitems && (
+                    <div class="pl-3.5 space-y-0.5 mt-0.5 border-l border-[var(--color-surface-border-subtle)] ml-2">
+                      {item.subitems.map((sub) => (
+                        <a
+                          href={`#${sub.id}`}
+                          data-mobile-index-link={sub.id}
+                          class="flex min-h-[38px] items-center gap-2 py-1.5 px-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors rounded active:scale-[0.99]"
+                        >
+                          <span class="text-[var(--color-accent-gold)] text-sm">
+                            &bull;
+                          </span>
+                          <span class="truncate">
+                            {sanitizeNavLabel(isEs ? sub.labelEs : sub.label)}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-        </nav>
+              ))}
+            </nav>
+          </div>
 
-        <div class="mt-3 pt-2.5 border-t border-[var(--color-surface-border-subtle)] flex items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none">
-          <span>{isEs ? "Desplazamiento" : "Scroll"}</span>
+          <div
+            id="index-scroll-bottom-fade"
+            class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/80 to-transparent opacity-0 transition-opacity duration-200 z-10 index-bottom-inner-shadow"
+            aria-hidden="true"
+          ></div>
+        </div>
+
+        <div class="hidden sm:flex border-t border-[var(--color-surface-border-subtle)] px-3.5 py-2 items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none shrink-0 bg-[var(--color-surface-card)] z-20">
+          <span id="mobile-scroll-label">{isEs ? i18nEs.scroll : i18nEn.scroll}</span>
           <span class="flex items-center gap-1 font-semibold">
             <kbd
               data-vim-key="j"
@@ -244,237 +476,49 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         </div>
       </div>
 
-      {showPdfPrint && (
-        <div class="mt-3 flex flex-col gap-2">
-          {showPdfDownload && (
-            <a
-              id="desktop-cv-download-btn"
-              data-no-beacon="true"
-              href={
-                downloadUrl ||
-                (isEs
-                  ? "/downloads/ArturoNava-CV-es.pdf"
-                  : "/downloads/ArturoNava-CV-en.pdf")
-              }
-              download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
-              aria-label={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
-              title={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
-              class="w-full flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
-            >
-              <svg
-                class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
-                viewBox="0 0 24 24"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              <span class="truncate">{isEs ? "Descargar" : "Download"}</span>
-            </a>
-          )}
-
-          <button
-            type="button"
-            id="desktop-cv-print-btn"
-            onclick="typeof window.printCleanCV === 'function' ? window.printCleanCV() : window.print()"
-            aria-label={isEs ? "Imprimir CV en PDF (p)" : "Print CV as PDF (p)"}
-            title={isEs ? "Imprimir CV en PDF (p)" : "Print CV as PDF (p)"}
-            class="w-full flex items-center justify-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
-          >
-            <svg
-              class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
-              viewBox="0 0 24 24"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M6 9V2h12v7"></path>
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-              <path d="M6 14h12v8H6z"></path>
-            </svg>
-            <span class="truncate">{isEs ? "Imprimir" : "Print"}</span>
-            <kbd class="ml-1 rounded border border-[var(--color-accent-gold)]/40 bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-[10px] text-[var(--color-accent-gold)] font-semibold shrink-0">
-              p
-            </kbd>
-          </button>
-        </div>
-      )}
-    </aside>
-  </div>
-</div>
-
-<!-- MODE B: FLOATING ACCORDION BUTTON (<1600px Viewport) -->
-<div
-  id="mobile-page-index-root"
-  class="fixed bottom-5 right-5 z-40 block min-[1600px]:hidden pointer-events-none"
->
-  <div
-    id="mobile-page-index-container"
-    class="block min-[1600px]:hidden relative pointer-events-auto flex flex-col items-end order-2"
-  >
-    <!-- Upward Expanding Index Panel -->
-    <div
-      id="index-expanded-panel"
-      role="region"
-      aria-label={isEs ? "Panel del índice" : "Index Panel"}
-      class="hidden absolute bottom-full mb-2.5 right-0 w-[min(21rem,calc(100vw-2.5rem))] max-h-[min(65vh,calc(100dvh-7.5rem))] rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 backdrop-blur-md shadow-2xl font-mono text-xs z-50 animate-fade-in flex flex-col overflow-hidden"
-      style="box-shadow: var(--shadow-modal);"
-    >
-      <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] px-3.5 py-2.5 shrink-0 bg-[var(--color-surface-card)] z-20">
-        <span class="font-bold text-[var(--color-text-primary)] flex items-center gap-1.5 select-none">
-          <svg
-            class="h-3.5 w-3.5 text-[var(--color-accent-gold)]"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="8" y1="6" x2="21" y2="6"></line>
-            <line x1="8" y1="12" x2="21" y2="12"></line>
-            <line x1="8" y1="18" x2="21" y2="18"></line>
-            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-          </svg>
-          <span>{isEs ? "Índice de Secciones" : "Page Navigation"}</span>
-        </span>
-        <button
-          type="button"
-          id="close-index-panel-btn"
-          aria-label={isEs ? "Cerrar índice" : "Close index"}
-          class="rounded p-1.5 min-h-[38px] min-w-[38px] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] transition-colors cursor-pointer"
-        >
-          <svg
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-
-      <div class="relative flex-1 min-h-0 flex flex-col">
-        <div
-          id="index-scroll-body"
-          class="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2 custom-index-scrollbar"
-          data-scrollable
-        >
-          <nav class="space-y-1">
-            {indexItems.map((item) => (
-              <div>
-                <a
-                  href={`#${item.id}`}
-                  data-mobile-index-link={item.id}
-                  class="flex min-h-[44px] items-center justify-between py-2 px-2.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/50 transition-colors active:scale-[0.99]"
-                >
-                  <span class="truncate">
-                    {sanitizeNavLabel(isEs ? item.labelEs : item.label)}
-                  </span>
-                  <span class="text-xs text-[var(--color-text-muted)] ml-2">
-                    &rarr;
-                  </span>
-                </a>
-
-                {item.subitems && (
-                  <div class="pl-3.5 space-y-0.5 mt-0.5 border-l border-[var(--color-surface-border-subtle)] ml-2">
-                    {item.subitems.map((sub) => (
-                      <a
-                        href={`#${sub.id}`}
-                        data-mobile-index-link={sub.id}
-                        class="flex min-h-[38px] items-center gap-2 py-1.5 px-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors rounded active:scale-[0.99]"
-                      >
-                        <span class="text-[var(--color-accent-gold)] text-sm">
-                          &bull;
-                        </span>
-                        <span class="truncate">
-                          {sanitizeNavLabel(isEs ? sub.labelEs : sub.label)}
-                        </span>
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </nav>
-        </div>
-
-        <div
-          id="index-scroll-bottom-fade"
-          class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/80 to-transparent opacity-0 transition-opacity duration-200 z-10 index-bottom-inner-shadow"
-          aria-hidden="true"
-        ></div>
-      </div>
-
-      <div class="hidden sm:flex border-t border-[var(--color-surface-border-subtle)] px-3.5 py-2 items-center justify-between text-[10px] text-[var(--color-text-muted)] font-mono select-none shrink-0 bg-[var(--color-surface-card)] z-20">
-        <span>{isEs ? "Desplazamiento" : "Scroll"}</span>
-        <span class="flex items-center gap-1 font-semibold">
-          <kbd
-            data-vim-key="j"
-            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
-          >
-            j
-          </kbd>
-          <kbd
-            data-vim-key="k"
-            class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)] transition-colors"
-          >
-            k
-          </kbd>
-        </span>
-      </div>
-    </div>
-
-    <!-- Floating Trigger Button -->
-    <button
-      type="button"
-      id="open-index-floating-btn"
-      aria-expanded="false"
-      aria-controls="index-expanded-panel"
-      class="flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-3.5 py-2 font-mono text-xs font-semibold text-[var(--color-text-secondary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shadow-card hover:shadow-card-hover self-end"
-    >
-      <svg
-        class="h-3.5 w-3.5 text-[var(--color-accent-gold)] shrink-0"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
+      <!-- Floating Trigger Button -->
+      <button
+        type="button"
+        id="open-index-floating-btn"
+        aria-expanded="false"
+        aria-controls="index-expanded-panel"
+        class="flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-3.5 py-2 font-mono text-xs font-semibold text-[var(--color-text-secondary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shadow-card hover:shadow-card-hover self-end"
       >
-        <line x1="8" y1="6" x2="21" y2="6"></line>
-        <line x1="8" y1="12" x2="21" y2="12"></line>
-        <line x1="8" y1="18" x2="21" y2="18"></line>
-        <line x1="3" y1="6" x2="3.01" y2="6"></line>
-        <line x1="3" y1="12" x2="3.01" y2="12"></line>
-        <line x1="3" y1="18" x2="3.01" y2="18"></line>
-      </svg>
-      <span class="shrink-0">{isEs ? "Índice" : "Index"}</span>
-      <kbd class="hidden sm:inline-block rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] font-semibold shrink-0">
-        i
-      </kbd>
-    </button>
+        <svg
+          class="h-3.5 w-3.5 text-[var(--color-accent-gold)] shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span id="mobile-index-label" class="shrink-0">{isEs ? i18nEs.indexTitle : i18nEn.indexTitle}</span>
+        <kbd class="hidden sm:inline-block rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] font-semibold shrink-0">
+          i
+        </kbd>
+      </button>
 
-    <!-- Mobile CV Action Buttons: Print & Download (Stacked vertically, ordered by width below Page Index) -->
-    {showPdfPrint && (
-      <div class="mt-2.5 flex flex-col items-end gap-2.5 self-end">
+      <!-- Mobile CV Action Buttons: Print & Download (Stacked vertically, ordered by width below Page Index) -->
+      <div
+        id="mobile-cv-actions"
+        class={`flex flex-col items-end gap-2.5 self-end ${showPdfPrint ? "" : "hidden"}`}
+        style={showPdfPrint ? undefined : "display: none;"}
+      >
         <button
           type="button"
           id="mobile-cv-print-btn"
           onclick="typeof window.printCleanCV === 'function' ? window.printCleanCV() : window.print()"
-          aria-label={isEs ? "Imprimir CV en PDF" : "Print CV as PDF"}
-          title={isEs ? "Imprimir CV en PDF" : "Print CV as PDF"}
+          aria-label={isEs ? i18nEs.printTitle : i18nEn.printTitle}
+          title={isEs ? i18nEs.printTitle : i18nEn.printTitle}
           class="flex min-h-[44px] min-w-[48px] w-auto items-center justify-center gap-1.5 rounded-full border border-[var(--color-accent-gold)] bg-[var(--color-surface-card)]/95 px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-accent-gold)] backdrop-blur-md hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] self-end"
         >
           <svg
@@ -489,47 +533,85 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
             <path d="M6 14h12v8H6z"></path>
           </svg>
-          <span class="shrink-0">{isEs ? "Imprimir" : "Print"}</span>
+          <span class="shrink-0">{isEs ? i18nEs.print : i18nEn.print}</span>
         </button>
 
-        {showPdfDownload && (
-          <a
-            id="mobile-cv-download-btn"
-            data-no-beacon="true"
-            href={
-              downloadUrl ||
-              (isEs
-                ? "/downloads/ArturoNava-CV-es.pdf"
-                : "/downloads/ArturoNava-CV-en.pdf")
-            }
-            download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
-            aria-label={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
-            title={isEs ? "Descargar CV en PDF" : "Download CV as PDF"}
-            class="flex min-h-[44px] min-w-[48px] w-auto items-center justify-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-text-primary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] self-end"
+        <a
+          id="mobile-cv-download-btn"
+          data-no-beacon="true"
+          href={
+            downloadUrl ||
+            (isEs
+              ? "/downloads/ArturoNava-CV-es.pdf"
+              : "/downloads/ArturoNava-CV-en.pdf")
+          }
+          download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
+          aria-label={isEs ? i18nEs.downloadTitle : i18nEn.downloadTitle}
+          title={isEs ? i18nEs.downloadTitle : i18nEn.downloadTitle}
+          class={`flex min-h-[44px] min-w-[48px] w-auto items-center justify-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-text-primary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] self-end ${showPdfDownload ? "" : "hidden"}`}
+        >
+          <svg
+            class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
           >
-            <svg
-              class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
-              viewBox="0 0 24 24"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            <span class="shrink-0">{isEs ? "Descargar" : "Download"}</span>
-          </a>
-        )}
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          <span class="shrink-0">{isEs ? i18nEs.download : i18nEn.download}</span>
+        </a>
       </div>
-    )}
+    </div>
   </div>
 </div>
 
 <style>
+  #desktop-page-index-root,
+  #desktop-page-index-root.force-hide-desktop {
+    display: none !important;
+  }
+  @media (min-width: 1600px) {
+    #desktop-page-index-root:not([data-has-sections="false"]):not(.is-empty):not(.force-hide-desktop) {
+      display: block !important;
+    }
+  }
+
+  #mobile-page-index-root {
+    display: contents !important;
+  }
+  @media (min-width: 1600px) {
+    #mobile-page-index-root:not(.force-show-mobile) {
+      display: none !important;
+    }
+  }
+
   #mobile-page-index-container {
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex !important;
+  }
+  @media (min-width: 1600px) {
+    #mobile-page-index-container:not(.force-show-mobile) {
+      display: none !important;
+    }
+  }
+
+  #desktop-page-index-root[data-has-sections="false"],
+  #desktop-page-index-root.is-empty,
+  #desktop-page-index-root.force-hide-desktop,
+  #mobile-page-index-root[data-has-sections="false"],
+  #mobile-page-index-root.is-empty,
+  #mobile-page-index-root.force-hide-mobile,
+  #mobile-page-index-container[data-has-sections="false"],
+  #mobile-page-index-container.is-empty,
+  #mobile-page-index-container.force-hide-mobile {
+    display: none !important;
+  }
+
+  #mobile-page-index-container {
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
   }
   #open-index-floating-btn,
   #mobile-cv-print-btn,
@@ -539,7 +621,6 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
       border-color 0.2s ease,
       box-shadow 0.2s ease,
       color 0.2s ease;
-    will-change: transform;
   }
   #open-index-floating-btn.footer-tucked,
   #mobile-cv-print-btn.footer-tucked,
@@ -596,81 +677,658 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
 <script is:inline>
   // @ts-nocheck
   (function () {
-    function setupPageIndex() {
-      var stack = document.getElementById("floating-actions-stack");
-      var container = document.getElementById("mobile-page-index-container");
-      if (stack && container) {
-        var existing = stack.querySelector("#mobile-page-index-container");
-        if (existing && existing !== container) {
-          existing.remove();
+    var boundElements =
+      window.__pageIndexBoundElements ||
+      (window.__pageIndexBoundElements = new WeakSet());
+
+    var sectionIds = [];
+    var isProgrammaticScroll = false;
+    var scrollLockTimeout = null;
+    var navTargetIdx = -1;
+
+    function sanitizeNavLabel(label) {
+      if (!label) return "";
+      return label
+        .replace(/!?\[([^\]]+)\]\([^)]+\)/g, "$1")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/\*\*([^*]+)\*\*/g, "$1")
+        .replace(/__([^_]+)__/g, "$1")
+        .replace(/\*([^*]+)\*/g, "$1")
+        .replace(/(?:^|[^\w])_([^_]+)_(?=[^\w]|$)/g, "$1")
+        .replace(/<[^>]+>/g, "")
+        .trim();
+    }
+
+    function getHeaderOffset() {
+      var headerEl =
+        document.getElementById("site-header") ||
+        document.querySelector("header");
+      var h = headerEl ? headerEl.offsetHeight : 56;
+      return h + 24;
+    }
+
+    function alignDesktopIndex() {
+      var desktopRoot = document.getElementById("desktop-page-index-root");
+      var desktopAside = document.getElementById("desktop-page-index");
+      if (!desktopRoot || !desktopAside) return;
+
+      var targetId = desktopAside.getAttribute("data-align-target");
+      var targetEl = targetId ? document.getElementById(targetId) : null;
+      if (!targetEl) {
+        targetEl = document.querySelector(
+          "#role-header, #cv-document-sheet, #about, main article, article, main > div",
+        );
+      }
+      if (!targetEl) return;
+
+      var headerEl =
+        document.getElementById("site-header") ||
+        document.querySelector("header");
+      var headerH = headerEl ? headerEl.offsetHeight : 56;
+      var minTop = headerH + 16;
+
+      var targetRect = targetEl.getBoundingClientRect();
+      var desiredTop = targetRect.top;
+      var finalTop = Math.max(minTop, desiredTop);
+      desktopRoot.style.top = finalTop + "px";
+    }
+    window.__alignDesktopIndex = alignDesktopIndex;
+
+    function syncResponsiveMode() {
+      var desktopRoot = document.getElementById("desktop-page-index-root");
+      var mobileContainer = document.getElementById("mobile-page-index-container");
+      var maxw = document.getElementById("desktop-page-index-maxw");
+      if (!desktopRoot || !mobileContainer) return;
+
+      var hasSections =
+        window.__hasPageIndex !== false &&
+        desktopRoot.getAttribute("data-has-sections") !== "false";
+      if (!hasSections) return;
+
+      var spaceLeft = 0;
+      var contentContainer = document.querySelector(
+        "#role-header, #cv-document-sheet, #about, main > div, #main-content > div, main article, article",
+      );
+      if (contentContainer) {
+        var rect = contentContainer.getBoundingClientRect();
+        if (rect.left > 0) {
+          spaceLeft = rect.left;
         }
-        if (container.parentElement !== stack) {
-          stack.appendChild(container);
+      }
+      if (!spaceLeft && maxw) {
+        var maxwRect = maxw.getBoundingClientRect();
+        if (maxwRect.left > 0) spaceLeft = maxwRect.left;
+      }
+      if (!spaceLeft || spaceLeft <= 0) {
+        var isCv = checkIsResumePage();
+        var contentWidth = isCv ? 794 : 1024;
+        spaceLeft = Math.max(0, (window.innerWidth - contentWidth) / 2);
+      }
+
+      var canFitDesktop = window.innerWidth >= 1600 && spaceLeft >= 280;
+
+      var changed = false;
+      if (canFitDesktop) {
+        if (desktopRoot.classList.contains("force-hide-desktop")) {
+          desktopRoot.classList.remove("force-hide-desktop");
+          changed = true;
         }
-        var root = document.getElementById("mobile-page-index-root");
-        if (root && root.children.length === 0) {
-          root.remove();
+        if (mobileContainer.classList.contains("force-show-mobile")) {
+          mobileContainer.classList.remove("force-show-mobile");
+          changed = true;
+        }
+        if (!mobileContainer.classList.contains("force-hide-mobile")) {
+          mobileContainer.classList.add("force-hide-mobile");
+          changed = true;
+        }
+        alignDesktopIndex();
+        window.requestAnimationFrame(alignDesktopIndex);
+      } else {
+        if (!desktopRoot.classList.contains("force-hide-desktop")) {
+          desktopRoot.classList.add("force-hide-desktop");
+          changed = true;
+        }
+        if (mobileContainer.classList.contains("force-hide-mobile")) {
+          mobileContainer.classList.remove("force-hide-mobile");
+          changed = true;
+        }
+        if (!mobileContainer.classList.contains("force-show-mobile")) {
+          mobileContainer.classList.add("force-show-mobile");
+          changed = true;
         }
       }
 
+      if (changed && typeof window.__autoOrderFloatingStack === "function") {
+        window.__autoOrderFloatingStack();
+      }
+      if (changed && typeof window.__updateToastCollision === "function") {
+        window.__updateToastCollision();
+      }
+    }
+    window.__syncResponsiveMode = syncResponsiveMode;
+
+    function highlightActive(activeId) {
+      var desktopLinks = document.querySelectorAll("[data-index-link]");
+      var mobileLinks = document.querySelectorAll("[data-mobile-index-link]");
+      desktopLinks.forEach(function (dl) {
+        if (dl.getAttribute("data-index-link") === activeId) {
+          dl.classList.add(
+            "text-[var(--color-accent-gold)]",
+            "font-bold",
+            "bg-[var(--color-accent-gold-subtle)]",
+          );
+        } else {
+          dl.classList.remove(
+            "text-[var(--color-accent-gold)]",
+            "font-bold",
+            "bg-[var(--color-accent-gold-subtle)]",
+          );
+        }
+      });
+      mobileLinks.forEach(function (ml) {
+        if (ml.getAttribute("data-mobile-index-link") === activeId) {
+          ml.classList.add(
+            "text-[var(--color-accent-gold)]",
+            "font-bold",
+            "bg-[var(--color-accent-gold-subtle)]",
+          );
+        } else {
+          ml.classList.remove(
+            "text-[var(--color-accent-gold)]",
+            "font-bold",
+            "bg-[var(--color-accent-gold-subtle)]",
+          );
+        }
+      });
+    }
+
+    function scrollToTarget(targetId, explicitIdx) {
+      if (
+        targetId === "contact" &&
+        typeof window.__smoothScrollToContact === "function"
+      ) {
+        if (typeof explicitIdx === "number") {
+          navTargetIdx = explicitIdx;
+        } else {
+          navTargetIdx = sectionIds.indexOf(targetId);
+        }
+        window.__smoothScrollToContact();
+        return;
+      }
+      var targetEl = document.getElementById(targetId);
+      if (!targetEl) return;
+
+      highlightActive(targetId);
+      isProgrammaticScroll = true;
+      if (typeof explicitIdx === "number") {
+        navTargetIdx = explicitIdx;
+      } else {
+        navTargetIdx = sectionIds.indexOf(targetId);
+      }
+
+      clearTimeout(scrollLockTimeout);
+
+      function onScrollFinish() {
+        isProgrammaticScroll = false;
+        window.removeEventListener("scrollend", onScrollFinish);
+        if (navTargetIdx >= 0 && navTargetIdx < sectionIds.length) {
+          highlightActive(sectionIds[navTargetIdx]);
+        }
+      }
+
+      if ("onscrollend" in window) {
+        window.addEventListener("scrollend", onScrollFinish, { once: true });
+      }
+      scrollLockTimeout = setTimeout(onScrollFinish, 600);
+
+      var headerOffset = getHeaderOffset();
+      var elementPosition =
+        targetEl.getBoundingClientRect().top + window.pageYOffset;
+      window.scrollTo({
+        top: Math.max(0, elementPosition - headerOffset),
+        behavior: "smooth",
+      });
+
+      if (history.pushState) {
+        history.pushState(null, "", "#" + targetId);
+      } else {
+        window.location.hash = targetId;
+      }
+    }
+
+    function updateScrollBottomIndicator() {
+      var scrollBody = document.getElementById("index-scroll-body");
+      var scrollFade = document.getElementById("index-scroll-bottom-fade");
+      if (!scrollBody || !scrollFade) return;
+      var hasOverflow = scrollBody.scrollHeight > scrollBody.clientHeight + 2;
+      var isAtBottom =
+        scrollBody.scrollHeight -
+          scrollBody.scrollTop -
+          scrollBody.clientHeight <=
+        6;
+
+      if (hasOverflow && !isAtBottom) {
+        scrollFade.classList.remove("opacity-0");
+        scrollFade.classList.add("opacity-100");
+      } else {
+        scrollFade.classList.remove("opacity-100");
+        scrollFade.classList.add("opacity-0");
+      }
+    }
+
+    function togglePanel(open) {
+      var currentPanel = document.getElementById("index-expanded-panel");
+      var currentBtn = document.getElementById("open-index-floating-btn");
+      if (!currentPanel) return;
+      var shouldOpen =
+        typeof open === "boolean"
+          ? open
+          : currentPanel.classList.contains("hidden");
+      if (shouldOpen) {
+        currentPanel.classList.remove("hidden");
+        if (currentBtn) currentBtn.setAttribute("aria-expanded", "true");
+        window.__isPageIndexOpen = true;
+        requestAnimationFrame(updateScrollBottomIndicator);
+      } else {
+        currentPanel.classList.add("hidden");
+        if (currentBtn) currentBtn.setAttribute("aria-expanded", "false");
+        window.__isPageIndexOpen = false;
+      }
+    }
+    window.__toggleIndexPanel = togglePanel;
+
+    function cleanupObservers() {
+      if (window.__pageIndexScrollObserver) {
+        window.__pageIndexScrollObserver.disconnect();
+        window.__pageIndexScrollObserver = null;
+      }
+      if (window.__pageIndexFooterObserver) {
+        window.__pageIndexFooterObserver.disconnect();
+        window.__pageIndexFooterObserver = null;
+      }
+    }
+
+    function updateLocalizedLabels(isEs) {
+      var shell = document.getElementById("page-index-nav-shell");
+      if (!shell) return;
+      var rawI18n = shell.getAttribute(isEs ? "data-i18n-es" : "data-i18n-en");
+      var i18n = null;
+      try {
+        if (rawI18n) i18n = JSON.parse(rawI18n);
+      } catch (_) {}
+      if (!i18n) return;
+
+      var desktopTitle = document.getElementById("desktop-index-title");
+      if (desktopTitle) desktopTitle.textContent = i18n.indexTitle;
+
+      var desktopAside = document.getElementById("desktop-page-index");
+      if (desktopAside) desktopAside.setAttribute("aria-label", i18n.indexAria);
+
+      var desktopScroll = document.getElementById("desktop-scroll-label");
+      if (desktopScroll) desktopScroll.textContent = i18n.scroll;
+
+      var mobilePanel = document.getElementById("index-expanded-panel");
+      if (mobilePanel) mobilePanel.setAttribute("aria-label", i18n.panelAria);
+
+      var mobilePanelTitle = document.getElementById("mobile-panel-title");
+      if (mobilePanelTitle) mobilePanelTitle.textContent = i18n.sectionsTitle;
+
+      var closeBtn = document.getElementById("close-index-panel-btn");
+      if (closeBtn) closeBtn.setAttribute("aria-label", i18n.close);
+
+      var mobileScroll = document.getElementById("mobile-scroll-label");
+      if (mobileScroll) mobileScroll.textContent = i18n.scroll;
+
+      var mobileIndexLabel = document.getElementById("mobile-index-label");
+      if (mobileIndexLabel) mobileIndexLabel.textContent = i18n.indexTitle;
+
+      var desktopPrintBtn = document.getElementById("desktop-cv-print-btn");
+      if (desktopPrintBtn) {
+        desktopPrintBtn.setAttribute("aria-label", i18n.printTitle);
+        desktopPrintBtn.setAttribute("title", i18n.printTitle);
+        var span = desktopPrintBtn.querySelector("span.truncate");
+        if (span) span.textContent = i18n.print;
+      }
+
+      var mobilePrintBtn = document.getElementById("mobile-cv-print-btn");
+      if (mobilePrintBtn) {
+        mobilePrintBtn.setAttribute("aria-label", i18n.printTitle);
+        mobilePrintBtn.setAttribute("title", i18n.printTitle);
+        var span = mobilePrintBtn.querySelector("span.shrink-0");
+        if (span) span.textContent = i18n.print;
+      }
+
+      var desktopDownloadBtn = document.getElementById("desktop-cv-download-btn");
+      if (desktopDownloadBtn) {
+        desktopDownloadBtn.setAttribute("aria-label", i18n.downloadTitle);
+        desktopDownloadBtn.setAttribute("title", i18n.downloadTitle);
+        var span = desktopDownloadBtn.querySelector("span.truncate");
+        if (span) span.textContent = i18n.download;
+      }
+
+      var mobileDownloadBtn = document.getElementById("mobile-cv-download-btn");
+      if (mobileDownloadBtn) {
+        mobileDownloadBtn.setAttribute("aria-label", i18n.downloadTitle);
+        mobileDownloadBtn.setAttribute("title", i18n.downloadTitle);
+        var span = mobileDownloadBtn.querySelector("span.shrink-0");
+        if (span) span.textContent = i18n.download;
+      }
+    }
+
+    function scanSections(main, isEs) {
+      // 1. Check for page-index-custom-items JSON override (e.g. from /resume/ or /experience/[slug])
+      var customScript = (main && main.querySelector("#page-index-custom-items")) || document.getElementById("page-index-custom-items");
+      if (customScript && customScript.textContent) {
+        try {
+          var parsed = JSON.parse(customScript.textContent);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        } catch (_) {}
+      }
+
+      // 2. Default homepage sections check
+      var defaultHomeItems = [
+        { id: "about", label: "Profile / Executive Summary", labelEs: "Perfil / Resumen Ejecutivo" },
+        { id: "metrics", label: "Operational Metrics Grid", labelEs: "Métricas Operacionales" },
+        { id: "philosophies", label: "Architectural Principles", labelEs: "Principios de Arquitectura" },
+        { id: "ai-workflow", label: "AI Engineering Workflow", labelEs: "Flujo de Ingeniería con IA" },
+        { id: "experience", label: "Engineering Timeline", labelEs: "Trayectoria & Experiencia" },
+        { id: "projects", label: "Distributed Architectures", labelEs: "Sistemas Distribuidos" },
+        { id: "services", label: "Technical Services & Advisory", labelEs: "Servicios Técnicos & Asesoría" },
+        { id: "telemetry", label: "Architecture Case Studies & Telemetry", labelEs: "Casos de Estudio & Telemetría" },
+        { id: "blog", label: "Blog & Systems Notes", labelEs: "Blog & Notas de Sistemas" },
+        { id: "contact", label: "Direct Channels & Contact", labelEs: "Canales Directos & Contacto" },
+        { id: "coffee", label: "Buy Me a Coffee & Support ☕", labelEs: "Invítame un Café ☕" },
+      ];
+
+      var foundHomeItems = [];
+      for (var i = 0; i < defaultHomeItems.length; i++) {
+        var item = defaultHomeItems[i];
+        if (document.getElementById(item.id)) {
+          foundHomeItems.push(item);
+        }
+      }
+      if (foundHomeItems.length >= 3) {
+        return foundHomeItems;
+      }
+
+      // 3. Dynamic scan of sections/headings inside <main id="main-content">
+      var candidates = main.querySelectorAll("section[id], article[id], h2[id], h2, [data-index-section]");
+      var dynamicItems = [];
+      candidates.forEach(function (el) {
+        if (el.closest("dialog, [aria-hidden='true'], footer, aside")) return;
+        var id = el.id || el.getAttribute("data-index-section");
+        if (!id && el.tagName === "H2" && el.textContent) {
+          id = el.textContent.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+          if (id) el.id = id;
+        }
+        if (!id || id === "main-content") return;
+        var label = el.getAttribute("data-index-title") ||
+                    el.getAttribute("aria-label") ||
+                    el.querySelector("h2, h3, h1")?.textContent ||
+                    el.textContent || "";
+        var clean = sanitizeNavLabel(label);
+        if (clean.length > 0 && !dynamicItems.some(function (d) { return d.id === id; })) {
+          dynamicItems.push({ id: id, label: clean, labelEs: clean });
+        }
+      });
+
+      return dynamicItems;
+    }
+
+    function rebuildToc(items, isEs) {
+      sectionIds = items.map(function (it) { return it.id; });
+      var desktopNav = document.getElementById("desktop-toc-nav");
+      var mobileNav = document.getElementById("mobile-toc-nav");
+
+      if (desktopNav) {
+        desktopNav.innerHTML = items.map(function (item) {
+          var label = sanitizeNavLabel(isEs ? (item.labelEs || item.label) : (item.label || item.labelEs));
+          var subHtml = "";
+          if (item.subitems && item.subitems.length > 0) {
+            subHtml = '<div class="pl-4 space-y-2 mt-2">' +
+              item.subitems.map(function (sub) {
+                var subLabel = sanitizeNavLabel(isEs ? (sub.labelEs || sub.label) : (sub.label || sub.labelEs));
+                return '<a href="#' + sub.id + '" data-index-link="' + sub.id + '" class="group flex min-h-[28px] items-center gap-1.5 py-1 pl-3 pr-2 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/30 transition-colors rounded">' +
+                  '<span class="text-[var(--color-surface-border)] group-hover:text-[var(--color-accent-gold)]">-</span>' +
+                  '<span class="truncate">' + subLabel + '</span>' +
+                '</a>';
+              }).join("") +
+            '</div>';
+          }
+          return '<div>' +
+            '<a href="#' + item.id + '" data-index-link="' + item.id + '" class="group flex min-h-[32px] items-center gap-2 py-1.5 pl-3.5 pr-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors">' +
+              '<span class="h-1 w-1 rounded-full bg-[var(--color-surface-border)] group-hover:bg-[var(--color-accent-gold)] transition-colors shrink-0"></span>' +
+              '<span class="truncate">' + label + '</span>' +
+            '</a>' + subHtml +
+          '</div>';
+        }).join("");
+
+        desktopNav.querySelectorAll("[data-index-link]").forEach(function (link) {
+          link.addEventListener("click", function (e) {
+            var targetId = link.getAttribute("data-index-link");
+            if (targetId) {
+              e.preventDefault();
+              scrollToTarget(targetId);
+            }
+          });
+        });
+      }
+
+      if (mobileNav) {
+        mobileNav.innerHTML = items.map(function (item) {
+          var label = sanitizeNavLabel(isEs ? (item.labelEs || item.label) : (item.label || item.labelEs));
+          var subHtml = "";
+          if (item.subitems && item.subitems.length > 0) {
+            subHtml = '<div class="pl-3.5 space-y-0.5 mt-0.5 border-l border-[var(--color-surface-border-subtle)] ml-2">' +
+              item.subitems.map(function (sub) {
+                var subLabel = sanitizeNavLabel(isEs ? (sub.labelEs || sub.label) : (sub.label || sub.labelEs));
+                return '<a href="#' + sub.id + '" data-mobile-index-link="' + sub.id + '" class="flex min-h-[38px] items-center gap-2 py-1.5 px-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors rounded active:scale-[0.99]">' +
+                  '<span class="text-[var(--color-accent-gold)] text-sm">&bull;</span>' +
+                  '<span class="truncate">' + subLabel + '</span>' +
+                '</a>';
+              }).join("") +
+            '</div>';
+          }
+          return '<div>' +
+            '<a href="#' + item.id + '" data-mobile-index-link="' + item.id + '" class="flex min-h-[44px] items-center justify-between py-2 px-2.5 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/50 transition-colors active:scale-[0.99]">' +
+              '<span class="truncate">' + label + '</span>' +
+              '<span class="text-xs text-[var(--color-text-muted)] ml-2">&rarr;</span>' +
+            '</a>' + subHtml +
+          '</div>';
+        }).join("");
+
+        mobileNav.querySelectorAll("[data-mobile-index-link]").forEach(function (link) {
+          link.addEventListener("click", function (e) {
+            var targetId = link.getAttribute("data-mobile-index-link");
+            if (targetId) {
+              e.preventDefault();
+              var panel = document.getElementById("index-expanded-panel");
+              var floatingBtn = document.getElementById("open-index-floating-btn");
+              if (panel) panel.classList.add("hidden");
+              if (floatingBtn) floatingBtn.setAttribute("aria-expanded", "false");
+              scrollToTarget(targetId);
+            }
+          });
+        });
+      }
+    }
+
+    function checkIsResumePage() {
+      var rawPath = (window.location.pathname || "").replace(/\/+$/, "") || "/";
+      var isExactResumePath = rawPath === "/resume" || rawPath === "/es/resume";
+      var hasCvSheet = Boolean(document.getElementById("cv-document-sheet"));
+      var isResumeMaker = rawPath.indexOf("/tools/resume-maker") !== -1 || Boolean(document.getElementById("resume-maker-app"));
+      return (isExactResumePath || hasCvSheet) && !isResumeMaker;
+    }
+
+    function updateCvButtons(isCv, isEs) {
+      var desktopCv = document.getElementById("desktop-cv-actions");
+      var mobileCv = document.getElementById("mobile-cv-actions");
+      var maxwContainer = document.getElementById("desktop-page-index-maxw");
+      var desktopRoot = document.getElementById("desktop-page-index-root");
+
+      if (desktopCv) {
+        desktopCv.classList.toggle("hidden", !isCv);
+        if (!isCv) {
+          desktopCv.style.display = "none";
+        } else {
+          desktopCv.style.removeProperty("display");
+        }
+      }
+      if (mobileCv) {
+        mobileCv.classList.toggle("hidden", !isCv);
+        if (!isCv) {
+          mobileCv.style.display = "none";
+        } else {
+          mobileCv.style.removeProperty("display");
+        }
+      }
+
+      var rawPath = (window.location.pathname || "").replace(/\/+$/, "") || "/";
+      var isJob = rawPath.indexOf("/experience/") !== -1;
+
+      if (maxwContainer) {
+        if (isCv) {
+          maxwContainer.className = "mx-auto max-w-[210mm] relative";
+        } else if (isJob) {
+          maxwContainer.className = "mx-auto max-w-4xl relative";
+        } else {
+          maxwContainer.className = "mx-auto max-w-5xl relative";
+        }
+      }
+
+      if (desktopRoot) {
+        desktopRoot.style.top = isCv ? "calc(5rem + 1px)" : isJob ? "9.5rem" : "calc(5rem + 1px)";
+      }
+
+      if (isCv) {
+        var downloadUrl = isEs ? "/downloads/ArturoNava-CV-es.pdf" : "/downloads/ArturoNava-CV-en.pdf";
+        var desktopDown = document.getElementById("desktop-cv-download-btn");
+        if (desktopDown) {
+          desktopDown.setAttribute("href", downloadUrl);
+          desktopDown.setAttribute("download", isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf");
+        }
+        var mobileDown = document.getElementById("mobile-cv-download-btn");
+        if (mobileDown) {
+          mobileDown.setAttribute("href", downloadUrl);
+          mobileDown.setAttribute("download", isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf");
+        }
+      }
+    }
+
+    function attachScrollSpy() {
+      var sectionEls = sectionIds
+        .map(function (id) { return document.getElementById(id); })
+        .filter(Boolean);
+
+      if (sectionEls.length === 0) return;
+
+      var ticking = false;
+      function updateScrollSpy() {
+        if (isProgrammaticScroll) return;
+
+        var scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        if (scrollY < 60) {
+          highlightActive(sectionEls[0].id);
+          return;
+        }
+
+        var viewportHeight = window.innerHeight || 800;
+        var documentHeight = document.documentElement.scrollHeight || 3000;
+
+        if (scrollY + viewportHeight >= documentHeight - 40) {
+          highlightActive(sectionEls[sectionEls.length - 1].id);
+          return;
+        }
+
+        var readingLine = getHeaderOffset() + 14;
+        var currentActiveId = sectionEls[0].id;
+
+        for (var i = 0; i < sectionEls.length; i++) {
+          var el = sectionEls[i];
+          var rect = el.getBoundingClientRect();
+          if (rect.top <= readingLine) {
+            currentActiveId = el.id;
+          } else {
+            break;
+          }
+        }
+
+        highlightActive(currentActiveId);
+      }
+
+      if (!window.__pageIndexScrollListenerBound) {
+        window.__pageIndexScrollListenerBound = true;
+        window.addEventListener(
+          "scroll",
+          function () {
+            if (!ticking) {
+              window.requestAnimationFrame(function () {
+                updateScrollSpy();
+                ticking = false;
+              });
+              ticking = true;
+            }
+          },
+          { passive: true },
+        );
+      }
+
+      if (window.location.hash) {
+        var hashTarget = window.location.hash.substring(1);
+        if (sectionIds.includes(hashTarget)) {
+          highlightActive(hashTarget);
+          return;
+        }
+      }
+      updateScrollSpy();
+    }
+
+    function setupPageIndex(isAfterSwap) {
       var floatingBtn = document.getElementById("open-index-floating-btn");
       var panel = document.getElementById("index-expanded-panel");
       var closeBtn = document.getElementById("close-index-panel-btn");
-      var desktopAside = document.getElementById("desktop-page-index");
-      var desktopLinks = document.querySelectorAll("[data-index-link]");
-      var mobileLinks = document.querySelectorAll("[data-mobile-index-link]");
       var scrollBody = document.getElementById("index-scroll-body");
-      var scrollFade = document.getElementById("index-scroll-bottom-fade");
-
-      function alignDesktopIndex() {
-        var desktopRoot = document.getElementById("desktop-page-index-root");
-        var desktopAside = document.getElementById("desktop-page-index");
-        if (!desktopRoot || !desktopAside) return;
-        var targetId = desktopAside.getAttribute("data-align-target");
-        var targetEl = targetId ? document.getElementById(targetId) : null;
-        if (!targetEl) {
-          targetEl = document.querySelector(
-            "#role-header, #cv-document-sheet, #about, main article, article, main > div",
-          );
-        }
-        if (!targetEl) return;
-
-        var headerEl =
-          document.getElementById("site-header") ||
-          document.querySelector("header");
-        var headerH = headerEl ? headerEl.offsetHeight : 56;
-        var minTop = headerH + 16;
-
-        var targetRect = targetEl.getBoundingClientRect();
-        var desiredTop = targetRect.top;
-        var finalTop = Math.max(minTop, desiredTop);
-        desktopRoot.style.top = finalTop + "px";
-      }
 
       alignDesktopIndex();
       window.requestAnimationFrame(alignDesktopIndex);
 
       if (!window.__desktopIndexAlignBound) {
         window.__desktopIndexAlignBound = true;
-        window.addEventListener("scroll", alignDesktopIndex, { passive: true });
-        window.addEventListener("resize", alignDesktopIndex, { passive: true });
-      }
+        var scrollRaf = 0;
+        var onScroll = function () {
+          if (scrollRaf) return;
+          scrollRaf = window.requestAnimationFrame(function () {
+            scrollRaf = 0;
+            alignDesktopIndex();
+          });
+        };
+        window.addEventListener("scroll", onScroll, { passive: true });
 
-      function updateScrollBottomIndicator() {
-        if (!scrollBody || !scrollFade) return;
-        var hasOverflow = scrollBody.scrollHeight > scrollBody.clientHeight + 2;
-        var isAtBottom =
-          scrollBody.scrollHeight -
-            scrollBody.scrollTop -
-            scrollBody.clientHeight <=
-          6;
-
-        if (hasOverflow && !isAtBottom) {
-          scrollFade.classList.remove("opacity-0");
-          scrollFade.classList.add("opacity-100");
-        } else {
-          scrollFade.classList.remove("opacity-100");
-          scrollFade.classList.add("opacity-0");
+        var resizeRaf = 0;
+        var onResize = function () {
+          if (resizeRaf) return;
+          resizeRaf = window.requestAnimationFrame(function () {
+            resizeRaf = 0;
+            alignDesktopIndex();
+            syncResponsiveMode();
+          });
+        };
+        window.addEventListener("resize", onResize, { passive: true });
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", onResize, { passive: true });
+        }
+        var mql = window.matchMedia("(min-width: 1600px)");
+        if (mql && typeof mql.addEventListener === "function") {
+          mql.addEventListener("change", function () {
+            if (resizeRaf) return;
+            resizeRaf = window.requestAnimationFrame(function () {
+              resizeRaf = 0;
+              syncResponsiveMode();
+            });
+          });
         }
       }
 
@@ -681,43 +1339,106 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         });
       }
 
-      function togglePanel(open) {
-        var currentPanel = document.getElementById("index-expanded-panel");
-        var currentBtn = document.getElementById("open-index-floating-btn");
-        if (!currentPanel) return;
-        var shouldOpen =
-          typeof open === "boolean"
-            ? open
-            : currentPanel.classList.contains("hidden");
-        if (shouldOpen) {
-          currentPanel.classList.remove("hidden");
-          if (currentBtn) currentBtn.setAttribute("aria-expanded", "true");
-          window.__isPageIndexOpen = true;
-          requestAnimationFrame(updateScrollBottomIndicator);
-        } else {
-          currentPanel.classList.add("hidden");
-          if (currentBtn) currentBtn.setAttribute("aria-expanded", "false");
-          window.__isPageIndexOpen = false;
+      if (floatingBtn && !boundElements.has(floatingBtn)) {
+        boundElements.add(floatingBtn);
+        floatingBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          togglePanel();
+        });
+      }
+
+      if (closeBtn && !boundElements.has(closeBtn)) {
+        boundElements.add(closeBtn);
+        closeBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          togglePanel(false);
+        });
+      }
+
+      var footerObsAttached = false;
+      function attachFooterObserver() {
+        if (footerObsAttached) return;
+        footerObsAttached = true;
+        var footer = document.querySelector("footer");
+        if (footer && "IntersectionObserver" in window) {
+          var observer = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (entry) {
+                var printBtn = document.getElementById("mobile-cv-print-btn");
+                var downloadBtn = document.getElementById(
+                  "mobile-cv-download-btn",
+                );
+                var fBtn = document.getElementById("open-index-floating-btn");
+                if (!fBtn) return;
+                if (entry.isIntersecting) {
+                  fBtn.classList.add("footer-tucked");
+                  if (printBtn) printBtn.classList.add("footer-tucked");
+                  if (downloadBtn) downloadBtn.classList.add("footer-tucked");
+                  togglePanel(false);
+                } else {
+                  fBtn.classList.remove("footer-tucked");
+                  if (printBtn) printBtn.classList.remove("footer-tucked");
+                  if (downloadBtn)
+                    downloadBtn.classList.remove("footer-tucked");
+                }
+              });
+            },
+            { threshold: 0.05 },
+          );
+          observer.observe(footer);
+          window.__pageIndexFooterObserver = observer;
         }
       }
-      window.__toggleIndexPanel = togglePanel;
+      window.addEventListener("scroll", attachFooterObserver, {
+        once: true,
+        passive: true,
+      });
 
-      var boundElements =
-        window.__pageIndexBoundElements ||
-        (window.__pageIndexBoundElements = new WeakSet());
+      if (!window.__globalIndexDocDelegationBound) {
+        window.__globalIndexDocDelegationBound = true;
+        document.addEventListener("click", function (e) {
+          var target = e.target;
+          if (!target) return;
+
+          var openBtnEl = target.closest("#open-index-floating-btn");
+          if (openBtnEl) {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePanel();
+            return;
+          }
+
+          var closeBtnEl = target.closest("#close-index-panel-btn");
+          if (closeBtnEl) {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePanel(false);
+            return;
+          }
+
+          var currentPanel = document.getElementById("index-expanded-panel");
+          var currentBtn = document.getElementById("open-index-floating-btn");
+          if (currentPanel && !currentPanel.classList.contains("hidden")) {
+            if (
+              !currentPanel.contains(target) &&
+              (!currentBtn || !currentBtn.contains(target))
+            ) {
+              togglePanel(false);
+            }
+          }
+        });
+      }
 
       if (!window.__indexKeydownBound) {
         window.__indexKeydownBound = true;
         document.addEventListener("keydown", function (e) {
           if (e.key === "Escape") {
-            var currentPanel =
-              panel || document.getElementById("mobile-page-index-container");
+            var currentPanel = document.getElementById("index-expanded-panel");
             if (currentPanel && !currentPanel.classList.contains("hidden")) {
               e.preventDefault();
               e.stopPropagation();
               togglePanel(false);
-              var currentBtn =
-                floatingBtn || document.getElementById("mobile-page-index-btn");
+              var currentBtn = document.getElementById("open-index-floating-btn");
               if (currentBtn) currentBtn.focus();
               return;
             }
@@ -759,223 +1480,17 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
           }
 
           if (e.key === "p" || e.key === "P") {
+            if (!checkIsResumePage()) return;
             var printBtn =
               document.getElementById("desktop-cv-print-btn") ||
               document.getElementById("mobile-cv-print-btn");
-            if (printBtn) {
+            if (printBtn && !printBtn.closest(".hidden") && printBtn.style.display !== "none") {
               e.preventDefault();
               printBtn.click();
             }
           }
         });
       }
-
-      if (floatingBtn && !boundElements.has(floatingBtn)) {
-        boundElements.add(floatingBtn);
-
-        floatingBtn.addEventListener("click", function (e) {
-          e.stopPropagation();
-          togglePanel();
-        });
-
-        if (closeBtn && !boundElements.has(closeBtn)) {
-          boundElements.add(closeBtn);
-          closeBtn.addEventListener("click", function (e) {
-            e.stopPropagation();
-            togglePanel(false);
-          });
-        }
-
-        var footerObsAttached = false;
-        function attachFooterObserver() {
-          if (footerObsAttached) return;
-          footerObsAttached = true;
-          var footer = document.querySelector("footer");
-          if (footer && "IntersectionObserver" in window) {
-            var observer = new IntersectionObserver(
-              function (entries) {
-                entries.forEach(function (entry) {
-                  var printBtn = document.getElementById("mobile-cv-print-btn");
-                  var downloadBtn = document.getElementById(
-                    "mobile-cv-download-btn",
-                  );
-                  if (entry.isIntersecting) {
-                    floatingBtn.classList.add("footer-tucked");
-                    if (printBtn) printBtn.classList.add("footer-tucked");
-                    if (downloadBtn) downloadBtn.classList.add("footer-tucked");
-                    togglePanel(false);
-                  } else {
-                    floatingBtn.classList.remove("footer-tucked");
-                    if (printBtn) printBtn.classList.remove("footer-tucked");
-                    if (downloadBtn)
-                      downloadBtn.classList.remove("footer-tucked");
-                  }
-                });
-              },
-              { threshold: 0.05 },
-            );
-            observer.observe(footer);
-          }
-        }
-        window.addEventListener("scroll", attachFooterObserver, {
-          once: true,
-          passive: true,
-        });
-      }
-
-      if (!window.__globalIndexDocDelegationBound) {
-        window.__globalIndexDocDelegationBound = true;
-        document.addEventListener("click", function (e) {
-          var target = e.target;
-          if (!target) return;
-
-          var openBtnEl = target.closest("#open-index-floating-btn");
-          if (openBtnEl) {
-            e.preventDefault();
-            e.stopPropagation();
-            togglePanel();
-            return;
-          }
-
-          var closeBtnEl = target.closest("#close-index-panel-btn");
-          if (closeBtnEl) {
-            e.preventDefault();
-            e.stopPropagation();
-            togglePanel(false);
-            return;
-          }
-
-          var currentPanel = document.getElementById("index-expanded-panel");
-          var currentBtn = document.getElementById("open-index-floating-btn");
-          if (currentPanel && !currentPanel.classList.contains("hidden")) {
-            if (
-              !currentPanel.contains(target) &&
-              (!currentBtn || !currentBtn.contains(target))
-            ) {
-              togglePanel(false);
-            }
-          }
-        });
-      }
-
-      var sectionIds = [];
-      desktopLinks.forEach(function (dl) {
-        var id = dl.getAttribute("data-index-link");
-        if (id && !sectionIds.includes(id)) sectionIds.push(id);
-      });
-      if (sectionIds.length === 0) {
-        mobileLinks.forEach(function (ml) {
-          var id = ml.getAttribute("data-mobile-index-link");
-          if (id && !sectionIds.includes(id)) sectionIds.push(id);
-        });
-      }
-
-      var sectionEls = sectionIds
-        .map(function (id) {
-          return document.getElementById(id);
-        })
-        .filter(Boolean);
-
-      var isProgrammaticScroll = false;
-      var scrollLockTimeout = null;
-      var navTargetIdx = -1;
-
-      function getHeaderOffset() {
-        var headerEl =
-          document.getElementById("site-header") ||
-          document.querySelector("header");
-        var h = headerEl ? headerEl.offsetHeight : 56;
-        return h + 24;
-      }
-
-      function highlightActive(activeId) {
-        desktopLinks.forEach(function (dl) {
-          if (dl.getAttribute("data-index-link") === activeId) {
-            dl.classList.add(
-              "text-[var(--color-accent-gold)]",
-              "font-bold",
-              "bg-[var(--color-accent-gold-subtle)]",
-            );
-          } else {
-            dl.classList.remove(
-              "text-[var(--color-accent-gold)]",
-              "font-bold",
-              "bg-[var(--color-accent-gold-subtle)]",
-            );
-          }
-        });
-        mobileLinks.forEach(function (ml) {
-          if (ml.getAttribute("data-mobile-index-link") === activeId) {
-            ml.classList.add(
-              "text-[var(--color-accent-gold)]",
-              "font-bold",
-              "bg-[var(--color-accent-gold-subtle)]",
-            );
-          } else {
-            ml.classList.remove(
-              "text-[var(--color-accent-gold)]",
-              "font-bold",
-              "bg-[var(--color-accent-gold-subtle)]",
-            );
-          }
-        });
-      }
-
-      function scrollToTarget(targetId, explicitIdx) {
-        if (
-          targetId === "contact" &&
-          typeof window.__smoothScrollToContact === "function"
-        ) {
-          if (typeof explicitIdx === "number") {
-            navTargetIdx = explicitIdx;
-          } else {
-            navTargetIdx = sectionIds.indexOf(targetId);
-          }
-          window.__smoothScrollToContact();
-          return;
-        }
-        var targetEl = document.getElementById(targetId);
-        if (!targetEl) return;
-
-        highlightActive(targetId);
-        isProgrammaticScroll = true;
-        if (typeof explicitIdx === "number") {
-          navTargetIdx = explicitIdx;
-        } else {
-          navTargetIdx = sectionIds.indexOf(targetId);
-        }
-
-        clearTimeout(scrollLockTimeout);
-
-        function onScrollFinish() {
-          isProgrammaticScroll = false;
-          window.removeEventListener("scrollend", onScrollFinish);
-          if (navTargetIdx >= 0 && navTargetIdx < sectionIds.length) {
-            highlightActive(sectionIds[navTargetIdx]);
-          }
-        }
-
-        if ("onscrollend" in window) {
-          window.addEventListener("scrollend", onScrollFinish, { once: true });
-        }
-        scrollLockTimeout = setTimeout(onScrollFinish, 600);
-
-        var headerOffset = getHeaderOffset();
-        var elementPosition =
-          targetEl.getBoundingClientRect().top + window.pageYOffset;
-        window.scrollTo({
-          top: Math.max(0, elementPosition - headerOffset),
-          behavior: "smooth",
-        });
-
-        if (history.pushState) {
-          history.pushState(null, "", "#" + targetId);
-        } else {
-          window.location.hash = targetId;
-        }
-      }
-
-      window.__hasPageIndex = sectionIds.length > 0;
 
       var lastStepTime = 0;
       window.__pageIndexStep = function (direction) {
@@ -1059,108 +1574,102 @@ const asideGapClass = isCvPage ? "mr-6" : isJobPage ? "mr-[5.5rem]" : "mr-6";
         return true;
       };
 
-      desktopLinks.forEach(function (link) {
-        if (link.dataset.scrollBound) return;
-        link.dataset.scrollBound = "true";
-        link.addEventListener("click", function (e) {
-          var targetId = link.getAttribute("data-index-link");
-          if (targetId) {
-            e.preventDefault();
-            scrollToTarget(targetId);
-          }
-        });
-      });
+      // Run two-phase lifecycle pre-paint synchronization
+      var desktopRoot = document.getElementById("desktop-page-index-root");
+      var mobileContainer = document.getElementById("mobile-page-index-container");
+      var shell = document.getElementById("page-index-nav-shell");
+      var main = document.getElementById("main-content") || document.querySelector("main");
 
-      mobileLinks.forEach(function (link) {
-        if (link.dataset.scrollBound) return;
-        link.dataset.scrollBound = "true";
-        link.addEventListener("click", function (e) {
-          var targetId = link.getAttribute("data-mobile-index-link");
-          if (targetId) {
-            e.preventDefault();
-            if (panel) panel.classList.add("hidden");
-            if (floatingBtn) floatingBtn.setAttribute("aria-expanded", "false");
-            scrollToTarget(targetId);
-          }
-        });
-      });
+      var currentLang = document.documentElement.getAttribute("data-current-locale") ||
+                        document.documentElement.getAttribute("lang") ||
+                        (window.location.pathname.indexOf("/es/") === 0 || window.location.pathname === "/es" ? "es" : "en");
+      var isLangEs = currentLang === "es";
 
-      if (sectionEls.length > 0) {
-        var ticking = false;
+      // ALWAYS update CV button visibility first thing before anything else
+      var isCv = checkIsResumePage();
+      updateCvButtons(isCv, isLangEs);
 
-        function updateScrollSpy() {
-          if (isProgrammaticScroll) return;
-
-          var scrollY =
-            window.pageYOffset || document.documentElement.scrollTop;
-
-          if (scrollY < 60) {
-            highlightActive(sectionEls[0].id);
-            return;
-          }
-
-          var viewportHeight = window.innerHeight || 800;
-          var documentHeight = document.documentElement.scrollHeight || 3000;
-
-          if (scrollY + viewportHeight >= documentHeight - 40) {
-            highlightActive(sectionEls[sectionEls.length - 1].id);
-            return;
-          }
-
-          var readingLine = getHeaderOffset() + 14;
-          var currentActiveId = sectionEls[0].id;
-
-          for (var i = 0; i < sectionEls.length; i++) {
-            var el = sectionEls[i];
-            var rect = el.getBoundingClientRect();
-            if (rect.top <= readingLine) {
-              currentActiveId = el.id;
-            } else {
-              break;
-            }
-          }
-
-          highlightActive(currentActiveId);
+      if (main) {
+        // Pre-Paint Route Sync: Suppress transition jitter for 1 frame
+        if (isAfterSwap) {
+          togglePanel(false);
+          if (desktopRoot) desktopRoot.classList.add("no-transition");
+          if (mobileContainer) mobileContainer.classList.add("no-transition");
         }
 
-        window.addEventListener(
-          "scroll",
-          function () {
-            if (!ticking) {
-              window.requestAnimationFrame(function () {
-                updateScrollSpy();
-                ticking = false;
-              });
-              ticking = true;
-            }
-          },
-          { passive: true },
-        );
+        updateLocalizedLabels(isLangEs);
+        cleanupObservers();
 
-        function assessInitialSection() {
-          if (window.location.hash) {
-            var hashTarget = window.location.hash.substring(1);
-            if (sectionIds.includes(hashTarget)) {
-              highlightActive(hashTarget);
-              return;
-            }
+        var scanned = scanSections(main, isLangEs);
+        var hasSections = scanned.length > 0;
+
+        if (shell) shell.setAttribute("data-has-sections", hasSections ? "true" : "false");
+        if (desktopRoot) desktopRoot.setAttribute("data-has-sections", hasSections ? "true" : "false");
+        if (mobileContainer) mobileContainer.setAttribute("data-has-sections", hasSections ? "true" : "false");
+        window.__hasPageIndex = hasSections;
+
+        if (hasSections) {
+          if (desktopRoot) {
+            desktopRoot.classList.remove("opacity-0", "pointer-events-none", "translate-y-2", "is-empty");
+            desktopRoot.classList.add("opacity-100", "pointer-events-auto", "translate-y-0");
+            desktopRoot.setAttribute("data-has-sections", "true");
           }
-          updateScrollSpy();
+          if (mobileContainer) {
+            mobileContainer.classList.remove("opacity-0", "pointer-events-none", "translate-y-2", "is-empty");
+            mobileContainer.classList.add("opacity-100", "pointer-events-auto", "translate-y-0");
+            mobileContainer.setAttribute("data-has-sections", "true");
+          }
+          rebuildToc(scanned, isLangEs);
+          alignDesktopIndex();
+          attachScrollSpy();
+          syncResponsiveMode();
+        } else {
+          if (desktopRoot) {
+            desktopRoot.classList.remove("opacity-100", "pointer-events-auto", "translate-y-0");
+            desktopRoot.classList.add("opacity-0", "pointer-events-none", "translate-y-2", "is-empty");
+            desktopRoot.setAttribute("data-has-sections", "false");
+          }
+          if (mobileContainer) {
+            mobileContainer.classList.remove("opacity-100", "pointer-events-auto", "translate-y-0");
+            mobileContainer.classList.add("opacity-0", "pointer-events-none", "translate-y-2", "is-empty");
+            mobileContainer.setAttribute("data-has-sections", "false");
+          }
         }
 
-        assessInitialSection();
-        window.addEventListener("load", assessInitialSection, { once: true });
-        window.requestAnimationFrame(assessInitialSection);
+        updateCvButtons(isCv, isLangEs);
+        syncResponsiveMode();
+
+        if (isAfterSwap) {
+          requestAnimationFrame(function () {
+            if (desktopRoot) desktopRoot.classList.remove("no-transition");
+            if (mobileContainer) mobileContainer.classList.remove("no-transition");
+          });
+        }
       }
     }
 
     window.__setupPageIndex = setupPageIndex;
 
+    // Immediate pre-mount sync for CV action buttons
+    try {
+      var initialLang = (document.documentElement.getAttribute("lang") || "en").indexOf("es") === 0;
+      updateCvButtons(checkIsResumePage(), initialLang);
+    } catch (_) {}
+
+    // Initial Mount
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", setupPageIndex);
+      document.addEventListener("DOMContentLoaded", function () { setupPageIndex(false); });
     } else {
-      setupPageIndex();
+      setupPageIndex(false);
     }
-    document.addEventListener("astro:page-load", setupPageIndex);
+
+    // Pre-Paint Route Sync: astro:after-swap fires before browser paints
+    document.addEventListener("astro:after-swap", function () {
+      setupPageIndex(true);
+    });
+
+    document.addEventListener("astro:page-load", function () {
+      setupPageIndex(false);
+    });
   })();
 </script>

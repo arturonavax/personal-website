@@ -6,214 +6,346 @@ interface Props {
 
 const { currentLocale, counterpartUrl } = Astro.props;
 const targetLocale = currentLocale === "en" ? "es" : "en";
+
+const i18nData = {
+  en: {
+    ariaLabel: "Language recommendation",
+    textPrefix: "Contenido disponible en ",
+    langName: "Español",
+    cta: "Cambiar →",
+    dismissAria: "Dismiss language suggestion",
+  },
+  es: {
+    ariaLabel: "Recomendación de idioma",
+    textPrefix: "Also available in ",
+    langName: "English",
+    cta: "Switch →",
+    dismissAria: "Descartar sugerencia de idioma",
+  },
+};
 ---
 
-{counterpartUrl && (
-  <>
-    <aside
-      id="lang-suggestion-banner"
+<aside
+  id="lang-suggestion-banner"
+  transition:persist="language-banner"
+  data-semi=";"
+  aria-label={
+    currentLocale === "en"
+      ? "Language recommendation"
+      : "Recomendación de idioma"
+  }
+  class="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 hidden w-[calc(100vw-1.5rem)] max-w-sm sm:w-auto sm:max-w-md items-center justify-between gap-2 sm:gap-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/75 px-3 py-2 sm:px-4 sm:py-2.5 shadow-2xl shadow-black/60 backdrop-blur-xl transition-[transform,opacity] duration-300 ease-out translate-y-3 -translate-x-1/2 opacity-0 text-xs font-mono"
+  data-current-locale={currentLocale}
+  data-target-locale={targetLocale}
+  data-target-url={counterpartUrl || ""}
+  data-i18n-en={JSON.stringify(i18nData.en)}
+  data-i18n-es={JSON.stringify(i18nData.es)}
+>
+  <div class="flex items-center gap-2 text-[var(--color-text-primary)] min-w-0 flex-1 font-sans">
+    <span class="text-base select-none shrink-0" aria-hidden="true">
+      🌐
+    </span>
+    <span id="lang-suggestion-text" class="text-[11px] sm:text-xs font-normal leading-tight min-w-0">
+      {currentLocale === "en" ? (
+        <>
+          Contenido disponible en{" "}
+          <strong class="font-semibold text-[var(--color-accent-gold)] whitespace-nowrap">
+            Español
+          </strong>
+        </>
+      ) : (
+        <>
+          Also available in{" "}
+          <strong class="font-semibold text-[var(--color-accent-gold)] whitespace-nowrap">
+            English
+          </strong>
+        </>
+      )}
+    </span>
+  </div>
+
+  <div class="flex items-center gap-1.5 shrink-0 ml-1.5 sm:ml-auto">
+    <a
+      href={counterpartUrl || "#"}
+      hreflang={targetLocale}
+      lang={targetLocale}
+      data-astro-prefetch="hover"
+      data-lang-switch={targetLocale}
+      id="lang-suggestion-accept"
+      class="inline-flex h-7 items-center justify-center rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2.5 text-[11px] font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer whitespace-nowrap"
+    >
+      <span id="lang-suggestion-cta-text">{currentLocale === "en" ? "Cambiar" : "Switch"} &rarr;</span>
+    </a>
+
+    <button
+      type="button"
+      id="lang-suggestion-dismiss"
       aria-label={
         currentLocale === "en"
-          ? "Language recommendation"
-          : "Recomendación de idioma"
+          ? "Dismiss language suggestion"
+          : "Descartar sugerencia de idioma"
       }
-      class="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 hidden w-[calc(100vw-1.5rem)] max-w-sm sm:w-auto sm:max-w-md items-center justify-between gap-2 sm:gap-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/75 px-3 py-2 sm:px-4 sm:py-2.5 shadow-2xl shadow-black/60 backdrop-blur-xl transition-all duration-300 ease-out translate-y-3 -translate-x-1/2 opacity-0 text-xs font-mono"
-      data-current-locale={currentLocale}
-      data-target-locale={targetLocale}
-      data-target-url={counterpartUrl}
+      class="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)]/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shrink-0"
     >
-      <div class="flex items-center gap-2 text-[var(--color-text-primary)] min-w-0 flex-1 font-sans">
-        <span class="text-base select-none shrink-0" aria-hidden="true">
-          🌐
-        </span>
-        <span class="text-[11px] sm:text-xs font-normal leading-tight min-w-0">
-          {currentLocale === "en" ? (
-            <>
-              Contenido disponible en{" "}
-              <strong class="font-semibold text-[var(--color-accent-gold)] whitespace-nowrap">
-                Español
-              </strong>
-            </>
-          ) : (
-            <>
-              Also available in{" "}
-              <strong class="font-semibold text-[var(--color-accent-gold)] whitespace-nowrap">
-                English
-              </strong>
-            </>
-          )}
-        </span>
-      </div>
+      <svg
+        class="h-3.5 w-3.5 stroke-current fill-none"
+        viewBox="0 0 24 24"
+        stroke-width="2"
+      >
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+</aside>
 
-      <div class="flex items-center gap-1.5 shrink-0 ml-1.5 sm:ml-auto">
-        <a
-          href={counterpartUrl}
-          hreflang={targetLocale}
-          lang={targetLocale}
-          data-astro-prefetch="hover"
-          data-lang-switch={targetLocale}
-          id="lang-suggestion-accept"
-          class="inline-flex h-7 items-center justify-center rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2.5 text-[11px] font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer whitespace-nowrap"
-        >
-          {currentLocale === "en" ? "Cambiar" : "Switch"} &rarr;
-        </a>
+<script is:inline>
+  (function () {
+    var state = (window.__langBannerState = window.__langBannerState || {
+      hasAnimatedIn: false,
+      isDismissed: false,
+    });
 
-        <button
-          type="button"
-          id="lang-suggestion-dismiss"
-          aria-label={
-            currentLocale === "en"
-              ? "Dismiss language suggestion"
-              : "Descartar sugerencia de idioma"
+    function initLangSuggestion() {
+      var banner = document.getElementById("lang-suggestion-banner");
+      if (!banner) return;
+
+      var docLang = (
+        (document.documentElement &&
+          document.documentElement.getAttribute("lang")) ||
+        (window.location.pathname.indexOf("/es/") === 0 ||
+        window.location.pathname === "/es"
+          ? "es"
+          : "en")
+      )
+        .toLowerCase()
+        .split("-")[0];
+
+      var currentLocale =
+        docLang || banner.getAttribute("data-current-locale") || "en";
+      var targetLocale = currentLocale === "en" ? "es" : "en";
+
+      // Read alternate link from <head> if available
+      var counterpartUrl = null;
+      if (
+        typeof document !== "undefined" &&
+        document.head &&
+        document.head.querySelectorAll
+      ) {
+        var altLink = document.head.querySelector(
+          'link[rel="alternate"][hreflang="' + targetLocale + '"]',
+        );
+        if (altLink) {
+          counterpartUrl = altLink.getAttribute("href");
+        }
+      }
+      if (!counterpartUrl) {
+        counterpartUrl = banner.getAttribute("data-target-url");
+      }
+
+      // Guard against stale banner: never offer language if already on that language page
+      if (currentLocale === banner.getAttribute("data-target-locale")) {
+        banner.classList.remove("flex", "translate-y-0", "opacity-100");
+        banner.classList.add("hidden", "translate-y-3", "opacity-0");
+        return;
+      }
+
+      // 1. Render guard (SPEC-007 REQ-3): session-scoped keys only, nothing persisted across sessions.
+      //    Suppressed after an explicit dismissal or a manual language switch.
+      var isDismissed = false;
+      var isManualOverride = false;
+      try {
+        isDismissed =
+          sessionStorage.getItem("lang_banner_dismissed") === "true";
+        isManualOverride =
+          sessionStorage.getItem("lang_manual_override") === "true";
+      } catch (_) {}
+
+      if (isDismissed || isManualOverride || state.isDismissed) {
+        state.isDismissed = true;
+        banner.classList.remove("flex", "translate-y-0", "opacity-100");
+        banner.classList.add("hidden", "translate-y-3", "opacity-0");
+        banner.hidden = true;
+        banner.style.display = "none";
+        return;
+      }
+
+      var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+
+      // 2. Page-level manual override check: if user switched on this specific page
+      try {
+        var pageOverride =
+          sessionStorage.getItem(
+            "page_lang_override_" + window.location.pathname,
+          ) || sessionStorage.getItem("page_lang_override_" + currentPath);
+        if (pageOverride === currentLocale) {
+          banner.classList.remove("flex", "translate-y-0", "opacity-100");
+          banner.classList.add("hidden", "translate-y-3", "opacity-0");
+          return;
+        }
+      } catch (_) {}
+
+      // 3. Detect device/browser language
+      var userLangs = (
+        navigator.languages || [navigator.language || ""]
+      ).map(function (l) {
+        return (l || "").toLowerCase().split("-")[0];
+      });
+
+      var deviceLang = null;
+      for (var i = 0; i < userLangs.length; i++) {
+        if (userLangs[i] === "en" || userLangs[i] === "es") {
+          deviceLang = userLangs[i];
+          break;
+        }
+      }
+
+      // Ensure banner appears whenever device/browser language does not match the page language
+      if (!deviceLang || currentLocale === deviceLang) {
+        banner.classList.remove("flex", "translate-y-0", "opacity-100");
+        banner.classList.add("hidden", "translate-y-3", "opacity-0");
+        return;
+      }
+
+      // If translation in the suggested locale is missing for this page
+      if (!counterpartUrl) {
+        banner.classList.remove("flex", "translate-y-0", "opacity-100");
+        banner.classList.add("hidden", "translate-y-3", "opacity-0");
+        return;
+      }
+
+      // Update CTA anchor attributes in-place
+      var acceptBtn = document.getElementById("lang-suggestion-accept");
+      if (acceptBtn && typeof acceptBtn.setAttribute === "function") {
+        acceptBtn.setAttribute("href", counterpartUrl);
+        acceptBtn.setAttribute("hreflang", targetLocale);
+        acceptBtn.setAttribute("lang", targetLocale);
+        acceptBtn.setAttribute("data-lang-switch", targetLocale);
+      }
+      if (typeof banner.setAttribute === "function") {
+        banner.setAttribute("data-target-url", counterpartUrl);
+        banner.setAttribute("data-current-locale", currentLocale);
+        banner.setAttribute("data-target-locale", targetLocale);
+      }
+
+      // Update localized copy from data-i18n attributes
+      try {
+        var i18nRaw =
+          typeof banner.getAttribute === "function"
+            ? banner.getAttribute("data-i18n-" + currentLocale)
+            : null;
+        if (i18nRaw) {
+          var i18n = JSON.parse(i18nRaw);
+          if (typeof banner.setAttribute === "function") {
+            banner.setAttribute("aria-label", i18n.ariaLabel);
           }
-          class="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)]/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shrink-0"
-        >
-          <svg
-            class="h-3.5 w-3.5 stroke-current fill-none"
-            viewBox="0 0 24 24"
-            stroke-width="2"
-          >
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-    </aside>
-
-    <script is:inline>
-      (function () {
-        function initLangSuggestion() {
-          var banner = document.getElementById("lang-suggestion-banner");
-          if (!banner) return;
-
-          var docLang = (
-            document.documentElement.getAttribute("lang") ||
-            (window.location.pathname.indexOf("/es/") === 0 ||
-            window.location.pathname === "/es"
-              ? "es"
-              : "en")
-          )
-            .toLowerCase()
-            .split("-")[0];
-
-          var currentLocale =
-            docLang || banner.getAttribute("data-current-locale") || "en";
-          var targetLocale = currentLocale === "en" ? "es" : "en";
-
-          // Guard against stale banner: never offer language if already on that language page
-          if (currentLocale === banner.getAttribute("data-target-locale")) {
-            banner.classList.remove("flex", "translate-y-0", "opacity-100");
-            banner.classList.add("hidden", "translate-y-3", "opacity-0");
-            return;
+          var textEl = document.getElementById("lang-suggestion-text");
+          if (textEl) {
+            textEl.innerHTML =
+              i18n.textPrefix +
+              '<strong class="font-semibold text-[var(--color-accent-gold)] whitespace-nowrap">' +
+              i18n.langName +
+              "</strong>";
           }
+          var ctaEl = document.getElementById("lang-suggestion-cta-text");
+          if (ctaEl) {
+            ctaEl.textContent = i18n.cta;
+          }
+          var dismissBtn = document.getElementById("lang-suggestion-dismiss");
+          if (dismissBtn && typeof dismissBtn.setAttribute === "function") {
+            dismissBtn.setAttribute("aria-label", i18n.dismissAria);
+          }
+        }
+      } catch (_) {}
 
-          // 1. Render guard (SPEC-007 REQ-3): session-scoped keys only, nothing persisted across sessions.
-          //    Suppressed after an explicit dismissal or a manual language switch.
-          var isDismissed = false;
-          var isManualOverride = false;
-          try {
-            isDismissed =
-              sessionStorage.getItem("lang_banner_dismissed") === "true";
-            isManualOverride =
-              sessionStorage.getItem("lang_manual_override") === "true";
-          } catch (_) {}
+      // 4. Mostrar banner según máquina de estados
+      banner.hidden = false;
+      banner.style.display = "";
 
-          if (isDismissed || isManualOverride) {
-            banner.classList.remove("flex", "translate-y-0", "opacity-100");
-            banner.classList.add("hidden", "translate-y-3", "opacity-0");
+      if (state.hasAnimatedIn) {
+        // Ya se animó previamente en esta sesión: mantener visible y sólido sin re-animar ni saltos
+        if (!banner.classList.contains("flex")) banner.classList.add("flex");
+        if (banner.classList.contains("hidden")) banner.classList.remove("hidden");
+        if (!banner.classList.contains("translate-y-0")) banner.classList.add("translate-y-0");
+        if (banner.classList.contains("translate-y-3")) banner.classList.remove("translate-y-3");
+        if (!banner.classList.contains("opacity-100")) banner.classList.add("opacity-100");
+        if (banner.classList.contains("opacity-0")) banner.classList.remove("opacity-0");
+      } else {
+        // Primera aparición: animar entrada
+        banner.classList.remove("hidden");
+        banner.classList.add("flex");
+        void banner.offsetHeight; // Forzar reflow para animación CSS
+        banner.classList.remove("translate-y-3", "opacity-0");
+        banner.classList.add("translate-y-0", "opacity-100");
+        state.hasAnimatedIn = true;
+      }
+
+      if (typeof window.__updateToastCollision === "function") {
+        window.__updateToastCollision();
+      }
+
+      // 5. Manejo de descarte (solo en la sesión actual)
+      var dismissBtn = document.getElementById("lang-suggestion-dismiss");
+      if (dismissBtn) {
+        dismissBtn.onclick = function () {
+          banner.classList.remove("translate-y-0", "opacity-100");
+          banner.classList.add("translate-y-3", "opacity-0");
+          if (typeof window.__updateToastCollision === "function") {
+            window.__updateToastCollision();
+          }
+          setTimeout(function () {
+            banner.classList.remove("flex");
+            banner.classList.add("hidden");
             banner.hidden = true;
             banner.style.display = "none";
-            return;
-          }
-
-          var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
-
-          // 2. Page-level manual override check: if user switched on this specific page
+            if (typeof window.__updateToastCollision === "function") {
+              window.__updateToastCollision();
+            }
+          }, 300);
+          state.isDismissed = true;
           try {
-            var pageOverride =
-              sessionStorage.getItem(
-                "page_lang_override_" + window.location.pathname,
-              ) || sessionStorage.getItem("page_lang_override_" + currentPath);
-            if (pageOverride === currentLocale) {
-              return;
-            }
+            sessionStorage.setItem("lang_banner_dismissed", "true");
           } catch (_) {}
+        };
+      }
 
-          // 3. Detect device/browser language
-          var userLangs = (
-            navigator.languages || [navigator.language || ""]
-          ).map(function (l) {
-            return (l || "").toLowerCase().split("-")[0];
-          });
-
-          var deviceLang = null;
-          for (var i = 0; i < userLangs.length; i++) {
-            if (userLangs[i] === "en" || userLangs[i] === "es") {
-              deviceLang = userLangs[i];
-              break;
+      // 6. Manejo de aceptación (desaparece inmediatamente al pulsar Cambiar)
+      if (acceptBtn && !acceptBtn.__boundAccept) {
+        acceptBtn.__boundAccept = true;
+        acceptBtn.addEventListener("click", function () {
+          banner.classList.remove("flex", "translate-y-0", "opacity-100");
+          banner.classList.add("hidden", "translate-y-3", "opacity-0");
+          banner.hidden = true;
+          banner.style.display = "none";
+          state.isDismissed = true;
+          if (typeof window.__updateToastCollision === "function") {
+            window.__updateToastCollision();
+          }
+          try {
+            sessionStorage.setItem("lang_banner_dismissed", "true");
+            var targetUrl = banner.getAttribute("data-target-url");
+            if (targetUrl) {
+              sessionStorage.setItem(
+                "page_lang_override_" + targetUrl,
+                targetLocale,
+              );
+              sessionStorage.setItem(
+                "page_lang_override_" + targetUrl.replace(/\/+$/, ""),
+                targetLocale,
+              );
             }
-          }
+            sessionStorage.setItem("preferred_locale", targetLocale);
+          } catch (_) {}
+        });
+      }
+    }
 
-          // Ensure banner appears whenever device/browser language does not match the page language
-          if (!deviceLang || currentLocale === deviceLang) {
-            return;
-          }
-
-          // 4. Mostrar banner con animación fluida
-          banner.classList.remove("hidden");
-          banner.classList.add("flex");
-          void banner.offsetHeight; // Forzar reflow para animación CSS
-          banner.classList.remove("translate-y-3", "opacity-0");
-          banner.classList.add("translate-y-0", "opacity-100");
-
-          // 5. Manejo de descarte (solo en la sesión actual)
-          var dismissBtn = document.getElementById("lang-suggestion-dismiss");
-          if (dismissBtn) {
-            dismissBtn.onclick = function () {
-              banner.classList.remove("translate-y-0", "opacity-100");
-              banner.classList.add("translate-y-3", "opacity-0");
-              setTimeout(function () {
-                banner.classList.remove("flex");
-                banner.classList.add("hidden");
-              }, 300);
-              try {
-                sessionStorage.setItem("lang_banner_dismissed", "true");
-              } catch (_) {}
-            };
-          }
-
-          // 6. Manejo de aceptación (desaparece inmediatamente al pulsar Cambiar)
-          var acceptBtn = document.getElementById("lang-suggestion-accept");
-          if (acceptBtn) {
-            acceptBtn.addEventListener("click", function () {
-              banner.classList.remove("flex", "translate-y-0", "opacity-100");
-              banner.classList.add("hidden", "translate-y-3", "opacity-0");
-              try {
-                sessionStorage.setItem("lang_banner_dismissed", "true");
-                var targetUrl = banner.getAttribute("data-target-url");
-                if (targetUrl) {
-                  sessionStorage.setItem(
-                    "page_lang_override_" + targetUrl,
-                    targetLocale,
-                  );
-                  sessionStorage.setItem(
-                    "page_lang_override_" + targetUrl.replace(/\/+$/, ""),
-                    targetLocale,
-                  );
-                }
-                sessionStorage.setItem("preferred_locale", targetLocale);
-              } catch (_) {}
-            });
-          }
-        }
-
-        document.addEventListener("astro:page-load", initLangSuggestion);
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", initLangSuggestion);
-        } else {
-          initLangSuggestion();
-        }
-      })();
-    </script>
-  </>
-)}
+    document.addEventListener("astro:after-swap", initLangSuggestion);
+    document.addEventListener("astro:page-load", initLangSuggestion);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initLangSuggestion);
+    } else {
+      initLangSuggestion();
+    }
+  })();
+</script>

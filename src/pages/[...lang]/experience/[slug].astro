@@ -1,9 +1,7 @@
 ---
 import { render } from "astro:content";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import PageIndexNav, {
-  type IndexItem,
-} from "@/components/ui/PageIndexNav.astro";
+import type { IndexItem } from "@/components/ui/PageIndexNav.astro";
 import SimulationCard from "@/components/ui/SimulationCard.astro";
 import TechIcon from "@/components/ui/TechIcon.astro";
 import TypewriterTicker from "@/components/ui/TypewriterTicker.astro";
@@ -187,12 +185,9 @@ const jobIndexItems: IndexItem[] = [
   jsonLd={jsonLd}
 >
   <!-- Page Navigation Index for Job Page (Task 2 & 51) -->
-  <PageIndexNav
-    locale={currentLocale}
-    customItems={jobIndexItems}
-    containerMaxWidth="4xl"
-    alignTargetId="role-header"
-  />
+  {jobIndexItems && jobIndexItems.length > 0 && (
+    <script type="application/json" id="page-index-custom-items" set:html={JSON.stringify(jobIndexItems)} />
+  )}
 
   <!-- Sticky Experience Context Header (REQ-UXE-16) -->
   <div

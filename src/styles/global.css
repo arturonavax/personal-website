@@ -835,6 +835,55 @@ html.theme-transitioning::view-transition-new(root) {
 }
 
 /* ======================================================== */
+/* Persistent HUD View Transition Layer Isolation (ODD Task 6) */
+/* Pin persistent HUD chrome at 120 FPS with zero morph/jump */
+/* ======================================================== */
+
+header#site-header {
+  view-transition-name: site-header;
+}
+
+#page-index-nav {
+  view-transition-name: page-index-nav;
+}
+
+#lang-suggestion-banner {
+  view-transition-name: lang-suggestion-banner;
+}
+
+#back-to-top-btn {
+  view-transition-name: back-to-top;
+}
+
+/* Neutralize browser crossfade/morph on HUD elements during standard navigations */
+html:not(.theme-transitioning)::view-transition-group(site-header),
+html:not(.theme-transitioning)::view-transition-old(site-header),
+html:not(.theme-transitioning)::view-transition-new(site-header),
+html:not(.theme-transitioning)::view-transition-group(page-index-nav),
+html:not(.theme-transitioning)::view-transition-old(page-index-nav),
+html:not(.theme-transitioning)::view-transition-new(page-index-nav),
+html:not(.theme-transitioning)::view-transition-group(lang-suggestion-banner),
+html:not(.theme-transitioning)::view-transition-old(lang-suggestion-banner),
+html:not(.theme-transitioning)::view-transition-new(lang-suggestion-banner),
+html:not(.theme-transitioning)::view-transition-group(back-to-top),
+html:not(.theme-transitioning)::view-transition-old(back-to-top),
+html:not(.theme-transitioning)::view-transition-new(back-to-top) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+
+/* Prevent double-snapshot shadow darkening / blinking during view transitions */
+html:not(.theme-transitioning)::view-transition-old(lang-suggestion-banner) {
+  display: none !important;
+}
+
+/* Instant suppression of transitions for swap frame */
+.no-transition,
+.no-transition * {
+  transition: none !important;
+}
+
+/* ======================================================== */
 /* High-Performance Text-Only Reaction (Language Switch)    */
 /* Zero Full-Screen Cuts, Zero Card Blurs, Pure Typography   */
 /* ======================================================== */
@@ -941,20 +990,109 @@ html.lang-text-reacting .copy-feedback,
 }
 
 /* Floating actions (Index, Shortcuts, Back to top) rise above the language
-   suggestion toast while it is visible and drop back once it is dismissed. */
+   suggestion toast only when colliding on small/overlapping viewports. */
 #floating-actions-stack,
 #mobile-page-index-root {
   transition-property: transform;
   transition-duration: 300ms;
   transition-timing-function: ease-out;
 }
-#lang-suggestion-banner.opacity-100 ~ #floating-actions-stack,
-#lang-suggestion-banner.opacity-100 ~ #mobile-page-index-root {
-  transform: translateY(-4.25rem);
+#floating-actions-stack.elevated-for-toast,
+#mobile-page-index-root.elevated-for-toast {
+  transform: translateY(-3.25rem);
+}
+@media (max-width: 640px) {
+  #lang-suggestion-banner.opacity-100:not(.hidden) ~ #floating-actions-stack,
+  #lang-suggestion-banner.opacity-100:not(.hidden) ~ #mobile-page-index-root {
+    transform: translateY(-3.25rem);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   #floating-actions-stack,
   #mobile-page-index-root {
     transition: none;
   }
+}
+
+/* Subtle, elegant floating elevation for HUD action buttons */
+.floating-hud-btn,
+#open-shortcuts-btn,
+#open-index-floating-btn,
+#mobile-cv-print-btn,
+#mobile-cv-download-btn,
+#back-to-top-btn {
+  box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+.floating-hud-btn:hover,
+#open-shortcuts-btn:hover,
+#open-index-floating-btn:hover,
+#mobile-cv-print-btn:hover,
+#mobile-cv-download-btn:hover,
+#back-to-top-btn:hover {
+  box-shadow: 0 12px 28px -2px rgba(0, 0, 0, 0.6), 0 4px 10px -1px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme="light"] .floating-hud-btn,
+html[data-theme="light"] #open-shortcuts-btn,
+html[data-theme="light"] #open-index-floating-btn,
+html[data-theme="light"] #mobile-cv-print-btn,
+html[data-theme="light"] #mobile-cv-download-btn,
+html[data-theme="light"] #back-to-top-btn {
+  box-shadow: 0 8px 24px -2px rgba(15, 23, 42, 0.12), 0 2px 6px -1px rgba(15, 23, 42, 0.06) !important;
+}
+
+html[data-theme="light"] .floating-hud-btn:hover,
+html[data-theme="light"] #open-shortcuts-btn:hover,
+html[data-theme="light"] #open-index-floating-btn:hover,
+html[data-theme="light"] #mobile-cv-print-btn:hover,
+html[data-theme="light"] #mobile-cv-download-btn:hover,
+html[data-theme="light"] #back-to-top-btn:hover {
+  box-shadow: 0 12px 28px -2px rgba(15, 23, 42, 0.18), 0 4px 10px -1px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Strict Responsive Isolation between Desktop Page Index Sidebar and Floating HUD Button */
+#desktop-page-index-root,
+#desktop-page-index-root.force-hide-desktop {
+  display: none !important;
+}
+@media (min-width: 1600px) {
+  #desktop-page-index-root:not([data-has-sections="false"]):not(.is-empty):not(.force-hide-desktop) {
+    display: block !important;
+  }
+}
+
+#mobile-page-index-root {
+  display: contents !important;
+}
+@media (min-width: 1600px) {
+  #mobile-page-index-root:not(.force-show-mobile) {
+    display: none !important;
+  }
+}
+
+#mobile-page-index-container,
+#floating-actions-stack #mobile-page-index-container {
+  display: flex !important;
+}
+@media (min-width: 1600px) {
+  #mobile-page-index-container:not(.force-show-mobile),
+  #floating-actions-stack #mobile-page-index-container:not(.force-show-mobile) {
+    display: none !important;
+  }
+}
+
+#desktop-page-index-root[data-has-sections="false"],
+#desktop-page-index-root.is-empty,
+#desktop-page-index-root.force-hide-desktop,
+#mobile-page-index-root[data-has-sections="false"],
+#mobile-page-index-root.is-empty,
+#mobile-page-index-root.force-hide-mobile,
+#mobile-page-index-container[data-has-sections="false"],
+#mobile-page-index-container.is-empty,
+#mobile-page-index-container.force-hide-mobile,
+#floating-actions-stack #mobile-page-index-container[data-has-sections="false"],
+#floating-actions-stack #mobile-page-index-container.is-empty,
+#floating-actions-stack #mobile-page-index-container.force-hide-mobile {
+  display: none !important;
 }

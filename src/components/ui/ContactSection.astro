@@ -303,7 +303,8 @@ const email = "arturo@arturonavax.dev";
   </div>
 </section>
 
-<ContactFormModal locale={locale} />
+{/* ContactFormModal hoisted to BaseLayout.astro for persistent SPA app-shell */}
+{false && <ContactFormModal locale={locale} />}
 
 <script
   is:inline

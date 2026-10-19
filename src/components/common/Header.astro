@@ -1015,6 +1015,42 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
       updateActiveNavState();
     }
 
+    function syncHeaderStatePrePaint() {
+      updateActiveNavState();
+
+      if (
+        typeof document !== "undefined" &&
+        document.head &&
+        document.head.querySelectorAll
+      ) {
+        var altLinks = document.head.querySelectorAll(
+          'link[rel="alternate"][hreflang]',
+        );
+        if (altLinks.length) {
+          var targetUrls = {};
+          altLinks.forEach(function (link) {
+            var hreflang = link.getAttribute("hreflang");
+            var href = link.getAttribute("href");
+            if (hreflang && href) {
+              targetUrls[hreflang] = href;
+            }
+          });
+
+          document.querySelectorAll("[data-lang-switch]").forEach(function (el) {
+            var lang = el.getAttribute("data-lang-switch");
+            if (lang && targetUrls[lang]) {
+              el.setAttribute("href", targetUrls[lang]);
+            }
+          });
+        }
+      }
+    }
+
+    document.addEventListener("astro:after-swap", function () {
+      setupHeader();
+      syncHeaderStatePrePaint();
+    });
+
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", setupHeader);
     } else {

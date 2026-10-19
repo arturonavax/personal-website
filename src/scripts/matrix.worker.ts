@@ -168,6 +168,7 @@ scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
       break;
     case "resize":
       layout(msg.width, msg.height, msg.dpr);
+      scheduleNextFrame();
       break;
     case "theme":
       isLight = msg.isLight;

@@ -4,11 +4,13 @@ import SEOHead from "@/components/common/SEOHead.astro";
 import Header from "@/components/common/Header.astro";
 import Footer from "@/components/common/Footer.astro";
 import MatrixBackground from "@/components/ui/MatrixBackground.astro";
+import PageIndexNav from "@/components/ui/PageIndexNav.astro";
 import ShortcutsModal from "@/components/ui/ShortcutsModal.astro";
 import BackToTopButton from "@/components/ui/BackToTopButton.astro";
 import LanguageSuggestionBanner from "@/components/ui/LanguageSuggestionBanner.astro";
 import UniversalSearchModal from "@/components/ui/UniversalSearchModal.astro";
 import CoffeeSponsorshipModal from "@/components/ui/CoffeeSponsorshipModal.astro";
+import ContactFormModal from "@/components/ui/ContactFormModal.astro";
 import OnlineJudgesModal from "@/components/ui/OnlineJudgesModal.astro";
 import { hasSponsorshipMethods } from "@/data/sponsorships";
 import { judgeProfiles } from "@/data/onlineJudges";
@@ -218,6 +220,25 @@ const hasShortcuts = Boolean(shortcuts?.length);
         applyStoredTheme();
         document.addEventListener("astro:after-swap", applyStoredTheme);
 
+        // 3.5 Sincronización de metadatos de página en <html> y <body> (Pre-Paint)
+        function syncPageMetadata() {
+          try {
+            var doc = document.documentElement;
+            var path = window.location.pathname;
+            var isEs = path === "/es/" || path.indexOf("/es/") === 0;
+            var currentLang = doc.getAttribute("lang") || (isEs ? "es" : "en");
+            doc.setAttribute("data-current-locale", currentLang);
+            doc.setAttribute("data-current-path", path);
+            if (document.body) {
+              document.body.setAttribute("data-current-locale", currentLang);
+              document.body.setAttribute("data-current-path", path);
+            }
+          } catch (_) {}
+        }
+
+        syncPageMetadata();
+        document.addEventListener("astro:after-swap", syncPageMetadata);
+
         // 4. Sincronización y restauración de scroll
         try {
           var navReset = sessionStorage.getItem("nav_reset_scroll");
@@ -254,8 +275,12 @@ const hasShortcuts = Boolean(shortcuts?.length);
     </script>
   </head>
 
-  <body class="relative flex min-h-screen flex-col bg-[var(--color-surface-bg)] text-[var(--color-text-primary)] antialiased selection:bg-[var(--color-accent-gold)] selection:text-[var(--color-btn-gold-text)]">
-    <MatrixBackground />
+  <body
+    data-current-locale={locale}
+    data-current-path={Astro.url.pathname}
+    class="relative flex min-h-screen flex-col bg-[var(--color-surface-bg)] text-[var(--color-text-primary)] antialiased selection:bg-[var(--color-accent-gold)] selection:text-[var(--color-btn-gold-text)]"
+  >
+    <MatrixBackground transition:persist="matrix-bg" data-semi=";" />
 
     <Header
       locale={locale}
@@ -266,6 +291,8 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <LanguageSuggestionBanner
       currentLocale={locale}
       counterpartUrl={locale === "en" ? alternateEsUrl : alternateEnUrl}
+      transition:persist="language-banner"
+      data-semi=";"
     />
 
     <aside
@@ -273,20 +300,191 @@ const hasShortcuts = Boolean(shortcuts?.length);
       class="fixed bottom-5 right-5 z-40 flex flex-col-reverse items-end gap-2.5 pointer-events-none select-none"
       aria-label="Floating Actions"
     >
-      {hasShortcuts && <ShortcutsModal locale={locale} />}
-      <BackToTopButton locale={locale} />
+      {hasShortcuts && (
+        <ShortcutsModal locale={locale} transition:persist="shortcuts-modal" data-semi=";" />
+      )}
+      <PageIndexNav locale={locale} transition:persist="page-index-nav" data-semi=";" />
+      <BackToTopButton locale={locale} transition:persist="backtotop" data-semi=";" />
     </aside>
 
-    <main class="relative z-10 flex-1">
+    <script is:inline>
+      (function () {
+        function updateToastCollision() {
+          var banner = document.getElementById("lang-suggestion-banner");
+          var stack = document.getElementById("floating-actions-stack");
+          var mobileRoot = document.getElementById("mobile-page-index-root");
+          if (!stack) return;
+
+          if (
+            !banner ||
+            banner.hidden ||
+            banner.style.display === "none" ||
+            banner.classList.contains("hidden") ||
+            !banner.classList.contains("opacity-100")
+          ) {
+            if (stack.classList.contains("elevated-for-toast")) {
+              stack.classList.remove("elevated-for-toast");
+            }
+            if (mobileRoot && mobileRoot.classList.contains("elevated-for-toast")) {
+              mobileRoot.classList.remove("elevated-for-toast");
+            }
+            return;
+          }
+
+          var bannerRect = banner.getBoundingClientRect();
+          var stackRect = stack.getBoundingClientRect();
+
+          // Only elevate when the banner and the floating buttons horizontally collide / overlap
+          var isColliding = bannerRect.right + 12 > stackRect.left;
+          if (isColliding) {
+            if (!stack.classList.contains("elevated-for-toast")) {
+              stack.classList.add("elevated-for-toast");
+            }
+            if (mobileRoot && !mobileRoot.classList.contains("elevated-for-toast")) {
+              mobileRoot.classList.add("elevated-for-toast");
+            }
+          } else {
+            if (stack.classList.contains("elevated-for-toast")) {
+              stack.classList.remove("elevated-for-toast");
+            }
+            if (mobileRoot && mobileRoot.classList.contains("elevated-for-toast")) {
+              mobileRoot.classList.remove("elevated-for-toast");
+            }
+          }
+        }
+
+        window.__updateToastCollision = updateToastCollision;
+
+        function autoOrderFloatingStack() {
+          var stack = document.getElementById("floating-actions-stack");
+          if (!stack) return;
+
+          var shortcutsEl = document.querySelector("shortcuts-modal");
+          var mobileContainer = document.getElementById("mobile-page-index-container");
+          var backToTop = document.getElementById("back-to-top-btn");
+
+          var candidateItems = [shortcutsEl, mobileContainer, backToTop].filter(Boolean);
+          var visibleItems = [];
+          for (var i = 0; i < candidateItems.length; i++) {
+            var el = candidateItems[i];
+            if (
+              el.classList.contains("hidden") ||
+              el.classList.contains("is-empty") ||
+              el.classList.contains("force-hide-mobile") ||
+              el.getAttribute("data-has-sections") === "false" ||
+              el.style.display === "none"
+            ) {
+              continue;
+            }
+            if (window.getComputedStyle(el).display === "none") {
+              continue;
+            }
+            visibleItems.push(el);
+          }
+
+          visibleItems.sort(function (a, b) {
+            var wA = a.offsetWidth || (a.firstElementChild && a.firstElementChild.offsetWidth) || 0;
+            var wB = b.offsetWidth || (b.firstElementChild && b.firstElementChild.offsetWidth) || 0;
+            return wB - wA;
+          });
+
+          visibleItems.forEach(function (item, idx) {
+            var targetOrder = String(idx + 1);
+            if (item.style.order !== targetOrder) {
+              item.style.order = targetOrder;
+            }
+          });
+
+          updateToastCollision();
+        }
+
+        window.__autoOrderFloatingStack = autoOrderFloatingStack;
+
+        if (typeof window !== "undefined") {
+          var resizeRaf = 0;
+          var handleStackResize = function () {
+            if (resizeRaf) return;
+            resizeRaf = window.requestAnimationFrame(function () {
+              resizeRaf = 0;
+              if (typeof window.__syncResponsiveMode === "function") {
+                window.__syncResponsiveMode();
+              }
+              autoOrderFloatingStack();
+              updateToastCollision();
+            });
+          };
+
+          window.addEventListener("resize", handleStackResize, {
+            passive: true,
+          });
+          if (window.visualViewport) {
+            window.visualViewport.addEventListener("resize", handleStackResize, {
+              passive: true,
+            });
+          }
+          document.addEventListener("astro:page-load", function () {
+            if (typeof window.__syncResponsiveMode === "function") {
+              window.__syncResponsiveMode();
+            }
+            autoOrderFloatingStack();
+            updateToastCollision();
+          });
+          document.addEventListener("astro:after-swap", function () {
+            if (typeof window.__syncResponsiveMode === "function") {
+              window.__syncResponsiveMode();
+            }
+            autoOrderFloatingStack();
+            updateToastCollision();
+          });
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", function () {
+              if (typeof window.__syncResponsiveMode === "function") {
+                window.__syncResponsiveMode();
+              }
+              autoOrderFloatingStack();
+              updateToastCollision();
+            });
+          } else {
+            if (typeof window.__syncResponsiveMode === "function") {
+              window.__syncResponsiveMode();
+            }
+            autoOrderFloatingStack();
+            updateToastCollision();
+          }
+        }
+      })();
+    </script>
+
+    <main id="main-content" class="relative z-10 flex-1">
       <slot />
       {!hideSubtleCoffee && hasSponsorships && (
-        <CoffeeSponsorshipModal locale={locale} variant="subtle" />
+        <CoffeeSponsorshipModal
+          locale={locale}
+          variant="subtle"
+          transition:persist="coffee-modal"
+          data-semi=";"
+        />
       )}
     </main>
 
     {!hideFooter && <Footer locale={locale} />}
-    <UniversalSearchModal locale={locale} />
-    {hasJudges && <OnlineJudgesModal locale={locale} />}
+    <UniversalSearchModal
+      locale={locale}
+      transition:persist="search-modal"
+      data-semi=";"
+    />
+    <ContactFormModal
+      locale={locale}
+      transition:persist="contact-modal"
+      data-semi=";"
+    />
+    {hasJudges && (
+      <OnlineJudgesModal
+        locale={locale}
+        transition:persist="judges-modal"
+        data-semi=";"
+      />
+    )}
 
     <!-- Edge Fetch Navigation Loading Beacon -->
     <div

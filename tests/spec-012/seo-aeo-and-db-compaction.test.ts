@@ -367,6 +367,8 @@ describe("SPEC-012: Unified @graph Knowledge Graph & Schema.org Rich Entities (T
     });
 
     expect(resumeLd["@type"]).toBe("ProfilePage");
+    expect(resumeLd["@id"]).toBe("https://arturonavax.dev/resume/#webpage");
+    expect(resumeLd["@id"]).not.toBe(PERSON_ENTITY_ID);
     expect(resumeLd["mainEntity"]).toEqual({ "@id": PERSON_ENTITY_ID });
     expect(resumeLd["hasOccupation"]).toBeDefined();
   });
@@ -568,7 +570,7 @@ describe("SPEC-012: Edge AEO, AI Content Negotiation & Automated IndexNow (TASK 
 });
 
 describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants", () => {
-  it("1. wrangler.jsonc sets workers_dev to false and configures selective run_worker_first glob array", () => {
+  it("1. wrangler.jsonc sets workers_dev to false and configures selective run_worker_first glob array", async () => {
     const wranglerRaw = fs.readFileSync(
       path.join(ROOT_DIR, "wrangler.jsonc"),
       "utf8",
@@ -579,6 +581,11 @@ describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants"
     const wrangler = JSON.parse(cleaned);
 
     expect(wrangler.workers_dev).toBe(false);
+    expect(wrangler.main).toBe("./cloudflare/entrypoint.ts");
+    const entrypointModule = await import("../../cloudflare/entrypoint");
+    expect(typeof entrypointModule.default?.fetch).toBe("function");
+    const namedExports = Object.keys(entrypointModule).filter((k) => k !== "default");
+    expect(namedExports).toHaveLength(0);
     expect(Array.isArray(wrangler.assets.run_worker_first)).toBe(true);
     expect(wrangler.assets.run_worker_first).toContain("/admin*");
     expect(wrangler.assets.run_worker_first).toContain("/*/admin*");
