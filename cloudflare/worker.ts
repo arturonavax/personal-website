@@ -2223,7 +2223,8 @@ async function handleTelemetryViewsRead(
   const cache =
     typeof caches !== "undefined" && caches.default ? caches.default : null;
   const cacheKey = new Request(
-    `https://telemetry.internal/views?path=${encodeURIComponent(normalizedPath)}`,
+    `https://arturonavax.dev/__cf_edge_views?path=${encodeURIComponent(normalizedPath)}`,
+    { method: "GET" },
   );
 
   if (cache) {
@@ -3475,7 +3476,8 @@ export async function handleAdminDashboardRequest(
     const edgeCache =
       typeof caches !== "undefined" && caches.default ? caches.default : null;
     const edgeCacheRequest = new Request(
-      `https://telemetry.internal/admin-telemetry/${encodeURIComponent(cacheKey)}`,
+      `https://arturonavax.dev/__cf_edge_admin_telemetry/${encodeURIComponent(cacheKey)}`,
+      { method: "GET" },
     );
     if (!isFresh && edgeCache) {
       try {
@@ -7696,7 +7698,8 @@ export async function recordAnalyticsNonBlocking(
     const currentTier = edgeQuotaTracker.getTier(now);
 
     if (isBot) {
-      // Bot Telemetry Circuit Breaker: Bots are secondary priority compared to human visits (P0).
+      // Bot Telemetry Circuit Breaker (REQ-PCD-04, SPEC-008):
+      // Bots are secondary priority compared to human visits (P0).
       if (
         !botCircuitBreaker.canRecordBot(
           env as unknown as Record<string, unknown>,
@@ -7722,6 +7725,33 @@ export async function recordAnalyticsNonBlocking(
         return;
       }
       botCircuitBreaker.recordBot();
+
+      // In Tier >= CONSERVATIVE (50% quota), drop raw bot pageview writes and record only to compact rollups
+      if (currentTier >= QuotaDegradationTier.CONSERVATIVE) {
+        if (
+          visitorInfo.classification === "verified_bot" ||
+          visitorInfo.classification === "search_crawler" ||
+          visitorInfo.classification === "ai_scraper"
+        ) {
+          const adapter = new D1TelemetryAdapter(db, env);
+          await adapter.ingestVisit({
+            path: normalizedPath,
+            visitorHash,
+            ip,
+            userAgent,
+            dedupeKey: l1Key30m,
+            skipL1Check: true,
+            eventType: "pageview",
+            isBot: true,
+            botName: visitorInfo.reason,
+            country,
+            referrerHost: referrer,
+            statusCode: 200,
+            nowMs: now,
+          });
+        }
+        return;
+      }
     }
 
     // Quota accounting happens only for visits that survived the L1 dedupe gate.
@@ -7749,8 +7779,9 @@ export async function recordAnalyticsNonBlocking(
       return;
     }
 
-    // Tier 2 (COMPACT_ROLLUP): Skip raw pageviews/telemetry_events inserts, buffer into analytics_rollups
-    if (currentTier === QuotaDegradationTier.COMPACT_ROLLUP) {
+    // Tier 1 (CONSERVATIVE: >= 50%) & Tier 2 (COMPACT_ROLLUP: >= 70%):
+    // Skip raw pageviews/pageview_events inserts, write strictly to compact analytics_rollups!
+    if (currentTier >= QuotaDegradationTier.CONSERVATIVE) {
       const adapter = new D1TelemetryAdapter(db, env);
       await adapter.ingestVisit({
         path: normalizedPath,
@@ -7760,8 +7791,8 @@ export async function recordAnalyticsNonBlocking(
         dedupeKey: l1Key30m,
         skipL1Check: true,
         eventType: "pageview",
-        isBot: Boolean(isBot),
-        botName: isBot ? visitorInfo.reason : null,
+        isBot: false,
+        botName: null,
         country,
         referrerHost: referrer,
         statusCode: 200,
@@ -7823,6 +7854,13 @@ export async function recordAnalyticsNonBlocking(
             now,
           ),
       );
+    }
+
+    if (edgeQuotaTracker.shouldSyncD1()) {
+      const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(db, now);
+      if (quotaStmt && typeof quotaStmt.run === "function") {
+        quotaStmt.run().catch(() => {});
+      }
     }
 
     try {

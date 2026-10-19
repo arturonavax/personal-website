@@ -194,11 +194,11 @@ export async function checkAndSetL1DedupeCache(
     typeof caches !== "undefined"
       ? (caches as unknown as { default?: Cache })?.default
       : undefined;
-  const cacheUrl = `https://telemetry.internal/dedupe/${encodeURIComponent(dedupeKey)}`;
+  const cacheUrl = `https://arturonavax.dev/__cf_edge_dedupe/${encodeURIComponent(dedupeKey)}`;
 
   if (cache && typeof cache.match === "function") {
     try {
-      const cacheKey = new Request(cacheUrl);
+      const cacheKey = new Request(cacheUrl, { method: "GET" });
       const hit = await cache.match(cacheKey);
       if (hit) {
         l1DedupeMemoryCache.set(dedupeKey, nowMs + VISIT_DEDUPE_WINDOW_MS);
@@ -223,7 +223,7 @@ export async function checkAndSetL1DedupeCache(
 
   if (cache && typeof cache.put === "function") {
     try {
-      const cacheKey = new Request(cacheUrl);
+      const cacheKey = new Request(cacheUrl, { method: "GET" });
       const response = new Response(null, {
         status: 204,
         headers: {

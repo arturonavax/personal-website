@@ -244,6 +244,7 @@ export class EdgeQuotaTracker {
 
   recordWrite(count = 1, nowMs?: number): QuotaDegradationTier {
     this.checkDayRollover(nowMs);
+    this.requestCounter++;
     this.estimatedRowsWritten += Math.max(0, count);
     return this.getTier(nowMs);
   }
@@ -252,6 +253,14 @@ export class EdgeQuotaTracker {
     this.checkDayRollover(nowMs);
     this.estimatedRowsRead += Math.max(0, count);
     return this.getTier(nowMs);
+  }
+
+  shouldSyncD1(): boolean {
+    return this.requestCounter > 0 && this.requestCounter % 25 === 0;
+  }
+
+  shouldSyncCache(): boolean {
+    return this.requestCounter > 0 && this.requestCounter % 50 === 0;
   }
 
   tripCircuitBreaker(
@@ -340,7 +349,7 @@ export class EdgeQuotaTracker {
         Math.floor((tomorrowUtc - now.getTime()) / 1000),
       );
       await cache.put(
-        new Request(`https://telemetry.internal/quota/${snapshot.dateUtc}`),
+        new Request(`https://arturonavax.dev/__cf_edge_quota_state/${snapshot.dateUtc}`, { method: "GET" }),
         new Response(JSON.stringify(snapshot), {
           status: 200,
           headers: {
@@ -390,8 +399,8 @@ export class EdgeQuotaTracker {
       typeof caches !== "undefined"
         ? (caches as unknown as { default?: Cache })?.default
         : undefined;
-    const cacheUrl = `https://telemetry.internal/quota-state/${today}`;
-    const req = new Request(cacheUrl);
+    const cacheUrl = `https://arturonavax.dev/__cf_edge_quota_state/${today}`;
+    const req = new Request(cacheUrl, { method: "GET" });
 
     if (cache) {
       try {

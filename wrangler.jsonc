@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "personal-website",
+  "account_id": "d4986ed43391f516630760f10ada092f",
   "main": "./cloudflare/worker.ts",
   "compatibility_date": "2026-09-26",
   "compatibility_flags": ["nodejs_compat"],
@@ -89,6 +90,9 @@
   // D1_VISIT_BUDGET_RATIO (0.65), D1_PREFETCH_SAMPLE_RATE (0.10 free / 1.0 paid)
   "vars": {
     "CLOUDFLARE_PLAN_TIER": "free",
+    "D1_DAILY_WRITE_BUDGET": "100000",
+    "D1_DAILY_READ_BUDGET": "5000000",
+    "ENABLE_BOT_TELEMETRY": "false",
     "REQUIRE_CF_ACCESS": "true",
     "REQUIRE_ADMIN_AUTH": "true",
     "ADMIN_AUTHORIZED_EMAILS": "arturonavax@gmail.com,contact@arturonava.com",
