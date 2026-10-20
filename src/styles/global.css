@@ -24,10 +24,14 @@ section[id],
 }
 
 /* 2. Below-the-fold sections: Strict layout & paint virtualization */
-main section:not(#about),
+main section:not(#about):not(#contact),
 footer {
   content-visibility: auto;
   contain-intrinsic-size: auto 640px;
+}
+
+#contact {
+  content-visibility: visible !important;
 }
 
 /* 3. Closed modals & dialogs must never participate in initial Style & Layout */
@@ -470,6 +474,13 @@ html[data-theme="light"] body {
 #contact.highlight-active {
   border-color: var(--color-accent-gold) !important;
   box-shadow: var(--shadow-card-hover) !important;
+}
+
+/* Elegant background backdrop-blur protecting typography against falling matrix glyphs */
+.matrix-readability-blur {
+  background-color: color-mix(in srgb, var(--color-surface-bg) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Botones CTA de alta accesibilidad, forma compacta de 4px y micro-interacciones hápticas */

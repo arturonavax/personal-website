@@ -352,13 +352,22 @@ const searchIndexPath = "/search-index.json";
       setupUniversalSearch();
     }
 
-    // Fallback opener before full search initializes
-    window.openUniversalSearch = function (initialQuery) {
+    // Safe fallback opener before full search initializes
+    var fallbackOpener = function (initialQuery) {
       initSearch();
-      if (typeof window.openUniversalSearch === "function") {
+      if (
+        window.openUniversalSearch &&
+        window.openUniversalSearch !== fallbackOpener
+      ) {
         window.openUniversalSearch(initialQuery);
+      } else {
+        var dialog = document.getElementById("search-dialog");
+        if (dialog && typeof dialog.showModal === "function") {
+          dialog.showModal();
+        }
       }
     };
+    window.openUniversalSearch = fallbackOpener;
 
     // Global keyboard shortcut: '/' or 'Cmd+K' / 'Ctrl+K'
     if (!window.__searchKeydownBound) {
@@ -1587,10 +1596,13 @@ const searchIndexPath = "/search-index.json";
     );
 
     document.addEventListener("astro:page-load", function () {
-      if (isSearchInitialized) {
-        setupUniversalSearch();
-      }
+      initSearch();
     });
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initSearch);
+    } else {
+      initSearch();
+    }
   })();
 </script>
 

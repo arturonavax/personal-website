@@ -18,7 +18,7 @@ const email = "arturo@arturonavax.dev";
 <section
   id="contact"
   aria-labelledby="contact-heading"
-  class="scroll-mt-28 geometric-box no-corner-accents relative p-5 sm:p-7 lg:p-8 rounded-sm overflow-hidden mb-16 sm:mb-24 lg:mb-32 content-auto"
+  class="scroll-mt-28 geometric-box no-corner-accents relative p-5 sm:p-7 lg:p-8 rounded-sm overflow-hidden mb-16 sm:mb-24 lg:mb-32"
 >
   <div class="space-y-6 sm:space-y-8">
     <!-- Header -->
@@ -439,6 +439,38 @@ const email = "arturo@arturonavax.dev";
       if (sec) sec.classList.remove("highlight-active");
     }
 
+    function getContactTargetY() {
+      var sec = getContactSec();
+      if (!sec) return 0;
+      var header = document.getElementById("site-header");
+      var headerHeight = header ? header.offsetHeight : 64;
+      var viewportHeight = window.innerHeight;
+      var availableHeight = viewportHeight - headerHeight;
+      var secRect = sec.getBoundingClientRect();
+      var secHeight = sec.offsetHeight || secRect.height;
+      var currentY =
+        window.pageYOffset || document.documentElement.scrollTop || 0;
+
+      // Deterministic & flexible viewport positioning:
+      // If contact container fits inside available viewport, center vertically with margin;
+      // If taller than available viewport, align top flush below the header with 16px buffer.
+      if (secHeight <= availableHeight) {
+        var verticalMargin = Math.max(
+          16,
+          Math.floor((availableHeight - secHeight) / 2),
+        );
+        return Math.max(
+          0,
+          Math.floor(currentY + secRect.top - headerHeight - verticalMargin),
+        );
+      } else {
+        return Math.max(
+          0,
+          Math.floor(currentY + secRect.top - headerHeight - 16),
+        );
+      }
+    }
+
     function smoothScrollToContact() {
       var sec = getContactSec();
       if (!sec) return;
@@ -450,18 +482,18 @@ const email = "arturo@arturonavax.dev";
 
       window.__isProgrammaticNav = true;
 
-      // Native, fluid scroll to center the contact container cleanly without layout hacks
-      if ("scrollIntoView" in sec) {
-        sec.scrollIntoView({ behavior: "smooth", block: "center" });
-      } else {
-        var header = document.getElementById("site-header");
-        var headerHeight = header ? header.offsetHeight : 56;
-        var secRect = sec.getBoundingClientRect();
+      var targetY = getContactTargetY();
+      window.scrollTo({ top: targetY, behavior: "smooth" });
+
+      // Secondary fine-tuning to correct any mid-flight lazy layout expansions deterministically
+      setTimeout(function () {
+        var correctedTarget = getContactTargetY();
         var currentY =
           window.pageYOffset || document.documentElement.scrollTop || 0;
-        var targetY = Math.max(0, currentY + secRect.top - headerHeight - 20);
-        window.scrollTo({ top: targetY, behavior: "smooth" });
-      }
+        if (Math.abs(currentY - correctedTarget) > 8) {
+          window.scrollTo({ top: correctedTarget, behavior: "smooth" });
+        }
+      }, 350);
 
       var clearNav = function () {
         window.__isProgrammaticNav = false;

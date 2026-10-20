@@ -381,7 +381,12 @@ export default {
     const pathname = cleanPath || "/";
 
     // 2. Block Direct External Access to /__admin_vault__*
-    if (normalizedLowerPath.startsWith("/__admin_vault__")) {
+    const isInternalVaultFetch =
+      request.headers.get("x-admin-vault-internal") === "1";
+    if (
+      normalizedLowerPath.startsWith("/__admin_vault__") &&
+      !isInternalVaultFetch
+    ) {
       return new Response("Not Found", {
         status: 404,
         headers: {
@@ -477,35 +482,58 @@ export default {
           (localeMatch[1] === "en" || localeMatch[1] === "es")
         ) {
           localeKey = localeMatch[1];
+        } else if (isAdminHost) {
+          const langParam = url.searchParams.get("lang")?.toLowerCase();
+          const cookieLang =
+            request.headers.get("cookie")?.includes("admin_lang=es") ||
+            request.headers.get("cookie")?.includes("preferred_locale=es");
+          const acceptLang = (
+            request.headers.get("accept-language") || ""
+          ).toLowerCase();
+          if (
+            langParam === "es" ||
+            normalizedLowerPath.startsWith("/es") ||
+            (!langParam && (cookieLang || acceptLang.startsWith("es")))
+          ) {
+            localeKey = "es";
+          }
         }
 
         let vaultResponse: Response | null = null;
         if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
           try {
+            const vaultHeaders = new Headers(request.headers);
+            vaultHeaders.set("x-admin-vault-internal", "1");
+
             const vaultUrl = new URL(
               `/__admin_vault__/${localeKey}/index.html`,
-              request.url,
+              url.origin,
             );
             let vaultRes = await env.ASSETS.fetch(
               new Request(vaultUrl.toString(), {
-                headers: request.headers,
+                headers: vaultHeaders,
               }),
             );
             if (vaultRes.status === 404 && localeKey !== "default") {
               const fallbackDefaultUrl = new URL(
                 "/__admin_vault__/default/index.html",
-                request.url,
+                url.origin,
               );
               vaultRes = await env.ASSETS.fetch(
                 new Request(fallbackDefaultUrl.toString(), {
-                  headers: request.headers,
+                  headers: vaultHeaders,
                 }),
               );
             }
             if (vaultRes.status === 200) {
               vaultResponse = vaultRes;
-            } else {
+            } else if (
+              !isAdminHost &&
+              (normalizedLowerPath.startsWith("/admin") ||
+                normalizedLowerPath.includes("/admin/"))
+            ) {
               // Local dev/test fallback where dist/__admin_vault__ has not been moved yet
+              // Strictly restricted to explicit /admin paths so root / is NEVER matched
               const directRes = await env.ASSETS.fetch(request);
               if (directRes.status === 200) {
                 vaultResponse = directRes;
@@ -526,9 +554,10 @@ export default {
             url.searchParams.get("token") ||
             url.searchParams.get("admin_token");
           if (queryToken && auth.method === "admin_token") {
+            const isSecure = url.protocol === "https:";
             headers.set(
               "Set-Cookie",
-              `admin_session=${encodeURIComponent(queryToken.trim())}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly; Secure`,
+              `admin_session=${encodeURIComponent(queryToken.trim())}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly${isSecure ? "; Secure" : ""}`,
             );
           }
           return new Response(vaultResponse.body, {
@@ -3017,7 +3046,7 @@ export function renderAdminUnauthorizedHtml(
 
     <div class="divider"><span>o ingresar con token de acceso</span></div>
 
-    <form class="token-form" onsubmit="event.preventDefault(); var t = document.getElementById('token-input').value.trim(); if(t){ document.cookie = 'admin_session=' + encodeURIComponent(t) + '; Path=/; Max-Age=86400; SameSite=Lax; Secure'; window.location.reload(); }">
+    <form class="token-form" onsubmit="event.preventDefault(); var t = document.getElementById('token-input').value.trim(); if(t){ var sec = window.location.protocol === 'https:' ? '; Secure' : ''; document.cookie = 'admin_session=' + encodeURIComponent(t) + '; Path=/; Max-Age=86400; SameSite=Lax' + sec; window.location.reload(); }">
       <input type="password" id="token-input" class="token-input" placeholder="Ingresar ADMIN_API_KEY..." autocomplete="current-password" required />
       <button type="submit" class="btn-token">Desbloquear Consola</button>
     </form>
@@ -7324,9 +7353,10 @@ export async function handleAdminDashboardRequest(
   const queryToken =
     url.searchParams.get("token") || url.searchParams.get("admin_token");
   if (queryToken && auth.method === "admin_token") {
+    const isSecure = url.protocol === "https:";
     adminHeaders.set(
       "Set-Cookie",
-      `admin_session=${encodeURIComponent(queryToken.trim())}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly; Secure`,
+      `admin_session=${encodeURIComponent(queryToken.trim())}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly${isSecure ? "; Secure" : ""}`,
     );
   }
 

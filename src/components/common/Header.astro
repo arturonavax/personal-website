@@ -972,27 +972,21 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                   var contactSec = document.getElementById("contact");
                   if (contactSec) {
                     window.__isProgrammaticNav = true;
-                    if ("scrollIntoView" in contactSec) {
-                      contactSec.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                      });
-                    } else {
-                      var siteHeader = document.getElementById("site-header");
-                      var headerOffset = siteHeader
-                        ? siteHeader.offsetHeight
-                        : 56;
-                      var secRect = contactSec.getBoundingClientRect();
-                      var currentY =
-                        window.pageYOffset ||
-                        document.documentElement.scrollTop ||
-                        0;
-                      var targetY = Math.max(
-                        0,
-                        currentY + secRect.top - headerOffset - 20,
-                      );
-                      window.scrollTo({ top: targetY, behavior: "smooth" });
-                    }
+                    var siteHeader = document.getElementById("site-header");
+                    var headerOffset = siteHeader ? siteHeader.offsetHeight : 64;
+                    var viewportHeight = window.innerHeight;
+                    var availableHeight = viewportHeight - headerOffset;
+                    var secRect = contactSec.getBoundingClientRect();
+                    var secHeight = contactSec.offsetHeight || secRect.height;
+                    var currentY =
+                      window.pageYOffset ||
+                      document.documentElement.scrollTop ||
+                      0;
+                    var targetY =
+                      secHeight <= availableHeight
+                        ? Math.max(0, Math.floor(currentY + secRect.top - headerOffset - Math.max(16, (availableHeight - secHeight) / 2)))
+                        : Math.max(0, Math.floor(currentY + secRect.top - headerOffset - 16));
+                    window.scrollTo({ top: targetY, behavior: "smooth" });
                     var clearContactScroll = function () {
                       window.__isProgrammaticNav = false;
                       window.removeEventListener(

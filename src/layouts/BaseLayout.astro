@@ -156,6 +156,11 @@ const hasShortcuts = Boolean(shortcuts?.length);
           return origInsert.call(this, node, ref);
         };
 
+        var host = (window.location.hostname || "").toLowerCase();
+        if (host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev") {
+          return;
+        }
+
         var path = window.location.pathname;
         var isRoot = path === "/" || path === "/es" || path === "/es/";
         var isEsPath = path === "/es/" || path.indexOf("/es/") === 0;
@@ -482,13 +487,14 @@ const hasShortcuts = Boolean(shortcuts?.length);
 
     {!hideFooter && <Footer locale={locale} />}
 
+    <UniversalSearchModal
+      locale={locale}
+      transition:persist="search-modal"
+      data-semi=";"
+    />
+
     <div id="deferred-modals-root"></div>
     <template id="deferred-modals-template">
-      <UniversalSearchModal
-        locale={locale}
-        transition:persist="search-modal"
-        data-semi=";"
-      />
       {hasShortcuts && (
         <ShortcutsModal
           locale={locale}
