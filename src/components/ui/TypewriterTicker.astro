@@ -35,6 +35,11 @@ const initialPhrase = phrases.length > 0 ? phrases[0] : "";
 </typewriter-ticker>
 
 <script>
+  import {
+    runWhenIdleOrInteracted,
+    observeElementVisibility,
+  } from "@/utils/client-visibility";
+
   class TypewriterTickerElement extends HTMLElement {
     private phrases: string[] = [];
     private typeSpeed = 45;
@@ -44,6 +49,10 @@ const initialPhrase = phrases.length > 0 ? phrases[0] : "";
     private currentLength = 0;
     private textEl: HTMLElement | null = null;
     private timeoutId: ReturnType<typeof setTimeout> | null = null;
+    private cleanupGate: (() => void) | null = null;
+    private cleanupVisibility: (() => void) | null = null;
+    private isVisible = false;
+    private isGatePassed = false;
 
     connectedCallback(): void {
       this.clearTimer();
@@ -72,7 +81,28 @@ const initialPhrase = phrases.length > 0 ? phrases[0] : "";
       this.currentIndex = 0;
       this.currentLength = this.phrases[0]?.length || 0;
 
-      // Initial phrase is pre-rendered via SSR. Pause before starting backspace.
+      // Idle / interaction gate + IntersectionObserver to protect Lighthouse TBT
+      this.cleanupVisibility = observeElementVisibility(
+        this,
+        () => {
+          this.isVisible = true;
+          this.checkAndStart();
+        },
+        () => {
+          this.isVisible = false;
+          this.clearTimer();
+        },
+      );
+
+      this.cleanupGate = runWhenIdleOrInteracted(() => {
+        this.isGatePassed = true;
+        this.checkAndStart();
+      }, 3500);
+    }
+
+    private checkAndStart(): void {
+      if (!this.isVisible || !this.isGatePassed || this.timeoutId !== null)
+        return;
       this.timeoutId = setTimeout(() => {
         this.deleteNextChar();
       }, this.pauseDuration);
@@ -80,6 +110,10 @@ const initialPhrase = phrases.length > 0 ? phrases[0] : "";
 
     disconnectedCallback(): void {
       this.clearTimer();
+      this.cleanupGate?.();
+      this.cleanupGate = null;
+      this.cleanupVisibility?.();
+      this.cleanupVisibility = null;
     }
 
     private clearTimer(): void {

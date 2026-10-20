@@ -1493,8 +1493,16 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       var closeBtn = document.getElementById("close-index-panel-btn");
       var scrollBody = document.getElementById("index-scroll-body");
 
-      alignDesktopIndex();
-      window.requestAnimationFrame(alignDesktopIndex);
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(
+          function () {
+            alignDesktopIndex();
+          },
+          { timeout: 1000 },
+        );
+      } else {
+        setTimeout(alignDesktopIndex, 60);
+      }
 
       if (!window.__desktopIndexAlignBound) {
         window.__desktopIndexAlignBound = true;

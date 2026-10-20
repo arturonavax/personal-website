@@ -49,3 +49,24 @@ To preserve the Edge Cache Hit Ratio and prevent social tracking query parameter
   - `gclid`
 
 Note: Normalized in `cloudflare/worker.ts` as an edge invariant, and configurable as a Cloudflare Transform Rule.
+
+---
+
+## 3. Disabling Edge Challenge Platform JS Injection (`jsd/main.js`)
+
+To achieve a 100/100 score in Lighthouse Best Practices and eradicate deprecated API warnings (`StorageType.persistent is deprecated`, `Protected Audience API is deprecated`) injected by Cloudflare's Bot Management layer:
+
+1. **Edge Worker Sanitization (Active):**
+   `cloudflare/worker.ts` automatically strips `<script.*src=["'][^"']*\/cdn-cgi\/challenge-platform\/scripts\/jsd\/main\.js[^"']*["'][^>]*><\/script>` and inline `__CF$cv$params` before serving HTML responses.
+
+2. **Cloudflare Zone API Automation:**
+   Cloudflare Bot Fight Mode JS injection can be disabled at the zone level:
+
+   ```bash
+   curl -X PUT "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/bot_management" \
+     -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+     -H "Content-Type: application/json" \
+     --data '{"fight_mode": false, "enable_js": false}'
+   ```
+
+   Automated via `node scripts/disable-cf-jsd.mjs` whenever `CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_API_TOKEN` are available in the deployment environment.

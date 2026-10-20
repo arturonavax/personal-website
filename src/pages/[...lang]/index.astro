@@ -80,7 +80,7 @@ const avatarWebp = await getImage({
   format: "webp",
   width: 320,
   height: 320,
-  quality: 82,
+  quality: 64,
 });
 
 const jsonLd = getHomepageJsonLd(locale, avatarWebp.src);
@@ -147,7 +147,7 @@ const jsonLd = getHomepageJsonLd(locale, avatarWebp.src);
       <section
         id="experience"
         aria-labelledby="experience-heading"
-        class="space-y-6"
+        class="space-y-6 content-auto"
       >
         <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
           <h2
@@ -206,7 +206,7 @@ const jsonLd = getHomepageJsonLd(locale, avatarWebp.src);
       <section
         id="projects"
         aria-labelledby="projects-heading"
-        class="space-y-6"
+        class="space-y-6 content-auto"
       >
         <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
           <h2
@@ -271,7 +271,7 @@ const jsonLd = getHomepageJsonLd(locale, avatarWebp.src);
       <section
         id="services"
         aria-labelledby="services-heading"
-        class="space-y-6"
+        class="space-y-6 content-auto"
       >
         <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
           <h2
@@ -340,7 +340,7 @@ const jsonLd = getHomepageJsonLd(locale, avatarWebp.src);
             ? "Casos de Estudio Interactivos de Arquitectura"
             : "Interactive Architecture Case Studies"
         }
-        class="space-y-3"
+        class="space-y-3 content-auto"
       >
         <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2 font-mono text-xs sm:text-sm text-[var(--color-text-muted)]">
           <span class="text-[var(--color-accent-gold)] uppercase tracking-wider text-xs font-semibold">
@@ -360,7 +360,11 @@ const jsonLd = getHomepageJsonLd(locale, avatarWebp.src);
 
     <!-- 9. Engineering Notes -->
     {recentPosts.length > 0 && (
-      <section id="blog" aria-labelledby="posts-heading" class="space-y-6">
+      <section
+        id="blog"
+        aria-labelledby="posts-heading"
+        class="space-y-6 content-auto"
+      >
         <div class="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-3">
           <h2
             id="posts-heading"

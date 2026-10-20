@@ -22,6 +22,7 @@ const { source, altText, isHero = false, class: className = "" } = Astro.props;
     alt={altText}
     width={source.width}
     height={source.height}
+    quality={65}
     loading={isHero ? "eager" : "lazy"}
     decoding={isHero ? "sync" : "async"}
     fetchpriority={isHero ? "high" : "auto"}

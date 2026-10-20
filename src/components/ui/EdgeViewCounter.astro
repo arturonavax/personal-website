@@ -17,6 +17,14 @@ const { contentId } = Astro.props;
 <script>
   let isInitialLoad = true;
 
+  function deferTelemetry(task: () => void) {
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(() => task(), { timeout: 3500 });
+    } else {
+      setTimeout(task, 3000);
+    }
+  }
+
   function sendEdgeVisitBeacon(eventType: "spa_transition" | "bfcache") {
     const path = window.location.pathname || "/";
     const payload = JSON.stringify({
@@ -69,17 +77,21 @@ const { contentId } = Astro.props;
       if (hasEvInitCookie) {
         document.cookie = "ev_init=; Max-Age=0; Path=/; SameSite=Lax";
       }
-      void refreshEdgeViewCounters();
+      deferTelemetry(() => void refreshEdgeViewCounters());
       return;
     }
-    sendEdgeVisitBeacon("spa_transition");
-    void refreshEdgeViewCounters();
+    deferTelemetry(() => {
+      sendEdgeVisitBeacon("spa_transition");
+      void refreshEdgeViewCounters();
+    });
   });
 
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) {
-      sendEdgeVisitBeacon("bfcache");
-      void refreshEdgeViewCounters();
+      deferTelemetry(() => {
+        sendEdgeVisitBeacon("bfcache");
+        void refreshEdgeViewCounters();
+      });
     }
   });
 </script>

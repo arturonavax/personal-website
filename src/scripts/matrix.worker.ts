@@ -52,7 +52,7 @@ interface WorkerScope {
 const scope = self as unknown as WorkerScope;
 
 const FONT_SIZE = 14;
-const FRAME_INTERVAL = 60;
+const FRAME_INTERVAL = 1000 / 22; // ~22 FPS throttling for minimal texture transfer overhead
 const CHARACTERS =
   "01010123456789ABCDEFλ§µΔΨΩθπσ0x::->/*!=&|^GoRustSIMDAVX2ptrchnsync".split(
     "",
@@ -74,16 +74,17 @@ function layout(w: number, h: number, dpr: number): void {
   if (!canvas || !ctx) return;
   width = w;
   height = h;
-  const targetW = Math.round(w * dpr);
-  const targetH = Math.round(h * dpr);
-  const dprChanged = Math.abs(currentDpr - dpr) > 0.001;
+  const clampedDpr = Math.min(dpr || 1, 1.25);
+  const targetW = Math.round(w * clampedDpr);
+  const targetH = Math.round(h * clampedDpr);
+  const dprChanged = Math.abs(currentDpr - clampedDpr) > 0.001;
 
   if (canvas.width !== targetW || canvas.height !== targetH || dprChanged) {
     canvas.width = targetW;
     canvas.height = targetH;
-    currentDpr = dpr;
+    currentDpr = clampedDpr;
     ctx.resetTransform();
-    ctx.scale(dpr, dpr);
+    ctx.scale(clampedDpr, clampedDpr);
     // Explicitly purge entire viewport on zoom or resolution switch
     ctx.clearRect(0, 0, w, h);
   }

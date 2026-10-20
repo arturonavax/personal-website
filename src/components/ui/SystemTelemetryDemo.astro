@@ -416,12 +416,20 @@ const initialCompanyFilterUrl = initialSim
           this.abortController = new AbortController();
           const { signal } = this.abortController;
 
-          const dataEl = document.getElementById("telemetry-data");
-          const telemetryData = dataEl
-            ? JSON.parse(dataEl.textContent || "{}")
-            : {};
-          const allSimulations = telemetryData.simulations || [];
-          const allCompanies = telemetryData.companies || {};
+          let telemetryData: any = null;
+          const getTelemetryData = () => {
+            if (!telemetryData) {
+              const dataEl = document.getElementById("telemetry-data");
+              telemetryData = dataEl
+                ? JSON.parse(dataEl.textContent || "{}")
+                : {};
+            }
+            return telemetryData;
+          };
+          const getAllSimulations = (): any[] =>
+            getTelemetryData().simulations || [];
+          const getAllCompanies = (): Record<string, any> =>
+            getTelemetryData().companies || {};
 
           const locale =
             this.dataset.locale ||
@@ -483,6 +491,7 @@ const initialCompanyFilterUrl = initialSim
           );
 
           const getCompInfo = (name: string) => {
+            const allCompanies = getAllCompanies();
             const k = (name || "").toLowerCase().trim();
             if (allCompanies[k]) return allCompanies[k];
             for (const key in allCompanies) {
@@ -588,7 +597,7 @@ const initialCompanyFilterUrl = initialSim
               "scroll",
               () => {
                 if (companyRoot.dataset.tooltipOpen === "true") {
-                  updatePlacement();
+                  requestAnimationFrame(updatePlacement);
                 }
               },
               { passive: true, signal },
@@ -653,6 +662,7 @@ const initialCompanyFilterUrl = initialSim
           }
 
           const renderCurrentSim = () => {
+            const allSimulations = getAllSimulations();
             const sim = allSimulations[currentIndex];
             if (!sim) return;
 
@@ -791,6 +801,7 @@ const initialCompanyFilterUrl = initialSim
             prevBtn.addEventListener(
               "click",
               () => {
+                const allSimulations = getAllSimulations();
                 currentIndex =
                   (currentIndex - 1 + allSimulations.length) %
                   allSimulations.length;
@@ -804,6 +815,7 @@ const initialCompanyFilterUrl = initialSim
             nextBtn.addEventListener(
               "click",
               () => {
+                const allSimulations = getAllSimulations();
                 currentIndex = (currentIndex + 1) % allSimulations.length;
                 renderCurrentSim();
               },
@@ -815,6 +827,7 @@ const initialCompanyFilterUrl = initialSim
             runBtn.addEventListener(
               "click",
               () => {
+                const allSimulations = getAllSimulations();
                 const sim = allSimulations[currentIndex];
                 if (!sim || runBtn.disabled) return;
 
@@ -925,7 +938,9 @@ const initialCompanyFilterUrl = initialSim
             );
           }
 
-          renderCurrentSim();
+          if (currentIndex !== 0) {
+            renderCurrentSim();
+          }
         }
 
         disconnectedCallback() {

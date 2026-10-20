@@ -28,6 +28,8 @@ const {
 )}
 
 <script>
+  import { runWhenIdleOrInteracted } from "@/utils/client-visibility";
+
   interface MatrixSingleton {
     worker: Worker | null;
     drops: number[];
@@ -35,6 +37,7 @@ const {
     animationFrameId: number | null;
     timeoutId: number | null;
     disconnectTimer: number | null;
+    cancelStartupTimer?: (() => void) | null;
     lastWidth: number;
     lastHeight: number;
     lastDpr: number;
@@ -148,55 +151,69 @@ const {
         this.initRain(false);
       }
 
-      // Try OffscreenCanvas + Web Worker for zero main-thread overhead
-      if (
-        "transferControlToOffscreen" in this.canvas &&
-        typeof Worker !== "undefined"
-      ) {
-        try {
-          const offscreen = this.canvas.transferControlToOffscreen();
-          const dpr = window.devicePixelRatio || 1;
-          const isLight =
-            document.documentElement.getAttribute("data-theme") === "light";
+      // Defer OffscreenCanvas Worker or Main Thread Rain startup until user interaction or post-load idle gate
+      const startMatrix = () => {
+        if (!this.isConnected || !this.canvas) return;
 
-          const worker = new Worker(
-            new URL("../../scripts/matrix.worker.ts", import.meta.url),
-            { type: "module" },
-          );
+        // Try OffscreenCanvas + Web Worker for zero main-thread overhead
+        if (
+          "transferControlToOffscreen" in this.canvas &&
+          typeof Worker !== "undefined"
+        ) {
+          try {
+            const offscreen = this.canvas.transferControlToOffscreen();
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+            const isLight =
+              document.documentElement.getAttribute("data-theme") === "light";
 
-          state.worker = worker;
-          worker.postMessage(
-            {
-              type: "init",
-              canvas: offscreen,
-              width: window.innerWidth,
-              height: window.innerHeight,
-              dpr,
-              isLight,
-            },
-            [offscreen],
-          );
+            const worker = new Worker(
+              new URL("../../scripts/matrix.worker.ts", import.meta.url),
+              { type: "module" },
+            );
 
-          this.setupObservers(state);
-          document.addEventListener("visibilitychange", this.handleVisibility);
-          return;
-        } catch {
-          // Fallback to main thread loop
+            state.worker = worker;
+            worker.postMessage(
+              {
+                type: "init",
+                canvas: offscreen,
+                width: window.innerWidth,
+                height: window.innerHeight,
+                dpr,
+                isLight,
+              },
+              [offscreen],
+            );
+
+            this.setupObservers(state);
+            document.addEventListener(
+              "visibilitychange",
+              this.handleVisibility,
+            );
+            return;
+          } catch {
+            // Fallback to main thread loop
+          }
         }
-      }
 
-      // Main thread fallback
-      this.ctx = this.canvas.getContext("2d");
-      if (!this.ctx) return;
-      state.ctx = this.ctx;
-      this.initCanvasDimensions();
+        // Main thread fallback
+        this.ctx = this.canvas.getContext("2d");
+        if (!this.ctx) return;
+        state.ctx = this.ctx;
+        this.initCanvasDimensions();
 
-      if (state.animationFrameId === null) {
-        this.startRainLoop();
-      }
+        if (
+          state.animationFrameId === null &&
+          !document.hidden &&
+          window.innerWidth >= 768
+        ) {
+          this.startRainLoop();
+        }
 
-      this.setupObservers(state);
-      document.addEventListener("visibilitychange", this.handleVisibility);
+        this.setupObservers(state);
+        document.addEventListener("visibilitychange", this.handleVisibility);
+      };
+
+      state.cancelStartupTimer = runWhenIdleOrInteracted(startMatrix, 3500);
     }
 
     private setupObservers(state: MatrixSingleton) {
@@ -289,6 +306,10 @@ const {
 
     disconnectedCallback() {
       const state = this.getGlobalState();
+      if (state.cancelStartupTimer) {
+        state.cancelStartupTimer();
+        state.cancelStartupTimer = null;
+      }
       if (state.disconnectTimer !== null) {
         window.clearTimeout(state.disconnectTimer);
       }
@@ -486,6 +507,14 @@ const {
       }
     }
   }
+
+  document.addEventListener("astro:before-preparation", () => {
+    const state = (window as any).__matrixState as MatrixSingleton | undefined;
+    if (state?.cancelStartupTimer) {
+      state.cancelStartupTimer();
+      state.cancelStartupTimer = null;
+    }
+  });
 
   document.addEventListener("astro:after-swap", resumeMatrixOnNav);
   document.addEventListener("astro:page-load", resumeMatrixOnNav);

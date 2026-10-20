@@ -1507,14 +1507,10 @@ const searchIndexPath = "/search-index.json";
       { passive: true, capture: true },
     );
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initSearch);
-    } else {
-      initSearch();
-    }
-
     document.addEventListener("astro:page-load", function () {
-      setupUniversalSearch();
+      if (isSearchInitialized) {
+        setupUniversalSearch();
+      }
     });
   })();
 </script>

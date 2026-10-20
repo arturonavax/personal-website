@@ -351,14 +351,6 @@ const turnstileSiteKey =
   </div>
 </dialog>
 
-<!-- Cloudflare Turnstile Explicit Script with Fallback Handler -->
-<script
-  src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoaded&render=explicit"
-  async
-  defer
-  onerror="window.onTurnstileScriptError && window.onTurnstileScriptError()"
-></script>
-
 <script is:inline>
   (function () {
     var turnstileWidgetId = null;
@@ -366,6 +358,25 @@ const turnstileSiteKey =
     var turnstileFallbackActive = false;
     var turnstileFallbackTimer = null;
     var modalOpenedTime = Date.now();
+
+    function loadTurnstileScript() {
+      if (
+        document.querySelector(
+          'script[src*="challenges.cloudflare.com/turnstile"]',
+        )
+      ) {
+        return;
+      }
+      var script = document.createElement("script");
+      script.src =
+        "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoaded&render=explicit";
+      script.async = true;
+      script.defer = true;
+      script.onerror = function () {
+        if (window.onTurnstileScriptError) window.onTurnstileScriptError();
+      };
+      document.head.appendChild(script);
+    }
 
     function activateEdgeShieldFallback() {
       turnstileFallbackActive = true;
@@ -456,6 +467,7 @@ const turnstileSiteKey =
       if (!dialog) return;
 
       function openModal() {
+        loadTurnstileScript();
         modalOpenedTime = Date.now();
         if (typeof dialog.showModal === "function") {
           dialog.showModal();
@@ -521,6 +533,14 @@ const turnstileSiteKey =
         .forEach(function (btn) {
           if (!btn.__boundModalTrigger) {
             btn.__boundModalTrigger = true;
+            btn.addEventListener("pointerenter", loadTurnstileScript, {
+              once: true,
+              passive: true,
+            });
+            btn.addEventListener("focus", loadTurnstileScript, {
+              once: true,
+              passive: true,
+            });
             btn.addEventListener("click", function (e) {
               e.preventDefault();
               openModal();

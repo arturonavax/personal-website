@@ -6,6 +6,12 @@
   scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem);
 }
 
+/* DOM Render Containment for Below-the-Fold Sections (Phase 4 / CWV) */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+
 @theme {
   /* Dynamic Semantic Color Tokens (SPEC-004 Section 3.2.1) */
   --color-surface-backdrop: var(--surface-backdrop);

@@ -131,7 +131,7 @@ export default defineConfig({
   // Expose dev/preview servers on the LAN (0.0.0.0) for multi-device testing.
   server: { host: true },
   build: {
-    inlineStylesheets: "auto",
+    inlineStylesheets: "always",
     format: "directory",
   },
   compressHTML: true,

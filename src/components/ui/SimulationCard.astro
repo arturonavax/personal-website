@@ -276,11 +276,6 @@ const jobDetailUrl = isEs
         if (!root || root.dataset.bound) return;
         root.dataset.bound = "true";
 
-        var steps = [];
-        try {
-          steps = JSON.parse(root.dataset.steps || "[]");
-        } catch (_) {}
-
         var isEs = root.dataset.isEs === "true";
         var runBtn = root.querySelector("[data-run-sim-btn]");
         var logFeed = root.querySelector(".sim-log-feed");
@@ -293,6 +288,12 @@ const jobDetailUrl = isEs
 
         runBtn.addEventListener("click", function () {
           if (runBtn.disabled) return;
+
+          var steps = [];
+          try {
+            steps = JSON.parse(root.dataset.steps || "[]");
+          } catch (_) {}
+
           runBtn.disabled = true;
           runBtn.classList.add("opacity-60", "cursor-not-allowed");
 

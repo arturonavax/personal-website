@@ -555,7 +555,15 @@ export default {
     // 2. FAST-PATH: Static Asset Bypass (Zero D1 / Telemetry / Session Overhead)
     // -------------------------------------------------------------------------
     const isImmutableAsset =
-      pathname.startsWith("/_astro/") || pathname.startsWith("/fonts/");
+      pathname.startsWith("/_astro/") ||
+      pathname.startsWith("/fonts/") ||
+      pathname === "/favicon.svg" ||
+      pathname === "/favicon.ico" ||
+      pathname === "/favicon-48x48.png" ||
+      pathname === "/apple-touch-icon.png" ||
+      pathname === "/icon-192.png" ||
+      pathname === "/icon-512.png" ||
+      pathname === "/og-default.png";
 
     if (isImmutableAsset) {
       const response = await env.ASSETS.fetch(request);
@@ -851,6 +859,18 @@ export default {
         "max-age=63072000; includeSubDomains; preload",
       );
       headers.set("Alt-Svc", 'h3=":443"; ma=86400');
+      const existingPp = headers.get("Permissions-Policy");
+      if (!existingPp) {
+        headers.set(
+          "Permissions-Policy",
+          "camera=(), microphone=(), geolocation=(), browsing-topics=(), run-ad-auction=(), join-ad-interest-group=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()",
+        );
+      } else if (!existingPp.includes("run-ad-auction")) {
+        headers.set(
+          "Permissions-Policy",
+          `${existingPp}, run-ad-auction=(), join-ad-interest-group=()`,
+        );
+      }
       if (headers.has("Vary")) {
         const v = headers.get("Vary") || "";
         if (!v.includes("Accept")) headers.set("Vary", `${v}, Accept`);
@@ -894,6 +914,29 @@ export default {
     }
 
     if (shouldWrapResponse) {
+      if (
+        response.status === 200 &&
+        contentType.includes("text/html") &&
+        response.body
+      ) {
+        let text = await response.text();
+        if (
+          text.includes("/cdn-cgi/challenge-platform/") ||
+          text.includes("__CF$cv$params")
+        ) {
+          text = text
+            .replace(
+              /<script\b[^>]*src=["'][^"']*\/cdn-cgi\/challenge-platform\/scripts\/jsd\/main\.js[^"']*["'][^>]*><\/script>/gi,
+              "",
+            )
+            .replace(
+              /<script\b[^>]*>[\s\S]*?__CF\$cv\$params[\s\S]*?<\/script>/gi,
+              "",
+            );
+        }
+        return new Response(text, { status: response.status, headers });
+      }
+
       const body =
         response.status === 304 || response.status === 204
           ? null
