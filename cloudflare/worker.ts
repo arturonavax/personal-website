@@ -165,12 +165,26 @@ function isAdminSurfacePath(pathname: string): boolean {
   );
 }
 
+const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
+
+function createSafeResponse(
+  body: BodyInit | null | undefined,
+  status: number,
+  headers: Headers,
+): Response {
+  if (NULL_BODY_STATUSES.has(status)) {
+    headers.delete("content-type");
+    headers.delete("content-length");
+    headers.delete("transfer-encoding");
+    return new Response(null, { status, headers });
+  }
+  return new Response(body, { status, headers });
+}
+
 function withNoIndexHeaders(response: Response): Response {
   const headers = new Headers(response.headers);
   headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-  const body =
-    response.status === 304 || response.status === 204 ? null : response.body;
-  return new Response(body, { status: response.status, headers });
+  return createSafeResponse(response.body, response.status, headers);
 }
 
 const AI_CONTENT_ROUTE_REGEX =
@@ -432,6 +446,30 @@ export default {
 
     // 4. Fail-Closed Zero-Trust Guard for Admin Page and Protected API Surfaces
     if (isAdminPage || isProtectedApi) {
+      if (request.method.toUpperCase() === "OPTIONS") {
+        const origin = request.headers.get("origin") || "";
+        const isAllowedOrigin =
+          origin === "https://arturonavax.dev" ||
+          origin === "https://admin.arturonavax.dev" ||
+          origin.endsWith(".arturonavax.dev") ||
+          origin.startsWith("http://localhost:") ||
+          origin.startsWith("http://127.0.0.1:");
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin": isAllowedOrigin
+              ? origin
+              : "https://arturonavax.dev",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+            "Access-Control-Allow-Headers":
+              "Authorization, Content-Type, X-Admin-Token, Cf-Access-Jwt-Assertion",
+            "Access-Control-Max-Age": "86400",
+            Vary: "Origin",
+          },
+        });
+      }
+
       const auth = await verifyAdminAccess(request, env);
       if (!auth.authorized) {
         const acceptHeader = request.headers.get("accept") || "";
@@ -441,6 +479,25 @@ export default {
           return withNoIndexHeaders(
             renderAdminUnauthorizedHtml(auth.reason, auth.status || 401),
           );
+        }
+
+        const origin = request.headers.get("origin") || "";
+        const isAllowedOrigin =
+          origin === "https://arturonavax.dev" ||
+          origin === "https://admin.arturonavax.dev" ||
+          origin.endsWith(".arturonavax.dev") ||
+          origin.startsWith("http://localhost:") ||
+          origin.startsWith("http://127.0.0.1:");
+        const errHeaders: Record<string, string> = {
+          "Content-Type": "application/json",
+          "Cache-Control": "private, no-store, no-cache, must-revalidate",
+          "WWW-Authenticate": 'Bearer realm="admin.arturonavax.dev"',
+          "X-Robots-Tag": "noindex, nofollow, noarchive",
+        };
+        if (isAllowedOrigin) {
+          errHeaders["Access-Control-Allow-Origin"] = origin;
+          errHeaders["Access-Control-Allow-Credentials"] = "true";
+          errHeaders["Vary"] = "Origin";
         }
 
         return new Response(
@@ -454,12 +511,7 @@ export default {
           }),
           {
             status: auth.status || 401,
-            headers: {
-              "Content-Type": "application/json",
-              "Cache-Control": "private, no-store, no-cache, must-revalidate",
-              "WWW-Authenticate": 'Bearer realm="admin.arturonavax.dev"',
-              "X-Robots-Tag": "noindex, nofollow, noarchive",
-            },
+            headers: errHeaders,
           },
         );
       }
@@ -531,14 +583,19 @@ export default {
             }
 
             // Secondary fallback using apex origin in case ASSETS binding maps assets to apex host
-            if (vaultRes.status !== 200 && url.origin !== "https://arturonavax.dev") {
+            if (
+              vaultRes.status !== 200 &&
+              url.origin !== "https://arturonavax.dev"
+            ) {
+              const apexHeaders = new Headers(vaultHeaders);
+              apexHeaders.set("host", "arturonavax.dev");
               const apexVaultUrl = new URL(
                 `/__admin_vault__/${localeKey}/index.html`,
                 "https://arturonavax.dev",
               );
               const apexRes = await env.ASSETS.fetch(
                 new Request(apexVaultUrl.toString(), {
-                  headers: vaultHeaders,
+                  headers: apexHeaders,
                 }),
               );
               if (apexRes.status === 200) {
@@ -550,7 +607,7 @@ export default {
                 );
                 const apexDefaultRes = await env.ASSETS.fetch(
                   new Request(apexDefaultUrl.toString(), {
-                    headers: vaultHeaders,
+                    headers: apexHeaders,
                   }),
                 );
                 if (apexDefaultRes.status === 200) {
@@ -589,9 +646,12 @@ export default {
             url.searchParams.get("admin_token");
           if (queryToken && auth.method === "admin_token") {
             const isSecure = url.protocol === "https:";
+            const cookieDomain = host.endsWith("arturonavax.dev")
+              ? "; Domain=.arturonavax.dev"
+              : "";
             headers.set(
               "Set-Cookie",
-              `admin_session=${encodeURIComponent(queryToken.trim())}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly${isSecure ? "; Secure" : ""}`,
+              `admin_session=${encodeURIComponent(queryToken.trim())}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly${isSecure ? "; Secure" : ""}${cookieDomain}`,
             );
           }
           return new Response(vaultResponse.body, {
@@ -636,11 +696,7 @@ export default {
         headers.set("Access-Control-Allow-Origin", "*");
       }
       headers.set("X-Content-Type-Options", "nosniff");
-      const body =
-        response.status === 304 || response.status === 204
-          ? null
-          : response.body;
-      return new Response(body, { status: response.status, headers });
+      return createSafeResponse(response.body, response.status, headers);
     }
 
     if (
@@ -732,11 +788,7 @@ export default {
           "public, max-age=3600, stale-while-revalidate=86400",
         );
       }
-      const body =
-        response.status === 304 || response.status === 204
-          ? null
-          : response.body;
-      return new Response(body, { status: response.status, headers });
+      return createSafeResponse(response.body, response.status, headers);
     }
 
     // -------------------------------------------------------------------------
@@ -1028,11 +1080,7 @@ export default {
         return new Response(text, { status: response.status, headers });
       }
 
-      const body =
-        response.status === 304 || response.status === 204
-          ? null
-          : response.body;
-      return new Response(body, { status: response.status, headers });
+      return createSafeResponse(response.body, response.status, headers);
     }
 
     return response;
@@ -3074,15 +3122,21 @@ export function renderAdminUnauthorizedHtml(
     <h1>Acceso Restringido</h1>
     <p>Esta superficie administrativa está estrictamente aislada y protegida. Se requiere una sesión activa de Cloudflare Zero Trust con correo autorizado o una clave de administrador válida.</p>
     
-    <a href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/admin.arturonavax.dev" class="btn-access">
+    <div id="cf-detected-notice" style="display:none; margin-bottom:1.25rem; padding:0.75rem 1rem; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.4); border-radius:3px; font-size:0.8rem; color:#10b981; line-height:1.4;">
+      <span style="font-weight:700;">● Sesión Cloudflare Zero Trust detectada.</span><br />
+      Ingresando a la consola administrativa...
+    </div>
+
+    <a href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/admin.arturonavax.dev" class="btn-access" id="btn-cf-login">
       Autenticar con Cloudflare Zero Trust
     </a>
 
     <div class="divider"><span>o ingresar con token de acceso</span></div>
 
-    <form class="token-form" onsubmit="event.preventDefault(); var t = document.getElementById('token-input').value.trim(); if(t){ var sec = window.location.protocol === 'https:' ? '; Secure' : ''; document.cookie = 'admin_session=' + encodeURIComponent(t) + '; Path=/; Max-Age=86400; SameSite=Lax' + sec; window.location.reload(); }">
+    <form class="token-form" id="token-auth-form">
       <input type="password" id="token-input" class="token-input" placeholder="Ingresar ADMIN_API_KEY..." autocomplete="current-password" required />
-      <button type="submit" class="btn-token">Desbloquear Consola</button>
+      <button type="submit" class="btn-token" id="btn-token-submit">Desbloquear Consola</button>
+      <div id="token-feedback" style="display:none; font-size:0.75rem; color:#ef4444; margin-top:0.25rem; line-height:1.4;"></div>
     </form>
 
     <div class="footer-note">
@@ -3090,6 +3144,82 @@ export function renderAdminUnauthorizedHtml(
       <span>RFC 9110 § 15.5.2</span>
     </div>
   </div>
+
+  <script>
+    (function () {
+      var host = window.location.hostname;
+      var isApex = host !== "admin.arturonavax.dev";
+
+      // 1. Intelligent Cloudflare Access Session Detection across subdomains
+      if (isApex && (host === "arturonavax.dev" || host.endsWith(".arturonavax.dev"))) {
+        fetch("https://admin.arturonavax.dev/api/status", {
+          credentials: "include",
+          headers: { "Accept": "application/json" }
+        })
+          .then(function (res) {
+            if (res.ok) {
+              var notice = document.getElementById("cf-detected-notice");
+              if (notice) notice.style.display = "block";
+              window.location.replace("https://admin.arturonavax.dev/");
+            }
+          })
+          .catch(function () {});
+      }
+
+      // 2. Token Authentication Form Submission with validation
+      var form = document.getElementById("token-auth-form");
+      if (form) {
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var input = document.getElementById("token-input");
+          var btn = document.getElementById("btn-token-submit");
+          var feedback = document.getElementById("token-feedback");
+          var token = (input ? input.value : "").trim();
+          if (!token) return;
+
+          if (btn) {
+            btn.disabled = true;
+            btn.textContent = "Verificando token...";
+          }
+          if (feedback) feedback.style.display = "none";
+
+          fetch("/api/status", {
+            headers: { "Authorization": "Bearer " + token }
+          })
+            .then(function (res) {
+              if (res.ok) {
+                var sec = window.location.protocol === "https:" ? "; Secure" : "";
+                var domainAttr = host.endsWith("arturonavax.dev") ? "; Domain=.arturonavax.dev" : "";
+                document.cookie = "admin_session=" + encodeURIComponent(token) + "; Path=/; Max-Age=86400; SameSite=Lax" + sec + domainAttr;
+                if (btn) {
+                  btn.textContent = "✓ Consola Desbloqueada";
+                  btn.style.borderColor = "#10b981";
+                  btn.style.color = "#10b981";
+                }
+                setTimeout(function () {
+                  window.location.reload();
+                }, 150);
+              } else {
+                if (feedback) {
+                  feedback.textContent = "Clave de administrador incorrecta o inválida.";
+                  feedback.style.display = "block";
+                }
+                if (btn) {
+                  btn.disabled = false;
+                  btn.textContent = "Desbloquear Consola";
+                }
+              }
+            })
+            .catch(function () {
+              var sec = window.location.protocol === "https:" ? "; Secure" : "";
+              var domainAttr = host.endsWith("arturonavax.dev") ? "; Domain=.arturonavax.dev" : "";
+              document.cookie = "admin_session=" + encodeURIComponent(token) + "; Path=/; Max-Age=86400; SameSite=Lax" + sec + domainAttr;
+              window.location.reload();
+            });
+        });
+      }
+    })();
+  </script>
 </body>
 </html>`;
 
@@ -3155,6 +3285,25 @@ export async function handleAdminDashboardRequest(
   if (url.pathname === "/status" || url.pathname === "/api/status") {
     const registry = new DeploymentRegistry(env.DB);
     const activeDeployment = await registry.getActiveDeployment();
+    const origin = request.headers.get("origin") || "";
+    const isAllowedOrigin =
+      origin === "https://arturonavax.dev" ||
+      origin === "https://admin.arturonavax.dev" ||
+      origin.endsWith(".arturonavax.dev") ||
+      origin.startsWith("http://localhost:") ||
+      origin.startsWith("http://127.0.0.1:");
+    const statusHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, private",
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    };
+    if (isAllowedOrigin) {
+      statusHeaders["Access-Control-Allow-Origin"] = origin;
+      statusHeaders["Access-Control-Allow-Credentials"] = "true";
+      statusHeaders["Vary"] = "Origin";
+    }
     return new Response(
       JSON.stringify({
         status: "healthy",
@@ -3165,13 +3314,7 @@ export async function handleAdminDashboardRequest(
       }),
       {
         status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-store, private",
-          "X-Frame-Options": "DENY",
-          "X-Content-Type-Options": "nosniff",
-          "X-Robots-Tag": "noindex, nofollow, noarchive",
-        },
+        headers: statusHeaders,
       },
     );
   }

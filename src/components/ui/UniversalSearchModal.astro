@@ -344,9 +344,6 @@ const searchIndexPath = "/search-index.json";
     var isSearchInitialized = false;
 
     function initSearch() {
-      if (typeof window.__mountDeferredModals === "function") {
-        window.__mountDeferredModals();
-      }
       if (isSearchInitialized) return;
       isSearchInitialized = true;
       setupUniversalSearch();

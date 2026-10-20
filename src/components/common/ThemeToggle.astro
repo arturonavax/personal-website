@@ -72,24 +72,20 @@
       }
     }
 
-    var current =
-      localStorage.getItem("theme") ||
-      document.documentElement.getAttribute("data-theme") ||
-      "dark";
-    syncIcons(current);
-
     function applyTheme(nextTheme) {
       document.documentElement.setAttribute("data-theme", nextTheme);
       if (nextTheme === "light") {
         document.documentElement.classList.remove("dark");
         document.documentElement.classList.add("light");
         document.documentElement.style.colorScheme = "light";
+        document.documentElement.style.removeProperty("background-color");
       } else {
         document.documentElement.classList.add("dark");
         document.documentElement.classList.remove("light");
         document.documentElement.style.colorScheme = "dark";
+        document.documentElement.style.backgroundColor =
+          "var(--surface-backdrop)";
       }
-      document.documentElement.style.removeProperty("background-color");
       localStorage.setItem("theme", nextTheme);
       syncIcons(nextTheme);
 
@@ -99,6 +95,12 @@
         }),
       );
     }
+
+    var current =
+      localStorage.getItem("theme") ||
+      document.documentElement.getAttribute("data-theme") ||
+      "dark";
+    applyTheme(current);
 
     toggleBtn.onclick = function (event) {
       var activeTheme =
@@ -190,5 +192,6 @@
   }
 
   setupThemeToggle();
+  document.addEventListener("astro:after-swap", setupThemeToggle);
   document.addEventListener("astro:page-load", setupThemeToggle);
 </script>

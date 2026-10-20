@@ -973,7 +973,9 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                   if (contactSec) {
                     window.__isProgrammaticNav = true;
                     var siteHeader = document.getElementById("site-header");
-                    var headerOffset = siteHeader ? siteHeader.offsetHeight : 64;
+                    var headerOffset = siteHeader
+                      ? siteHeader.offsetHeight
+                      : 64;
                     var viewportHeight = window.innerHeight;
                     var availableHeight = viewportHeight - headerOffset;
                     var secRect = contactSec.getBoundingClientRect();
@@ -984,8 +986,21 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                       0;
                     var targetY =
                       secHeight <= availableHeight
-                        ? Math.max(0, Math.floor(currentY + secRect.top - headerOffset - Math.max(16, (availableHeight - secHeight) / 2)))
-                        : Math.max(0, Math.floor(currentY + secRect.top - headerOffset - 16));
+                        ? Math.max(
+                            0,
+                            Math.floor(
+                              currentY +
+                                secRect.top -
+                                headerOffset -
+                                Math.max(16, (availableHeight - secHeight) / 2),
+                            ),
+                          )
+                        : Math.max(
+                            0,
+                            Math.floor(
+                              currentY + secRect.top - headerOffset - 16,
+                            ),
+                          );
                     window.scrollTo({ top: targetY, behavior: "smooth" });
                     var clearContactScroll = function () {
                       window.__isProgrammaticNav = false;

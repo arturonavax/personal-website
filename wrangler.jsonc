@@ -92,5 +92,6 @@
     "REQUIRE_CF_ACCESS": "true",
     "REQUIRE_ADMIN_AUTH": "true",
     "ADMIN_AUTHORIZED_EMAILS": "arturonavax@gmail.com,contact@arturonava.com",
+    "ADMIN_ACCESS_TOKEN": "__REDACTED_ROTATE_THIS_SECRET__",
   },
 }

@@ -110,7 +110,7 @@ const jsonLd = buildServiceJsonLd({
     </div>
 
     <!-- Header Card -->
-    <header class="geometric-box rounded-lg p-6 sm:p-8 space-y-6 bg-[var(--color-surface-card)]">
+    <header class="geometric-box rounded-lg p-6 sm:p-8 space-y-6 bg-[var(--color-surface-card)] matrix-readability-blur border border-[var(--color-surface-border-subtle)]/50 shadow-sm">
       <div class="space-y-3 border-b border-[var(--color-surface-border-subtle)] pb-6">
         <div class="flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-[var(--color-text-muted)]">
           <span class="inline-flex items-center gap-2 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 text-[var(--color-accent-gold)] uppercase tracking-wider font-semibold">
@@ -194,7 +194,7 @@ const jsonLd = buildServiceJsonLd({
     </section>
 
     <!-- Bottom Navigation -->
-    <div class="pt-6 border-t border-[var(--color-surface-border)] flex items-center justify-between font-mono text-xs">
+    <div class="pt-6 border-t border-[var(--color-surface-border)] flex items-center justify-between font-mono text-xs matrix-readability-blur rounded-lg p-3 sm:p-4 border border-[var(--color-surface-border-subtle)]/50">
       <a
         href={`${basePath}/services/`}
         class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"

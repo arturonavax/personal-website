@@ -294,7 +294,7 @@ const jobIndexItems: IndexItem[] = [
         <!-- Role Header Card -->
         <header
           id="role-header"
-          class="geometric-box relative z-10 rounded-lg p-6 sm:p-8 space-y-6 bg-[var(--color-surface-card)] shadow-card"
+          class="geometric-box relative z-10 rounded-lg p-6 sm:p-8 space-y-6 bg-[var(--color-surface-card)] shadow-card matrix-readability-blur"
         >
           <div class="space-y-3 border-b border-[var(--color-surface-border-subtle)] pb-6">
             <div class="flex items-center justify-between gap-3 text-xs font-mono text-[var(--color-text-muted)] min-h-[2rem]">
@@ -532,7 +532,7 @@ const jobIndexItems: IndexItem[] = [
       <!-- Key Architectural Achievements -->
       <section
         id="achievements"
-        class="space-y-5 border-b border-[var(--color-surface-border)] pb-8"
+        class="space-y-5 border-b border-[var(--color-surface-border)] pb-8 matrix-readability-blur rounded-xl p-5 sm:p-7 border border-[var(--color-surface-border-subtle)]/50 shadow-sm"
       >
         <h2 class="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
           {isEs
@@ -606,7 +606,10 @@ const jobIndexItems: IndexItem[] = [
 
       <!-- Interactive Architecture Simulations -->
       {simulations.length > 0 && (
-        <section id="simulations" class="space-y-6">
+        <section
+          id="simulations"
+          class="space-y-6 matrix-readability-blur rounded-xl p-5 sm:p-7 border border-[var(--color-surface-border-subtle)]/50 shadow-sm"
+        >
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--color-surface-border)] pb-4">
             <div>
               <div class="inline-flex items-center gap-2 text-xs font-mono text-[var(--color-accent-gold)] uppercase tracking-wider mb-1">
@@ -651,7 +654,7 @@ const jobIndexItems: IndexItem[] = [
       )}
 
       <!-- Bottom Navigation -->
-      <div class="pt-4 flex items-center justify-between font-mono text-xs">
+      <div class="pt-4 flex items-center justify-between font-mono text-xs matrix-readability-blur rounded-lg p-3 sm:p-4 border border-[var(--color-surface-border-subtle)]/50">
         <a
           href={`${basePath}/experience/`}
           class="inline-flex items-center gap-1.5 text-[var(--color-accent-gold)] hover:underline py-2 px-3 -mx-2 -my-1 rounded hover:bg-[var(--color-surface-card)] transition-colors"
@@ -685,7 +688,8 @@ const jobIndexItems: IndexItem[] = [
     };
   </script>
   <!-- Keyboard Shortcuts & Touch Gestures Engine -->
-  <script is:inline>
+  <script>
+    // @ts-nocheck
     (function () {
       var isTransitioning = false;
       var cache = {};

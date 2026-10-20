@@ -24,22 +24,26 @@ section[id],
 }
 
 /* 2. Below-the-fold sections: Strict layout & paint virtualization */
-main section:not(#about):not(#contact),
-footer {
+main section:not(#about) {
   content-visibility: auto;
-  contain-intrinsic-size: auto 640px;
+  contain-intrinsic-size: auto 900px;
 }
 
-#contact {
+html.is-anchor-scrolling main section,
+html.is-anchor-scrolling footer {
   content-visibility: visible !important;
 }
 
 /* 3. Closed modals & dialogs must never participate in initial Style & Layout */
 dialog:not([open]),
+[data-modal-backdrop].hidden,
 [data-modal-backdrop][aria-hidden="true"],
+.modals-portal [aria-hidden="true"],
+.modals-portal .hidden,
 .modal-hidden {
   display: none !important;
   content-visibility: hidden !important;
+  contain: strict;
 }
 
 @theme {
@@ -478,7 +482,11 @@ html[data-theme="light"] body {
 
 /* Elegant background backdrop-blur protecting typography against falling matrix glyphs */
 .matrix-readability-blur {
-  background-color: color-mix(in srgb, var(--color-surface-bg) 85%, transparent);
+  background-color: color-mix(
+    in srgb,
+    var(--color-surface-bg) 85%,
+    transparent
+  );
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }

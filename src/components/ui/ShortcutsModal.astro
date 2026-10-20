@@ -202,6 +202,11 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
     private footerObs: IntersectionObserver | null = null;
 
     connectedCallback() {
+      const stack = document.getElementById("floating-actions-stack");
+      if (stack && !stack.contains(this)) {
+        stack.insertBefore(this, stack.firstChild);
+      }
+
       this.abortController = new AbortController();
       const { signal } = this.abortController;
 

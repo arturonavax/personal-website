@@ -407,6 +407,8 @@ const initialCompanyFilterUrl = initialSim
     <script>
       class SystemTelemetryDemoElement extends HTMLElement {
         private abortController: AbortController | null = null;
+        private observer: IntersectionObserver | null = null;
+        private isVisible = false;
         private stepTimeoutId: ReturnType<typeof setTimeout> | null = null;
         private tooltipTimeoutId: ReturnType<typeof setTimeout> | null = null;
         private pingTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -415,6 +417,23 @@ const initialCompanyFilterUrl = initialSim
         connectedCallback() {
           this.abortController = new AbortController();
           const { signal } = this.abortController;
+
+          if ("IntersectionObserver" in window) {
+            this.observer = new IntersectionObserver(
+              (entries) => {
+                const entry = entries[0];
+                this.isVisible = Boolean(entry && entry.isIntersecting);
+                if (!this.isVisible) {
+                  if (this.pingTimeoutId) {
+                    clearTimeout(this.pingTimeoutId);
+                    this.pingTimeoutId = null;
+                  }
+                }
+              },
+              { rootMargin: "200px" },
+            );
+            this.observer.observe(this);
+          }
 
           let telemetryData: any = null;
           const getTelemetryData = () => {
@@ -944,6 +963,10 @@ const initialCompanyFilterUrl = initialSim
         }
 
         disconnectedCallback() {
+          if (this.observer) {
+            this.observer.disconnect();
+            this.observer = null;
+          }
           if (this.abortController) {
             this.abortController.abort();
             this.abortController = null;

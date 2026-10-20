@@ -191,11 +191,7 @@ const topValue = isCvPage
   : isJobPage
     ? "calc(var(--header-height, 3.5rem) + 3.25rem)"
     : "calc(5rem + 1px)";
-const containerMaxClass = isCvPage
-  ? "max-w-[210mm]"
-  : isJobPage
-    ? "max-w-4xl"
-    : "max-w-5xl";
+const containerMaxClass = isCvPage ? "max-w-[210mm]" : "max-w-5xl";
 const asideGapClass = isJobPage ? "mr-16" : "mr-6";
 ---
 
@@ -890,6 +886,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       var targetEl = document.getElementById(targetId);
       if (!targetEl) return;
 
+      // Ensure offscreen sections are fully measured during anchor navigation
+      document.documentElement.classList.add("is-anchor-scrolling");
+
       highlightActive(targetId);
       isProgrammaticScroll = true;
       if (typeof explicitIdx === "number") {
@@ -901,6 +900,7 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       clearTimeout(scrollLockTimeout);
 
       function onScrollFinish() {
+        document.documentElement.classList.remove("is-anchor-scrolling");
         isProgrammaticScroll = false;
         window.removeEventListener("scrollend", onScrollFinish);
         if (navTargetIdx >= 0 && navTargetIdx < sectionIds.length) {
@@ -911,7 +911,7 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       if ("onscrollend" in window) {
         window.addEventListener("scrollend", onScrollFinish, { once: true });
       }
-      scrollLockTimeout = setTimeout(onScrollFinish, 600);
+      scrollLockTimeout = setTimeout(onScrollFinish, 800);
 
       var headerOffset = getHeaderOffset();
       var elementPosition =
@@ -1375,8 +1375,6 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       if (maxwContainer) {
         if (isCv) {
           maxwContainer.className = "mx-auto max-w-[210mm] relative";
-        } else if (isJob) {
-          maxwContainer.className = "mx-auto max-w-4xl relative";
         } else {
           maxwContainer.className = "mx-auto max-w-5xl relative";
         }

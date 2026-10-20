@@ -107,55 +107,97 @@ const hasShortcuts = Boolean(shortcuts?.length);
       noindex={noindex}
     />
 
-    <!-- Anti-FOUC de tema, bloqueo condicional de traducción y restauración de Scroll -->
+    <!-- Anti-FOUC de tema, neutralizador JSD de Cloudflare y redirección de idioma -->
     <script is:inline>
       (function () {
-        // 0. Neutralize Cloudflare JSD 1x1 hidden iframe & deprecated challenge script injection
-        var origAppend = Node.prototype.appendChild;
+        // 1. Complete Neutralization of Cloudflare Edge JSD Challenge Script & 1x1 Iframe
+        function isCfChallengeNode(node) {
+          if (!node || node.nodeType !== 1) return false;
+          var tag = node.tagName;
+          if (tag === "IFRAME") {
+            var w = node.width || (node.style && node.style.width);
+            var h = node.height || (node.style && node.style.height);
+            var vis = node.style && node.style.visibility;
+            if (
+              (!node.src || node.src === "about:blank") &&
+              (w == 1 ||
+                w === "1px" ||
+                h == 1 ||
+                h === "1px" ||
+                vis === "hidden")
+            ) {
+              return true;
+            }
+          }
+          if (tag === "SCRIPT") {
+            var src =
+              node.src || (node.getAttribute && node.getAttribute("src")) || "";
+            var text = node.textContent || "";
+            if (
+              src.indexOf("/cdn-cgi/challenge-platform/") !== -1 ||
+              text.indexOf("__CF$cv$params") !== -1 ||
+              text.indexOf("/cdn-cgi/challenge-platform/") !== -1
+            ) {
+              return true;
+            }
+          }
+          return false;
+        }
+
+        var origAppendChild = Node.prototype.appendChild;
         Node.prototype.appendChild = function (node) {
-          if (node && node.nodeType === 1) {
-            var tag = node.tagName;
-            if (
-              tag === "IFRAME" &&
-              !node.src &&
-              (node.width === 1 || node.width === "1") &&
-              (node.height === 1 || node.height === "1")
-            ) {
-              return node;
-            }
-            if (
-              tag === "SCRIPT" &&
-              typeof node.src === "string" &&
-              node.src.indexOf("/cdn-cgi/challenge-platform/") !== -1
-            ) {
-              return node;
-            }
-          }
-          return origAppend.call(this, node);
-        };
-        var origInsert = Node.prototype.insertBefore;
-        Node.prototype.insertBefore = function (node, ref) {
-          if (node && node.nodeType === 1) {
-            var tag = node.tagName;
-            if (
-              tag === "IFRAME" &&
-              !node.src &&
-              (node.width === 1 || node.width === "1") &&
-              (node.height === 1 || node.height === "1")
-            ) {
-              return node;
-            }
-            if (
-              tag === "SCRIPT" &&
-              typeof node.src === "string" &&
-              node.src.indexOf("/cdn-cgi/challenge-platform/") !== -1
-            ) {
-              return node;
-            }
-          }
-          return origInsert.call(this, node, ref);
+          if (isCfChallengeNode(node)) return node;
+          return origAppendChild.call(this, node);
         };
 
+        var origInsertBefore = Node.prototype.insertBefore;
+        Node.prototype.insertBefore = function (node, child) {
+          if (isCfChallengeNode(node)) return node;
+          return origInsertBefore.call(this, node, child);
+        };
+
+        // 2. Zero-FOUC Theme Initialization & View Transition Swap Sync
+        function applyTheme(doc) {
+          var targetDoc = doc || document;
+          var stored = null;
+          try {
+            stored = localStorage.getItem("theme");
+          } catch (_) {}
+          var prefersDark = window.matchMedia(
+            "(prefers-color-scheme: dark)",
+          ).matches;
+          var isDark = stored ? stored === "dark" : prefersDark;
+          var root = targetDoc.documentElement;
+          if (!root) return;
+          root.classList.toggle("dark", isDark);
+          root.classList.toggle("light", !isDark);
+          root.setAttribute("data-theme", isDark ? "dark" : "light");
+          root.style.colorScheme = isDark ? "dark" : "light";
+          if (!isDark) {
+            root.style.removeProperty("background-color");
+          } else {
+            root.style.backgroundColor = "var(--surface-backdrop)";
+          }
+        }
+
+        applyTheme(document);
+
+        document.addEventListener("astro:before-swap", function (ev) {
+          applyTheme(ev.newDocument);
+        });
+        document.addEventListener("astro:after-swap", function () {
+          applyTheme(document);
+        });
+        document.addEventListener("astro:page-load", function () {
+          applyTheme(document);
+        });
+        window.addEventListener("storage", function (e) {
+          if (e.key === "theme") {
+            applyTheme(document);
+          }
+        });
+
+        // 3. Multilingual Route & Navigation Language Persistence
         var host = (window.location.hostname || "").toLowerCase();
         var path = window.location.pathname;
         if (
@@ -168,7 +210,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
         var isRoot = path === "/" || path === "/es" || path === "/es/";
         var isEsPath = path === "/es/" || path.indexOf("/es/") === 0;
 
-        // 1. Recuperar preferencia explícita guardada (localStorage tiene precedencia, con fallback a sessionStorage)
         var savedLocale = null;
         try {
           savedLocale =
@@ -176,156 +217,102 @@ const hasShortcuts = Boolean(shortcuts?.length);
             sessionStorage.getItem("preferred_locale");
         } catch (_) {}
 
-        // Redirección limpia en la raíz: respeta preferencia explícita o detecta idioma en primer ingreso
-        if (isRoot) {
+        var ref = document.referrer ? document.referrer.toLowerCase() : "";
+        var isSearchEngine =
+          ref.indexOf("google.") !== -1 ||
+          ref.indexOf("bing.") !== -1 ||
+          ref.indexOf("duckduckgo.") !== -1 ||
+          ref.indexOf("yahoo.") !== -1 ||
+          ref.indexOf("ecosia.") !== -1 ||
+          ref.indexOf("yandex.") !== -1;
+
+        if (savedLocale && !isSearchEngine) {
           if (savedLocale === "es" && !isEsPath) {
+            var targetEs = "/es" + (path.startsWith("/") ? path : "/" + path);
+            window.location.replace(
+              targetEs + window.location.search + window.location.hash,
+            );
+            return;
+          } else if (savedLocale === "en" && isEsPath) {
+            var targetEn = path.replace(/^\/es(?:\/|$)/, "/") || "/";
+            window.location.replace(
+              targetEn + window.location.search + window.location.hash,
+            );
+            return;
+          }
+        } else if (isRoot && !savedLocale && !isSearchEngine && path === "/") {
+          var userLangs = (
+            navigator.languages || [navigator.language || ""]
+          ).map(function (l) {
+            return (l || "").toLowerCase().split("-")[0];
+          });
+          if (userLangs[0] === "es") {
             window.location.replace(
               "/es/" + window.location.search + window.location.hash,
             );
-          } else if (savedLocale === "en" && isEsPath) {
-            window.location.replace(
-              "/" + window.location.search + window.location.hash,
-            );
-          } else if (!savedLocale) {
-            // Primer visitante sin preferencia guardada:
-            // Solo redirigir si no proviene de un motor de búsqueda externo
-            var ref = document.referrer ? document.referrer.toLowerCase() : "";
-            var isSearchEngine =
-              ref.indexOf("google.") !== -1 ||
-              ref.indexOf("bing.") !== -1 ||
-              ref.indexOf("duckduckgo.") !== -1 ||
-              ref.indexOf("yahoo.") !== -1 ||
-              ref.indexOf("ecosia.") !== -1 ||
-              ref.indexOf("yandex.") !== -1;
-
-            if (!isSearchEngine && path === "/") {
-              var userLangs = (
-                navigator.languages || [navigator.language || ""]
-              ).map(function (l) {
-                return (l || "").toLowerCase().split("-")[0];
-              });
-              if (userLangs[0] === "es") {
-                window.location.replace(
-                  "/es/" + window.location.search + window.location.hash,
-                );
-              }
-            }
+            return;
           }
         }
 
-        // 2. Supresión condicional del popup de traducción solo para usuarios que dominen EN o ES
-        function applyConditionalNoTranslate() {
+        // Intercept pending SPA view transitions to enforce active language
+        document.addEventListener("astro:before-preparation", function (ev) {
+          var pref = null;
           try {
-            var supported = ["en", "es"];
-            var userLangs = (
-              navigator.languages || [navigator.language || ""]
-            ).map(function (l) {
-              return (l || "").toLowerCase().split("-")[0];
-            });
-
-            var speaksSupported = userLangs.some(function (l) {
-              return supported.indexOf(l) !== -1;
-            });
-
-            if (speaksSupported) {
-              var root = document.documentElement;
-              root.setAttribute("translate", "no");
-              root.classList.add("notranslate");
-
-              if (
-                !document.querySelector(
-                  'meta[name="google"][content="notranslate"]',
-                )
-              ) {
-                var meta = document.createElement("meta");
-                meta.name = "google";
-                meta.content = "notranslate";
-                document.head.appendChild(meta);
-              }
-            }
+            pref =
+              localStorage.getItem("preferred_locale") ||
+              sessionStorage.getItem("preferred_locale");
           } catch (_) {}
-        }
-
-        applyConditionalNoTranslate();
-        document.addEventListener(
-          "astro:after-swap",
-          applyConditionalNoTranslate,
-        );
-
-        // 3. Anti-FOUC de tema
-        function applyStoredTheme() {
-          try {
-            var theme = localStorage.getItem("theme") || "dark";
-            var root = document.documentElement;
-            root.setAttribute("data-theme", theme);
-            if (theme === "light") {
-              root.classList.remove("dark");
-              root.classList.add("light");
-              root.style.colorScheme = "light";
-            } else {
-              root.classList.add("dark");
-              root.classList.remove("light");
-              root.style.colorScheme = "dark";
-            }
-            root.style.removeProperty("background-color");
-          } catch (_) {}
-        }
-
-        applyStoredTheme();
-        document.addEventListener("astro:after-swap", applyStoredTheme);
-
-        // 3.5 Sincronización de metadatos de página en <html> y <body> (Pre-Paint)
-        function syncPageMetadata() {
-          try {
-            var doc = document.documentElement;
-            var path = window.location.pathname;
-            var isEs = path === "/es/" || path.indexOf("/es/") === 0;
-            var currentLang = doc.getAttribute("lang") || (isEs ? "es" : "en");
-            doc.setAttribute("data-current-locale", currentLang);
-            doc.setAttribute("data-current-path", path);
-            if (document.body) {
-              document.body.setAttribute("data-current-locale", currentLang);
-              document.body.setAttribute("data-current-path", path);
-            }
-          } catch (_) {}
-        }
-
-        syncPageMetadata();
-        document.addEventListener("astro:after-swap", syncPageMetadata);
-
-        // 4. Sincronización y restauración de scroll
-        try {
-          var navReset = sessionStorage.getItem("nav_reset_scroll");
-          var currentPathname = window.location.pathname || "/";
-          var normalizedCurrentPath = currentPathname.endsWith("/")
-            ? currentPathname
-            : currentPathname + "/";
-          var isSubpage =
-            normalizedCurrentPath !== "/" && normalizedCurrentPath !== "/es/";
-          var hasHash = !!window.location.hash;
-          var hasContactPending =
-            sessionStorage.getItem("pending_contact_scroll") === "1" ||
-            window.location.hash === "#contact";
-
+          if (!pref || !ev.to) return;
+          var toUrl = ev.to;
+          if (toUrl.origin !== window.location.origin) return;
+          var p = toUrl.pathname;
           if (
-            !hasContactPending &&
-            (navReset === "1" || (isSubpage && !hasHash))
+            p.startsWith("/_") ||
+            p.startsWith("/api") ||
+            p.startsWith("/admin") ||
+            p.includes(".")
           ) {
-            sessionStorage.removeItem("nav_reset_scroll");
-            sessionStorage.removeItem("lang_switch_scroll");
-            if ("scrollRestoration" in history) {
-              history.scrollRestoration = "manual";
-            }
-            window.scrollTo(0, 0);
-          } else {
-            var savedScroll = sessionStorage.getItem("lang_switch_scroll");
-            if (savedScroll !== null) {
-              var targetY = parseInt(savedScroll, 10);
-              if ("scrollRestoration" in history) {
-                history.scrollRestoration = "manual";
-              }
-              window.scrollTo(0, targetY);
-            }
+            return;
+          }
+          var toIsEs = p === "/es" || p === "/es/" || p.startsWith("/es/");
+          if (pref === "es" && !toIsEs) {
+            toUrl.pathname = "/es" + (p.startsWith("/") ? p : "/" + p);
+          } else if (pref === "en" && toIsEs) {
+            toUrl.pathname = p.replace(/^\/es(?:\/|$)/, "/") || "/";
+          }
+        });
+
+        // Sync locale attribute and storage on page load
+        document.addEventListener("astro:page-load", function () {
+          var currentPath = window.location.pathname;
+          var currentIsEs =
+            currentPath === "/es" ||
+            currentPath === "/es/" ||
+            currentPath.startsWith("/es/");
+          var activeLocale = currentIsEs ? "es" : "en";
+          if (document.body) {
+            document.body.setAttribute("data-current-locale", activeLocale);
+          }
+          if (document.documentElement) {
+            document.documentElement.setAttribute("lang", activeLocale);
+          }
+        });
+
+        // 4. Conditional No-Translate
+        try {
+          var supported = ["en", "es"];
+          var langs = (navigator.languages || [navigator.language || ""]).map(
+            function (l) {
+              return (l || "").toLowerCase().split("-")[0];
+            },
+          );
+          if (
+            langs.some(function (l) {
+              return supported.indexOf(l) !== -1;
+            })
+          ) {
+            document.documentElement.setAttribute("translate", "no");
+            document.documentElement.classList.add("notranslate");
           }
         } catch (_) {}
       })();
@@ -490,14 +477,12 @@ const hasShortcuts = Boolean(shortcuts?.length);
 
     {!hideFooter && <Footer locale={locale} />}
 
-    <UniversalSearchModal
-      locale={locale}
-      transition:persist="search-modal"
-      data-semi=";"
-    />
-
-    <div id="deferred-modals-root"></div>
-    <template id="deferred-modals-template">
+    <div id="modals-portal" class="modals-portal">
+      <UniversalSearchModal
+        locale={locale}
+        transition:persist="search-modal"
+        data-semi=";"
+      />
       {hasShortcuts && (
         <ShortcutsModal
           locale={locale}
@@ -525,7 +510,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
         transition:persist="contact-modal"
         data-semi=";"
       />
-    </template>
+    </div>
 
     <!-- Edge Fetch Navigation Loading Beacon -->
     <div
@@ -562,58 +547,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <!-- Script de runtime: expone APIs a window, mantiene polyfills y gestiona eventos -->
     <script>
       import { handleEscapeKey } from "@/lib/navigation/escape-router";
-
-      // 0. Deferred Modal Lazy-Mount System (SPEC-013 / Task 2.3)
-      let modalsMounted = false;
-
-      function mountDeferredModals() {
-        if (modalsMounted) return;
-        const tpl = document.getElementById(
-          "deferred-modals-template",
-        ) as HTMLTemplateElement | null;
-        const root = document.getElementById("deferred-modals-root");
-        if (!tpl || !root) return;
-        modalsMounted = true;
-        if (root.children.length === 0) {
-          root.appendChild(tpl.content.cloneNode(true));
-        }
-        const shortcutsEl = root.querySelector("shortcuts-modal");
-        const stack = document.getElementById("floating-actions-stack");
-        if (shortcutsEl && stack && !stack.contains(shortcutsEl)) {
-          (stack as any).prepend(shortcutsEl);
-        }
-        document.dispatchEvent(new CustomEvent("modals:mounted"));
-      }
-
-      (window as any).__mountDeferredModals = mountDeferredModals;
-
-      function scheduleModalMount() {
-        modalsMounted = false;
-        const triggerEvents = ["keydown", "pointerdown", "touchstart"];
-        const onFirstInput = () => {
-          triggerEvents.forEach((evt) =>
-            window.removeEventListener(evt, onFirstInput, { capture: true }),
-          );
-          mountDeferredModals();
-        };
-        triggerEvents.forEach((evt) =>
-          window.addEventListener(evt, onFirstInput, {
-            capture: true,
-            passive: true,
-            once: true,
-          }),
-        );
-        if ("requestIdleCallback" in window) {
-          (window as any).requestIdleCallback(mountDeferredModals, {
-            timeout: 2000,
-          });
-        } else {
-          setTimeout(mountDeferredModals, 2000);
-        }
-      }
-
-      scheduleModalMount();
-      document.addEventListener("astro:page-load", scheduleModalMount);
 
       // 1. Resiliencia contra extensiones externas mal implementadas
       if (typeof Document !== "undefined") {

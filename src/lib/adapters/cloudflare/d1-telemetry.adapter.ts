@@ -209,7 +209,7 @@ export async function checkAndSetL1DedupeCache(
     }
   }
 
-  // 3. L1 Miss: populate isolate memory map + Edge Cache API (HTTP 204, max-age=1800)
+  // 3. L1 Miss: populate isolate memory map + Edge Cache API (HTTP 200, max-age=1800)
   if (l1DedupeMemoryCache.size >= MAX_L1_MEMORY_DEDUPE_ENTRIES) {
     for (const [k, exp] of l1DedupeMemoryCache.entries()) {
       if (nowMs >= exp) l1DedupeMemoryCache.delete(k);
@@ -224,9 +224,10 @@ export async function checkAndSetL1DedupeCache(
   if (cache && typeof cache.put === "function") {
     try {
       const cacheKey = new Request(cacheUrl, { method: "GET" });
-      const response = new Response(null, {
-        status: 204,
+      const response = new Response("1", {
+        status: 200,
         headers: {
+          "Content-Type": "text/plain; charset=utf-8",
           "Cache-Control": "public, max-age=1800",
         },
       });
