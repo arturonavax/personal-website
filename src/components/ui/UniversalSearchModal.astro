@@ -35,10 +35,17 @@ const searchIndexPath = "/search-index.json";
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <div class="relative flex-1 flex items-center min-w-0">
+        <form
+          id="universal-search-form"
+          role="search"
+          action={searchUrl}
+          method="get"
+          class="relative flex-1 flex items-center min-w-0"
+        >
           <input
             type="search"
             id="universal-search-input"
+            name="q"
             autocomplete="off"
             spellcheck="false"
             placeholder={
@@ -68,7 +75,7 @@ const searchIndexPath = "/search-index.json";
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
-        </div>
+        </form>
         <button
           type="button"
           id="close-search-btn"
@@ -225,9 +232,25 @@ const searchIndexPath = "/search-index.json";
     if (dialog && dialog.open) {
       dialog.close();
     }
+    // Restore document body and root overflow styles immediately
+    document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
+
     if (isSearchOpen.get()) {
       toggleSearchModal(false);
     }
+
+    // Release focus trap: return focus to the initiating button or main content
+    const initiatingBtn = document.querySelector<HTMLElement>(
+      "#header-search-btn, #mobile-search-btn, [data-open-search]",
+    );
+    if (initiatingBtn) {
+      initiatingBtn.focus();
+    } else {
+      const main = document.getElementById("main-content");
+      main?.focus();
+    }
+
     navigate(targetUrl);
   }
 
@@ -244,6 +267,34 @@ const searchIndexPath = "/search-index.json";
     connectedCallback() {
       this.abortController = new AbortController();
       const { signal } = this.abortController;
+
+      // Intercept form submit to prevent traditional page reloads and route via ClientRouter
+      const form = this.querySelector<HTMLFormElement>(
+        "#universal-search-form",
+      );
+      if (form) {
+        form.addEventListener(
+          "submit",
+          (e) => {
+            e.preventDefault();
+            const input = this.querySelector<HTMLInputElement>(
+              "#universal-search-input",
+            );
+            const q = input?.value.trim() || "";
+            if (q) {
+              const isEs = document.documentElement.lang
+                ?.toLowerCase()
+                .startsWith("es");
+              const targetUrl =
+                (isEs ? "/es/search/" : "/search/") +
+                "?q=" +
+                encodeURIComponent(q);
+              executeSearchNavigation(targetUrl);
+            }
+          },
+          { signal },
+        );
+      }
 
       this.unsubscribeStore = isSearchOpen.subscribe((isOpen) => {
         const dialog = this.querySelector<HTMLDialogElement>("#search-dialog");
@@ -820,6 +871,27 @@ const searchIndexPath = "/search-index.json";
             selectedResultIndex = -1;
             performSearch("");
             searchInput.focus();
+          }
+        });
+      }
+
+      // Prevent native form submission and delegate to ClientRouter SPA navigation
+      var searchForm = document.getElementById("universal-search-form");
+      if (searchForm && !boundElements.has(searchForm)) {
+        boundElements.add(searchForm);
+        searchForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var q =
+            searchInput && searchInput.value ? searchInput.value.trim() : "";
+          if (q) {
+            var targetUrl = getBasePath() + "?q=" + encodeURIComponent(q);
+            if (typeof window.executeSearchNavigation === "function") {
+              window.executeSearchNavigation(targetUrl);
+            } else {
+              if (dialog && dialog.open) dialog.close();
+              document.body.style.overflow = "";
+              window.location.href = targetUrl;
+            }
           }
         });
       }

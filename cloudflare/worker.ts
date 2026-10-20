@@ -595,15 +595,47 @@ export default {
       }
     }
 
+    // -------------------------------------------------------------------------
+    // 3. Speculative Prefetch Detection (Bypass Telemetry & Rate-Limit Resilience)
+    // -------------------------------------------------------------------------
+    const secPurpose = (request.headers.get("sec-purpose") || "").toLowerCase();
+    const purpose = (request.headers.get("purpose") || "").toLowerCase();
+    const hasAstroPrefetchParam =
+      url.searchParams.has("astro-prefetch") ||
+      url.search.includes("astro-prefetch");
+    const isPrefetch =
+      purpose === "prefetch" ||
+      secPurpose.includes("prefetch") ||
+      secPurpose.includes("prerender") ||
+      request.headers.get("x-astro-prefetch") !== null ||
+      request.headers.get("X-Astro-Prefetch") !== null ||
+      hasAstroPrefetchParam;
+
     if (
       !pathname.startsWith("/api/") &&
       !pathname.startsWith("/cdn-assets/") &&
       !isVulnerabilityScannerPath(pathname) &&
       (STATIC_PREFIX_REGEX.test(pathname) || STATIC_EXT_REGEX.test(pathname))
     ) {
+      if (isPrefetch && request.method === "HEAD") {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "X-Content-Type-Options": "nosniff",
+          },
+        });
+      }
+
       const response = await env.ASSETS.fetch(request);
       const headers = new Headers(response.headers);
-      if (pathname.endsWith(".pdf")) {
+      if (
+        pathname.startsWith("/_astro/") ||
+        pathname.startsWith("/fonts/") ||
+        isPrefetch
+      ) {
+        headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      } else if (pathname.endsWith(".pdf")) {
         headers.set(
           "Cache-Control",
           "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
@@ -643,18 +675,6 @@ export default {
           : response.body;
       return new Response(body, { status: response.status, headers });
     }
-
-    // -------------------------------------------------------------------------
-    // 3. Speculative Prefetch Detection (Bypass Telemetry)
-    // -------------------------------------------------------------------------
-    const secPurpose = request.headers.get("sec-purpose") || "";
-    const purpose = request.headers.get("purpose") || "";
-    const isPrefetch =
-      purpose === "prefetch" ||
-      secPurpose.includes("prefetch") ||
-      secPurpose.includes("prerender") ||
-      request.headers.get("x-astro-prefetch") !== null ||
-      request.headers.get("X-Astro-Prefetch") !== null;
 
     // -------------------------------------------------------------------------
     // 4. Dedicated API Endpoints (Search, Captcha, Ingestion, Storage, Contact)
@@ -782,7 +802,14 @@ export default {
       ) {
         if (isPrefetch) {
           // Secondary Priority (P1): Prefetch telemetry protected by dynamic circuit breaker
+          // Speculative prefetch with ?astro-prefetch or explicit bypass omits heavy D1 writes
+          const shouldBypassTelemetry =
+            hasAstroPrefetchParam ||
+            (env as unknown as Record<string, unknown>)
+              ?.BYPASS_PREFETCH_TELEMETRY === true;
+
           if (
+            !shouldBypassTelemetry &&
             prefetchCircuitBreaker.canRecordPrefetch(
               env as unknown as Record<string, unknown>,
             )
@@ -801,7 +828,7 @@ export default {
                 purposeHeader,
               ),
             );
-          } else {
+          } else if (!shouldBypassTelemetry) {
             // Circuit Breaker tripped or kill-switch: log incident once per date in background
             const today = new Date().toISOString().slice(0, 10);
             if (
@@ -7758,11 +7785,18 @@ export async function recordAnalyticsNonBlocking(
     if (isBot) {
       // Bot Telemetry Circuit Breaker (REQ-PCD-04, SPEC-008):
       // Bots are secondary priority compared to human visits (P0).
+      const reqPurpose = (request.headers.get("purpose") || "").toLowerCase();
+      const reqSecPurpose = (
+        request.headers.get("sec-purpose") || ""
+      ).toLowerCase();
+      const reqIsPrefetch =
+        reqPurpose === "prefetch" || reqSecPurpose.includes("prefetch");
       if (
         !botCircuitBreaker.canRecordBot(
           env as unknown as Record<string, unknown>,
           userAgent,
           visitorInfo.classification,
+          reqIsPrefetch,
         )
       ) {
         // Quota is constrained or bot kill-switch is active: shed bot telemetry to protect P0 quota.
@@ -7782,7 +7816,7 @@ export async function recordAnalyticsNonBlocking(
         }
         return;
       }
-      botCircuitBreaker.recordBot();
+      botCircuitBreaker.recordBot(reqIsPrefetch);
 
       // In Tier >= CONSERVATIVE (50% quota), drop raw bot pageview writes and record only to compact rollups
       if (currentTier >= QuotaDegradationTier.CONSERVATIVE) {

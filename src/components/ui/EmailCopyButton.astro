@@ -16,13 +16,15 @@ const {
 } = Astro.props;
 
 const isEs = locale === "es";
-const copiedText = isEs ? "Copiado al portapapeles" : "Copied to clipboard";
+const copiedText = isEs
+  ? "Email copiado al portapapeles"
+  : "Email copied to clipboard";
 ---
 
 <email-copy-trigger
   data-email={email}
-  data-copied-en="Copied to clipboard"
-  data-copied-es="Copiado al portapapeles"
+  data-copied-en="Email copied to clipboard"
+  data-copied-es="Email copiado al portapapeles"
   class={`inline-flex items-center gap-1.5 ${className}`}
 >
   <button

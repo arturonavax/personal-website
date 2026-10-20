@@ -92,7 +92,10 @@ export class PrefetchQuotaCircuitBreaker implements PrefetchCircuitBreakerPort {
     };
   }
 
-  canRecordPrefetch(env?: Record<string, unknown>): boolean {
+  canRecordPrefetch(env?: Record<string, unknown>, bypass = false): boolean {
+    if (bypass) {
+      return false;
+    }
     this.checkDayRollover();
 
     // 1. Immediate kill-switch via environment variable / secret
@@ -174,7 +177,8 @@ export class PrefetchQuotaCircuitBreaker implements PrefetchCircuitBreakerPort {
     }
   }
 
-  recordPrefetch(): void {
+  recordPrefetch(bypass = false): void {
+    if (bypass) return;
     this.checkDayRollover();
     this.dailyPrefetchCount++;
   }

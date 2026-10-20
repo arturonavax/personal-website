@@ -376,62 +376,9 @@ const hasShortcuts = Boolean(shortcuts?.length);
             }
           }
         }
-
         window.__updateToastCollision = updateToastCollision;
 
-        function autoOrderFloatingStack() {
-          var stack = document.getElementById("floating-actions-stack");
-          if (!stack) return;
-
-          var shortcutsEl = document.querySelector("shortcuts-modal");
-          var mobileContainer = document.getElementById(
-            "mobile-page-index-container",
-          );
-          var backToTop = document.getElementById("back-to-top-btn");
-
-          var candidateItems = [shortcutsEl, mobileContainer, backToTop].filter(
-            Boolean,
-          );
-          var visibleItems = [];
-          for (var i = 0; i < candidateItems.length; i++) {
-            var el = candidateItems[i];
-            if (
-              el.classList.contains("hidden") ||
-              el.classList.contains("is-empty") ||
-              el.classList.contains("force-hide-mobile") ||
-              el.getAttribute("data-has-sections") === "false" ||
-              el.style.display === "none"
-            ) {
-              continue;
-            }
-            if (window.getComputedStyle(el).display === "none") {
-              continue;
-            }
-            visibleItems.push(el);
-          }
-
-          visibleItems.sort(function (a, b) {
-            var wA =
-              a.offsetWidth ||
-              (a.firstElementChild && a.firstElementChild.offsetWidth) ||
-              0;
-            var wB =
-              b.offsetWidth ||
-              (b.firstElementChild && b.firstElementChild.offsetWidth) ||
-              0;
-            return wB - wA;
-          });
-
-          visibleItems.forEach(function (item, idx) {
-            var targetOrder = String(idx + 1);
-            if (item.style.order !== targetOrder) {
-              item.style.order = targetOrder;
-            }
-          });
-
-          updateToastCollision();
-        }
-
+        function autoOrderFloatingStack() {}
         window.__autoOrderFloatingStack = autoOrderFloatingStack;
 
         if (typeof window !== "undefined") {
@@ -443,8 +390,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
               if (typeof window.__syncResponsiveMode === "function") {
                 window.__syncResponsiveMode();
               }
-              autoOrderFloatingStack();
-              updateToastCollision();
             });
           };
 
@@ -464,30 +409,29 @@ const hasShortcuts = Boolean(shortcuts?.length);
             if (typeof window.__syncResponsiveMode === "function") {
               window.__syncResponsiveMode();
             }
-            autoOrderFloatingStack();
-            updateToastCollision();
           });
           document.addEventListener("astro:after-swap", function () {
+            var canonicalLink = document.querySelector('link[rel="canonical"]');
+            if (canonicalLink) {
+              var p = window.location.pathname.endsWith("/")
+                ? window.location.pathname
+                : window.location.pathname + "/";
+              canonicalLink.setAttribute("href", window.location.origin + p);
+            }
             if (typeof window.__syncResponsiveMode === "function") {
               window.__syncResponsiveMode();
             }
-            autoOrderFloatingStack();
-            updateToastCollision();
           });
           if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", function () {
               if (typeof window.__syncResponsiveMode === "function") {
                 window.__syncResponsiveMode();
               }
-              autoOrderFloatingStack();
-              updateToastCollision();
             });
           } else {
             if (typeof window.__syncResponsiveMode === "function") {
               window.__syncResponsiveMode();
             }
-            autoOrderFloatingStack();
-            updateToastCollision();
           }
         }
       })();

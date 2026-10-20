@@ -210,7 +210,17 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
 
     const allLabel = root.getAttribute("data-all-label") || "All Roles";
     const isEs = root.getAttribute("data-is-es") === "true";
-    const activeFilters = new Set<string>();
+    let activeCompany: string | null = null;
+    const activeSkills = new Set<string>();
+
+    const companyButtons = root.querySelectorAll<HTMLButtonElement>(
+      'button[data-filter-group="company"]',
+    );
+    const companyKeys = new Set(
+      Array.from(companyButtons).map((b) =>
+        (b.getAttribute("data-exp-filter") || "").toLowerCase().trim(),
+      ),
+    );
 
     const TECH_EQUIVALENTS: Record<string, string[]> = {
       go: ["golang"],
@@ -291,14 +301,26 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
     }
 
     function updateView() {
-      const isAllActive = activeFilters.size === 0;
+      const isAllActive = !activeCompany && activeSkills.size === 0;
       const visibleItems: HTMLElement[] = [];
 
       items.forEach((item) => {
-        let matches = isAllActive;
-        if (!isAllActive) {
-          matches = Array.from(activeFilters).every((f) =>
-            expMatchesFilter(item, f),
+        let matches = true;
+        if (activeCompany) {
+          const comp = (item.getAttribute("data-company") || "")
+            .toLowerCase()
+            .trim();
+          matches =
+            comp === activeCompany || smartFilterMatch(comp, activeCompany);
+        }
+        if (matches && activeSkills.size > 0) {
+          const rawSkills = item.getAttribute("data-skills") || "";
+          const skillList = rawSkills
+            .split("|")
+            .map((s) => s.toLowerCase().trim())
+            .filter(Boolean);
+          matches = Array.from(activeSkills).every((skill) =>
+            skillList.some((s) => smartFilterMatch(s, skill)),
           );
         }
 
@@ -326,8 +348,15 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
         const btnFilter = (btn.getAttribute("data-exp-filter") || "")
           .toLowerCase()
           .trim();
+        const isCompanyBtn =
+          btn.getAttribute("data-filter-group") === "company" ||
+          companyKeys.has(btnFilter);
         const isSelected =
-          btnFilter === "all" ? isAllActive : activeFilters.has(btnFilter);
+          btnFilter === "all"
+            ? isAllActive
+            : isCompanyBtn
+              ? activeCompany === btnFilter
+              : activeSkills.has(btnFilter);
 
         btn.setAttribute("aria-pressed", isSelected ? "true" : "false");
         btn.classList.toggle("active", isSelected);
@@ -365,13 +394,21 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
         if (countSpan) {
           if (btnFilter === "all") {
             countSpan.textContent = `(${items.length})`;
+          } else if (isCompanyBtn) {
+            const count = Array.from(items).filter((item) => {
+              const comp = (item.getAttribute("data-company") || "")
+                .toLowerCase()
+                .trim();
+              return comp === btnFilter || smartFilterMatch(comp, btnFilter);
+            }).length;
+            countSpan.textContent = `(${count})`;
           } else {
             let count = 0;
             if (isAllActive) {
               count = Array.from(items).filter((item) =>
                 expMatchesFilter(item, btnFilter),
               ).length;
-            } else if (activeFilters.has(btnFilter)) {
+            } else if (activeSkills.has(btnFilter)) {
               count = visibleCount;
             } else {
               count = visibleItems.filter((item) =>
@@ -387,20 +424,30 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
       if (indicator) {
         if (isAllActive) {
           indicator.textContent = `${allLabel} (${visibleCount})`;
-        } else if (activeFilters.size === 1) {
-          const firstFilter = Array.from(activeFilters)[0];
+        } else if (activeCompany && activeSkills.size === 0) {
           const matchedBtn = Array.from(filterButtons).find(
             (b) =>
               (b.getAttribute("data-exp-filter") || "").toLowerCase().trim() ===
-              firstFilter,
+              activeCompany,
           );
           const label =
-            matchedBtn?.querySelector("span")?.textContent || firstFilter;
+            matchedBtn?.querySelector("span")?.textContent || activeCompany;
+          indicator.textContent = `${label} (${visibleCount})`;
+        } else if (!activeCompany && activeSkills.size === 1) {
+          const firstSkill = Array.from(activeSkills)[0];
+          const matchedBtn = Array.from(filterButtons).find(
+            (b) =>
+              (b.getAttribute("data-exp-filter") || "").toLowerCase().trim() ===
+              firstSkill,
+          );
+          const label =
+            matchedBtn?.querySelector("span")?.textContent || `#${firstSkill}`;
           indicator.textContent = `${label} (${visibleCount})`;
         } else {
+          const totalActiveCount = (activeCompany ? 1 : 0) + activeSkills.size;
           const filterCountText = isEs
-            ? `${activeFilters.size} filtros activos`
-            : `${activeFilters.size} active filters`;
+            ? `${totalActiveCount} filtros activos`
+            : `${totalActiveCount} active filters`;
           indicator.textContent = `${filterCountText} (${visibleCount})`;
         }
       }
@@ -416,42 +463,39 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
 
       // Sync URL parameter without reload
       const url = new URL(window.location.href);
-      if (isAllActive) {
-        url.searchParams.delete("skill");
-        url.searchParams.delete("filters");
+      if (activeCompany) {
+        url.searchParams.set("company", activeCompany);
       } else {
-        url.searchParams.set("filters", Array.from(activeFilters).join(","));
+        url.searchParams.delete("company");
       }
+      if (activeSkills.size > 0) {
+        url.searchParams.set("skill", Array.from(activeSkills).join(","));
+      } else {
+        url.searchParams.delete("skill");
+      }
+      url.searchParams.delete("filters");
       window.history.replaceState({}, "", url.toString());
     }
-
-    const companyButtons = root.querySelectorAll<HTMLButtonElement>(
-      'button[data-filter-group="company"]',
-    );
-    const companyKeys = new Set(
-      Array.from(companyButtons).map((b) =>
-        (b.getAttribute("data-exp-filter") || "").toLowerCase().trim(),
-      ),
-    );
 
     function toggleFilter(filterKey: string, isCompany: boolean = false) {
       const filterNorm = filterKey.toLowerCase().trim();
       if (filterNorm === "all") {
-        activeFilters.clear();
+        activeCompany = null;
+        activeSkills.clear();
       } else if (isCompany || companyKeys.has(filterNorm)) {
-        if (activeFilters.has(filterNorm)) {
-          // Si ya está activo, retorna a "All"
-          activeFilters.delete(filterNorm);
+        if (activeCompany === filterNorm) {
+          // Clicking an active company pill resets the filter to show all experiences
+          activeCompany = null;
         } else {
-          // Selección mutuamente excluyente de empresas
-          companyKeys.forEach((c) => activeFilters.delete(c));
-          activeFilters.add(filterNorm);
+          // Clicking an inactive company pill sets it as the sole active filter
+          activeCompany = filterNorm;
+          activeSkills.clear();
         }
       } else {
-        if (activeFilters.has(filterNorm)) {
-          activeFilters.delete(filterNorm);
+        if (activeSkills.has(filterNorm)) {
+          activeSkills.delete(filterNorm);
         } else {
-          activeFilters.add(filterNorm);
+          activeSkills.add(filterNorm);
         }
       }
       updateView();
@@ -470,24 +514,37 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
     if (resetBtn && !resetBtn.dataset.bound) {
       resetBtn.dataset.bound = "true";
       resetBtn.addEventListener("click", () => {
-        activeFilters.clear();
+        activeCompany = null;
+        activeSkills.clear();
         updateView();
       });
     }
 
     window.addEventListener("reset-page-filters", () => {
-      activeFilters.clear();
+      activeCompany = null;
+      activeSkills.clear();
       updateView();
     });
 
     const params = new URLSearchParams(window.location.search);
-    const initialFilters =
-      params.get("filters") || params.get("skill") || params.get("company");
-    if (initialFilters) {
-      initialFilters.split(",").forEach((f) => {
+    const companyParam = params.get("company");
+    const skillParam = params.get("skill") || params.get("filters");
+    if (companyParam) {
+      activeCompany = companyParam.toLowerCase().trim();
+    }
+    if (skillParam) {
+      skillParam.split(",").forEach((f) => {
         const clean = f.toLowerCase().trim();
-        if (clean && clean !== "all") activeFilters.add(clean);
+        if (clean && clean !== "all") {
+          if (companyKeys.has(clean)) {
+            activeCompany = clean;
+          } else {
+            activeSkills.add(clean);
+          }
+        }
       });
+    }
+    if (activeCompany || activeSkills.size > 0) {
       const details = root.querySelector("details");
       if (details) details.open = true;
       updateView();

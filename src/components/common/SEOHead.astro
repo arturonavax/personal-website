@@ -41,6 +41,7 @@ let cleanCanonicalUrl = rawCanonical;
 try {
   const parsed = new URL(rawCanonical, siteUrl);
   parsed.search = "";
+  parsed.hash = "";
   if (
     !parsed.pathname.endsWith("/") &&
     !/\.[a-zA-Z0-9]+$/i.test(parsed.pathname)
@@ -49,7 +50,13 @@ try {
   }
   cleanCanonicalUrl = parsed.toString();
 } catch (_) {
-  cleanCanonicalUrl = rawCanonical.split("?")[0]!;
+  cleanCanonicalUrl = rawCanonical.split("?")[0]!.split("#")[0]!;
+  if (
+    !cleanCanonicalUrl.endsWith("/") &&
+    !/\.[a-zA-Z0-9]+$/i.test(cleanCanonicalUrl)
+  ) {
+    cleanCanonicalUrl = `${cleanCanonicalUrl}/`;
+  }
 }
 
 const { enUrl, esUrl, xDefaultUrl } = resolveVerifiedHreflang({
@@ -156,6 +163,7 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
     }
 
     document.addEventListener("astro:page-load", syncCanonical);
+    document.addEventListener("astro:after-swap", syncCanonical);
     window.addEventListener("popstate", syncCanonical);
     const originalReplaceState = history.replaceState;
     history.replaceState = function () {

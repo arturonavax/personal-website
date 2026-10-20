@@ -95,6 +95,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
     <div class="flex items-center justify-start gap-2.5 2xl:gap-3 min-w-0 shrink-0">
       <a
         href={homeUrl}
+        id="brand-logo-link"
         class="group flex items-center gap-2.5 font-mono text-sm tracking-tight text-[var(--color-text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] shrink-0"
       >
         <BrandLogo class="h-8 w-8 shrink-0 transition-transform duration-200 group-hover:scale-105" />
@@ -420,7 +421,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
         <span class="hidden xl:inline">
           {locale === "es" ? "Buscar..." : "Search..."}
         </span>
-        <kbd class="hidden sm:inline-flex h-4 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1 text-[10px] text-[var(--color-text-muted)] font-semibold leading-none">
+        <kbd class="hidden md:inline-flex h-4 items-center justify-center rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-1 text-[10px] text-[var(--color-text-muted)] font-semibold leading-none">
           /
         </kbd>
       </button>
@@ -856,6 +857,46 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                 rawHref === "#contact" ||
                 rawHref.endsWith("#contact") ||
                 link.hasAttribute("data-contact-scroll");
+
+              var isBrandLogo =
+                link.id === "brand-logo-link" ||
+                link.closest("#brand-logo-link") !== null;
+              var isAbout =
+                link.getAttribute("data-nav-section") === "about" ||
+                link.hash === "#about" ||
+                rawHref === "#about";
+              var isHome =
+                currentPath === "/" ||
+                currentPath === "/es" ||
+                currentPath === "/es/";
+
+              // Phase 6: Brand Logo and About same-page scroll-to-top optimization
+              if ((isBrandLogo || isAbout) && isHome) {
+                e.preventDefault();
+                setActiveSection("about");
+                window.__isProgrammaticNav = true;
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                var clearAboutScroll = function () {
+                  window.__isProgrammaticNav = false;
+                  window.removeEventListener("scrollend", clearAboutScroll);
+                };
+                if ("onscrollend" in window) {
+                  window.addEventListener("scrollend", clearAboutScroll, {
+                    once: true,
+                  });
+                }
+                setTimeout(function () {
+                  window.__isProgrammaticNav = false;
+                }, 900);
+                if (window.location.hash) {
+                  history.replaceState(
+                    null,
+                    "",
+                    currentPath + (currentPath === "/" ? "" : "/"),
+                  );
+                }
+                return;
+              }
 
               if (!isHashOnly && linkPath !== currentPath) {
                 if (!isContact) {

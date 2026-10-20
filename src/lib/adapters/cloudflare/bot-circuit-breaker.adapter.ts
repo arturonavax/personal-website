@@ -86,7 +86,11 @@ export class BotQuotaCircuitBreaker implements BotCircuitBreakerPort {
     env?: Record<string, unknown>,
     userAgentOrVerified: string | boolean = true,
     classification = "",
+    isPrefetch = false,
   ): boolean {
+    if (isPrefetch) {
+      return false;
+    }
     this.checkDayRollover();
 
     const isVerifiedCrawler =
@@ -163,7 +167,8 @@ export class BotQuotaCircuitBreaker implements BotCircuitBreakerPort {
     this.loggedIncidentDays.add(dateString);
   }
 
-  recordBot(): void {
+  recordBot(isPrefetch = false): void {
+    if (isPrefetch) return;
     this.checkDayRollover();
     this.dailyBotCount++;
   }

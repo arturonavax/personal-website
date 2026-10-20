@@ -3,6 +3,27 @@ import type { Locale } from "../../i18n/locales";
 export const PERSON_ENTITY_ID = "https://arturonavax.dev/#person";
 export const WEBSITE_ENTITY_ID = "https://arturonavax.dev/#website";
 
+/**
+ * Normalizes any canonical URL into an absolute, normalized string
+ * stripped of all query tracking parameters (utm_*, ref, etc.) and hashes.
+ */
+export function normalizeCanonicalUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.search = "";
+    parsed.hash = "";
+    if (
+      !parsed.pathname.endsWith("/") &&
+      !/\.[a-zA-Z0-9]+$/i.test(parsed.pathname)
+    ) {
+      parsed.pathname = `${parsed.pathname}/`;
+    }
+    return parsed.toString();
+  } catch {
+    return url.split("?")[0]!.split("#")[0]!;
+  }
+}
+
 export interface SchemaPersonOptions {
   locale: Locale;
   canonicalUrl: string;
@@ -87,6 +108,7 @@ export function buildBreadcrumbNode(
   locale: Locale,
   pageTitle?: string,
 ): Record<string, unknown> {
+  const cleanCanonicalUrl = normalizeCanonicalUrl(canonicalUrl);
   const isEs = locale === "es";
   const homeUrl = isEs
     ? "https://arturonavax.dev/es/"
@@ -101,7 +123,7 @@ export function buildBreadcrumbNode(
   ];
 
   try {
-    const parsed = new URL(canonicalUrl, "https://arturonavax.dev");
+    const parsed = new URL(cleanCanonicalUrl, "https://arturonavax.dev");
     const rawSegments = parsed.pathname
       .split("/")
       .filter((s) => Boolean(s) && s !== "en" && s !== "es");
@@ -130,7 +152,7 @@ export function buildBreadcrumbNode(
 
   return {
     "@type": "BreadcrumbList",
-    "@id": `${canonicalUrl}#breadcrumb`,
+    "@id": `${cleanCanonicalUrl}#breadcrumb`,
     itemListElement: items,
   };
 }
@@ -145,6 +167,7 @@ export function buildCoreGraphNodes(options: {
 }): Array<Record<string, unknown>> {
   const isEs = options.locale === "es";
   const lang = isEs ? "es" : "en";
+  const cleanCanonicalUrl = normalizeCanonicalUrl(options.canonicalUrl);
 
   const personNode: Record<string, unknown> = {
     "@type": "Person",
@@ -198,18 +221,18 @@ export function buildCoreGraphNodes(options: {
 
   const webpageNode: Record<string, unknown> = {
     "@type": options.pageType || "WebPage",
-    "@id": `${options.canonicalUrl}#webpage`,
-    url: options.canonicalUrl,
+    "@id": `${cleanCanonicalUrl}#webpage`,
+    url: cleanCanonicalUrl,
     name: options.title,
     description: options.description,
     inLanguage: lang,
     isPartOf: { "@id": WEBSITE_ENTITY_ID },
     about: { "@id": PERSON_ENTITY_ID },
-    breadcrumb: { "@id": `${options.canonicalUrl}#breadcrumb` },
+    breadcrumb: { "@id": `${cleanCanonicalUrl}#breadcrumb` },
   };
 
   const breadcrumbNode = buildBreadcrumbNode(
-    options.canonicalUrl,
+    cleanCanonicalUrl,
     options.locale,
     options.title,
   );
@@ -566,9 +589,10 @@ export function ensureUnifiedGraphJsonLd(
     description: string;
   },
 ): Record<string, unknown> {
+  const cleanCanonicalUrl = normalizeCanonicalUrl(fallback.canonicalUrl);
   const coreNodes = buildCoreGraphNodes({
     locale: fallback.locale,
-    canonicalUrl: fallback.canonicalUrl,
+    canonicalUrl: cleanCanonicalUrl,
     title: fallback.title,
     description: fallback.description,
   });
@@ -576,7 +600,7 @@ export function ensureUnifiedGraphJsonLd(
   if (!inputJsonLd) {
     return {
       "@context": "https://schema.org",
-      "@id": `${fallback.canonicalUrl}#webpage`,
+      "@id": `${cleanCanonicalUrl}#webpage`,
       inLanguage: fallback.locale,
       "@graph": coreNodes,
     };
@@ -598,13 +622,13 @@ export function ensureUnifiedGraphJsonLd(
     typeof rootObj.mainEntity === "object" &&
     (rootObj.mainEntity as Record<string, unknown>)["@id"] === rootObj["@id"]
   ) {
-    rootObj["@id"] = `${fallback.canonicalUrl}#webpage`;
+    rootObj["@id"] = `${cleanCanonicalUrl}#webpage`;
   }
   if (
     rootObj["@type"] === "ProfilePage" &&
     rootObj["@id"] === PERSON_ENTITY_ID
   ) {
-    rootObj["@id"] = `${fallback.canonicalUrl}#webpage`;
+    rootObj["@id"] = `${cleanCanonicalUrl}#webpage`;
   }
 
   const existingGraph = Array.isArray(rootObj["@graph"])

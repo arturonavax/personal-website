@@ -93,6 +93,16 @@ const email = "arturo@arturonavax.dev";
         </div>
         <!--/email_off-->
 
+        <!-- Accessible live-region email copy toast -->
+        <div
+          id="email-copy-toast"
+          role="status"
+          aria-live="polite"
+          class="hidden pointer-events-none fixed bottom-8 left-1/2 -translate-x-1/2 z-[70] rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-4 py-2 font-mono text-xs text-[var(--color-text-primary)] opacity-0 shadow-2xl backdrop-blur-md transition-opacity duration-200 whitespace-nowrap"
+        >
+          {isEs ? "Email copiado al portapapeles" : "Email copied to clipboard"}
+        </div>
+
         <!-- Action CTAs -->
         <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 font-mono text-xs sm:text-sm">
           <!-- Direct Message Form Modal (Cloudflare Free Tier) -->
@@ -375,6 +385,18 @@ const email = "arturo@arturonavax.dev";
               "border-[var(--color-accent-status)]",
               "text-[var(--color-accent-status)]",
             );
+            var toast = document.getElementById("email-copy-toast");
+            if (toast) {
+              toast.classList.remove("hidden", "opacity-0");
+              toast.classList.add("opacity-100");
+              setTimeout(function () {
+                toast.classList.remove("opacity-100");
+                toast.classList.add("opacity-0");
+                setTimeout(function () {
+                  toast.classList.add("hidden");
+                }, 200);
+              }, 2000);
+            }
             setTimeout(function () {
               if (textSpan) textSpan.textContent = copyEmailText;
               btn.classList.remove(

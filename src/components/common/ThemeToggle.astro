@@ -141,7 +141,12 @@
         Math.max(y, window.innerHeight - y),
       );
 
+      var direction = activeTheme === "light" ? "to-dark" : "to-light";
       document.documentElement.setAttribute("data-theme-transitioning", "true");
+      document.documentElement.setAttribute(
+        "data-theme-transition-direction",
+        direction,
+      );
       document.documentElement.classList.add("theme-transitioning");
 
       var transition = document.startViewTransition(function () {
@@ -152,6 +157,9 @@
         requestAnimationFrame(function () {
           document.documentElement.classList.remove("theme-transitioning");
           document.documentElement.removeAttribute("data-theme-transitioning");
+          document.documentElement.removeAttribute(
+            "data-theme-transition-direction",
+          );
           window.dispatchEvent(new CustomEvent("theme-transition-end"));
         });
       };

@@ -1,7 +1,12 @@
 @import "tailwindcss";
 @import "./resume.css";
 
-/* Scroll margin alignment against sticky navbar (REQ-09) */
+/* Scroll margin alignment against sticky navbar (REQ-09 & Phase 5) */
+:target,
+h1[id],
+h2[id],
+h3[id],
+section[id],
 [id] {
   scroll-margin-top: calc(var(--header-height, 4rem) + 1.5rem);
 }
@@ -517,11 +522,12 @@ html[data-timeline-incoming="past"] #experience-article {
   transform: translate3d(-16px, 0, 0) !important;
 }
 
-/* View Transitions Neutralization - Zero clash with WAAPI and Language Switch */
+/* View Transitions Neutralization - Zero clash with WAAPI and Language Switch (Phase 8) */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
+  display: block;
   height: 100%;
   width: 100%;
   object-fit: cover;
@@ -533,6 +539,31 @@ html[data-timeline-incoming="past"] #experience-article {
 
 ::view-transition-new(root) {
   z-index: 9999;
+}
+
+/* Light-to-dark vs dark-to-light explicit z-index stacking orders (Phase 8) */
+html[data-theme-transition-direction="to-dark"]::view-transition-old(root),
+:root[data-theme-transition-direction="to-dark"]::view-transition-old(root) {
+  z-index: 1 !important;
+  display: block !important;
+}
+
+html[data-theme-transition-direction="to-dark"]::view-transition-new(root),
+:root[data-theme-transition-direction="to-dark"]::view-transition-new(root) {
+  z-index: 9999 !important;
+  display: block !important;
+}
+
+html[data-theme-transition-direction="to-light"]::view-transition-old(root),
+:root[data-theme-transition-direction="to-light"]::view-transition-old(root) {
+  z-index: 1 !important;
+  display: block !important;
+}
+
+html[data-theme-transition-direction="to-light"]::view-transition-new(root),
+:root[data-theme-transition-direction="to-light"]::view-transition-new(root) {
+  z-index: 9999 !important;
+  display: block !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -823,6 +854,7 @@ html.lang-switching::view-transition-old(root),
 html.lang-switching::view-transition-new(root) {
   animation: none !important;
   mix-blend-mode: normal !important;
+  display: block !important;
   height: 100% !important;
   width: 100% !important;
   object-fit: cover !important;
@@ -997,7 +1029,16 @@ html.lang-text-reacting .copy-feedback,
 
 /* Floating actions (Index, Shortcuts, Back to top) rise above the language
    suggestion toast only when colliding on small/overlapping viewports. */
-#floating-actions-stack,
+#floating-actions-stack {
+  display: flex !important;
+  flex-direction: column-reverse !important;
+  align-items: flex-end !important;
+  gap: 0.75rem !important;
+  pointer-events: none !important;
+  transition-property: transform;
+  transition-duration: 300ms;
+  transition-timing-function: ease-out;
+}
 #mobile-page-index-root {
   transition-property: transform;
   transition-duration: 300ms;
