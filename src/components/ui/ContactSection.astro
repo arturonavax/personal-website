@@ -75,6 +75,8 @@ const email = "arturo@arturonavax.dev";
               type="button"
               data-copy-email-btn
               data-email={email}
+              data-copied-text={t("contact.copied")}
+              data-copy-email-text={t("contact.copyEmail")}
               class="inline-flex items-center justify-center gap-1.5 rounded-sm border border-[var(--color-accent-gold)] bg-[var(--color-accent-gold-subtle)] px-3.5 py-2 text-xs font-medium text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] shrink-0 cursor-pointer"
             >
               <svg
@@ -316,13 +318,8 @@ const email = "arturo@arturonavax.dev";
 {/* ContactFormModal hoisted to BaseLayout.astro for persistent SPA app-shell */}
 {false && <ContactFormModal locale={locale} />}
 
-<script
-  is:inline
-  define:vars={{
-    copiedText: t("contact.copied"),
-    copyEmailText: t("contact.copyEmail"),
-  }}
->
+<script>
+  // @ts-nocheck
   (function () {
     function initCopyEmail() {
       if (!window.__copyEmailClickBound) {
@@ -336,6 +333,10 @@ const email = "arturo@arturonavax.dev";
           var targetEmail = btn.getAttribute("data-email");
           var textSpan = btn.querySelector("[data-copy-status-text]");
           if (!targetEmail) return;
+          var copiedText =
+            btn.getAttribute("data-copied-text") || "Copied to clipboard!";
+          var copyEmailText =
+            btn.getAttribute("data-copy-email-text") || "Copy Email";
 
           async function performCopy(text) {
             if (

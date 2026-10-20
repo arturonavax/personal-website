@@ -173,6 +173,11 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
                       href={companyInfo.url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      aria-label={
+                        locale === "es"
+                          ? `Visitar sitio web oficial de ${companyInfo.name || companyInfo.domain} (abre en nueva pestaña)`
+                          : `Visit ${companyInfo.name || companyInfo.domain} official website (opens in a new tab)`
+                      }
                       class="inline-flex items-center gap-1 sm:gap-1.5 rounded border border-[var(--color-accent-gold)]/50 bg-[var(--color-accent-gold-subtle)] px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors"
                     >
                       <span>
@@ -340,7 +345,8 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
   })}
 </div>
 
-<script is:inline>
+<script>
+  // @ts-nocheck
   (function () {
     function initCompanyTooltips() {
       var roots = document.querySelectorAll("[data-company-tooltip-root]");

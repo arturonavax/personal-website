@@ -69,6 +69,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
+  Cross-Origin-Opener-Policy: same-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=(), run-ad-auction=(), join-ad-interest-group=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()
   Vary: Accept
 
@@ -125,6 +126,7 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
+  Cross-Origin-Opener-Policy: same-origin
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Alt-Svc: h3=":443"; ma=86400
   Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=(), run-ad-auction=(), join-ad-interest-group=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=()

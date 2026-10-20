@@ -154,7 +154,7 @@ describe("SPEC-007 REQ-3: Language banner session isolation", () => {
   const bannerSource = read("src/components/ui/LanguageSuggestionBanner.astro");
   const switcherSource = read("src/components/common/LanguageSwitcher.astro");
   const script = bannerSource.match(
-    /<script is:inline>([\s\S]*?)<\/script>/,
+    /<script(?:\s+is:inline)?>([\s\S]*?)<\/script>/,
   )?.[1];
 
   interface Harness {

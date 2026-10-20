@@ -17,6 +17,27 @@ section[id],
   contain-intrinsic-size: auto 500px;
 }
 
+/* 1. Above-the-fold Hero: Immediate paint without layout containment delay */
+#about {
+  content-visibility: visible !important;
+  contain: style;
+}
+
+/* 2. Below-the-fold sections: Strict layout & paint virtualization */
+main section:not(#about),
+footer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 640px;
+}
+
+/* 3. Closed modals & dialogs must never participate in initial Style & Layout */
+dialog:not([open]),
+[data-modal-backdrop][aria-hidden="true"],
+.modal-hidden {
+  display: none !important;
+  content-visibility: hidden !important;
+}
+
 @theme {
   /* Dynamic Semantic Color Tokens (SPEC-004 Section 3.2.1) */
   --color-surface-backdrop: var(--surface-backdrop);

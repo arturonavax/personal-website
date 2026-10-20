@@ -204,7 +204,7 @@ const hasJudges = judgeProfiles && judgeProfiles.length > 0;
   </dialog>
 )}
 
-<script is:inline>
+<script>
   // @ts-nocheck
   (function () {
     var boundElements =
@@ -329,5 +329,6 @@ const hasJudges = judgeProfiles && judgeProfiles.length > 0;
       setupOnlineJudgesModal();
     }
     document.addEventListener("astro:page-load", setupOnlineJudgesModal);
+    document.addEventListener("modals:mounted", setupOnlineJudgesModal);
   })();
 </script>

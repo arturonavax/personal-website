@@ -338,12 +338,15 @@ const searchIndexPath = "/search-index.json";
   }
 </script>
 
-<script is:inline>
+<script>
   // @ts-nocheck
   (function () {
     var isSearchInitialized = false;
 
     function initSearch() {
+      if (typeof window.__mountDeferredModals === "function") {
+        window.__mountDeferredModals();
+      }
       if (isSearchInitialized) return;
       isSearchInitialized = true;
       setupUniversalSearch();
@@ -570,6 +573,10 @@ const searchIndexPath = "/search-index.json";
         attachSearchPrefetchTriggers();
       }
       document.addEventListener("astro:page-load", function () {
+        attachSearchPrefetchTriggers();
+        syncModalLocaleUI();
+      });
+      document.addEventListener("modals:mounted", function () {
         attachSearchPrefetchTriggers();
         syncModalLocaleUI();
       });

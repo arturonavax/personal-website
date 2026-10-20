@@ -152,6 +152,21 @@ export default defineConfig({
     build: {
       cssCodeSplit: true,
       cssMinify: "lightningcss",
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (
+              id.includes("node_modules/astro") ||
+              id.includes("node_modules/nanostores") ||
+              id.includes("src/utils/") ||
+              id.includes("src/stores/") ||
+              id.includes("src/lib/navigation/")
+            ) {
+              return "core-client";
+            }
+          },
+        },
+      },
     },
   },
   integrations: [

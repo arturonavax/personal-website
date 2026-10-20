@@ -110,6 +110,52 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <!-- Anti-FOUC de tema, bloqueo condicional de traducción y restauración de Scroll -->
     <script is:inline>
       (function () {
+        // 0. Neutralize Cloudflare JSD 1x1 hidden iframe & deprecated challenge script injection
+        var origAppend = Node.prototype.appendChild;
+        Node.prototype.appendChild = function (node) {
+          if (node && node.nodeType === 1) {
+            var tag = node.tagName;
+            if (
+              tag === "IFRAME" &&
+              !node.src &&
+              (node.width === 1 || node.width === "1") &&
+              (node.height === 1 || node.height === "1")
+            ) {
+              return node;
+            }
+            if (
+              tag === "SCRIPT" &&
+              typeof node.src === "string" &&
+              node.src.indexOf("/cdn-cgi/challenge-platform/") !== -1
+            ) {
+              return node;
+            }
+          }
+          return origAppend.call(this, node);
+        };
+        var origInsert = Node.prototype.insertBefore;
+        Node.prototype.insertBefore = function (node, ref) {
+          if (node && node.nodeType === 1) {
+            var tag = node.tagName;
+            if (
+              tag === "IFRAME" &&
+              !node.src &&
+              (node.width === 1 || node.width === "1") &&
+              (node.height === 1 || node.height === "1")
+            ) {
+              return node;
+            }
+            if (
+              tag === "SCRIPT" &&
+              typeof node.src === "string" &&
+              node.src.indexOf("/cdn-cgi/challenge-platform/") !== -1
+            ) {
+              return node;
+            }
+          }
+          return origInsert.call(this, node, ref);
+        };
+
         var path = window.location.pathname;
         var isRoot = path === "/" || path === "/es" || path === "/es/";
         var isEsPath = path === "/es/" || path.indexOf("/es/") === 0;
@@ -303,13 +349,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
       class="fixed bottom-5 right-5 z-40 flex flex-col-reverse items-end gap-2.5 pointer-events-none select-none"
       aria-label="Floating Actions"
     >
-      {hasShortcuts && (
-        <ShortcutsModal
-          locale={locale}
-          transition:persist="shortcuts-modal"
-          data-semi=";"
-        />
-      )}
       <PageIndexNav
         locale={locale}
         transition:persist="page-index-nav"
@@ -322,7 +361,8 @@ const hasShortcuts = Boolean(shortcuts?.length);
       />
     </aside>
 
-    <script is:inline>
+    <script>
+      // @ts-nocheck
       (function () {
         function updateToastCollision() {
           var banner = document.getElementById("lang-suggestion-banner");
@@ -438,6 +478,24 @@ const hasShortcuts = Boolean(shortcuts?.length);
     </script>
     <main id="main-content" class="relative z-10 flex-1">
       <slot />
+    </main>
+
+    {!hideFooter && <Footer locale={locale} />}
+
+    <div id="deferred-modals-root"></div>
+    <template id="deferred-modals-template">
+      <UniversalSearchModal
+        locale={locale}
+        transition:persist="search-modal"
+        data-semi=";"
+      />
+      {hasShortcuts && (
+        <ShortcutsModal
+          locale={locale}
+          transition:persist="shortcuts-modal"
+          data-semi=";"
+        />
+      )}
       {!hideSubtleCoffee && hasSponsorships && (
         <CoffeeSponsorshipModal
           locale={locale}
@@ -446,26 +504,19 @@ const hasShortcuts = Boolean(shortcuts?.length);
           data-semi=";"
         />
       )}
-    </main>
-
-    {!hideFooter && <Footer locale={locale} />}
-    <UniversalSearchModal
-      locale={locale}
-      transition:persist="search-modal"
-      data-semi=";"
-    />
-    <ContactFormModal
-      locale={locale}
-      transition:persist="contact-modal"
-      data-semi=";"
-    />
-    {hasJudges && (
-      <OnlineJudgesModal
+      {hasJudges && (
+        <OnlineJudgesModal
+          locale={locale}
+          transition:persist="judges-modal"
+          data-semi=";"
+        />
+      )}
+      <ContactFormModal
         locale={locale}
-        transition:persist="judges-modal"
+        transition:persist="contact-modal"
         data-semi=";"
       />
-    )}
+    </template>
 
     <!-- Edge Fetch Navigation Loading Beacon -->
     <div
@@ -502,6 +553,58 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <!-- Script de runtime: expone APIs a window, mantiene polyfills y gestiona eventos -->
     <script>
       import { handleEscapeKey } from "@/lib/navigation/escape-router";
+
+      // 0. Deferred Modal Lazy-Mount System (SPEC-013 / Task 2.3)
+      let modalsMounted = false;
+
+      function mountDeferredModals() {
+        if (modalsMounted) return;
+        const tpl = document.getElementById(
+          "deferred-modals-template",
+        ) as HTMLTemplateElement | null;
+        const root = document.getElementById("deferred-modals-root");
+        if (!tpl || !root) return;
+        modalsMounted = true;
+        if (root.children.length === 0) {
+          root.appendChild(tpl.content.cloneNode(true));
+        }
+        const shortcutsEl = root.querySelector("shortcuts-modal");
+        const stack = document.getElementById("floating-actions-stack");
+        if (shortcutsEl && stack && !stack.contains(shortcutsEl)) {
+          (stack as any).prepend(shortcutsEl);
+        }
+        document.dispatchEvent(new CustomEvent("modals:mounted"));
+      }
+
+      (window as any).__mountDeferredModals = mountDeferredModals;
+
+      function scheduleModalMount() {
+        modalsMounted = false;
+        const triggerEvents = ["keydown", "pointerdown", "touchstart"];
+        const onFirstInput = () => {
+          triggerEvents.forEach((evt) =>
+            window.removeEventListener(evt, onFirstInput, { capture: true }),
+          );
+          mountDeferredModals();
+        };
+        triggerEvents.forEach((evt) =>
+          window.addEventListener(evt, onFirstInput, {
+            capture: true,
+            passive: true,
+            once: true,
+          }),
+        );
+        if ("requestIdleCallback" in window) {
+          (window as any).requestIdleCallback(mountDeferredModals, {
+            timeout: 2000,
+          });
+        } else {
+          setTimeout(mountDeferredModals, 2000);
+        }
+      }
+
+      scheduleModalMount();
+      document.addEventListener("astro:page-load", scheduleModalMount);
 
       // 1. Resiliencia contra extensiones externas mal implementadas
       if (typeof Document !== "undefined") {

@@ -170,7 +170,8 @@ const resetFilterLabel = isEs ? "Restablecer Filtro" : "Reset Filter";
   </div>
 </div>
 
-<script is:inline>
+<script>
+  // @ts-nocheck
   (function () {
     function setupCaseStudiesFilter() {
       var root = document.getElementById("case-studies-filter-root");

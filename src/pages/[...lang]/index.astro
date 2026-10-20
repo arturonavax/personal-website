@@ -10,8 +10,6 @@ import PostCard from "@/components/ui/PostCard.astro";
 import HeroHeaderBanner from "@/components/ui/HeroHeaderBanner.astro";
 import SystemTelemetryDemo from "@/components/ui/SystemTelemetryDemo.astro";
 import ContactSection from "@/components/ui/ContactSection.astro";
-import CoffeeSponsorshipModal from "@/components/ui/CoffeeSponsorshipModal.astro";
-import { hasSponsorshipMethods } from "@/data/sponsorships";
 import { simulationsData } from "@/data/simulations";
 import { useTranslations } from "@/i18n/utils";
 import { getHomepageJsonLd } from "@/data/schemaOrg";
@@ -425,8 +423,5 @@ const jsonLd = getHomepageJsonLd(locale, avatarWebp.src);
 
     <!-- 10. Contact Hub -->
     <ContactSection locale={locale} />
-
-    <!-- Discreet Coffee / Contributions Modal -->
-    {hasSponsorshipMethods && <CoffeeSponsorshipModal locale={locale} />}
   </div>
 </BaseLayout>

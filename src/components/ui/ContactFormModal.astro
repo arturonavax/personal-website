@@ -370,7 +370,8 @@ const turnstileSiteKey =
   </div>
 </dialog>
 
-<script is:inline>
+<script>
+  // @ts-nocheck
   (function () {
     var turnstileWidgetId = null;
     var turnstileToken = "";
@@ -752,5 +753,6 @@ const turnstileSiteKey =
       setupContactModal();
     }
     document.addEventListener("astro:page-load", setupContactModal);
+    document.addEventListener("modals:mounted", setupContactModal);
   })();
 </script>

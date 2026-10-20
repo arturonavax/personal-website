@@ -493,7 +493,7 @@ const hasSponsorships =
     </dialog>
 
     <!-- Zero external overhead client interaction script -->
-    <script is:inline>
+    <script>
       // @ts-nocheck
       (function () {
         var boundElements =
@@ -784,6 +784,10 @@ const hasSponsorships =
         }
         document.addEventListener(
           "astro:page-load",
+          setupCoffeeSponsorshipModal,
+        );
+        document.addEventListener(
+          "modals:mounted",
           setupCoffeeSponsorshipModal,
         );
       })();

@@ -108,10 +108,17 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
 
 <meta name="generator" content={Astro.generator} />
 
-<!-- Critical Body Font Preload (AGENTS.md: Critical body font only) -->
+<!-- Preload Critical Variable Fonts to eliminate late CSS discovery -->
 <link
   rel="preload"
   href="/fonts/Geist-Variable.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
+/>
+<link
+  rel="preload"
+  href="/fonts/GeistMono-Variable.woff2"
   as="font"
   type="font/woff2"
   crossorigin="anonymous"
@@ -145,7 +152,7 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
 )}
 
 <!-- Dynamic Canonical Synchronization across ClientRouter Transitions -->
-<script is:inline>
+<script>
   (function () {
     function syncCanonical() {
       const canonicalLink = document.querySelector('link[rel="canonical"]');
@@ -166,13 +173,21 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
     document.addEventListener("astro:after-swap", syncCanonical);
     window.addEventListener("popstate", syncCanonical);
     const originalReplaceState = history.replaceState;
-    history.replaceState = function () {
-      originalReplaceState.apply(this, arguments);
+    history.replaceState = function (
+      data: any,
+      unused: string,
+      url?: string | URL | null,
+    ) {
+      originalReplaceState.call(this, data, unused, url);
       syncCanonical();
     };
     const originalPushState = history.pushState;
-    history.pushState = function () {
-      originalPushState.apply(this, arguments);
+    history.pushState = function (
+      data: any,
+      unused: string,
+      url?: string | URL | null,
+    ) {
+      originalPushState.call(this, data, unused, url);
       syncCanonical();
     };
   })();

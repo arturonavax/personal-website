@@ -26,7 +26,8 @@ const isEs = locale === "es";
   </svg>
 </button>
 
-<script is:inline>
+<script>
+  // @ts-nocheck
   (function () {
     function updateBackToTopVisibility(animate) {
       var btn = document.getElementById("back-to-top-btn");
