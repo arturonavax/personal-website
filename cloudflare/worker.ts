@@ -366,7 +366,11 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     const url = new URL(request.url);
-    const host = url.hostname.toLowerCase();
+    const rawHost =
+      request.headers.get("x-forwarded-host") ||
+      request.headers.get("host") ||
+      url.hostname;
+    const host = rawHost.split(":")[0]!.toLowerCase();
 
     // 1. Canonical Path Normalization
     let decodedPath = url.pathname;
@@ -525,6 +529,36 @@ export default {
                 }),
               );
             }
+
+            // Secondary fallback using apex origin in case ASSETS binding maps assets to apex host
+            if (vaultRes.status !== 200 && url.origin !== "https://arturonavax.dev") {
+              const apexVaultUrl = new URL(
+                `/__admin_vault__/${localeKey}/index.html`,
+                "https://arturonavax.dev",
+              );
+              const apexRes = await env.ASSETS.fetch(
+                new Request(apexVaultUrl.toString(), {
+                  headers: vaultHeaders,
+                }),
+              );
+              if (apexRes.status === 200) {
+                vaultRes = apexRes;
+              } else if (localeKey !== "default") {
+                const apexDefaultUrl = new URL(
+                  "/__admin_vault__/default/index.html",
+                  "https://arturonavax.dev",
+                );
+                const apexDefaultRes = await env.ASSETS.fetch(
+                  new Request(apexDefaultUrl.toString(), {
+                    headers: vaultHeaders,
+                  }),
+                );
+                if (apexDefaultRes.status === 200) {
+                  vaultRes = apexDefaultRes;
+                }
+              }
+            }
+
             if (vaultRes.status === 200) {
               vaultResponse = vaultRes;
             } else if (

@@ -157,11 +157,14 @@ const hasShortcuts = Boolean(shortcuts?.length);
         };
 
         var host = (window.location.hostname || "").toLowerCase();
-        if (host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev") {
+        var path = window.location.pathname;
+        if (
+          host === "admin.arturonavax.dev" ||
+          host === "dash.arturonavax.dev" ||
+          path.indexOf("/admin") !== -1
+        ) {
           return;
         }
-
-        var path = window.location.pathname;
         var isRoot = path === "/" || path === "/es" || path === "/es/";
         var isEsPath = path === "/es/" || path.indexOf("/es/") === 0;
 

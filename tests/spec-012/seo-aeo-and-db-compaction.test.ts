@@ -587,9 +587,7 @@ describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants"
     );
     expect(namedExports).toHaveLength(0);
     expect(Array.isArray(wrangler.assets.run_worker_first)).toBe(true);
-    expect(wrangler.assets.run_worker_first).toContain("/admin*");
-    expect(wrangler.assets.run_worker_first).toContain("/*/admin*");
-    expect(wrangler.assets.run_worker_first).toContain("/api/*");
+    expect(wrangler.assets.run_worker_first).toContain("/*");
     expect(wrangler.assets.run_worker_first).toContain("!/_astro/*");
     expect(wrangler.assets.run_worker_first).toContain("!/fonts/*");
   });
