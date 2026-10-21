@@ -30,7 +30,6 @@ interface Props {
 const normalizedPath = Astro.url.pathname.endsWith("/")
   ? Astro.url.pathname
   : `${Astro.url.pathname}/`;
-const currentPath = normalizedPath;
 const isResumeRoute =
   normalizedPath === "/resume/" || normalizedPath === "/es/resume/";
 
@@ -183,9 +182,19 @@ const i18nEs = {
   downloadTitle: "Descargar CV en PDF",
 };
 
-const isCvPage = containerMaxWidth === "cv";
+const isCvPage = containerMaxWidth === "cv" || isResumeRoute;
 const isJobPage =
-  containerMaxWidth === "4xl" || currentPath.includes("/experience/");
+  containerMaxWidth === "4xl" ||
+  /^\/(es\/)?experience\/.+/.test(normalizedPath);
+const isHomePage = normalizedPath === "/" || normalizedPath === "/es/";
+
+// Determine whether this page has sections on initial SSR render
+const hasInitialSections =
+  Boolean(customItems && customItems.length > 0) ||
+  isHomePage ||
+  isCvPage ||
+  isJobPage;
+
 const topValue = isCvPage
   ? "calc(5rem + 1px)"
   : isJobPage
@@ -193,6 +202,7 @@ const topValue = isCvPage
     : "calc(5rem + 1px)";
 const containerMaxClass = isCvPage ? "max-w-[210mm]" : "max-w-5xl";
 const asideGapClass = isJobPage ? "mr-16" : "mr-6";
+const asideWidthClass = isJobPage ? "w-52" : "w-64";
 ---
 
 <!-- Persistent Page Navigation Shell -->
@@ -200,7 +210,7 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
   id="page-index-nav-shell"
   transition:persist="page-index-nav"
   data-semi=";"
-  data-has-sections="true"
+  data-has-sections={hasInitialSections ? "true" : "false"}
   data-i18n-en={JSON.stringify(i18nEn)}
   data-i18n-es={JSON.stringify(i18nEs)}
   class="contents"
@@ -208,9 +218,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
   <!-- MODE A: DESKTOP LEFT SIDEBAR (>1600px Viewport Width) -->
   <div
     id="desktop-page-index-root"
-    data-has-sections="true"
-    class="page-index-fixed fixed inset-x-0 pointer-events-none z-30 select-none transition-[opacity,transform] duration-200"
-    style={`top: ${topValue};`}
+    data-has-sections={hasInitialSections ? "true" : "false"}
+    class={`page-index-fixed fixed inset-x-0 pointer-events-none z-30 select-none transition-[opacity,transform] duration-200 ${!hasInitialSections ? "is-empty force-hide-desktop opacity-0 pointer-events-none" : ""}`}
+    style={`top: ${topValue}; ${!hasInitialSections ? "display: none !important;" : ""}`}
   >
     <div
       id="desktop-page-index-maxw"
@@ -220,7 +230,7 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
         id="desktop-page-index"
         aria-label={isEs ? i18nEs.indexAria : i18nEn.indexAria}
         data-align-target={isJobPage ? "role-header" : alignTargetId}
-        class={`absolute right-full top-0 ${asideGapClass} w-64 pointer-events-auto font-mono text-xs`}
+        class={`absolute right-full top-0 ${asideGapClass} ${asideWidthClass} pointer-events-auto font-mono text-xs`}
       >
         <div class="geometric-box p-4 rounded bg-[var(--color-surface-card)]/90 backdrop-blur-md border border-[var(--color-surface-border)] shadow-card">
           <div class="flex items-center justify-between border-b border-[var(--color-surface-border-subtle)] pb-2.5 mb-3 text-[11px] uppercase tracking-wider text-[var(--color-text-muted)]">
@@ -366,8 +376,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
   <div id="mobile-page-index-root" class="contents pointer-events-none">
     <div
       id="mobile-page-index-container"
-      data-has-sections="true"
-      class="relative pointer-events-auto flex flex-col-reverse items-end gap-2.5 order-2 transition-[opacity,transform] duration-200"
+      data-has-sections={hasInitialSections ? "true" : "false"}
+      class={`relative pointer-events-auto flex flex-col-reverse items-end gap-2.5 order-2 transition-[opacity,transform] duration-200 ${!hasInitialSections ? "is-empty force-hide-mobile opacity-0 pointer-events-none" : ""}`}
+      style={!hasInitialSections ? "display: none !important;" : ""}
     >
       <!-- Upward Expanding Index Panel -->
       <div
@@ -757,6 +768,15 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       var desiredTop = targetRect.top;
       var finalTop = Math.max(minTop, desiredTop);
       desktopRoot.style.top = finalTop + "px";
+
+      // Viewport safety clamp: ensure desktop aside never hangs outside the viewport
+      desktopAside.style.transform = "";
+      var asideRect = desktopAside.getBoundingClientRect();
+      if (asideRect.left < 16) {
+        var overflowShift = 16 - asideRect.left;
+        desktopAside.style.transform =
+          "translateX(" + Math.ceil(overflowShift) + "px)";
+      }
     }
     window.__alignDesktopIndex = alignDesktopIndex;
 
@@ -1384,6 +1404,8 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       if (desktopAside) {
         desktopAside.classList.toggle("mr-16", isJob);
         desktopAside.classList.toggle("mr-6", !isJob);
+        desktopAside.classList.toggle("w-52", isJob);
+        desktopAside.classList.toggle("w-64", !isJob);
         desktopAside.setAttribute(
           "data-align-target",
           isJob ? "role-header" : isCv ? "cv-document-sheet" : "about",
@@ -1845,11 +1867,13 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
 
         if (hasSections) {
           if (desktopRoot) {
+            desktopRoot.style.removeProperty("display");
             desktopRoot.classList.remove(
               "opacity-0",
               "pointer-events-none",
               "translate-y-2",
               "is-empty",
+              "force-hide-desktop",
             );
             desktopRoot.classList.add(
               "opacity-100",
@@ -1859,11 +1883,13 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
             desktopRoot.setAttribute("data-has-sections", "true");
           }
           if (mobileContainer) {
+            mobileContainer.style.removeProperty("display");
             mobileContainer.classList.remove(
               "opacity-0",
               "pointer-events-none",
               "translate-y-2",
               "is-empty",
+              "force-hide-mobile",
             );
             mobileContainer.classList.add(
               "opacity-100",
@@ -1878,6 +1904,7 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
           syncResponsiveMode();
         } else {
           if (desktopRoot) {
+            desktopRoot.style.display = "none";
             desktopRoot.classList.remove(
               "opacity-100",
               "pointer-events-auto",
@@ -1888,10 +1915,12 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
               "pointer-events-none",
               "translate-y-2",
               "is-empty",
+              "force-hide-desktop",
             );
             desktopRoot.setAttribute("data-has-sections", "false");
           }
           if (mobileContainer) {
+            mobileContainer.style.display = "none";
             mobileContainer.classList.remove(
               "opacity-100",
               "pointer-events-auto",
@@ -1902,6 +1931,7 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
               "pointer-events-none",
               "translate-y-2",
               "is-empty",
+              "force-hide-mobile",
             );
             mobileContainer.setAttribute("data-has-sections", "false");
           }
@@ -1931,14 +1961,83 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
       updateCvButtons(checkIsResumePage(), initialLang);
     } catch (_) {}
 
-    // Initial Mount
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", function () {
-        setupPageIndex(false);
-      });
-    } else {
-      setupPageIndex(false);
+    // Initial Mount: Defer TOC scanning and layout queries after window load & idle (Zero LCP/INP impact)
+    function onInitialLoad() {
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(
+          function () {
+            setupPageIndex(false);
+          },
+          { timeout: 3000 },
+        );
+      } else {
+        setTimeout(function () {
+          setupPageIndex(false);
+        }, 300);
+      }
     }
+
+    if (document.readyState === "complete") {
+      onInitialLoad();
+    } else {
+      window.addEventListener("load", onInitialLoad, { once: true });
+    }
+
+    // Pre-Paint Route Shield: suppress PageIndex in incoming document before swap if incoming page lacks sections
+    document.addEventListener("astro:before-swap", function (e) {
+      var newDoc = (e as any).newDocument;
+      if (!newDoc) return;
+      var newShell = newDoc.getElementById("page-index-nav-shell");
+      var newCustomScript = newDoc.getElementById("page-index-custom-items");
+
+      var incomingHasSections = false;
+      if (newCustomScript) {
+        incomingHasSections = true;
+      } else if (
+        newShell &&
+        newShell.getAttribute("data-has-sections") === "true"
+      ) {
+        incomingHasSections = true;
+      }
+
+      var desktopRoot = newDoc.getElementById("desktop-page-index-root");
+      var mobileContainer = newDoc.getElementById(
+        "mobile-page-index-container",
+      );
+      var shell = newDoc.getElementById("page-index-nav-shell");
+
+      if (!incomingHasSections) {
+        if (desktopRoot) {
+          desktopRoot.setAttribute("data-has-sections", "false");
+          desktopRoot.classList.add(
+            "opacity-0",
+            "pointer-events-none",
+            "is-empty",
+            "force-hide-desktop",
+          );
+          desktopRoot.classList.remove("opacity-100", "pointer-events-auto");
+          desktopRoot.style.display = "none";
+        }
+        if (mobileContainer) {
+          mobileContainer.setAttribute("data-has-sections", "false");
+          mobileContainer.classList.add(
+            "opacity-0",
+            "pointer-events-none",
+            "is-empty",
+            "force-hide-mobile",
+          );
+          mobileContainer.classList.remove(
+            "opacity-100",
+            "pointer-events-auto",
+          );
+          mobileContainer.style.display = "none";
+        }
+        if (shell) {
+          shell.setAttribute("data-has-sections", "false");
+        }
+        (window as any).__hasPageIndex = false;
+      }
+    });
 
     // Pre-Paint Route Sync: astro:after-swap fires before browser paints
     document.addEventListener("astro:after-swap", function () {
@@ -1946,7 +2045,9 @@ const asideGapClass = isJobPage ? "mr-16" : "mr-6";
     });
 
     document.addEventListener("astro:page-load", function () {
-      setupPageIndex(false);
+      if (document.readyState === "complete") {
+        setupPageIndex(false);
+      }
     });
   })();
 </script>

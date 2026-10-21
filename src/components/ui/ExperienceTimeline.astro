@@ -300,7 +300,8 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
             {simCount > 0 && (
               <a
                 href={`${jobDetailUrl}#simulations`}
-                class="inline-flex items-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-all group/sim shadow-sm"
+                class="inline-flex items-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-2.5 py-1 text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-opacity group/sim shadow-sm"
+                aria-label={`${simCount} ${locale === "es" ? (simCount === 1 ? "caso de estudio interactivo" : "casos de estudio interactivos") : simCount === 1 ? "interactive case study" : "interactive case studies"} — ${company}`}
                 title={
                   locale === "es"
                     ? `Ver ${simCount} caso de estudio interactivo para ${company}`
@@ -317,25 +318,19 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
                     : simCount === 1
                       ? "case study"
                       : "case studies"}
-                </span>
-                <span class="transition-transform group-hover/sim:translate-x-0.5">
-                  &rarr;
+                  <span class="sr-only"> — {company}</span>
                 </span>
               </a>
             )}
 
             <a
               href={jobDetailUrl}
-              class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-bg-primary)] shadow-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] group/view"
+              aria-label={`${locale === "es" ? "Ver detalles del rol" : "View role details"}: ${role} at ${company}`}
+              class="inline-flex items-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-bg-primary)] shadow-xs transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] group/view"
             >
               <span>
                 {locale === "es" ? "Ver detalles del rol" : "View role details"}
-              </span>
-              <span
-                class="transition-transform group-hover/view:translate-x-0.5"
-                aria-hidden="true"
-              >
-                &rarr;
+                <span class="sr-only"> — {company}</span>
               </span>
             </a>
           </div>

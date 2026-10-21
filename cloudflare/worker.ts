@@ -172,6 +172,12 @@ function createSafeResponse(
   status: number,
   headers: Headers,
 ): Response {
+  if (!headers.has("Strict-Transport-Security")) {
+    headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload",
+    );
+  }
   if (NULL_BODY_STATUSES.has(status)) {
     headers.delete("content-type");
     headers.delete("content-length");
@@ -380,6 +386,20 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     const url = new URL(request.url);
+
+    // TASK 2: Intercept Cloudflare challenge platform JSD scripts at Edge
+    if (url.pathname.startsWith("/cdn-cgi/challenge-platform/")) {
+      return new Response("/* noop */", {
+        status: 200,
+        headers: {
+          "Content-Type": "application/javascript; charset=utf-8",
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Strict-Transport-Security":
+            "max-age=63072000; includeSubDomains; preload",
+        },
+      });
+    }
+
     const rawHost =
       request.headers.get("x-forwarded-host") ||
       request.headers.get("host") ||
@@ -895,6 +915,29 @@ export default {
       });
     }
 
+    const isPublicHtmlRoute =
+      request.method === "GET" &&
+      !pathname.startsWith("/api/") &&
+      !isAdminPage &&
+      !isProtectedApi &&
+      (pathname.endsWith("/") || !pathname.includes("."));
+
+    const cache =
+      typeof caches !== "undefined" && caches.default ? caches.default : null;
+    const cacheKey = new Request(url.toString(), {
+      method: "GET",
+      headers: request.headers,
+    });
+
+    if (cache && isPublicHtmlRoute) {
+      try {
+        const cachedRes = await cache.match(cacheKey);
+        if (cachedRes) {
+          return cachedRes;
+        }
+      } catch (_) {}
+    }
+
     const response = await env.ASSETS.fetch(request);
     let edgeVisitLogged = false;
 
@@ -990,6 +1033,7 @@ export default {
       pathname.endsWith("/") ||
       !pathname.includes(".")
     ) {
+      headers.set("Content-Type", "text/html; charset=utf-8");
       if (!headers.has("Cache-Control")) {
         headers.set("Cache-Control", "public, max-age=0, must-revalidate");
       }
@@ -1056,6 +1100,7 @@ export default {
       shouldWrapResponse = true;
     }
 
+    let finalResponse: Response;
     if (shouldWrapResponse) {
       if (
         response.status === 200 &&
@@ -1077,13 +1122,28 @@ export default {
               "",
             );
         }
-        return new Response(text, { status: response.status, headers });
+        finalResponse = new Response(text, {
+          status: response.status,
+          headers,
+        });
+      } else {
+        finalResponse = createSafeResponse(
+          response.body,
+          response.status,
+          headers,
+        );
       }
-
-      return createSafeResponse(response.body, response.status, headers);
+    } else {
+      finalResponse = response;
     }
 
-    return response;
+    if (cache && isPublicHtmlRoute && response.status === 200) {
+      try {
+        ctx.waitUntil(cache.put(cacheKey, finalResponse.clone()));
+      } catch (_) {}
+    }
+
+    return finalResponse;
   },
 
   // Cron Trigger Engine for Daily Analytics Rollups (SPEC-003 Section 2.3.2)

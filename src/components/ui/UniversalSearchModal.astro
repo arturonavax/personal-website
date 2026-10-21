@@ -1592,14 +1592,7 @@ const searchIndexPath = "/search-index.json";
       { passive: true, capture: true },
     );
 
-    document.addEventListener("astro:page-load", function () {
-      initSearch();
-    });
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initSearch);
-    } else {
-      initSearch();
-    }
+    // Defer full search initialization strictly to first user activation (Cmd+K / search button click)
   })();
 </script>
 

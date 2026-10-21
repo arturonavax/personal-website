@@ -747,12 +747,39 @@ const turnstileSiteKey =
       }
     }
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", setupContactModal);
-    } else {
+    // Defer contact modal DOM setup strictly to user interaction
+    function ensureInitializedAndOpen() {
       setupContactModal();
+      if (typeof window.openContactModal === "function") {
+        window.openContactModal();
+      }
     }
-    document.addEventListener("astro:page-load", setupContactModal);
-    document.addEventListener("modals:mounted", setupContactModal);
+
+    window.openContactModal = ensureInitializedAndOpen;
+
+    document.addEventListener("click", function (e) {
+      var trigger =
+        e.target &&
+        e.target.closest &&
+        e.target.closest("[data-open-contact-modal]");
+      if (trigger) {
+        e.preventDefault();
+        ensureInitializedAndOpen();
+      }
+    });
+
+    document.addEventListener(
+      "pointerenter",
+      function (e) {
+        var trigger =
+          e.target &&
+          e.target.closest &&
+          e.target.closest("[data-open-contact-modal]");
+        if (trigger) {
+          loadTurnstileScript();
+        }
+      },
+      { passive: true },
+    );
   })();
 </script>

@@ -17,16 +17,24 @@ section[id],
   contain-intrinsic-size: auto 500px;
 }
 
-/* 1. Above-the-fold Hero: Immediate paint without layout containment delay */
-#about {
+/* 1. Above-the-fold Hero & Principles: Immediate paint without layout containment delay (LCP optimization) */
+#about,
+#philosophies,
+section#about,
+section#philosophies {
   content-visibility: visible !important;
   contain: style;
 }
 
-/* 2. Below-the-fold sections: Strict layout & paint virtualization */
-main section:not(#about) {
+/* 2. Below-the-fold sections: Strict layout & paint virtualization (Task 3 / CWV) */
+section#experience,
+section#projects,
+section#services,
+section#simulations,
+section#blog,
+section#contact {
   content-visibility: auto;
-  contain-intrinsic-size: auto 900px;
+  contain-intrinsic-size: auto 600px;
 }
 
 html.is-anchor-scrolling main section,
@@ -113,7 +121,7 @@ dialog:not([open]),
   font-family: "Geist Variable";
   src: url("/fonts/Geist-Variable.woff2") format("woff2-variations");
   font-weight: 100 900;
-  font-display: swap;
+  font-display: optional;
   font-style: normal;
 }
 
@@ -122,14 +130,14 @@ dialog:not([open]),
   src: url("/fonts/Geist-Variable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
   font-family: "GeistMono Variable";
   src: url("/fonts/GeistMono-Variable.woff2") format("woff2-variations");
   font-weight: 100 900;
-  font-display: swap;
+  font-display: optional;
   font-style: normal;
 }
 
@@ -138,7 +146,7 @@ dialog:not([open]),
   src: url("/fonts/GeistMono-Variable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 :root {
@@ -362,11 +370,6 @@ body::-webkit-scrollbar-thumb:hover,
 
 ::view-transition {
   background-color: var(--color-surface-bg);
-}
-
-#matrix-container,
-#matrix-canvas {
-  view-transition-name: none !important;
 }
 
 ::selection {
@@ -921,7 +924,9 @@ header#site-header {
   view-transition-name: site-header;
 }
 
-#page-index-nav {
+#page-index-nav,
+#page-index-nav-shell,
+#desktop-page-index-root {
   view-transition-name: page-index-nav;
 }
 
@@ -931,6 +936,10 @@ header#site-header {
 
 #back-to-top-btn {
   view-transition-name: back-to-top;
+}
+
+matrix-canvas-layer {
+  view-transition-name: matrix-canvas-background;
 }
 
 /* Neutralize browser crossfade/morph on HUD elements during standard navigations */
@@ -945,7 +954,10 @@ html:not(.theme-transitioning)::view-transition-old(lang-suggestion-banner),
 html:not(.theme-transitioning)::view-transition-new(lang-suggestion-banner),
 html:not(.theme-transitioning)::view-transition-group(back-to-top),
 html:not(.theme-transitioning)::view-transition-old(back-to-top),
-html:not(.theme-transitioning)::view-transition-new(back-to-top) {
+html:not(.theme-transitioning)::view-transition-new(back-to-top),
+html:not(.theme-transitioning)::view-transition-group(matrix-canvas-background),
+html:not(.theme-transitioning)::view-transition-old(matrix-canvas-background),
+html:not(.theme-transitioning)::view-transition-new(matrix-canvas-background) {
   animation: none !important;
   mix-blend-mode: normal !important;
 }

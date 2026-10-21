@@ -953,8 +953,6 @@ const jobIndexItems: IndexItem[] = [
           window.addEventListener("popstate", function () {
             if (location.pathname.includes("/experience/")) {
               navigateTo(location.href, "past", true);
-            } else {
-              window.location.reload();
             }
           });
         }

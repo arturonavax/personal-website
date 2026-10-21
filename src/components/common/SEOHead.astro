@@ -68,9 +68,20 @@ const { enUrl, esUrl, xDefaultUrl } = resolveVerifiedHreflang({
   siteUrl,
 });
 
-const pageTitle = title.includes("Arturo Nava")
-  ? title
-  : `${title} | Arturo Nava`;
+const FALLBACK_TITLE = "Arturo Nava | Senior Backend & AI Systems Engineer";
+const FALLBACK_DESCRIPTION =
+  "Senior Software Engineer & AI Architect specializing in Go, Rust, Python, high-concurrency distributed systems, and edge infrastructure.";
+
+const finalTitle =
+  title && title.trim().length > 0 ? title.trim() : FALLBACK_TITLE;
+const finalDescription =
+  description && description.trim().length > 0
+    ? description.trim()
+    : FALLBACK_DESCRIPTION;
+
+const pageTitle = finalTitle.includes("Arturo Nava")
+  ? finalTitle
+  : `${finalTitle} | Arturo Nava`;
 const resolvedOgImage = ogImage.startsWith("http")
   ? ogImage
   : `${siteUrl}${ogImage}`;
@@ -79,36 +90,21 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
   locale,
   canonicalUrl: cleanCanonicalUrl,
   title: pageTitle,
-  description,
+  description: finalDescription,
 });
 ---
 
-<!-- RSS Auto-Discovery -->
-<link
-  rel="alternate"
-  type="application/rss+xml"
-  title="Arturo Nava — Engineering &amp; AI RSS Feed"
-  href="/rss.xml"
-/>
-
-<!-- Global Metadata -->
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{pageTitle}</title>
+<meta name="description" content={finalDescription} />
+<link rel="canonical" href={cleanCanonicalUrl} />
+{enUrl && <link rel="alternate" hreflang="en" href={enUrl} />}
+{esUrl && <link rel="alternate" hreflang="es" href={esUrl} />}
+{xDefaultUrl && (
+  <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
+)}
 
-<!-- 1. SVG para navegadores modernos con soporte vectorial -->
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<!-- 2. PNG de 48px para Googlebot-Favicon -->
-<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
-<!-- 3. Fallback clásico de compatibilidad -->
-<link rel="icon" href="/favicon.ico" sizes="any" />
-<!-- 4. iOS / Safari Web Clip -->
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-<!-- 5. Web App Manifest -->
-<link rel="manifest" href="/site.webmanifest" />
-
-<meta name="generator" content={Astro.generator} />
-
-<!-- Preload Critical Variable Fonts to eliminate late CSS discovery -->
 <link
   rel="preload"
   href="/fonts/Geist-Variable.woff2"
@@ -124,10 +120,29 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
   crossorigin="anonymous"
 />
 
+<!-- 1. SVG para navegadores modernos con soporte vectorial -->
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<!-- 2. PNG de 48px para Googlebot-Favicon -->
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+<!-- 3. Fallback clásico de compatibilidad -->
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<!-- 4. iOS / Safari Web Clip -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<!-- 5. Web App Manifest -->
+<link rel="manifest" href="/site.webmanifest" />
+
+<meta name="generator" content={Astro.generator} />
+
+<!-- RSS Auto-Discovery -->
+<link
+  rel="alternate"
+  type="application/rss+xml"
+  title="Arturo Nava — Engineering &amp; AI RSS Feed"
+  href="/rss.xml"
+/>
+
 <!-- Primary Meta Tags -->
-<title>{pageTitle}</title>
 <meta name="title" content={pageTitle} />
-<meta name="description" content={description} />
 <meta name="author" content="Arturo Nava" />
 <meta name="color-scheme" content="dark light" />
 <meta
@@ -140,16 +155,6 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
   content="#F4F6F8"
   media="(prefers-color-scheme: light)"
 />
-
-<!-- Canonical URL -->
-<link rel="canonical" href={cleanCanonicalUrl} />
-
-<!-- Alternate Multilingual Hreflang Tags -->
-{enUrl && <link rel="alternate" hreflang="en" href={enUrl} />}
-{esUrl && <link rel="alternate" hreflang="es" href={esUrl} />}
-{xDefaultUrl && (
-  <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
-)}
 
 <!-- Dynamic Canonical Synchronization across ClientRouter Transitions -->
 <script>
@@ -197,7 +202,7 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
 <meta property="og:type" content={type} />
 <meta property="og:url" content={cleanCanonicalUrl} />
 <meta property="og:title" content={pageTitle} />
-<meta property="og:description" content={description} />
+<meta property="og:description" content={finalDescription} />
 <meta property="og:image" content={resolvedOgImage} />
 <meta property="og:image:secure_url" content={resolvedOgImage} />
 <meta property="og:image:width" content="1200" />
@@ -223,7 +228,7 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
 <meta name="twitter:creator" content="@arturonavax" />
 <meta name="twitter:url" content={cleanCanonicalUrl} />
 <meta name="twitter:title" content={pageTitle} />
-<meta name="twitter:description" content={description} />
+<meta name="twitter:description" content={finalDescription} />
 <meta name="twitter:image" content={resolvedOgImage} />
 <meta
   name="twitter:image:alt"

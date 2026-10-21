@@ -79,6 +79,16 @@ const alternateEsUrl =
       )
     : undefined;
 
+const FALLBACK_TITLE = "Arturo Nava | Senior Backend & AI Systems Engineer";
+const FALLBACK_DESCRIPTION =
+  "Senior Software Engineer & AI Architect specializing in Go, Rust, Python, high-concurrency distributed systems, and edge infrastructure.";
+const finalTitle =
+  title && title.trim().length > 0 ? title.trim() : FALLBACK_TITLE;
+const finalDescription =
+  description && description.trim().length > 0
+    ? description.trim()
+    : FALLBACK_DESCRIPTION;
+
 const hasSponsorships = hasSponsorshipMethods;
 const hasJudges = Boolean(judgeProfiles?.length);
 const hasShortcuts = Boolean(shortcuts?.length);
@@ -92,10 +102,9 @@ const hasShortcuts = Boolean(shortcuts?.length);
   style="background-color: var(--surface-backdrop); color-scheme: dark;"
 >
   <head>
-    <ClientRouter />
     <SEOHead
-      title={title}
-      description={description}
+      title={finalTitle}
+      description={finalDescription}
       locale={locale}
       canonicalUrl={canonicalUrl}
       type={type}
@@ -106,53 +115,71 @@ const hasShortcuts = Boolean(shortcuts?.length);
       availableLocales={availableLocales}
       noindex={noindex}
     />
+    <ClientRouter />
 
     <!-- Anti-FOUC de tema, neutralizador JSD de Cloudflare y redirección de idioma -->
     <script is:inline>
       (function () {
         // 1. Complete Neutralization of Cloudflare Edge JSD Challenge Script & 1x1 Iframe
-        function isCfChallengeNode(node) {
-          if (!node || node.nodeType !== 1) return false;
-          var tag = node.tagName;
-          if (tag === "IFRAME") {
-            var w = node.width || (node.style && node.style.width);
-            var h = node.height || (node.style && node.style.height);
-            var vis = node.style && node.style.visibility;
-            if (
-              (!node.src || node.src === "about:blank") &&
-              (w == 1 ||
-                w === "1px" ||
-                h == 1 ||
-                h === "1px" ||
-                vis === "hidden")
-            ) {
-              return true;
-            }
-          }
-          if (tag === "SCRIPT") {
-            var src =
-              node.src || (node.getAttribute && node.getAttribute("src")) || "";
-            var text = node.textContent || "";
-            if (
-              src.indexOf("/cdn-cgi/challenge-platform/") !== -1 ||
-              text.indexOf("__CF$cv$params") !== -1 ||
-              text.indexOf("/cdn-cgi/challenge-platform/") !== -1
-            ) {
-              return true;
-            }
-          }
-          return false;
-        }
-
-        var origAppendChild = Node.prototype.appendChild;
+        const origAppend = Node.prototype.appendChild;
         Node.prototype.appendChild = function (node) {
-          if (isCfChallengeNode(node)) return node;
-          return origAppendChild.call(this, node);
+          try {
+            if (node && node.nodeType === 1) {
+              const tag = node.tagName;
+              if (tag === "SCRIPT") {
+                const src = node.getAttribute("src") || "";
+                const txt = node.textContent || "";
+                if (
+                  src.includes("/cdn-cgi/challenge-platform/") ||
+                  txt.includes("__CF$cv$params")
+                ) {
+                  return node;
+                }
+              }
+              if (tag === "IFRAME") {
+                const style = node.getAttribute("style") || "";
+                if (
+                  (node.height === "1" || node.height === 1) &&
+                  (node.width === "1" || node.width === 1) &&
+                  (style.includes("visibility: hidden") ||
+                    style.includes("display: none"))
+                ) {
+                  return node;
+                }
+              }
+            }
+          } catch (_) {}
+          return origAppend.call(this, node);
         };
 
-        var origInsertBefore = Node.prototype.insertBefore;
+        const origInsertBefore = Node.prototype.insertBefore;
         Node.prototype.insertBefore = function (node, child) {
-          if (isCfChallengeNode(node)) return node;
+          try {
+            if (node && node.nodeType === 1) {
+              const tag = node.tagName;
+              if (tag === "SCRIPT") {
+                const src = node.getAttribute("src") || "";
+                const txt = node.textContent || "";
+                if (
+                  src.includes("/cdn-cgi/challenge-platform/") ||
+                  txt.includes("__CF$cv$params")
+                ) {
+                  return node;
+                }
+              }
+              if (tag === "IFRAME") {
+                const style = node.getAttribute("style") || "";
+                if (
+                  (node.height === "1" || node.height === 1) &&
+                  (node.width === "1" || node.width === 1) &&
+                  (style.includes("visibility: hidden") ||
+                    style.includes("display: none"))
+                ) {
+                  return node;
+                }
+              }
+            }
+          } catch (_) {}
           return origInsertBefore.call(this, node, child);
         };
 
@@ -226,17 +253,18 @@ const hasShortcuts = Boolean(shortcuts?.length);
           ref.indexOf("ecosia.") !== -1 ||
           ref.indexOf("yandex.") !== -1;
 
-        if (savedLocale && !isSearchEngine) {
-          if (savedLocale === "es" && !isEsPath) {
-            var targetEs = "/es" + (path.startsWith("/") ? path : "/" + path);
+        if (isRoot && savedLocale && !isSearchEngine) {
+          if (savedLocale === "es" && path === "/") {
             window.location.replace(
-              targetEs + window.location.search + window.location.hash,
+              "/es/" + window.location.search + window.location.hash,
             );
             return;
-          } else if (savedLocale === "en" && isEsPath) {
-            var targetEn = path.replace(/^\/es(?:\/|$)/, "/") || "/";
+          } else if (
+            savedLocale === "en" &&
+            (path === "/es" || path === "/es/")
+          ) {
             window.location.replace(
-              targetEn + window.location.search + window.location.hash,
+              "/" + window.location.search + window.location.hash,
             );
             return;
           }
@@ -254,15 +282,9 @@ const hasShortcuts = Boolean(shortcuts?.length);
           }
         }
 
-        // Intercept pending SPA view transitions to enforce active language
+        // Intercept pending SPA view transitions to synchronize active language preference
         document.addEventListener("astro:before-preparation", function (ev) {
-          var pref = null;
-          try {
-            pref =
-              localStorage.getItem("preferred_locale") ||
-              sessionStorage.getItem("preferred_locale");
-          } catch (_) {}
-          if (!pref || !ev.to) return;
+          if (!ev.to) return;
           var toUrl = ev.to;
           if (toUrl.origin !== window.location.origin) return;
           var p = toUrl.pathname;
@@ -275,11 +297,11 @@ const hasShortcuts = Boolean(shortcuts?.length);
             return;
           }
           var toIsEs = p === "/es" || p === "/es/" || p.startsWith("/es/");
-          if (pref === "es" && !toIsEs) {
-            toUrl.pathname = "/es" + (p.startsWith("/") ? p : "/" + p);
-          } else if (pref === "en" && toIsEs) {
-            toUrl.pathname = p.replace(/^\/es(?:\/|$)/, "/") || "/";
-          }
+          try {
+            var active = toIsEs ? "es" : "en";
+            sessionStorage.setItem("preferred_locale", active);
+            localStorage.setItem("preferred_locale", active);
+          } catch (_) {}
         });
 
         // Sync locale attribute and storage on page load
@@ -547,6 +569,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <!-- Script de runtime: expone APIs a window, mantiene polyfills y gestiona eventos -->
     <script>
       import { handleEscapeKey } from "@/lib/navigation/escape-router";
+      import { navigate } from "astro:transitions/client";
 
       // 1. Resiliencia contra extensiones externas mal implementadas
       if (typeof Document !== "undefined") {
@@ -762,7 +785,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
       window.addEventListener("keydown", (e: KeyboardEvent) => {
         if (e.key === "Escape" || e.key === "Esc") {
           const handled = handleEscapeKey(window.location.pathname, (url) => {
-            window.location.href = url;
+            void navigate(url);
           });
           if (handled) {
             e.preventDefault();

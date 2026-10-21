@@ -1,20 +1,18 @@
-# Arturo Enrique Nava Matheus (Arturo Nava)
+# Arturo Enrique Nava Matheus — Senior Backend & AI Systems Engineer
 
-> Senior Software Engineer & AI Engineer specializing in Go, Rust, Python, distributed systems, high concurrency, application security, and Web3 infrastructure.
+> Personal engineering portfolio, architectural case studies, distributed systems simulations, and technical writing by Arturo Nava (Senior Software Engineer & AI Architect based in Bogotá, Colombia, specializing in Go, Rust, Python, high-concurrency backends, and Cloudflare Edge infrastructure).
 
 ## Core Pages
 
-- [Home & Engineering Overview](https://arturonavax.dev/): Executive summary, architectural pillars, interactive system telemetry, and featured work.
-- [Professional Experience](https://arturonavax.dev/experience/): Career trajectory across enterprise backend engineering, application security, and high-concurrency distributed systems.
-- [Projects & Open Source](https://arturonavax.dev/projects/): Production software, systems engineering tools, and edge-native architectures.
-- [Case Studies & Simulations](https://arturonavax.dev/case-studies/): Real-world distributed systems benchmarks, circuit breakers, and high-availability patterns.
-- [Technical Blog](https://arturonavax.dev/blog/): Deep-dive articles on Go, Rust, AI agent orchestration, and edge performance.
-- [Engineering Services](https://arturonavax.dev/services/): Technical consulting, backend architecture audits, and AI systems development.
-- [Interactive Resume](https://arturonavax.dev/resume/): Full curriculum vitae, technical skills matrix, and downloadable PDF resume.
+- [Home & Engineering Philosophy](https://arturonavax.dev/): Overview of architectural pillars, core stack, and production systems metrics.
+- [Professional Experience](https://arturonavax.dev/experience/): Career timeline across LATAM Airlines, Leal, Mercado Libre, and Imagemaker.
+- [Engineering Projects & Case Studies](https://arturonavax.dev/projects/): Production systems, open-source tools, and distributed systems architectures.
+- [Technical Services & Consulting](https://arturonavax.dev/services/): Backend architecture, AI agent orchestration, and high-concurrency consulting.
+- [Interactive Resume / CV](https://arturonavax.dev/resume/): Full curriculum vitae, technical skills, and verifiable credentials.
+- [Engineering Blog](https://arturonavax.dev/blog/): Deep-dive articles on Go, Rust, distributed systems, and AI engineering.
 
-## AI & Machine-Readable Resources
+## Machine-Readable Resources
 
-- [Complete LLM Context (llms-full.txt)](https://arturonavax.dev/llms-full.txt): Full-text aggregation of all experience, projects, services, and technical articles.
-- [Search Index JSON](https://arturonavax.dev/search-index.json): Structured JSON catalog of all site routes and metadata.
-- [RSS Feed](https://arturonavax.dev/rss.xml): Syndicated XML feed of technical publications.
-- [Sitemap XML](https://arturonavax.dev/sitemap-index.xml): Canonical URL index across English and Spanish locales.
+- [Full LLMs Documentation](https://arturonavax.dev/llms-full.txt): Comprehensive plain-text documentation of all experience, projects, and articles.
+- [RSS Feed](https://arturonavax.dev/rss.xml): Syndicated feed of technical articles and updates.
+- [Sitemap](https://arturonavax.dev/sitemap-index.xml): Complete XML sitemap for crawlers and autonomous agents.

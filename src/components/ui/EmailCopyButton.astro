@@ -61,7 +61,35 @@ const copiedText = isEs
 </email-copy-trigger>
 
 <script>
-  import { copyToClipboard } from "@/lib/utils/clipboard";
+  async function copyToClipboard(text: string): Promise<boolean> {
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_) {}
+    }
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      textArea.style.top = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const exec = (document as unknown as Record<string, unknown>)[
+        "execCommand"
+      ];
+      const successful =
+        typeof exec === "function"
+          ? Boolean(exec.call(document, "copy"))
+          : false;
+      textArea.remove();
+      return successful;
+    } catch (_) {
+      return false;
+    }
+  }
 
   class EmailCopyTrigger extends HTMLElement {
     private button: HTMLButtonElement | null = null;

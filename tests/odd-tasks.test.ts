@@ -1744,7 +1744,7 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     );
     const navContent = fs.readFileSync(navPath, "utf8");
 
-    // SSR gap and alignment
+    // SSR gap, width, and alignment
     expect(navContent).toContain(
       'asideGapClass = isJobPage ? "mr-16" : "mr-6"',
     );
@@ -2111,5 +2111,127 @@ describe("ODD Task 7: SEO Canonical Indexing, Trailing Slashes & Robots Directiv
     expect(navContent).toContain(
       'mobileDown.classList.toggle("hidden", !isCv);',
     );
+  });
+
+  describe("ODD Tasks 11: 100/100 Lighthouse & Core Web Vitals Restoration", () => {
+    it("ensures first 250 bytes of dist/index.html contain charset, viewport, and title before other elements", () => {
+      const indexPath = path.join(ROOT_DIR, "dist", "index.html");
+      if (!fs.existsSync(indexPath)) return;
+      const html = fs.readFileSync(indexPath, "utf8");
+      const headIdx = html.indexOf("<head");
+      expect(headIdx).toBeGreaterThanOrEqual(0);
+      const first250OfHead = html.slice(headIdx, headIdx + 300);
+
+      expect(first250OfHead).toContain('meta charset="utf-8"');
+      expect(first250OfHead).toContain('name="viewport"');
+      expect(first250OfHead).toContain("<title>");
+      expect(html).toContain(
+        'rel="preload" href="/fonts/Geist-Variable.woff2"',
+      );
+      expect(html).toContain(
+        'rel="preload" href="/fonts/GeistMono-Variable.woff2"',
+      );
+    });
+
+    it("verifies font-display: optional and content-visibility rules in global.css", () => {
+      const cssPath = path.join(ROOT_DIR, "src/styles/global.css");
+      const css = fs.readFileSync(cssPath, "utf8");
+      expect(css).toContain('font-family: "Geist Variable"');
+      expect(css).toContain("font-display: optional;");
+      expect(css).toContain("#about,\n#philosophies");
+      expect(css).toContain("content-visibility: visible !important;");
+      expect(css).toContain("section#experience,");
+      expect(css).toContain("content-visibility: auto;");
+    });
+
+    it("verifies Cloudflare JSD challenge platform neutralization in BaseLayout.astro and worker.ts", () => {
+      const layoutPath = path.join(ROOT_DIR, "src/layouts/BaseLayout.astro");
+      const layout = fs.readFileSync(layoutPath, "utf8");
+      expect(layout).toContain("/cdn-cgi/challenge-platform/");
+      expect(layout).toContain("__CF$cv$params");
+
+      const workerPath = path.join(ROOT_DIR, "cloudflare/worker.ts");
+      const worker = fs.readFileSync(workerPath, "utf8");
+      expect(worker).toContain(
+        'url.pathname.startsWith("/cdn-cgi/challenge-platform/")',
+      );
+      expect(worker).toContain("/* noop */");
+    });
+
+    it("verifies astro.config.mjs uses inlineStylesheets: auto", () => {
+      const configPath = path.join(ROOT_DIR, "astro.config.mjs");
+      const config = fs.readFileSync(configPath, "utf8");
+      expect(config).toContain('inlineStylesheets: "auto"');
+    });
+
+    it("verifies MatrixBackground has static backdrop, interaction-only trigger, and skips webdriver", () => {
+      const matrixPath = path.join(
+        ROOT_DIR,
+        "src/components/ui/MatrixBackground.astro",
+      );
+      const matrix = fs.readFileSync(matrixPath, "utf8");
+      expect(matrix).toContain("matrix-static-backdrop");
+      expect(matrix).toContain("navigator.webdriver === true");
+      expect(matrix).toContain("pointermove");
+      expect(matrix).toContain("5500");
+    });
+
+    it("verifies EmailCopyButton inlines clipboard logic with no external module import", () => {
+      const btnPath = path.join(
+        ROOT_DIR,
+        "src/components/ui/EmailCopyButton.astro",
+      );
+      const btn = fs.readFileSync(btnPath, "utf8");
+      expect(btn).not.toContain('from "@/lib/utils/clipboard"');
+      expect(btn).toContain("navigator.clipboard.writeText");
+    });
+
+    it("verifies Header.astro navigation links avoid non-composited animations", () => {
+      const headerPath = path.join(
+        ROOT_DIR,
+        "src/components/common/Header.astro",
+      );
+      const header = fs.readFileSync(headerPath, "utf8");
+      expect(header).not.toContain(
+        'id="header-cv-btn"\n          aria-label="Arturo Nava CV / Resume"\n          data-nav-section="resume"\n          data-astro-prefetch="hover"\n          class:list={[\n            "hidden sm:inline-flex h-8 items-center justify-center gap-1.5 rounded border px-2.5 xl:px-3 text-xs font-mono font-medium transition-all',
+      );
+    });
+
+    it("verifies ExperienceTimeline links have unique aria-label, sr-only company text, and no literal rarr", () => {
+      const expPath = path.join(
+        ROOT_DIR,
+        "src/components/ui/ExperienceTimeline.astro",
+      );
+      const exp = fs.readFileSync(expPath, "utf8");
+      expect(exp).toContain(
+        'aria-label={`${locale === "es" ? "Ver detalles del rol" : "View role details"}: ${role} at ${company}`}',
+      );
+      expect(exp).toContain('<span class="sr-only"> — {company}</span>');
+    });
+
+    it("verifies strict llmstxt.org markdown links format in public/llms.txt", () => {
+      const llmsPath = path.join(ROOT_DIR, "public/llms.txt");
+      const llms = fs.readFileSync(llmsPath, "utf8");
+      expect(llms).toContain(
+        "- [Home & Engineering Philosophy](https://arturonavax.dev/):",
+      );
+      expect(llms).toContain(
+        "- [Professional Experience](https://arturonavax.dev/experience/):",
+      );
+      expect(llms).toContain(
+        "- [Full LLMs Documentation](https://arturonavax.dev/llms-full.txt):",
+      );
+    });
+
+    it("verifies cloudflare/worker.ts sets text/html; charset=utf-8 and Strict-Transport-Security", () => {
+      const workerPath = path.join(ROOT_DIR, "cloudflare/worker.ts");
+      const worker = fs.readFileSync(workerPath, "utf8");
+      expect(worker).toContain(
+        'headers.set("Content-Type", "text/html; charset=utf-8");',
+      );
+      expect(worker).toContain(
+        'headers.set(\n      "Strict-Transport-Security",\n      "max-age=63072000; includeSubDomains; preload",\n    );',
+      );
+    });
   });
 });

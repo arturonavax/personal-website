@@ -124,7 +124,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
         data-astro-prefetch="hover"
         aria-current={isAboutActive ? "page" : undefined}
         class:list={[
-          "h-full flex items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+          "h-full flex items-center px-3 xl:px-3.5 relative border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
           isAboutActive
             ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
             : "text-[var(--color-text-secondary)]",
@@ -141,7 +141,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           data-astro-prefetch="hover"
           aria-current={isExperienceActive ? "page" : undefined}
           class:list={[
-            "h-full flex items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            "h-full flex items-center px-3 xl:px-3.5 relative border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
             isExperienceActive
               ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
               : "text-[var(--color-text-secondary)]",
@@ -159,7 +159,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           data-astro-prefetch="hover"
           aria-current={isProjectsActive ? "page" : undefined}
           class:list={[
-            "hidden min-[1000px]:flex h-full items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            "hidden min-[1000px]:flex h-full items-center px-3 xl:px-3.5 relative border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
             isProjectsActive
               ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
               : "text-[var(--color-text-secondary)]",
@@ -177,7 +177,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           data-astro-prefetch="hover"
           aria-current={isCaseStudiesActive ? "page" : undefined}
           class:list={[
-            "hidden min-[1160px]:flex h-full items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            "hidden min-[1160px]:flex h-full items-center px-3 xl:px-3.5 relative border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
             isCaseStudiesActive
               ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
               : "text-[var(--color-text-secondary)]",
@@ -195,7 +195,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           data-astro-prefetch="hover"
           aria-current={isServicesActive ? "page" : undefined}
           class:list={[
-            "hidden min-[1280px]:flex h-full items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+            "hidden min-[1280px]:flex h-full items-center px-3 xl:px-3.5 relative border-b-2 border-transparent hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
             isServicesActive
               ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
               : "text-[var(--color-text-secondary)]",
@@ -209,7 +209,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
       <a
         href={isHomePage ? "#contact" : `${homeUrl}#contact`}
         data-nav-section="contact"
-        class="hidden min-[1380px]:flex h-full items-center px-3 xl:px-3.5 relative transition-colors border-b-2 border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
+        class="hidden min-[1380px]:flex h-full items-center px-3 xl:px-3.5 relative border-b-2 border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
       >
         <span>{t("nav.contact")}</span>
       </a>
@@ -227,7 +227,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
             aria-haspopup="true"
             aria-label={t("nav.more")}
             class:list={[
-              "h-full flex items-center gap-1 px-3 cursor-pointer list-none select-none transition-colors border-b-2 hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
+              "h-full flex items-center gap-1 px-3 cursor-pointer list-none select-none border-b-2 hover:bg-[var(--color-surface-card)]/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]",
               isMoreActive
                 ? "text-[var(--color-accent-gold)] font-semibold border-b-[var(--color-accent-gold)]"
                 : "text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] border-transparent",
@@ -370,7 +370,7 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           data-nav-section="resume"
           data-astro-prefetch="hover"
           class:list={[
-            "hidden sm:inline-flex h-8 items-center justify-center gap-1.5 rounded border px-2.5 xl:px-3 text-xs font-mono font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] whitespace-nowrap shrink-0",
+            "hidden sm:inline-flex h-8 items-center justify-center gap-1.5 rounded border px-2.5 xl:px-3 text-xs font-mono font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] whitespace-nowrap shrink-0",
             isResumeActive
               ? "border-[var(--color-accent-gold)] bg-[var(--color-accent-gold)] text-[var(--color-btn-gold-text)] font-semibold shadow-xs"
               : "border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)]",

@@ -72,35 +72,50 @@ let lastRenderTime = 0;
 
 function layout(w: number, h: number, dpr: number): void {
   if (!canvas || !ctx) return;
-  width = w;
-  height = h;
   const clampedDpr = Math.min(dpr || 1, 1.25);
   const targetW = Math.round(w * clampedDpr);
   const targetH = Math.round(h * clampedDpr);
   const dprChanged = Math.abs(currentDpr - clampedDpr) > 0.001;
 
-  if (canvas.width !== targetW || canvas.height !== targetH || dprChanged) {
+  // CRITICAL: Setting canvas.width clears the entire bitmap buffer.
+  // NEVER re-assign or clear canvas buffer unless dimensions changed by > 50px or zoom/DPR shifted,
+  // AND never re-assign if canvas width/height already match target dimensions.
+  if (
+    (canvas.width !== targetW || canvas.height !== targetH) &&
+    (canvas.width === 0 ||
+      canvas.height === 0 ||
+      Math.abs(canvas.width - targetW) > 50 ||
+      Math.abs(canvas.height - targetH) > 50 ||
+      dprChanged)
+  ) {
     canvas.width = targetW;
     canvas.height = targetH;
     currentDpr = clampedDpr;
+    width = w;
+    height = h;
     ctx.resetTransform();
     ctx.scale(clampedDpr, clampedDpr);
-    // Explicitly purge entire viewport on zoom or resolution switch
-    ctx.clearRect(0, 0, w, h);
+  } else {
+    width = w;
+    height = h;
+    currentDpr = clampedDpr;
   }
 
   const columns = Math.floor(w / FONT_SIZE);
-  const next = new Array<number>(columns);
-  const nextSpeeds = new Array<number>(columns);
-  for (let i = 0; i < columns; i++) {
-    // Randomized stream entrances staggered above the viewport for natural entropy
-    next[i] =
-      i < drops.length ? (drops[i] ?? 0) : -Math.floor(Math.random() * 50 + 2);
-    nextSpeeds[i] =
-      i < speeds.length ? (speeds[i] ?? 1) : 0.65 + Math.random() * 0.7;
+  if (columns !== drops.length) {
+    const next = new Array<number>(columns);
+    const nextSpeeds = new Array<number>(columns);
+    for (let i = 0; i < columns; i++) {
+      // Randomized stream entrances staggered above the viewport for natural entropy,
+      // preserving falling drops to avoid resetting the animation stream during navigations
+      next[i] =
+        i < drops.length ? (drops[i] ?? 0) : -Math.floor(Math.random() * 24);
+      nextSpeeds[i] =
+        i < speeds.length ? (speeds[i] ?? 1) : 0.65 + Math.random() * 0.7;
+    }
+    drops = next;
+    speeds = nextSpeeds;
   }
-  drops = next;
-  speeds = nextSpeeds;
 }
 
 function scheduleNextFrame(): void {

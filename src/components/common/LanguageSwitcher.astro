@@ -330,11 +330,6 @@ const effectiveTargetUrl =
           window.location.href = dest;
         });
     });
-
-    // Handle browser back/forward buttons between language versions
-    window.addEventListener("popstate", function () {
-      window.location.reload();
-    });
   }
 
   function syncLanguageSwitcherTargetUrls() {
