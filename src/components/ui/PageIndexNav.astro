@@ -2039,14 +2039,30 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       }
     });
 
+    var lastSetupSignature = "";
+
     // Pre-Paint Route Sync: astro:after-swap fires before browser paints
     document.addEventListener("astro:after-swap", function () {
       setupPageIndex(true);
+      lastSetupSignature =
+        window.location.pathname +
+        "::" +
+        (document.documentElement.getAttribute("lang") || "en");
     });
 
     document.addEventListener("astro:page-load", function () {
+      var currentSig =
+        window.location.pathname +
+        "::" +
+        (document.documentElement.getAttribute("lang") || "en");
+      if (lastSetupSignature === currentSig) {
+        alignDesktopIndex();
+        syncResponsiveMode();
+        return;
+      }
       if (document.readyState === "complete") {
         setupPageIndex(false);
+        lastSetupSignature = currentSig;
       }
     });
   })();

@@ -186,20 +186,33 @@ const hasShortcuts = Boolean(shortcuts?.length);
         // 2. Zero-FOUC Theme Initialization & View Transition Swap Sync
         function applyTheme(doc) {
           var targetDoc = doc || document;
-          var stored = null;
-          try {
-            stored = localStorage.getItem("theme");
-          } catch (_) {}
+          var stored =
+            window.__currentTheme === "light" ||
+            window.__currentTheme === "dark"
+              ? window.__currentTheme
+              : null;
+          if (!stored) {
+            try {
+              stored = localStorage.getItem("theme");
+            } catch (_) {}
+          }
+          if (!stored) {
+            try {
+              stored = sessionStorage.getItem("theme");
+            } catch (_) {}
+          }
           var prefersDark = window.matchMedia(
             "(prefers-color-scheme: dark)",
           ).matches;
           var isDark = stored ? stored === "dark" : prefersDark;
+          var resolved = isDark ? "dark" : "light";
+          window.__currentTheme = resolved;
           var root = targetDoc.documentElement;
           if (!root) return;
           root.classList.toggle("dark", isDark);
           root.classList.toggle("light", !isDark);
-          root.setAttribute("data-theme", isDark ? "dark" : "light");
-          root.style.colorScheme = isDark ? "dark" : "light";
+          root.setAttribute("data-theme", resolved);
+          root.style.colorScheme = resolved;
           if (!isDark) {
             root.style.removeProperty("background-color");
           } else {
@@ -211,6 +224,56 @@ const hasShortcuts = Boolean(shortcuts?.length);
 
         document.addEventListener("astro:before-swap", function (ev) {
           applyTheme(ev.newDocument);
+
+          // SPA HUD & Banner Continuity Pre-Sync:
+          // Sincronizar el estado del banner y la elevación del stack en ev.newDocument ANTES de swapDOM
+          if (ev && ev.newDocument) {
+            var banner = document.getElementById("lang-suggestion-banner");
+            var stack = document.getElementById("floating-actions-stack");
+            var isBannerVisible =
+              banner &&
+              !banner.hidden &&
+              banner.style.display !== "none" &&
+              !banner.classList.contains("hidden") &&
+              banner.classList.contains("opacity-100");
+            var isStackElevated =
+              stack && stack.classList.contains("elevated-for-toast");
+
+            var newBanner = ev.newDocument.getElementById(
+              "lang-suggestion-banner",
+            );
+            var newStack = ev.newDocument.getElementById(
+              "floating-actions-stack",
+            );
+            var newMobileRoot = ev.newDocument.getElementById(
+              "mobile-page-index-root",
+            );
+
+            if (isBannerVisible && newBanner) {
+              newBanner.classList.remove(
+                "hidden",
+                "opacity-0",
+                "translate-y-3",
+              );
+              newBanner.classList.add(
+                "flex",
+                "opacity-100",
+                "translate-y-0",
+                "no-transition",
+              );
+              newBanner.hidden = false;
+              newBanner.style.display = "";
+            }
+            if (isStackElevated) {
+              if (newStack)
+                newStack.classList.add("elevated-for-toast", "no-transition");
+              if (newMobileRoot)
+                newMobileRoot.classList.add(
+                  "elevated-for-toast",
+                  "no-transition",
+                );
+            }
+          }
         });
         document.addEventListener("astro:after-swap", function () {
           applyTheme(document);
@@ -268,18 +331,6 @@ const hasShortcuts = Boolean(shortcuts?.length);
             );
             return;
           }
-        } else if (isRoot && !savedLocale && !isSearchEngine && path === "/") {
-          var userLangs = (
-            navigator.languages || [navigator.language || ""]
-          ).map(function (l) {
-            return (l || "").toLowerCase().split("-")[0];
-          });
-          if (userLangs[0] === "es") {
-            window.location.replace(
-              "/es/" + window.location.search + window.location.hash,
-            );
-            return;
-          }
         }
 
         // Intercept pending SPA view transitions to synchronize active language preference
@@ -302,6 +353,22 @@ const hasShortcuts = Boolean(shortcuts?.length);
             sessionStorage.setItem("preferred_locale", active);
             localStorage.setItem("preferred_locale", active);
           } catch (_) {}
+        });
+
+        document.addEventListener("astro:after-swap", function () {
+          var currentPath = window.location.pathname;
+          var currentIsEs =
+            currentPath === "/es" ||
+            currentPath === "/es/" ||
+            currentPath.startsWith("/es/");
+          var activeLocale = currentIsEs ? "es" : "en";
+          if (document.body) {
+            document.body.setAttribute("data-current-locale", activeLocale);
+            document.body.setAttribute("data-current-path", currentPath);
+          }
+          if (document.documentElement) {
+            document.documentElement.setAttribute("lang", activeLocale);
+          }
         });
 
         // Sync locale attribute and storage on page load
@@ -381,11 +448,16 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <script>
       // @ts-nocheck
       (function () {
-        function updateToastCollision() {
+        function updateToastCollision(immediate) {
           var banner = document.getElementById("lang-suggestion-banner");
           var stack = document.getElementById("floating-actions-stack");
           var mobileRoot = document.getElementById("mobile-page-index-root");
           if (!stack) return;
+
+          if (immediate) {
+            stack.classList.add("no-transition");
+            if (mobileRoot) mobileRoot.classList.add("no-transition");
+          }
 
           if (
             !banner ||
@@ -403,34 +475,40 @@ const hasShortcuts = Boolean(shortcuts?.length);
             ) {
               mobileRoot.classList.remove("elevated-for-toast");
             }
-            return;
+          } else {
+            var bannerRect = banner.getBoundingClientRect();
+            var stackRect = stack.getBoundingClientRect();
+
+            // Only elevate when the banner and the floating buttons horizontally collide / overlap
+            var isColliding = bannerRect.right + 12 > stackRect.left;
+            if (isColliding) {
+              if (!stack.classList.contains("elevated-for-toast")) {
+                stack.classList.add("elevated-for-toast");
+              }
+              if (
+                mobileRoot &&
+                !mobileRoot.classList.contains("elevated-for-toast")
+              ) {
+                mobileRoot.classList.add("elevated-for-toast");
+              }
+            } else {
+              if (stack.classList.contains("elevated-for-toast")) {
+                stack.classList.remove("elevated-for-toast");
+              }
+              if (
+                mobileRoot &&
+                mobileRoot.classList.contains("elevated-for-toast")
+              ) {
+                mobileRoot.classList.remove("elevated-for-toast");
+              }
+            }
           }
 
-          var bannerRect = banner.getBoundingClientRect();
-          var stackRect = stack.getBoundingClientRect();
-
-          // Only elevate when the banner and the floating buttons horizontally collide / overlap
-          var isColliding = bannerRect.right + 12 > stackRect.left;
-          if (isColliding) {
-            if (!stack.classList.contains("elevated-for-toast")) {
-              stack.classList.add("elevated-for-toast");
-            }
-            if (
-              mobileRoot &&
-              !mobileRoot.classList.contains("elevated-for-toast")
-            ) {
-              mobileRoot.classList.add("elevated-for-toast");
-            }
-          } else {
-            if (stack.classList.contains("elevated-for-toast")) {
-              stack.classList.remove("elevated-for-toast");
-            }
-            if (
-              mobileRoot &&
-              mobileRoot.classList.contains("elevated-for-toast")
-            ) {
-              mobileRoot.classList.remove("elevated-for-toast");
-            }
+          if (immediate && typeof requestAnimationFrame === "function") {
+            requestAnimationFrame(function () {
+              stack.classList.remove("no-transition");
+              if (mobileRoot) mobileRoot.classList.remove("no-transition");
+            });
           }
         }
         window.__updateToastCollision = updateToastCollision;
@@ -597,7 +675,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
       let beaconShowTimeout: ReturnType<typeof setTimeout> | null = null;
       let beaconHideTimeout: ReturnType<typeof setTimeout> | null = null;
       let beaconSafetyTimeout: ReturnType<typeof setTimeout> | null = null;
-      const DEBOUNCE_SHOW_MS = 120;
+      const DEBOUNCE_SHOW_MS = 240;
       const MIN_VISIBLE_MS = 120;
       const BEACON_MAX_DURATION_MS = 6000;
 
@@ -647,7 +725,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
         }, DEBOUNCE_SHOW_MS);
       }
 
-      function hideBeacon() {
+      function hideBeacon(immediate = false) {
         if (beaconSafetyTimeout) {
           clearTimeout(beaconSafetyTimeout);
           beaconSafetyTimeout = null;
@@ -662,11 +740,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
           return;
         }
 
-        const elapsed = performance.now() - beaconShownTime;
-        const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed);
-
-        if (beaconHideTimeout) clearTimeout(beaconHideTimeout);
-        beaconHideTimeout = setTimeout(() => {
+        const doHide = () => {
           const beacon = document.getElementById("page-navigation-beacon");
           if (beacon) {
             beacon.classList.remove("opacity-100", "scale-100");
@@ -674,7 +748,19 @@ const hasShortcuts = Boolean(shortcuts?.length);
           }
           isBeaconShown = false;
           beaconHideTimeout = null;
-        }, remaining);
+        };
+
+        if (immediate) {
+          if (beaconHideTimeout) clearTimeout(beaconHideTimeout);
+          doHide();
+          return;
+        }
+
+        const elapsed = performance.now() - beaconShownTime;
+        const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed);
+
+        if (beaconHideTimeout) clearTimeout(beaconHideTimeout);
+        beaconHideTimeout = setTimeout(doHide, remaining);
       }
 
       // Exposición global requerida por LanguageSwitcher.astro
@@ -689,11 +775,23 @@ const hasShortcuts = Boolean(shortcuts?.length);
         }
       });
       document.addEventListener("astro:before-swap", () => {
+        hideBeacon(true);
         document.querySelectorAll("dialog[open]").forEach((d) => {
           try {
             (d as HTMLDialogElement).close();
           } catch (_) {}
         });
+        document
+          .querySelectorAll(".copy-feedback, #email-copy-toast")
+          .forEach((toast) => {
+            try {
+              if (typeof (toast as any).hidePopover === "function") {
+                (toast as any).hidePopover();
+              }
+              toast.classList.add("opacity-0", "pointer-events-none");
+              toast.classList.remove("opacity-100");
+            } catch (_) {}
+          });
         document.body.style.overflow = "";
       });
       document.addEventListener("astro:page-load", () => {
@@ -702,7 +800,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
           sessionStorage.removeItem("lang_switch_scroll");
         } catch (_) {}
       });
-      window.addEventListener("pageshow", hideBeacon);
+      window.addEventListener("pageshow", () => hideBeacon());
 
       // Task 5: Instant Section Hydration for Seamless Anchor & Cross-Page Hash Navigation
       function hydrateSections() {
@@ -721,6 +819,16 @@ const hasShortcuts = Boolean(shortcuts?.length);
         passive: true,
       });
       document.addEventListener("astro:after-swap", () => {
+        hideBeacon(true);
+        try {
+          if (
+            sessionStorage.getItem("nav_reset_scroll") === "1" &&
+            !window.location.hash
+          ) {
+            sessionStorage.removeItem("nav_reset_scroll");
+            window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+          }
+        } catch (_) {}
         if (window.location.hash) {
           hydrateSections();
         }

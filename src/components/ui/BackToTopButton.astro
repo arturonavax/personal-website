@@ -35,8 +35,16 @@ const isEs = locale === "es";
       var btn = document.getElementById("back-to-top-btn");
       if (!btn) return;
 
-      var scrollY =
-        window.pageYOffset || document.documentElement.scrollTop || 0;
+      var isResettingScroll = false;
+      try {
+        isResettingScroll =
+          sessionStorage.getItem("nav_reset_scroll") === "1" &&
+          !window.location.hash;
+      } catch (_) {}
+
+      var scrollY = isResettingScroll
+        ? 0
+        : window.pageYOffset || document.documentElement.scrollTop || 0;
       var shouldShow = scrollY > 400;
 
       if (!animate) {

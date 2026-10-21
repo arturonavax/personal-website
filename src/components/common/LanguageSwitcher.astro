@@ -255,26 +255,38 @@ const effectiveTargetUrl =
               oldShortcuts.innerHTML = newShortcuts.innerHTML;
             }
 
-            // 9. Universal search & judges dialogs
-            var oldSearch = document.getElementById("universal-search-dialog");
-            var newSearch = newDoc.getElementById("universal-search-dialog");
+            // 9. Universal search & judges dialogs (preserve custom element wrappers, update inner localized copy)
+            var oldSearch =
+              document.getElementById("search-dialog") ||
+              document.getElementById("universal-search-dialog");
+            var newSearch =
+              newDoc.getElementById("search-dialog") ||
+              newDoc.getElementById("universal-search-dialog");
             if (oldSearch && newSearch) {
               oldSearch.innerHTML = newSearch.innerHTML;
             }
 
-            var oldJudges = document.getElementById("judges-dialog");
-            var newJudges = newDoc.getElementById("judges-dialog");
+            var oldJudges =
+              document.getElementById("online-judges-dialog") ||
+              document.getElementById("judges-dialog");
+            var newJudges =
+              newDoc.getElementById("online-judges-dialog") ||
+              newDoc.getElementById("judges-dialog");
             if (oldJudges && newJudges) {
               oldJudges.innerHTML = newJudges.innerHTML;
             }
 
-            // 9.5 Language suggestion banner swap
+            // 9.5 Language suggestion banner: keep persisted node hidden after manual switch
             var oldBanner = document.getElementById("lang-suggestion-banner");
-            var newBanner = newDoc.getElementById("lang-suggestion-banner");
-            if (oldBanner && newBanner) {
-              oldBanner.replaceWith(newBanner);
-            } else if (oldBanner) {
-              oldBanner.remove();
+            if (oldBanner) {
+              oldBanner.classList.remove(
+                "flex",
+                "translate-y-0",
+                "opacity-100",
+              );
+              oldBanner.classList.add("hidden", "translate-y-3", "opacity-0");
+              oldBanner.hidden = true;
+              oldBanner.style.display = "none";
             }
 
             // 10. Update browser URL history without reload
@@ -284,6 +296,7 @@ const effectiveTargetUrl =
             window.scrollTo({ top: currentY, behavior: "instant" });
 
             // 12. Dispatch lifecycle events to rebind components
+            document.dispatchEvent(new Event("astro:after-swap"));
             document.dispatchEvent(new Event("astro:page-load"));
             window.dispatchEvent(new Event("scroll"));
           }
@@ -334,6 +347,19 @@ const effectiveTargetUrl =
     });
   }
 
+  function toRelativePath(rawHref) {
+    if (!rawHref) return "";
+    if (rawHref.indexOf("http://") === 0 || rawHref.indexOf("https://") === 0) {
+      try {
+        var u = new URL(rawHref, window.location.origin);
+        return u.pathname + u.search + u.hash;
+      } catch (_) {
+        return rawHref;
+      }
+    }
+    return rawHref;
+  }
+
   function syncLanguageSwitcherTargetUrls() {
     if (
       typeof document === "undefined" ||
@@ -348,7 +374,7 @@ const effectiveTargetUrl =
     var targetUrls = {};
     altLinks.forEach(function (link) {
       var hreflang = link.getAttribute("hreflang");
-      var href = link.getAttribute("href");
+      var href = toRelativePath(link.getAttribute("href"));
       if (hreflang && href) {
         targetUrls[hreflang] = href;
       }

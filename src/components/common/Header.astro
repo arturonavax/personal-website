@@ -1149,12 +1149,18 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           'link[rel="alternate"][hreflang]',
         );
         if (altLinks.length) {
-          var targetUrls = {};
+          var targetUrls: Record<string, string> = {};
           altLinks.forEach(function (link) {
             var hreflang = link.getAttribute("hreflang");
-            var href = link.getAttribute("href");
-            if (hreflang && href) {
-              targetUrls[hreflang] = href;
+            var rawHref = link.getAttribute("href");
+            if (hreflang && rawHref) {
+              try {
+                var parsed = new URL(rawHref, window.location.origin);
+                targetUrls[hreflang] =
+                  parsed.pathname + parsed.search + parsed.hash;
+              } catch (_) {
+                targetUrls[hreflang] = rawHref;
+              }
             }
           });
 

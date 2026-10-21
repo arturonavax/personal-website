@@ -12,13 +12,13 @@ const isEs = locale === "es";
 const pathname = Astro.url.pathname.replace(/\/+$/, "") || "/";
 const isHomePage = pathname === "/" || pathname === "/es";
 
-const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
+const hasShortcuts = Boolean(shortcuts && shortcuts.length > 0);
 ---
 
 {hasShortcuts && (
   <shortcuts-modal
     data-shortcuts-root
-    class="pointer-events-auto order-1 block"
+    class={`pointer-events-auto order-1 block ${!isHomePage ? "hidden" : ""}`}
   >
     <button
       type="button"
@@ -209,6 +209,19 @@ const hasShortcuts = isHomePage && shortcuts && shortcuts.length > 0;
 
       this.abortController = new AbortController();
       const { signal } = this.abortController;
+
+      const syncRouteVisibility = () => {
+        const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+        const onHome = currentPath === "/" || currentPath === "/es";
+        this.classList.toggle("hidden", !onHome);
+        if (!onHome && isShortcutsOpen.get()) {
+          toggleShortcutsModal(false);
+        }
+      };
+      syncRouteVisibility();
+      document.addEventListener("astro:after-swap", syncRouteVisibility, {
+        signal,
+      });
 
       const dialog = this.querySelector<HTMLDialogElement>("#shortcuts-dialog");
       const openBtn = this.querySelector<HTMLButtonElement>(
