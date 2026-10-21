@@ -911,6 +911,13 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
                     sessionStorage.removeItem("nav_reset_scroll");
                     sessionStorage.setItem("pending_contact_scroll", "1");
                   } catch (_) {}
+                  if (typeof window.__astroNavigate === "function") {
+                    e.preventDefault();
+                    window.__astroNavigate(
+                      linkPath + (linkPath === "/" ? "" : "/"),
+                    );
+                    return;
+                  }
                 }
               } else if (!link.hash || link.hash === "#about") {
                 e.preventDefault();
@@ -1085,8 +1092,53 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
       updateActiveNavState();
     }
 
+    function updateHeaderScrolled(noTransition) {
+      var header = document.getElementById("site-header");
+      if (!header) return;
+      var scrollY =
+        window.pageYOffset ||
+        document.documentElement.scrollTop ||
+        window.scrollY ||
+        0;
+      var isScrolled = scrollY > 16;
+      if (noTransition) {
+        header.classList.add("no-transition");
+      }
+      header.setAttribute("data-scrolled", isScrolled ? "true" : "false");
+      if (noTransition) {
+        requestAnimationFrame(function () {
+          header.classList.remove("no-transition");
+        });
+      }
+    }
+
+    if (!window.__headerScrollBound) {
+      window.__headerScrollBound = true;
+      window.addEventListener(
+        "scroll",
+        function () {
+          updateHeaderScrolled(false);
+        },
+        { passive: true },
+      );
+    }
+
     function syncHeaderStatePrePaint() {
       updateActiveNavState(true);
+      updateHeaderScrolled(true);
+
+      document
+        .querySelectorAll("#header-desktop-nav a, #mobile-nav-details a")
+        .forEach(function (a) {
+          var href = a.getAttribute("href");
+          if (!href) return;
+          var cleanHref =
+            href.split("?")[0].split("#")[0].replace(/\/+$/, "") || "/";
+          var cleanPath = window.location.pathname.replace(/\/+$/, "") || "/";
+          if (cleanHref === cleanPath) {
+            a.setAttribute("aria-current", "page");
+          }
+        });
 
       if (
         typeof document !== "undefined" &&
@@ -1117,6 +1169,13 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
         }
       }
     }
+
+    document.addEventListener("astro:before-preparation", function () {
+      var mobileMenu = document.getElementById("mobile-nav-details");
+      if (mobileMenu && mobileMenu.hasAttribute("open")) {
+        mobileMenu.removeAttribute("open");
+      }
+    });
 
     document.addEventListener("astro:after-swap", function () {
       setupHeader();

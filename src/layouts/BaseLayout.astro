@@ -346,7 +346,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
     data-current-path={Astro.url.pathname}
     class="relative flex min-h-screen flex-col bg-[var(--color-surface-bg)] text-[var(--color-text-primary)] antialiased selection:bg-[var(--color-accent-gold)] selection:text-[var(--color-btn-gold-text)]"
   >
-    <MatrixBackground transition:persist="matrix-bg" data-semi=";" />
+    <MatrixBackground transition:persist="matrix-background" data-semi=";" />
 
     <Header
       locale={locale}
@@ -571,6 +571,8 @@ const hasShortcuts = Boolean(shortcuts?.length);
       import { handleEscapeKey } from "@/lib/navigation/escape-router";
       import { navigate } from "astro:transitions/client";
 
+      (window as any).__astroNavigate = (url: string) => void navigate(url);
+
       // 1. Resiliencia contra extensiones externas mal implementadas
       if (typeof Document !== "undefined") {
         if (!(Document.prototype as any).closest) {
@@ -679,7 +681,21 @@ const hasShortcuts = Boolean(shortcuts?.length);
       (window as any).__showBeacon = showBeacon;
       (window as any).__hideBeacon = hideBeacon;
 
-      document.addEventListener("astro:before-preparation", () => showBeacon());
+      document.addEventListener("astro:before-preparation", () => {
+        showBeacon();
+        const mobileMenu = document.getElementById("mobile-nav-details");
+        if (mobileMenu && mobileMenu.hasAttribute("open")) {
+          mobileMenu.removeAttribute("open");
+        }
+      });
+      document.addEventListener("astro:before-swap", () => {
+        document.querySelectorAll("dialog[open]").forEach((d) => {
+          try {
+            (d as HTMLDialogElement).close();
+          } catch (_) {}
+        });
+        document.body.style.overflow = "";
+      });
       document.addEventListener("astro:page-load", () => {
         hideBeacon();
         try {
@@ -687,6 +703,28 @@ const hasShortcuts = Boolean(shortcuts?.length);
         } catch (_) {}
       });
       window.addEventListener("pageshow", hideBeacon);
+
+      // Task 5: Instant Section Hydration for Seamless Anchor & Cross-Page Hash Navigation
+      function hydrateSections() {
+        document.documentElement.classList.add("hydrated-sections");
+      }
+      if (window.location.hash) {
+        hydrateSections();
+      }
+      window.addEventListener("hashchange", hydrateSections, { passive: true });
+      window.addEventListener("scroll", hydrateSections, {
+        once: true,
+        passive: true,
+      });
+      window.addEventListener("pointerdown", hydrateSections, {
+        once: true,
+        passive: true,
+      });
+      document.addEventListener("astro:after-swap", () => {
+        if (window.location.hash) {
+          hydrateSections();
+        }
+      });
 
       document.addEventListener(
         "click",

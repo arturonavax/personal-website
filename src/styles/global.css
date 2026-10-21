@@ -38,7 +38,15 @@ section#contact {
 }
 
 html.is-anchor-scrolling main section,
-html.is-anchor-scrolling footer {
+html.is-anchor-scrolling footer,
+html.hydrated-sections section#experience,
+html.hydrated-sections section#projects,
+html.hydrated-sections section#services,
+html.hydrated-sections section#simulations,
+html.hydrated-sections section#blog,
+html.hydrated-sections section#contact,
+html.hydrated-sections main section,
+html.hydrated-sections footer {
   content-visibility: visible !important;
 }
 
@@ -369,7 +377,7 @@ body::-webkit-scrollbar-thumb:hover,
 }
 
 ::view-transition {
-  background-color: var(--color-surface-bg);
+  background-color: transparent;
 }
 
 ::selection {
@@ -920,7 +928,8 @@ html.theme-transitioning::view-transition-new(root) {
 /* Pin persistent HUD chrome at 120 FPS with zero morph/jump */
 /* ======================================================== */
 
-header#site-header {
+header#site-header,
+#main-header {
   view-transition-name: site-header;
 }
 
@@ -938,8 +947,30 @@ header#site-header {
   view-transition-name: back-to-top;
 }
 
+#matrix-container {
+  view-transition-name: matrix-background;
+}
+
 matrix-canvas-layer {
   view-transition-name: matrix-canvas-background;
+}
+
+main#main-content {
+  view-transition-name: spa-main-content;
+}
+
+/* Exception for Theme Toggle Circular Reveal: release HUD chrome into unified root snapshot */
+html.theme-transitioning #matrix-container,
+html.theme-transitioning #main-header,
+html.theme-transitioning header#site-header,
+html.theme-transitioning #lang-suggestion-banner,
+html.theme-transitioning #back-to-top-btn,
+html.theme-transitioning matrix-canvas-layer,
+html.theme-transitioning #page-index-nav,
+html.theme-transitioning #page-index-nav-shell,
+html.theme-transitioning #desktop-page-index-root,
+html.theme-transitioning main#main-content {
+  view-transition-name: none !important;
 }
 
 /* Neutralize browser crossfade/morph on HUD elements during standard navigations */
@@ -957,14 +988,53 @@ html:not(.theme-transitioning)::view-transition-old(back-to-top),
 html:not(.theme-transitioning)::view-transition-new(back-to-top),
 html:not(.theme-transitioning)::view-transition-group(matrix-canvas-background),
 html:not(.theme-transitioning)::view-transition-old(matrix-canvas-background),
-html:not(.theme-transitioning)::view-transition-new(matrix-canvas-background) {
+html:not(.theme-transitioning)::view-transition-new(matrix-canvas-background),
+html:not(.theme-transitioning)::view-transition-group(matrix-background),
+html:not(.theme-transitioning)::view-transition-old(matrix-background),
+html:not(.theme-transitioning)::view-transition-new(matrix-background) {
   animation: none !important;
   mix-blend-mode: normal !important;
 }
 
-/* Prevent double-snapshot shadow darkening / blinking during view transitions */
-html:not(.theme-transitioning)::view-transition-old(lang-suggestion-banner) {
-  display: none !important;
+/* Smooth 120 FPS SPA Content Transition on <main> During Route Changes */
+@keyframes spa-content-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes spa-content-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(root),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-new(root) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(spa-main-content) {
+  animation: 90ms cubic-bezier(0.22, 1, 0.36, 1) both spa-content-fade-out;
+}
+
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-new(spa-main-content) {
+  animation: 130ms cubic-bezier(0.22, 1, 0.36, 1) both spa-content-fade-in;
 }
 
 /* Instant suppression of transitions for swap frame */

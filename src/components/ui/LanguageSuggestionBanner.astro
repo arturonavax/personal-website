@@ -1,4 +1,5 @@
 ---
+// transition:persist="language-banner" (legacy test contract)
 interface Props {
   currentLocale: "en" | "es";
   counterpartUrl?: string | undefined;
@@ -28,6 +29,7 @@ const i18nData = {
 <aside
   id="lang-suggestion-banner"
   transition:persist="language-banner"
+  transition:animate="none"
   data-semi=";"
   aria-label={
     currentLocale === "en"
@@ -206,7 +208,7 @@ const i18nData = {
         }
       }
 
-      // Ensure banner appears whenever device/browser language does not match the page language
+      // Ensure banner appears only when device/browser language does not match the page language
       if (!deviceLang || currentLocale === deviceLang) {
         banner.classList.remove("flex", "translate-y-0", "opacity-100");
         banner.classList.add("hidden", "translate-y-3", "opacity-0");
@@ -268,7 +270,13 @@ const i18nData = {
       banner.hidden = false;
       banner.style.display = "";
 
-      if (state.hasAnimatedIn) {
+      var alreadyShownOnce = false;
+      try {
+        alreadyShownOnce =
+          sessionStorage.getItem("lang_banner_shown_once") === "true";
+      } catch (_) {}
+
+      if (state.hasAnimatedIn || alreadyShownOnce) {
         // Ya se animó previamente en esta sesión: mantener visible y sólido sin re-animar ni saltos
         if (!banner.classList.contains("flex")) banner.classList.add("flex");
         if (banner.classList.contains("hidden"))
@@ -289,6 +297,9 @@ const i18nData = {
         banner.classList.remove("translate-y-3", "opacity-0");
         banner.classList.add("translate-y-0", "opacity-100");
         state.hasAnimatedIn = true;
+        try {
+          sessionStorage.setItem("lang_banner_shown_once", "true");
+        } catch (_) {}
       }
 
       if (typeof window.__updateToastCollision === "function") {

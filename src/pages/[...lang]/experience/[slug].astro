@@ -786,7 +786,11 @@ const jobIndexItems: IndexItem[] = [
               document.title = doc.title;
             }
             if (!isPop) {
-              history.pushState({ url: url }, "", url);
+              history.pushState(
+                Object.assign({}, history.state || {}, { url: url }),
+                "",
+                url,
+              );
             }
 
             var oldLangLinks = document.querySelectorAll("a[hreflang]");
@@ -798,6 +802,25 @@ const jobIndexItems: IndexItem[] = [
                 }
               });
             }
+
+            // Synchronize language suggestion toast with the new page counterpart URL
+            try {
+              var isDocEs = document.documentElement.lang === "es";
+              var altLink = doc.querySelector(
+                'link[rel="alternate"][hreflang="' +
+                  (isDocEs ? "en" : "es") +
+                  '"]',
+              );
+              var banner = document.getElementById("lang-suggestion-banner");
+              var acceptBtn = document.getElementById("lang-suggestion-accept");
+              if (altLink && banner && acceptBtn) {
+                var newHref = altLink.getAttribute("href");
+                if (newHref) {
+                  acceptBtn.setAttribute("href", newHref);
+                  banner.setAttribute("data-target-url", newHref);
+                }
+              }
+            } catch (_) {}
 
             // Synchronize page-index custom items script for the new page without default items flicker
             var oldCustomScript = document.getElementById(

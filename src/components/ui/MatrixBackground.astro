@@ -16,589 +16,340 @@ const {
 ---
 
 {enabled && (
-  <matrix-canvas-layer
+  <div
+    id="matrix-container"
     data-density={density}
     data-opacity={opacity}
-    transition:persist="matrix-canvas-background"
-    class="pointer-events-none fixed inset-0 z-0 overflow-hidden opacity-20 dark:opacity-15 hidden md:block"
+    transition:persist="matrix-background"
+    transition:animate="none"
+    class="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none print:hidden opacity-20 dark:opacity-15 hidden md:block"
     aria-hidden="true"
   >
     <div class="matrix-static-backdrop absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(212,139,56,0.06),rgba(10,2,3,0))]"></div>
-    <canvas class="h-full w-full"></canvas>
-  </matrix-canvas-layer>
+    <canvas
+      id="matrix-canvas"
+      class="block w-full h-full opacity-0 transition-opacity duration-700 ease-out"
+    ></canvas>
+  </div>
 )}
 
 <script>
   interface MatrixSingleton {
+    initialized: boolean;
+    bootScheduled: boolean;
     worker: Worker | null;
-    drops: number[];
-    speeds: number[];
-    animationFrameId: number | null;
-    timeoutId: number | null;
-    disconnectTimer: number | null;
-    cancelStartupTimer?: (() => void) | null;
-    lastWidth: number;
-    lastHeight: number;
-    lastDpr: number;
+    rafId: number | null;
     canvas: HTMLCanvasElement | null;
-    ctx: CanvasRenderingContext2D | null;
-    renderFn: (() => void) | null;
-    isStarted?: boolean;
+    syncTheme: () => void;
+    setPaused: (paused: boolean) => void;
   }
 
-  class MatrixCanvasLayer extends HTMLElement {
-    private canvas: HTMLCanvasElement | null = null;
-    private ctx: CanvasRenderingContext2D | null = null;
-    private resizeObserver: ResizeObserver | null = null;
-    private themeObserver: MutationObserver | null = null;
-    private windowResizeHandler: (() => void) | null = null;
-    private lastWidth = 0;
-    private lastHeight = 0;
-    private lastDpr =
-      typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-
-    private getGlobalState(): MatrixSingleton {
-      if (!(window as any).__matrixState) {
-        (window as any).__matrixState = {
-          worker: null,
-          drops: (window as any).__matrixDrops || [],
-          speeds: [],
-          animationFrameId: null,
-          timeoutId: null,
-          disconnectTimer: null,
-          lastWidth: typeof window !== "undefined" ? window.innerWidth : 0,
-          lastHeight: typeof window !== "undefined" ? window.innerHeight : 0,
-          lastDpr:
-            typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
-          canvas: null,
-          ctx: null,
-          renderFn: null,
-        };
-      }
-      return (window as any).__matrixState as MatrixSingleton;
+  declare global {
+    interface Window {
+      __matrixSingleton?: MatrixSingleton;
+      __matrixState?: any;
+      __matrixDrops?: number[];
+      __matrixCanvas?: HTMLCanvasElement | null;
     }
+  }
 
-    connectedCallback() {
-      if (typeof window === "undefined" || window.innerWidth < 768) return;
-      if (
-        window.matchMedia &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      )
-        return;
-      if (navigator.webdriver === true) return;
-
-      const state = this.getGlobalState();
-      if (state.disconnectTimer !== null) {
-        window.clearTimeout(state.disconnectTimer);
-        state.disconnectTimer = null;
-      }
-
-      // Sync last known dimensions from global state to prevent false resize triggers
-      this.lastWidth = state.lastWidth || window.innerWidth;
-      this.lastHeight = state.lastHeight || window.innerHeight;
-      this.lastDpr = state.lastDpr || window.devicePixelRatio || 1;
-
-      // Check if a global canvas singleton is already running
-      const existingCanvas = (state.canvas ||
-        (window as any).__matrixCanvas) as HTMLCanvasElement | null;
-      const currentCanvas = this.querySelector("canvas");
-
-      // If an existing canvas singleton is already attached to another layer currently in the document,
-      // do not steal it or recreate anything during temporary swap!
+  function setupMatrixSingleton() {
+    // If singleton already exists and is running on the persisted canvas, just sync theme & visibility
+    if (window.__matrixSingleton?.initialized) {
+      const existingCanvas = document.getElementById(
+        "matrix-canvas",
+      ) as HTMLCanvasElement | null;
       if (
         existingCanvas &&
-        existingCanvas.isConnected &&
-        existingCanvas.parentElement !== this &&
-        document.contains(existingCanvas.parentElement)
+        existingCanvas === window.__matrixSingleton.canvas
       ) {
-        return;
-      }
-
-      if (
-        existingCanvas &&
-        (state.worker !== null ||
-          state.animationFrameId !== null ||
-          state.isStarted)
-      ) {
-        if (currentCanvas && currentCanvas !== existingCanvas) {
-          currentCanvas.remove();
-        }
-        if (!this.contains(existingCanvas)) {
-          this.appendChild(existingCanvas);
-        }
-        this.canvas = existingCanvas;
-        if (!state.worker && !this.ctx) {
-          try {
-            this.ctx = existingCanvas.getContext("2d");
-            state.ctx = this.ctx;
-          } catch (_) {}
-        }
-
-        this.setupObservers(state);
-
-        if (state.worker) {
-          const isLight =
-            document.documentElement.getAttribute("data-theme") === "light";
-          state.worker.postMessage({ type: "resume" });
-          state.worker.postMessage({ type: "theme", isLight });
-        } else if (
-          state.animationFrameId === null &&
-          !document.hidden &&
-          window.innerWidth >= 768
-        ) {
-          this.startRainLoop();
-        }
-        return;
-      }
-
-      this.canvas = currentCanvas;
-      if (!this.canvas) return;
-
-      (window as any).__matrixCanvas = this.canvas;
-      state.canvas = this.canvas;
-
-      this.lastWidth = window.innerWidth;
-      this.lastHeight = window.innerHeight;
-      this.lastDpr = window.devicePixelRatio || 1;
-      state.lastWidth = this.lastWidth;
-      state.lastHeight = this.lastHeight;
-      state.lastDpr = this.lastDpr;
-
-      // Defer OffscreenCanvas Worker or Main Thread Rain startup until user interaction or 5500ms post-load timer
-      let started = false;
-      const startMatrix = () => {
-        if (started || !this.isConnected || !this.canvas) return;
-        started = true;
-        state.isStarted = true;
-        cleanupStartupListeners();
-
-        if (!state.drops || state.drops.length === 0) {
-          this.initRain(false);
-        }
-
-        // Try OffscreenCanvas + Web Worker for zero main-thread overhead
-        if (
-          "transferControlToOffscreen" in this.canvas &&
-          typeof Worker !== "undefined"
-        ) {
-          try {
-            const offscreen = this.canvas.transferControlToOffscreen();
-            const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-            const isLight =
-              document.documentElement.getAttribute("data-theme") === "light";
-
-            const worker = new Worker(
-              new URL("../../scripts/matrix.worker.ts", import.meta.url),
-              { type: "module" },
-            );
-
-            state.worker = worker;
-            worker.postMessage(
-              {
-                type: "init",
-                canvas: offscreen,
-                width: window.innerWidth,
-                height: window.innerHeight,
-                dpr,
-                isLight,
-              },
-              [offscreen],
-            );
-
-            this.setupObservers(state);
-            document.addEventListener(
-              "visibilitychange",
-              this.handleVisibility,
-            );
-            return;
-          } catch {
-            // Fallback to main thread loop
-          }
-        }
-
-        // Main thread fallback
-        this.ctx = this.canvas.getContext("2d");
-        if (!this.ctx) return;
-        state.ctx = this.ctx;
-        this.initCanvasDimensions();
-
-        if (
-          state.animationFrameId === null &&
-          !document.hidden &&
-          window.innerWidth >= 768
-        ) {
-          this.startRainLoop();
-        }
-
-        this.setupObservers(state);
-        document.addEventListener("visibilitychange", this.handleVisibility);
-      };
-
-      const interactionEvents = [
-        "pointermove",
-        "scroll",
-        "keydown",
-        "touchstart",
-      ];
-      const onUserInteraction = () => startMatrix();
-
-      interactionEvents.forEach((ev) => {
-        window.addEventListener(ev, onUserInteraction, {
-          once: true,
-          passive: true,
-        });
-      });
-
-      let loadTimerId: number | null = null;
-      let idleCallbackId: number | null = null;
-      let fallbackTimerId: number | null = null;
-
-      const scheduleStartup = () => {
-        if (typeof (window as any).requestIdleCallback === "function") {
-          idleCallbackId = (window as any).requestIdleCallback(
-            () => startMatrix(),
-            { timeout: 600 },
-          );
-        } else {
-          loadTimerId = window.setTimeout(() => {
-            startMatrix();
-          }, 250);
-        }
-        // Fallback safety cap: ensure execution within 5500ms max
-        fallbackTimerId = window.setTimeout(() => {
-          startMatrix();
-        }, 5500);
-      };
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", scheduleStartup, {
-          once: true,
-        });
-      } else {
-        scheduleStartup();
-      }
-
-      const cleanupStartupListeners = () => {
-        interactionEvents.forEach((ev) => {
-          window.removeEventListener(ev, onUserInteraction);
-        });
-        if (loadTimerId !== null) {
-          window.clearTimeout(loadTimerId);
-          loadTimerId = null;
-        }
-        if (fallbackTimerId !== null) {
-          window.clearTimeout(fallbackTimerId);
-          fallbackTimerId = null;
-        }
-        if (
-          idleCallbackId !== null &&
-          typeof (window as any).cancelIdleCallback === "function"
-        ) {
-          (window as any).cancelIdleCallback(idleCallbackId);
-          idleCallbackId = null;
-        }
-      };
-
-      state.cancelStartupTimer = cleanupStartupListeners;
-    }
-
-    private setupObservers(state: MatrixSingleton) {
-      if (this.resizeObserver) {
-        this.resizeObserver.disconnect();
-      }
-
-      const handleResize = (entryWidth?: number, entryHeight?: number) => {
-        const currentWidth = entryWidth || window.innerWidth;
-        const currentHeight = entryHeight || window.innerHeight;
-        const currentDpr = window.devicePixelRatio || 1;
-        const dprChanged = Math.abs(currentDpr - (this.lastDpr || 1)) > 0.001;
-
-        if (currentWidth <= 0 || currentHeight <= 0) return;
-
-        // Only re-init if canvas dimensions actually changed by more than 50px or zoom/DPR shifted
-        if (
-          Math.abs(currentWidth - this.lastWidth) > 50 ||
-          Math.abs(currentHeight - this.lastHeight) > 50 ||
-          dprChanged
-        ) {
-          this.lastWidth = currentWidth;
-          this.lastHeight = currentHeight;
-          this.lastDpr = currentDpr;
-          state.lastWidth = currentWidth;
-          state.lastHeight = currentHeight;
-          state.lastDpr = currentDpr;
-
-          if (state.worker) {
-            state.worker.postMessage({
-              type: "resize",
-              width: currentWidth,
-              height: currentHeight,
-              dpr: currentDpr,
-            });
-          } else {
-            this.initCanvasDimensions();
-            this.initRain(false);
-          }
-        }
-      };
-
-      this.resizeObserver = new ResizeObserver((entries) => {
-        const entry = entries[0];
-        if (!entry) return;
-        handleResize(entry.contentRect.width, entry.contentRect.height);
-      });
-      this.resizeObserver.observe(this);
-
-      if (this.windowResizeHandler) {
-        window.removeEventListener("resize", this.windowResizeHandler);
-      }
-      this.windowResizeHandler = () => handleResize();
-      window.addEventListener("resize", this.windowResizeHandler, {
-        passive: true,
-      });
-
-      if (this.themeObserver) {
-        this.themeObserver.disconnect();
-      }
-      this.themeObserver = new MutationObserver(() => {
-        if (!state.worker) return;
-        const isLight =
-          document.documentElement.getAttribute("data-theme") === "light";
-        state.worker.postMessage({ type: "theme", isLight });
-      });
-      this.themeObserver.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["data-theme"],
-      });
-    }
-
-    private handleVisibility = () => {
-      const state = this.getGlobalState();
-      if (state.worker) {
-        state.worker.postMessage({
-          type: document.hidden ? "pause" : "resume",
-        });
-        state.worker.postMessage({
-          type: "visibility",
-          hidden: document.hidden,
-        });
-      } else if (document.hidden) {
-        if (state.animationFrameId !== null) {
-          cancelAnimationFrame(state.animationFrameId);
-          state.animationFrameId = null;
-        }
-      } else if (state.animationFrameId === null && window.innerWidth >= 768) {
-        this.startRainLoop();
-      }
-    };
-
-    disconnectedCallback() {
-      const state = this.getGlobalState();
-      if (this.windowResizeHandler) {
-        window.removeEventListener("resize", this.windowResizeHandler);
-        this.windowResizeHandler = null;
-      }
-
-      // Defer cancellation: during Astro transitions or DOM swaps, element is re-parented within ms
-      if (state.disconnectTimer !== null) {
-        window.clearTimeout(state.disconnectTimer);
-      }
-      state.disconnectTimer = window.setTimeout(() => {
-        if (!document.querySelector("matrix-canvas-layer")) {
-          if (state.cancelStartupTimer) {
-            state.cancelStartupTimer();
-            state.cancelStartupTimer = null;
-          }
-          document.removeEventListener(
-            "visibilitychange",
-            this.handleVisibility,
-          );
-          if (this.themeObserver) {
-            this.themeObserver.disconnect();
-            this.themeObserver = null;
-          }
-          if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-            this.resizeObserver = null;
-          }
-          if (state.worker) {
-            state.worker.terminate();
-            state.worker = null;
-          }
-          if (state.animationFrameId !== null) {
-            cancelAnimationFrame(state.animationFrameId);
-            state.animationFrameId = null;
-          }
-          if (state.timeoutId !== null) {
-            window.clearTimeout(state.timeoutId);
-            state.timeoutId = null;
-          }
-          state.canvas = null;
-          (window as any).__matrixCanvas = null;
-        }
-        state.disconnectTimer = null;
-      }, 1000);
-    }
-
-    private initCanvasDimensions() {
-      if (!this.canvas) return;
-      const dpr = window.devicePixelRatio || 1;
-      const rect = this.getBoundingClientRect();
-      const width = rect.width || window.innerWidth;
-      const height = rect.height || window.innerHeight;
-      const targetW = Math.round(width * dpr);
-      const targetH = Math.round(height * dpr);
-      const dprChanged = Math.abs(dpr - (this.lastDpr || 1)) > 0.001;
-
-      // CRITICAL: Setting canvas.width clears the entire bitmap buffer.
-      // NEVER re-assign unless dimensions changed by > 50px or zoom/DPR shifted!
-      if (
-        Math.abs(this.canvas.width - targetW) > 50 ||
-        Math.abs(this.canvas.height - targetH) > 50 ||
-        dprChanged
-      ) {
-        this.canvas.width = targetW;
-        this.canvas.height = targetH;
-        this.lastDpr = dpr;
-        if (this.ctx) {
-          this.ctx.resetTransform?.();
-          this.ctx.scale(dpr, dpr);
-        }
-      }
-    }
-
-    private initRain(forceReset = false) {
-      if (!this.canvas) return;
-      const state = this.getGlobalState();
-      const fontSize = 14;
-      const columns = Math.floor(window.innerWidth / fontSize);
-      const existing =
-        state.drops && state.drops.length > 0
-          ? state.drops
-          : ((window as any).__matrixDrops as number[] | undefined);
-
-      if (!forceReset && existing && existing.length === columns) {
-        return;
-      }
-
-      state.drops = new Array(columns);
-      state.speeds = new Array(columns);
-      for (let i = 0; i < columns; i++) {
-        state.drops[i] =
-          !forceReset && existing && i < existing.length
-            ? existing[i]!
-            : -Math.floor(Math.random() * 24);
-        state.speeds[i] = 0.65 + Math.random() * 0.7;
-      }
-      (window as any).__matrixDrops = state.drops;
-    }
-
-    public startRainLoop() {
-      const state = this.getGlobalState();
-      if (state.animationFrameId !== null) return;
-
-      const fontSize = 14;
-      const characters =
-        "01010123456789ABCDEFλ§µΔΨΩθπσ0x::->/*!=&|^GoRustSIMDAVX2ptrchnsync".split(
-          "",
+        existingCanvas.classList.remove("opacity-0");
+        existingCanvas.classList.add("opacity-100");
+        window.__matrixSingleton.syncTheme();
+        window.__matrixSingleton.setPaused(
+          document.visibilityState === "hidden",
         );
-
-      let lastRenderTime = 0;
-      const FRAME_INTERVAL = 60;
-
-      const render = (now: number) => {
-        if (document.hidden || window.innerWidth < 768) {
-          state.animationFrameId = null;
-          return;
-        }
-        state.animationFrameId = requestAnimationFrame(render);
-
-        if (now - lastRenderTime < FRAME_INTERVAL) {
-          return;
-        }
-        lastRenderTime = now;
-
-        const currentCanvas = state.canvas || this.canvas;
-        const currentCtx = state.ctx || this.ctx;
-        if (!currentCtx || !currentCanvas) return;
-
-        const isLight =
-          document.documentElement.getAttribute("data-theme") === "light";
-        currentCtx.fillStyle = isLight
-          ? "rgba(244, 246, 248, 0.16)"
-          : "rgba(26, 2, 5, 0.12)";
-        currentCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
-
-        currentCtx.font = `${fontSize}px ui-monospace, monospace`;
-
-        const drops = state.drops;
-        const speeds = state.speeds;
-        for (let i = 0; i < drops.length; i++) {
-          const dropY = drops[i] ?? 0;
-          const speed = speeds[i] ?? 1;
-          const char =
-            characters[Math.floor(Math.random() * characters.length)] || "0";
-          const x = i * fontSize;
-          const y = Math.floor(dropY) * fontSize;
-
-          if (dropY > 0) {
-            const isLead = Math.random() < 0.12;
-            if (isLead) {
-              currentCtx.fillStyle = isLight ? "#8B1E17" : "#FEF08A";
-            } else {
-              currentCtx.fillStyle = isLight ? "#7A1C16" : "#D48B38";
-            }
-            currentCtx.fillText(char, x, y);
-          }
-
-          if (y > window.innerHeight + 60) {
-            drops[i] = -Math.floor(Math.random() * 45 + 5);
-            speeds[i] = 0.65 + Math.random() * 0.7;
-          } else {
-            drops[i] = dropY + speed;
-          }
-        }
-        (window as any).__matrixDrops = drops;
-      };
-
-      state.renderFn = render as any;
-      state.animationFrameId = requestAnimationFrame(render);
-    }
-  }
-
-  if (!customElements.get("matrix-canvas-layer")) {
-    customElements.define("matrix-canvas-layer", MatrixCanvasLayer);
-  }
-
-  function resumeMatrixOnNav() {
-    const state = (window as any).__matrixState as MatrixSingleton | undefined;
-    if (!state) return;
-    const isLight =
-      document.documentElement.getAttribute("data-theme") === "light";
-    if (state.worker) {
-      state.worker.postMessage({ type: "resume" });
-      state.worker.postMessage({ type: "theme", isLight });
-    } else {
-      const layer = document.querySelector("matrix-canvas-layer") as any;
-      if (
-        layer &&
-        typeof layer.startRainLoop === "function" &&
-        state.animationFrameId === null &&
-        !document.hidden &&
-        window.innerWidth >= 768
-      ) {
-        layer.startRainLoop();
+        return;
       }
     }
-  }
 
-  document.addEventListener("astro:before-preparation", () => {
-    const state = (window as any).__matrixState as MatrixSingleton | undefined;
-    if (state?.worker || state?.animationFrameId !== null) {
+    if (window.__matrixSingleton?.bootScheduled) {
       return;
     }
-  });
 
-  document.addEventListener("astro:after-swap", resumeMatrixOnNav);
-  document.addEventListener("astro:page-load", resumeMatrixOnNav);
+    const prefersReducedMotion =
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion || navigator.webdriver === true) {
+      return;
+    }
+
+    const singleton: MatrixSingleton = {
+      initialized: false,
+      bootScheduled: true,
+      worker: null,
+      rafId: null,
+      canvas: null,
+      syncTheme: () => {},
+      setPaused: () => {},
+    };
+    window.__matrixSingleton = singleton;
+    window.__matrixState = {
+      worker: null,
+      drops: window.__matrixDrops || [],
+      animationFrameId: null,
+    };
+
+    const bootMatrix = () => {
+      if (singleton.initialized) return;
+      const canvas = document.getElementById(
+        "matrix-canvas",
+      ) as HTMLCanvasElement | null;
+      if (!canvas) {
+        singleton.bootScheduled = false;
+        return;
+      }
+
+      singleton.initialized = true;
+      singleton.canvas = canvas;
+      window.__matrixCanvas = canvas;
+
+      const getIsDark = () =>
+        document.documentElement.classList.contains("dark") ||
+        document.documentElement.getAttribute("data-theme") !== "light";
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      const resizeManager = {
+        lastWidth: window.innerWidth,
+        lastHeight: window.innerHeight,
+        shouldResize(currentWidth: number, currentHeight: number): boolean {
+          if (
+            Math.abs(currentWidth - this.lastWidth) > 50 ||
+            Math.abs(currentHeight - this.lastHeight) > 50
+          ) {
+            this.lastWidth = currentWidth;
+            this.lastHeight = currentHeight;
+            return true;
+          }
+          return false;
+        },
+      };
+
+      const supportsOffscreen =
+        typeof canvas.transferControlToOffscreen === "function" &&
+        typeof Worker !== "undefined";
+
+      if (supportsOffscreen && !canvas.dataset.offscreenTransferred) {
+        try {
+          canvas.dataset.offscreenTransferred = "true";
+          const offscreen = canvas.transferControlToOffscreen();
+          const worker = new Worker(
+            new URL("../../scripts/matrix.worker.ts", import.meta.url),
+            { type: "module" },
+          );
+          singleton.worker = worker;
+          if (window.__matrixState) window.__matrixState.worker = worker;
+
+          worker.postMessage(
+            {
+              type: "init",
+              canvas: offscreen,
+              width: resizeManager.lastWidth,
+              height: resizeManager.lastHeight,
+              dpr,
+              isLight: !getIsDark(),
+            },
+            [offscreen],
+          );
+
+          singleton.syncTheme = () => {
+            const isLight = !getIsDark();
+            worker.postMessage({ type: "theme", isLight });
+          };
+
+          singleton.setPaused = (paused: boolean) => {
+            worker.postMessage({ type: paused ? "pause" : "resume" });
+          };
+
+          let resizeTimer: number | undefined;
+          window.addEventListener(
+            "resize",
+            () => {
+              window.clearTimeout(resizeTimer);
+              resizeTimer = window.setTimeout(() => {
+                const currentWidth = window.innerWidth;
+                const currentHeight = window.innerHeight;
+                if (resizeManager.shouldResize(currentWidth, currentHeight)) {
+                  worker.postMessage({
+                    type: "resize",
+                    width: currentWidth,
+                    height: currentHeight,
+                    dpr: Math.min(window.devicePixelRatio || 1, 2),
+                  });
+                }
+              }, 150);
+            },
+            { passive: true },
+          );
+
+          requestAnimationFrame(() => {
+            canvas.classList.remove("opacity-0");
+            canvas.classList.add("opacity-100");
+          });
+          return;
+        } catch {
+          // Fallback to 2D context if OffscreenCanvas fails
+        }
+      }
+
+      // 2D Canvas Fallback (persisted across navigations)
+      const ctx = canvas.getContext("2d", { alpha: true });
+      if (!ctx) return;
+
+      let w = (canvas.width = window.innerWidth);
+      let h = (canvas.height = window.innerHeight);
+      const fontSize = 14;
+      let columns = Math.ceil(w / fontSize);
+      let drops =
+        window.__matrixDrops && window.__matrixDrops.length === columns
+          ? window.__matrixDrops
+          : Array.from(
+              { length: columns },
+              () => -Math.floor(Math.random() * 24),
+            );
+      window.__matrixDrops = drops;
+      const chars = "0123456789ABCDEF<>[]{}/\\|=+-_*&^%$#@!~";
+      let isDark = getIsDark();
+      let paused = false;
+      let lastFrame = 0;
+      const frameInterval = 1000 / 24;
+
+      singleton.syncTheme = () => {
+        isDark = getIsDark();
+      };
+      singleton.setPaused = (p: boolean) => {
+        paused = p;
+      };
+
+      const draw = (now: number) => {
+        singleton.rafId = requestAnimationFrame(draw);
+        if (paused || now - lastFrame < frameInterval) return;
+        lastFrame = now;
+
+        ctx.fillStyle = isDark
+          ? "rgba(9, 9, 11, 0.08)"
+          : "rgba(250, 250, 250, 0.08)";
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = isDark
+          ? "rgba(16, 185, 129, 0.22)"
+          : "rgba(16, 185, 129, 0.16)";
+        ctx.font = `${fontSize}px "Geist Mono", monospace`;
+
+        for (let i = 0; i < drops.length; i++) {
+          const char = chars[(Math.random() * chars.length) | 0] || "0";
+          const x = i * fontSize;
+          const y = (drops[i] ?? 0) * fontSize;
+          if (y > 0) {
+            ctx.fillText(char, x, y);
+          }
+          if (y > h && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i]!++;
+        }
+        window.__matrixDrops = drops;
+      };
+
+      window.addEventListener(
+        "resize",
+        () => {
+          const currentWidth = window.innerWidth;
+          const currentHeight = window.innerHeight;
+          if (resizeManager.shouldResize(currentWidth, currentHeight)) {
+            w = canvas.width = currentWidth;
+            h = canvas.height = currentHeight;
+            const newCols = Math.ceil(w / fontSize);
+            if (newCols > columns) {
+              for (let i = columns; i < newCols; i++) {
+                drops[i] = -Math.floor(Math.random() * 24);
+              }
+            }
+            columns = newCols;
+          }
+        },
+        { passive: true },
+      );
+
+      singleton.rafId = requestAnimationFrame(draw);
+      requestAnimationFrame(() => {
+        canvas.classList.remove("opacity-0");
+        canvas.classList.add("opacity-100");
+      });
+    };
+
+    const interactionEvents = [
+      "pointerdown",
+      "pointermove",
+      "wheel",
+      "touchstart",
+      "keydown",
+      "scroll",
+    ];
+    let idleTimerId: number | undefined;
+
+    const onFirstInteraction = () => {
+      interactionEvents.forEach((evt) =>
+        window.removeEventListener(evt, onFirstInteraction),
+      );
+      if (idleTimerId) window.clearTimeout(idleTimerId);
+      bootMatrix();
+    };
+
+    interactionEvents.forEach((evt) =>
+      window.addEventListener(evt, onFirstInteraction, {
+        once: true,
+        passive: true,
+      }),
+    );
+
+    const scheduleIdleBoot = () => {
+      idleTimerId = window.setTimeout(bootMatrix, 5500);
+    };
+
+    if (document.readyState === "complete") {
+      scheduleIdleBoot();
+    } else {
+      window.addEventListener("load", scheduleIdleBoot, {
+        once: true,
+        passive: true,
+      });
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      singleton.setPaused(document.visibilityState === "hidden");
+    });
+    document.addEventListener("theme-changed", () => {
+      singleton.syncTheme();
+    });
+
+    function resumeMatrixOnNav() {
+      const state = window.__matrixState;
+      if (state?.worker) {
+        state.worker.postMessage({ type: "resume" });
+      }
+      if (singleton.initialized && singleton.canvas) {
+        singleton.canvas.classList.remove("opacity-0");
+        singleton.canvas.classList.add("opacity-100");
+        singleton.syncTheme();
+        singleton.setPaused(document.visibilityState === "hidden");
+      } else {
+        onFirstInteraction();
+      }
+    }
+
+    document.addEventListener("astro:after-swap", resumeMatrixOnNav);
+    document.addEventListener("astro:page-load", resumeMatrixOnNav);
+  }
+
+  setupMatrixSingleton();
 </script>

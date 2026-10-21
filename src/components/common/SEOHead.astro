@@ -174,27 +174,30 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
       }
     }
 
-    document.addEventListener("astro:page-load", syncCanonical);
-    document.addEventListener("astro:after-swap", syncCanonical);
-    window.addEventListener("popstate", syncCanonical);
-    const originalReplaceState = history.replaceState;
-    history.replaceState = function (
-      data: any,
-      unused: string,
-      url?: string | URL | null,
-    ) {
-      originalReplaceState.call(this, data, unused, url);
-      syncCanonical();
-    };
-    const originalPushState = history.pushState;
-    history.pushState = function (
-      data: any,
-      unused: string,
-      url?: string | URL | null,
-    ) {
-      originalPushState.call(this, data, unused, url);
-      syncCanonical();
-    };
+    if (!(window as any).__hasWrappedCanonicalHistory) {
+      (window as any).__hasWrappedCanonicalHistory = true;
+      document.addEventListener("astro:page-load", syncCanonical);
+      document.addEventListener("astro:after-swap", syncCanonical);
+      window.addEventListener("popstate", syncCanonical);
+      const originalReplaceState = history.replaceState;
+      history.replaceState = function (
+        data: any,
+        unused: string,
+        url?: string | URL | null,
+      ) {
+        originalReplaceState.call(this, data, unused, url);
+        syncCanonical();
+      };
+      const originalPushState = history.pushState;
+      history.pushState = function (
+        data: any,
+        unused: string,
+        url?: string | URL | null,
+      ) {
+        originalPushState.call(this, data, unused, url);
+        syncCanonical();
+      };
+    }
   })();
 </script>
 
