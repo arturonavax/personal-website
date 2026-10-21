@@ -915,29 +915,9 @@ export default {
       });
     }
 
-    const isPublicHtmlRoute =
-      request.method === "GET" &&
-      !pathname.startsWith("/api/") &&
-      !isAdminPage &&
-      !isProtectedApi &&
-      (pathname.endsWith("/") || !pathname.includes("."));
-
-    const cache =
-      typeof caches !== "undefined" && caches.default ? caches.default : null;
-    const cacheKey = new Request(url.toString(), {
-      method: "GET",
-      headers: request.headers,
-    });
-
-    if (cache && isPublicHtmlRoute) {
-      try {
-        const cachedRes = await cache.match(cacheKey);
-        if (cachedRes) {
-          return cachedRes;
-        }
-      } catch (_) {}
-    }
-
+    // Static Assets already caches versioned deployments at the edge. A separate
+    // Cache API entry keyed only by the public URL can outlive a deployment and
+    // serve an old HTML shell without ClientRouter after the Worker is updated.
     const response = await env.ASSETS.fetch(request);
     let edgeVisitLogged = false;
 
@@ -1135,12 +1115,6 @@ export default {
       }
     } else {
       finalResponse = response;
-    }
-
-    if (cache && isPublicHtmlRoute && response.status === 200) {
-      try {
-        ctx.waitUntil(cache.put(cacheKey, finalResponse.clone()));
-      } catch (_) {}
     }
 
     return finalResponse;
