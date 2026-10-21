@@ -947,12 +947,17 @@ header#site-header,
   view-transition-name: back-to-top;
 }
 
-#matrix-container {
-  view-transition-name: matrix-background;
+#floating-actions-stack {
+  view-transition-name: floating-actions-stack;
 }
 
+#page-navigation-beacon {
+  view-transition-name: page-navigation-beacon;
+}
+
+#matrix-container,
 matrix-canvas-layer {
-  view-transition-name: matrix-canvas-background;
+  view-transition-name: none !important;
 }
 
 main#main-content {
@@ -965,11 +970,25 @@ html.theme-transitioning #main-header,
 html.theme-transitioning header#site-header,
 html.theme-transitioning #lang-suggestion-banner,
 html.theme-transitioning #back-to-top-btn,
+html.theme-transitioning #floating-actions-stack,
+html.theme-transitioning #page-navigation-beacon,
 html.theme-transitioning matrix-canvas-layer,
 html.theme-transitioning #page-index-nav,
 html.theme-transitioning #page-index-nav-shell,
 html.theme-transitioning #desktop-page-index-root,
-html.theme-transitioning main#main-content {
+html.theme-transitioning main#main-content,
+:root[data-theme-transitioning] #matrix-container,
+:root[data-theme-transitioning] #main-header,
+:root[data-theme-transitioning] header#site-header,
+:root[data-theme-transitioning] #lang-suggestion-banner,
+:root[data-theme-transitioning] #back-to-top-btn,
+:root[data-theme-transitioning] #floating-actions-stack,
+:root[data-theme-transitioning] #page-navigation-beacon,
+:root[data-theme-transitioning] matrix-canvas-layer,
+:root[data-theme-transitioning] #page-index-nav,
+:root[data-theme-transitioning] #page-index-nav-shell,
+:root[data-theme-transitioning] #desktop-page-index-root,
+:root[data-theme-transitioning] main#main-content {
   view-transition-name: none !important;
 }
 
@@ -986,6 +1005,12 @@ html:not(.theme-transitioning)::view-transition-new(lang-suggestion-banner),
 html:not(.theme-transitioning)::view-transition-group(back-to-top),
 html:not(.theme-transitioning)::view-transition-old(back-to-top),
 html:not(.theme-transitioning)::view-transition-new(back-to-top),
+html:not(.theme-transitioning)::view-transition-group(floating-actions-stack),
+html:not(.theme-transitioning)::view-transition-old(floating-actions-stack),
+html:not(.theme-transitioning)::view-transition-new(floating-actions-stack),
+html:not(.theme-transitioning)::view-transition-group(page-navigation-beacon),
+html:not(.theme-transitioning)::view-transition-old(page-navigation-beacon),
+html:not(.theme-transitioning)::view-transition-new(page-navigation-beacon),
 html:not(.theme-transitioning)::view-transition-group(matrix-canvas-background),
 html:not(.theme-transitioning)::view-transition-old(matrix-canvas-background),
 html:not(.theme-transitioning)::view-transition-new(matrix-canvas-background),
@@ -994,6 +1019,30 @@ html:not(.theme-transitioning)::view-transition-old(matrix-background),
 html:not(.theme-transitioning)::view-transition-new(matrix-background) {
   animation: none !important;
   mix-blend-mode: normal !important;
+}
+
+/* Drop old snapshots for persistent HUD and Matrix layers so semi-transparent
+   canvases, shadows, and backdrop-blurs NEVER double-stack during the 130ms route swap */
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(site-header),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(page-index-nav),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(lang-suggestion-banner),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(back-to-top),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(floating-actions-stack),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(page-navigation-beacon) {
+  display: none !important;
+  opacity: 0 !important;
 }
 
 /* Smooth 120 FPS SPA Content Transition on <main> During Route Changes */

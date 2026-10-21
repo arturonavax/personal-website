@@ -112,20 +112,57 @@ const i18nData = {
     var state = (window.__langBannerState = window.__langBannerState || {
       hasAnimatedIn: false,
       isDismissed: false,
+      listenersBound: false,
     });
+
+    function toRelativeUrl(rawUrl) {
+      if (!rawUrl) return "";
+      if (rawUrl.indexOf("http://") === 0 || rawUrl.indexOf("https://") === 0) {
+        try {
+          var parsed = new URL(
+            rawUrl,
+            (window.location && window.location.origin) ||
+              "https://arturonavax.dev",
+          );
+          return parsed.pathname + parsed.search + parsed.hash;
+        } catch (_) {
+          return rawUrl;
+        }
+      }
+      return rawUrl;
+    }
+
+    function hideBannerImmediate(banner) {
+      banner.classList.add("no-transition");
+      banner.classList.remove("flex", "translate-y-0", "opacity-100");
+      banner.classList.add("hidden", "translate-y-3", "opacity-0");
+      banner.hidden = true;
+      banner.style.display = "none";
+      if (typeof window.__updateToastCollision === "function") {
+        window.__updateToastCollision();
+      }
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(function () {
+          banner.classList.remove("no-transition");
+        });
+      } else {
+        banner.classList.remove("no-transition");
+      }
+    }
 
     function initLangSuggestion() {
       var banner = document.getElementById("lang-suggestion-banner");
       if (!banner) return;
 
-      var docLang = (
-        (document.documentElement &&
-          document.documentElement.getAttribute("lang")) ||
-        (window.location.pathname.indexOf("/es/") === 0 ||
-        window.location.pathname === "/es"
-          ? "es"
-          : "en")
-      )
+      var pathname = (window.location && window.location.pathname) || "/";
+      var pathIsEs =
+        pathname === "/es" ||
+        pathname === "/es/" ||
+        pathname.indexOf("/es/") === 0;
+      var docLangAttr =
+        document.documentElement &&
+        document.documentElement.getAttribute("lang");
+      var docLang = (docLangAttr || (pathIsEs ? "es" : "en"))
         .toLowerCase()
         .split("-")[0];
 
@@ -144,18 +181,11 @@ const i18nData = {
           'link[rel="alternate"][hreflang="' + targetLocale + '"]',
         );
         if (altLink) {
-          counterpartUrl = altLink.getAttribute("href");
+          counterpartUrl = toRelativeUrl(altLink.getAttribute("href"));
         }
       }
       if (!counterpartUrl) {
-        counterpartUrl = banner.getAttribute("data-target-url");
-      }
-
-      // Guard against stale banner: never offer language if already on that language page
-      if (currentLocale === banner.getAttribute("data-target-locale")) {
-        banner.classList.remove("flex", "translate-y-0", "opacity-100");
-        banner.classList.add("hidden", "translate-y-3", "opacity-0");
-        return;
+        counterpartUrl = toRelativeUrl(banner.getAttribute("data-target-url"));
       }
 
       // 1. Render guard (SPEC-007 REQ-3): session-scoped keys only, nothing persisted across sessions.
@@ -171,24 +201,19 @@ const i18nData = {
 
       if (isDismissed || isManualOverride || state.isDismissed) {
         state.isDismissed = true;
-        banner.classList.remove("flex", "translate-y-0", "opacity-100");
-        banner.classList.add("hidden", "translate-y-3", "opacity-0");
-        banner.hidden = true;
-        banner.style.display = "none";
+        hideBannerImmediate(banner);
         return;
       }
 
-      var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+      var currentPath = pathname.replace(/\/+$/, "") || "/";
 
       // 2. Page-level manual override check: if user switched on this specific page
       try {
         var pageOverride =
-          sessionStorage.getItem(
-            "page_lang_override_" + window.location.pathname,
-          ) || sessionStorage.getItem("page_lang_override_" + currentPath);
+          sessionStorage.getItem("page_lang_override_" + pathname) ||
+          sessionStorage.getItem("page_lang_override_" + currentPath);
         if (pageOverride === currentLocale) {
-          banner.classList.remove("flex", "translate-y-0", "opacity-100");
-          banner.classList.add("hidden", "translate-y-3", "opacity-0");
+          hideBannerImmediate(banner);
           return;
         }
       } catch (_) {}
@@ -210,15 +235,13 @@ const i18nData = {
 
       // Ensure banner appears only when device/browser language does not match the page language
       if (!deviceLang || currentLocale === deviceLang) {
-        banner.classList.remove("flex", "translate-y-0", "opacity-100");
-        banner.classList.add("hidden", "translate-y-3", "opacity-0");
+        hideBannerImmediate(banner);
         return;
       }
 
       // If translation in the suggested locale is missing for this page
       if (!counterpartUrl) {
-        banner.classList.remove("flex", "translate-y-0", "opacity-100");
-        banner.classList.add("hidden", "translate-y-3", "opacity-0");
+        hideBannerImmediate(banner);
         return;
       }
 
@@ -266,7 +289,7 @@ const i18nData = {
         }
       } catch (_) {}
 
-      // 4. Mostrar banner según máquina de estados
+      // 4. Show banner according to session state machine
       banner.hidden = false;
       banner.style.display = "";
 
@@ -277,7 +300,8 @@ const i18nData = {
       } catch (_) {}
 
       if (state.hasAnimatedIn || alreadyShownOnce) {
-        // Ya se animó previamente en esta sesión: mantener visible y sólido sin re-animar ni saltos
+        // Already animated once in this session: lock in visible state with zero transition or jump
+        banner.classList.add("no-transition");
         if (!banner.classList.contains("flex")) banner.classList.add("flex");
         if (banner.classList.contains("hidden"))
           banner.classList.remove("hidden");
@@ -289,11 +313,19 @@ const i18nData = {
           banner.classList.add("opacity-100");
         if (banner.classList.contains("opacity-0"))
           banner.classList.remove("opacity-0");
+        state.hasAnimatedIn = true;
+        if (typeof requestAnimationFrame === "function") {
+          requestAnimationFrame(function () {
+            banner.classList.remove("no-transition");
+          });
+        } else {
+          banner.classList.remove("no-transition");
+        }
       } else {
-        // Primera aparición: animar entrada
+        // First appearance in session: play entrance transition once
         banner.classList.remove("hidden");
         banner.classList.add("flex");
-        void banner.offsetHeight; // Forzar reflow para animación CSS
+        void banner.offsetHeight;
         banner.classList.remove("translate-y-3", "opacity-0");
         banner.classList.add("translate-y-0", "opacity-100");
         state.hasAnimatedIn = true;
@@ -306,7 +338,7 @@ const i18nData = {
         window.__updateToastCollision();
       }
 
-      // 5. Manejo de descarte (solo en la sesión actual)
+      // 5. Handle dismissal (session-scoped only)
       var dismissBtn = document.getElementById("lang-suggestion-dismiss");
       if (dismissBtn) {
         dismissBtn.onclick = function () {
@@ -331,20 +363,15 @@ const i18nData = {
         };
       }
 
-      // 6. Manejo de aceptación (desaparece inmediatamente al pulsar Cambiar)
+      // 6. Handle accept CTA (hide immediately when switching language)
       if (acceptBtn && !acceptBtn.__boundAccept) {
         acceptBtn.__boundAccept = true;
         acceptBtn.addEventListener("click", function () {
-          banner.classList.remove("flex", "translate-y-0", "opacity-100");
-          banner.classList.add("hidden", "translate-y-3", "opacity-0");
-          banner.hidden = true;
-          banner.style.display = "none";
+          hideBannerImmediate(banner);
           state.isDismissed = true;
-          if (typeof window.__updateToastCollision === "function") {
-            window.__updateToastCollision();
-          }
           try {
             sessionStorage.setItem("lang_banner_dismissed", "true");
+            sessionStorage.setItem("lang_manual_override", "true");
             var targetUrl = banner.getAttribute("data-target-url");
             if (targetUrl) {
               sessionStorage.setItem(
@@ -362,8 +389,11 @@ const i18nData = {
       }
     }
 
-    document.addEventListener("astro:after-swap", initLangSuggestion);
-    document.addEventListener("astro:page-load", initLangSuggestion);
+    if (!state.listenersBound) {
+      state.listenersBound = true;
+      document.addEventListener("astro:after-swap", initLangSuggestion);
+      document.addEventListener("astro:page-load", initLangSuggestion);
+    }
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", initLangSuggestion);
     } else {

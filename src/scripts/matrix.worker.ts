@@ -130,17 +130,8 @@ function stopFrameLoop(): void {
   rafId = null;
 }
 
-function render(now: number): void {
-  rafId = null;
-  if (hidden) return;
-  scheduleNextFrame();
-  if (!ctx || now - lastRenderTime < FRAME_INTERVAL) return;
-  lastRenderTime = now;
-
-  ctx.fillStyle = isLight
-    ? "rgba(244, 246, 248, 0.16)"
-    : "rgba(26, 2, 5, 0.12)";
-  ctx.fillRect(0, 0, width, height);
+function drawGlyphStreams(advanceDrops: boolean): void {
+  if (!ctx) return;
   ctx.font = `${FONT_SIZE}px ui-monospace, monospace`;
 
   for (let i = 0; i < drops.length; i++) {
@@ -162,14 +153,39 @@ function render(now: number): void {
       ctx.fillText(char, x, y);
     }
 
-    // Organic stream reset with variable delays and regenerated speeds
-    if (y > height + 60) {
-      drops[i] = -Math.floor(Math.random() * 45 + 5);
-      speeds[i] = 0.65 + Math.random() * 0.7;
-    } else {
-      drops[i] = dropY + speed;
+    if (advanceDrops) {
+      // Organic stream reset with variable delays and regenerated speeds
+      if (y > height + 60) {
+        drops[i] = -Math.floor(Math.random() * 45 + 5);
+        speeds[i] = 0.65 + Math.random() * 0.7;
+      } else {
+        drops[i] = dropY + speed;
+      }
     }
   }
+}
+
+function flushThemeBackdrop(): void {
+  if (!ctx || width <= 0 || height <= 0) return;
+  ctx.fillStyle = isLight
+    ? "rgba(244, 246, 248, 0.88)"
+    : "rgba(26, 2, 5, 0.88)";
+  ctx.fillRect(0, 0, width, height);
+  drawGlyphStreams(false);
+}
+
+function render(now: number): void {
+  rafId = null;
+  if (hidden) return;
+  scheduleNextFrame();
+  if (!ctx || now - lastRenderTime < FRAME_INTERVAL) return;
+  lastRenderTime = now;
+
+  ctx.fillStyle = isLight
+    ? "rgba(244, 246, 248, 0.16)"
+    : "rgba(26, 2, 5, 0.12)";
+  ctx.fillRect(0, 0, width, height);
+  drawGlyphStreams(true);
 }
 
 scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
@@ -187,7 +203,11 @@ scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
       scheduleNextFrame();
       break;
     case "theme":
-      isLight = msg.isLight;
+      if (isLight !== msg.isLight) {
+        isLight = msg.isLight;
+        flushThemeBackdrop();
+      }
+      scheduleNextFrame();
       break;
     case "visibility":
       hidden = msg.hidden;
