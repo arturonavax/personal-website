@@ -46,13 +46,13 @@
     "marked": "^18.0.14",
     "nanostores": "^1.5.4",
     "satori": "^0.36.0",
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "tailwindcss": "4.3.3"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.0.0",
     "@astrojs/check": "0.9.10",
-    "@cloudflare/workers-types": "^5.20260927.1",
+    "@cloudflare/workers-types": "^5.20261019.1",
     "@playwright/test": "^1.63.0",
     "esbuild": "^0.28.2",
     "only-allow": "^1.2.2",
@@ -60,6 +60,6 @@
     "prettier-plugin-astro": "^1.1.0",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript": "5.9.3",
-    "wrangler": "^4.142.0"
+    "wrangler": "^4.151.3"
   }
 }

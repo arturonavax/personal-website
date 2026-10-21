@@ -1,3 +1,6 @@
+overrides:
+  # Satori 0.36.0 pins 0.7.3; 0.7.5 fixes malformed ZIP64 infinite loops.
+  fflate: 0.7.5
 allowBuilds:
   esbuild: true
   workerd: false
