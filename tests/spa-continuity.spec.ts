@@ -7,6 +7,61 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       launchOptions: { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH },
     });
   }
+  test("Matrix Worker paints while navigation and main-thread work overlap", async ({
+    page,
+  }) => {
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, "webdriver", { get: () => false }),
+    );
+    const ready = page.waitForEvent("worker", (worker) =>
+      worker.url().includes("matrix.worker"),
+    );
+    await page.goto(
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788",
+      { waitUntil: "networkidle" },
+    );
+    await page.mouse.move(400, 400);
+    const worker = await ready;
+    await worker.evaluate(() => {
+      const state = self as typeof self & { __paintTimes: number[] };
+      state.__paintTimes = [];
+      const fillRect = OffscreenCanvasRenderingContext2D.prototype.fillRect;
+      OffscreenCanvasRenderingContext2D.prototype.fillRect = function (
+        ...args
+      ) {
+        state.__paintTimes.push(Date.now());
+        return Reflect.apply(fillRect, this, args);
+      };
+    });
+    await page.route("**/services/", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await route.continue();
+    });
+    const requested = page.waitForRequest(
+      (request) => new URL(request.url()).pathname === "/services/",
+    );
+    await page.locator('header a[href="/services/"]').first().click();
+    await requested;
+    const interval = await page.evaluate(() => {
+      const start = Date.now();
+      const until = performance.now() + 250;
+      while (performance.now() < until) {
+        /* Controlled navigation contention. */
+      }
+      return { start, end: Date.now() };
+    });
+    const times = await worker.evaluate(
+      () => (self as typeof self & { __paintTimes: number[] }).__paintTimes,
+    );
+    const during = times.filter(
+      (time) => time >= interval.start && time <= interval.end,
+    );
+    expect(during.length).toBeGreaterThanOrEqual(8);
+    expect(
+      Math.max(...during.slice(1).map((time, index) => time - during[index]!)),
+    ).toBeLessThan(80);
+    await page.waitForURL("**/services/");
+  });
   test("Worker delivery retains the shell through real header and job-arrow navigation", async ({
     page,
   }) => {

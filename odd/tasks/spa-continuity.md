@@ -16,6 +16,8 @@ S5. "Ya los toast no se recargan al navegar, pero el fondo matrix si se reinicia
 S6. "Ejecuto `pnpm run dev-prod` y pruebo con localhost:8788 todas las paginas, el fallo se ve en todas las paginas como yendo desde about -> experiences -> services -> projects e incluso navegando entre cada job individual con las flechas"
 S7. "No debes necesitar publicar ni desplegar nada en cloudflare, si no funciona localmente no funcionara desplegado"
 
+S8. "Bien ahora si continua el fondo al navegar, pero tiene problemas de rendimiento, al cargar la proxima pagina se pausa o detiene la animacion y esto da muy mala sensacion de experiencia de usuario, la animacion debe ser ultra fluida (usando web worker de ser posible) y de maximo rendimiento todo"
+
 ## Tasks
 
 T1 | S1-S2 | inline | Verified existing implementation and repaired SPA navigation and typecheck | commit: 743d17a, 7dc94fc
@@ -27,6 +29,8 @@ T4 | S1-S2, S5 | inline | Verified locally: isolated Matrix layer, active old-sn
 T5 | S1-S2 | inline | Verified locally: one desktop transition/mobile fetch, persistent document/canvas/theme and banner | commit: e9527e0; Risk: none (language links only, no listener ordering changes)
 
 T6 | S1-S2, S6-S7 | inline | Verified locally: preserve SPA bootstrap through Worker HTML rewriting; independent verifier PASS | commit: pending; Risk: item 3 (shared HTML rewriting); independent verification required
+
+T7 | S2, S8 | inline | Verified Worker frame independence and smooth time-based rendering; browser presentation caveat documented | commit: pending; Risk: item 4 (animation scheduling); independent verifier required
 
 ## Log
 
@@ -71,3 +75,10 @@ L24. GREEN: script removal inspects each complete script separately and distingu
 L25. All8 browser regressions pass on localhost:8788, not preview. New real header route test covers Projects -> About -> Experience -> LATAM job -> past arrow -> future arrow -> Services -> Projects; document/canvas/Worker identity and banner coordinates remain unchanged, no page errors and only initial document request. Default browser-test target changed to localhost8788 so future checks exercise Worker delivery.
 L26. Independent Risk-item3 verifier PASS in isolated baseline/candidate scratch: actual built HTML baseline loses16,952 characters; candidate preserves all21 scripts, transition metadata and JSON-LD byte-for-byte. Six challenge probes and six ordinary HTML/status/header differential cases pass; non200 output unchanged. Verification does not certify field CWV or universal perfect visual performance.
 L27. Native risk assessment high via named item3 (shared HTML delivery); applicable candidate review pending. No remote access, deploy, push, cache purge or new dependencies. Local test server uses existing Worker/ASSETS with temporary config omitting only remote-only AI/Vectorize/email bindings and the custom R2 build, local D1/R2 persistence and fake local admin token. No production configuration was changed.
+
+L28. User confirmed Matrix continuity fixed and reports animation pauses during next-page loading (S8). No publication or remote work. T6 code commit b3dc1da; exact native candidate review was declined once per user delegation to minimize tokens, global mode unchanged.
+L29. Local Worker Chromium measurement1440x900: original Worker paint gaps p50=54ms,p95=125ms,max199ms during three header navigations plus controlled250ms main-thread busy work; swap callbacks32-72ms and transition preparation93-169ms. Diagnostic clock replacement inside the same Worker: p50=48ms,p95=51ms,max54ms, no gaps>80ms. Skipping transitions alone did not resolve it (max220ms), so do not remove route animations speculatively. Render cap22FPS and integer-row y positions also prevent smooth movement. Preserve visual speed/trail lifetime with elapsed-time normalization, cap painting60Hz, and keep hidden-tab pause/single-loop invariants.
+
+L30. GREEN: one bounded60Hz timer owned by the dedicated Worker replaces owner-dependent rAF; elapsed-time movement/backdrop alpha preserve nominal22Hz simulation and trail lifetime. Fractional y coordinates remove whole-row stepping; fallback renders60Hz normalized to its prior24Hz speed. Pause/hidden cancels timers and clears elapsed clock; repeated resume/resize does not duplicate loops. Three deterministic tests observed RED3 -> GREEN3.
+L31. Final isolated Chromium local1440x900 Worker paint intervals p50=17ms,p95=20ms,max24ms versus baseline54/125/199ms under same3routes+250ms main-thread busy work. Paint CPU mean0.309ms,p950.4ms. Full348unit tests0fail; Astro123files0diagnostics;65pagebuild+vault isolation;architecture/formatting PASS. Nine browser regressions on localhost8788 PASS, including delayedservices fetch overlapping250ms blocked main thread while Worker paints>=8times with gaps<80ms. These are Worker paint measurements, not a field CWV or hardware-independent60FPS guarantee.
+L32. Independent verifier PASS in isolated baseline/candidate: baseline0vs candidate58paints/s when owner rAFblocked;100resume/resize pairs keep1timer;pause and visibility stop work for10simulated minutes;no catch-up jump;theme redraw preserves drops;fallback60Hz/24rows-per-second and trail retention verified. Native document View Transition rendering-suppression interval remains unchanged. Additional PNG screencast pixel sampling changed every captured frame but was intrusive (39frames,max455ms capturegap), so it is inconclusive for visible60FPS and must not be used as performance proof. No route animations removed speculatively.

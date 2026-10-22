@@ -242,7 +242,7 @@ const {
       let isDark = getIsDark();
       let paused = false;
       let lastFrame = 0;
-      const frameInterval = 1000 / 24;
+      const frameInterval = 1000 / 60;
 
       singleton.syncTheme = () => {
         const nextIsDark = getIsDark();
@@ -256,17 +256,22 @@ const {
         }
       };
       singleton.setPaused = (p: boolean) => {
+        if (paused !== p) lastFrame = 0;
         paused = p;
       };
 
       const draw = (now: number) => {
         singleton.rafId = requestAnimationFrame(draw);
-        if (paused || now - lastFrame < frameInterval) return;
+        if (paused || now - lastFrame < frameInterval - 1) return;
+        const elapsed =
+          lastFrame === 0 ? frameInterval : Math.min(now - lastFrame, 100);
+        const frameScale = elapsed / (1000 / 24);
         lastFrame = now;
 
+        const alpha = 1 - (1 - (isDark ? 0.12 : 0.16)) ** frameScale;
         ctx.fillStyle = isDark
-          ? "rgba(26, 2, 5, 0.12)"
-          : "rgba(244, 246, 248, 0.16)";
+          ? `rgba(26, 2, 5, ${alpha})`
+          : `rgba(244, 246, 248, ${alpha})`;
         ctx.fillRect(0, 0, w, h);
         ctx.font = `${fontSize}px ui-monospace, monospace`;
 
@@ -288,7 +293,7 @@ const {
           if (y > h && Math.random() > 0.975) {
             drops[i] = -Math.floor(Math.random() * 24);
           }
-          drops[i]!++;
+          drops[i] = (drops[i] ?? 0) + frameScale;
         }
         window.__matrixDrops = drops;
       };

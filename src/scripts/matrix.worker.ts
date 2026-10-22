@@ -45,14 +45,15 @@ type InboundMessage =
 
 interface WorkerScope {
   onmessage: ((event: MessageEvent<InboundMessage>) => void) | null;
-  requestAnimationFrame: (cb: (now: number) => void) => number;
-  cancelAnimationFrame?: (id: number) => void;
+  setTimeout: (cb: () => void, delay: number) => number;
+  clearTimeout: (id: number) => void;
 }
 
 const scope = self as unknown as WorkerScope;
 
 const FONT_SIZE = 14;
-const FRAME_INTERVAL = 1000 / 22; // ~22 FPS throttling for minimal texture transfer overhead
+const FRAME_INTERVAL = 1000 / 60;
+const SIMULATION_INTERVAL = 1000 / 22;
 const CHARACTERS =
   "01010123456789ABCDEFλ§µΔΨΩθπσ0x::->/*!=&|^GoRustSIMDAVX2ptrchnsync".split(
     "",
@@ -65,10 +66,10 @@ let height = 0;
 let currentDpr = 1;
 let isLight = false;
 let hidden = false;
-let rafId: number | null = null;
+let frameTimerId: number | null = null;
 let drops: number[] = [];
 let speeds: number[] = [];
-let lastRenderTime = 0;
+let lastRenderTime: number | null = null;
 
 function layout(w: number, h: number, dpr: number): void {
   if (!canvas || !ctx) return;
@@ -119,18 +120,27 @@ function layout(w: number, h: number, dpr: number): void {
 }
 
 function scheduleNextFrame(): void {
-  if (hidden || rafId !== null) return;
-  rafId = scope.requestAnimationFrame(render);
+  if (hidden || frameTimerId !== null) return;
+  // Worker rAF depends on the owner window's rendering opportunities. An owned,
+  // bounded timer keeps OffscreenCanvas painting during main-thread navigation.
+  const delay =
+    lastRenderTime === null
+      ? FRAME_INTERVAL
+      : Math.max(0, FRAME_INTERVAL - (performance.now() - lastRenderTime));
+  frameTimerId = scope.setTimeout(
+    () => render(performance.now()),
+    Math.ceil(delay),
+  );
 }
 
 function stopFrameLoop(): void {
-  if (rafId !== null && typeof scope.cancelAnimationFrame === "function") {
-    scope.cancelAnimationFrame(rafId);
+  if (frameTimerId !== null) {
+    scope.clearTimeout(frameTimerId);
   }
-  rafId = null;
+  frameTimerId = null;
 }
 
-function drawGlyphStreams(advanceDrops: boolean): void {
+function drawGlyphStreams(frameScale: number): void {
   if (!ctx) return;
   ctx.font = `${FONT_SIZE}px ui-monospace, monospace`;
 
@@ -140,7 +150,7 @@ function drawGlyphStreams(advanceDrops: boolean): void {
     const char =
       CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)] || "0";
     const x = i * FONT_SIZE;
-    const y = Math.floor(dropY) * FONT_SIZE;
+    const y = dropY * FONT_SIZE;
 
     if (dropY > 0) {
       // Occasional glowing head glyph for organic matrix rain depth
@@ -153,13 +163,13 @@ function drawGlyphStreams(advanceDrops: boolean): void {
       ctx.fillText(char, x, y);
     }
 
-    if (advanceDrops) {
+    if (frameScale > 0) {
       // Organic stream reset with variable delays and regenerated speeds
       if (y > height + 60) {
         drops[i] = -Math.floor(Math.random() * 45 + 5);
         speeds[i] = 0.65 + Math.random() * 0.7;
       } else {
-        drops[i] = dropY + speed;
+        drops[i] = dropY + speed * frameScale;
       }
     }
   }
@@ -171,21 +181,27 @@ function flushThemeBackdrop(): void {
     ? "rgba(244, 246, 248, 0.88)"
     : "rgba(26, 2, 5, 0.88)";
   ctx.fillRect(0, 0, width, height);
-  drawGlyphStreams(false);
+  drawGlyphStreams(0);
 }
 
 function render(now: number): void {
-  rafId = null;
+  frameTimerId = null;
   if (hidden) return;
-  scheduleNextFrame();
-  if (!ctx || now - lastRenderTime < FRAME_INTERVAL) return;
+  if (!ctx) return;
+  const elapsed =
+    lastRenderTime === null
+      ? FRAME_INTERVAL
+      : Math.min(now - lastRenderTime, 100);
+  const frameScale = elapsed / SIMULATION_INTERVAL;
   lastRenderTime = now;
 
+  const alpha = 1 - (1 - (isLight ? 0.16 : 0.12)) ** frameScale;
   ctx.fillStyle = isLight
-    ? "rgba(244, 246, 248, 0.16)"
-    : "rgba(26, 2, 5, 0.12)";
+    ? `rgba(244, 246, 248, ${alpha})`
+    : `rgba(26, 2, 5, ${alpha})`;
   ctx.fillRect(0, 0, width, height);
-  drawGlyphStreams(true);
+  drawGlyphStreams(frameScale);
+  scheduleNextFrame();
 }
 
 scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
@@ -212,6 +228,7 @@ scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
     case "visibility":
       hidden = msg.hidden;
       if (hidden) {
+        lastRenderTime = null;
         stopFrameLoop();
       } else {
         scheduleNextFrame();
@@ -219,6 +236,7 @@ scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
       break;
     case "pause":
       hidden = true;
+      lastRenderTime = null;
       stopFrameLoop();
       break;
     case "resume":
