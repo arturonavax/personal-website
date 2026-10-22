@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { MatrixGrid } from "../src/scripts/matrix-grid";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
@@ -6,18 +7,31 @@ const source = new Bun.Transpiler({ loader: "ts" }).transformSync(
   readFileSync(
     new URL("../src/scripts/matrix.worker.ts", import.meta.url),
     "utf8",
-  ),
+  ).replace(/import \{ MatrixGrid \} from "\.\/matrix-grid";\s*/, ""),
 );
 
 function renderer(ownerBlocked = false) {
   let now = 0;
   let id = 0;
+  let ticks = 0;
+  let overlaps = 0;
+  let rasterizations = 0;
+  const occupied = new Map<string, string>();
   const pending = new Map<number, { at: number; run: () => void }>();
   const paints: { time: number; alpha: number }[] = [];
-  const glyphs: { time: number; y: number; text: string }[] = [];
+  const glyphs: { time: number; y: number; text: string; alpha: number }[] = [];
+  const clears: number[] = [];
   const context = {
     fillStyle: "",
     font: "",
+    clearRect(x: number, y: number, w: number, h: number) {
+      clears.push(now);
+      for (const key of occupied.keys()) {
+        const [cx, cy] = key.split(":").map(Number);
+        if (w === 140 || (cx! >= x && cx! < x + w && cy! >= y && cy! < y + h))
+          occupied.delete(key);
+      }
+    },
     resetTransform() {},
     scale() {},
     fillRect() {
@@ -26,8 +40,27 @@ function renderer(ownerBlocked = false) {
         alpha: Number(context.fillStyle.split(",").at(-1)?.replace(")", "")),
       });
     },
+    globalAlpha: 1,
+    drawImage(
+      atlas: { glyphs: { text: string; x: number; y: number }[] },
+      ...coords: number[]
+    ) {
+      const [sx, sy, sw, sh, dx, dy, dw, dh] = coords;
+      const glyph = atlas.glyphs.find(
+        (glyph) =>
+          glyph.x >= sx! &&
+          glyph.x < sx! + sw! &&
+          glyph.y >= sy! &&
+          glyph.y < sy! + sh!,
+      );
+      if (glyph) context.fillText(glyph.text, dx! + dw! / 2, dy! + dh! / 2);
+    },
     fillText(text: string, x: number, y: number) {
-      if (x === 0) glyphs.push({ time: now, y, text });
+      const key = `${x}:${y}`;
+      if (occupied.has(key)) overlaps++;
+      occupied.set(key, text);
+      if (x === 9)
+        glyphs.push({ time: now, y, text, alpha: context.globalAlpha });
     },
   };
   const schedule = (run: () => void, delay: number) => {
@@ -49,6 +82,29 @@ function renderer(ownerBlocked = false) {
     self: scope,
     performance: { now: () => now },
     Math: random,
+    MatrixGrid: class extends MatrixGrid {
+      constructor(ctx: ConstructorParameters<typeof MatrixGrid>[0]) {
+        super(
+          ctx,
+          () => random.random(),
+          () => {
+            const strip = {
+              glyphs: [] as { text: string; x: number; y: number }[],
+              getContext: () => ({
+                clearRect() {
+                  strip.glyphs.length = 0;
+                },
+                fillText(text: string, x: number, y: number) {
+                  rasterizations++;
+                  strip.glyphs.push({ text, x, y });
+                },
+              }),
+            };
+            return strip as unknown as OffscreenCanvas;
+          },
+        );
+      }
+    },
   });
   const send = (data: object) => scope.onmessage({ data });
   const canvas = { width: 0, height: 0, getContext: () => context };
@@ -66,59 +122,130 @@ function renderer(ownerBlocked = false) {
       const entry = [...pending].sort((a, b) => a[1].at - b[1].at)[0];
       if (!entry || entry[1].at > end) break;
       pending.delete(entry[0]);
-      now = entry[1].at;
+      now = Math.max(now, entry[1].at);
+      ticks++;
       entry[1].run();
     }
     now = end;
   };
-  return { paints, glyphs, send, advance, pending, canvas, random };
+  return {
+    paints,
+    glyphs,
+    clears,
+    send,
+    advance,
+    stall(duration: number) {
+      now += duration;
+      advance(0);
+    },
+    pending,
+    canvas,
+    random,
+    occupied,
+    get ticks() {
+      return ticks;
+    },
+    get rasterizations() {
+      return rasterizations;
+    },
+    get overlaps() {
+      return overlaps;
+    },
+  };
 }
 
 describe("Matrix Worker frame independence", () => {
-  it("keeps painting at a bounded 60Hz when owner-window animation frames stop", () => {
+  it("keeps its bounded 60Hz clock independent when owner-window animation frames stop", () => {
     const app = renderer(true);
     app.advance(1000);
-    expect(app.paints.length).toBeGreaterThanOrEqual(55);
-    expect(app.paints.length).toBeLessThanOrEqual(61);
+    expect(app.ticks).toBeGreaterThanOrEqual(55);
+    expect(app.ticks).toBeLessThanOrEqual(61);
     expect(app.pending.size).toBe(1);
   });
 
-  it("moves smoothly while preserving stream speed and trail lifetime", () => {
+  it("bounds a delayed callback without accumulating catch-up debt", () => {
     const app = renderer();
-    app.advance(2000);
-    const startY = app.glyphs.at(-1)!.y;
-    app.advance(1000);
-    expect(app.glyphs.at(-1)!.y - startY).toBeCloseTo(8 * 14, -1);
-    expect(
-      app.glyphs.some(({ y }) => Math.abs(y / 14 - Math.round(y / 14)) > 0.01),
-    ).toBe(true);
-    const retention = app.paints
-      .slice(0, 60)
-      .reduce((remaining, paint) => remaining * (1 - paint.alpha), 1);
-    expect(retention).toBeCloseTo(0.88 ** 22, 2);
+    app.advance(3500);
+    const position = () => {
+      const head = app.glyphs.at(-1)!;
+      return head.y - 9 - 18 + head.alpha * 18;
+    };
+    const before = position();
+    app.stall(500);
+    expect(position() - before).toBeLessThanOrEqual(4.800001);
+    expect(position() - before).toBeGreaterThan(0);
+    const resumed = position();
+    app.advance(17);
+    expect(position() - resumed).toBeCloseTo((17 * 8 * 18) / 1000, 4);
+    expect(app.pending.size).toBe(1);
   });
 
-  it("holds glyph identity long enough to read rather than randomizing each paint", () => {
+  it("advances the head while retaining a fading code trail without per-frame text rasterization", () => {
     const app = renderer();
-    app.advance(2000);
+    app.advance(3500);
+    const startY = app.glyphs.at(-1)!.y;
+    const rasterizations = app.rasterizations;
+    app.advance(1000);
+    expect(app.glyphs.at(-1)!.y - startY).toBeCloseTo(8 * 18, -1);
+    expect(app.rasterizations).toBe(rasterizations);
+    const frame = app.glyphs.filter(
+      (glyph) => glyph.time === app.glyphs.at(-1)!.time,
+    );
+    expect(frame.length).toBeGreaterThanOrEqual(12);
+    expect(frame[0]!.alpha).toBeLessThan(frame.at(-2)!.alpha);
+    expect(frame[0]!.alpha).toBeLessThan(0.2);
+  });
+
+  it("clears every frame instead of accumulating ghost letters", () => {
+    const app = renderer();
+    app.advance(5000);
+    expect(app.glyphs.length).toBeGreaterThan(0);
+    expect(app.overlaps).toBe(0);
+    expect(app.paints.length).toBe(0);
+    expect(app.occupied.size).toBeLessThanOrEqual(8 * 18);
+    app.send({ type: "theme", isLight: true });
+    expect(app.overlaps).toBe(0);
+  });
+
+  it("updates the light envelope every frame while keeping one character in each spaced position", () => {
+    const app = renderer();
+    app.advance(3500);
+    const from = app.glyphs.length;
+    app.advance(100);
+    const frames = new Map<number, typeof app.glyphs>();
+    for (const glyph of app.glyphs.slice(from)) {
+      const rows = frames.get(glyph.time) ?? [];
+      rows.push(glyph);
+      frames.set(glyph.time, rows);
+    }
+    expect(frames.size).toBeGreaterThanOrEqual(5);
+    expect(
+      new Set([...frames.values()].map((rows) => rows[0]!.alpha)).size,
+    ).toBeGreaterThanOrEqual(5);
+    for (const rows of frames.values()) {
+      expect(new Set(rows.map((glyph) => glyph.y)).size).toBe(rows.length);
+      for (let i = 1; i < rows.length; i++)
+        expect(rows[i]!.y - rows[i - 1]!.y).toBe(18);
+    }
+  });
+
+  it("changes visible code while retaining a denser fading tail behind the head", () => {
+    const app = renderer();
     let seed = 1;
-    let calls = 0;
     app.random.random = () => {
-      calls++;
       seed = (seed * 1664525 + 1013904223) >>> 0;
       return seed / 4294967296;
     };
-    const from = app.glyphs.length;
-    app.advance(1000);
-    const changes = app.glyphs
-      .slice(from)
-      .filter((glyph, i, all) => !i || glyph.text !== all[i - 1]!.text);
-    expect(calls).toBeLessThanOrEqual(160);
-    expect(changes.length).toBeGreaterThan(2);
-    for (let i = 2; i < changes.length; i++)
-      expect(changes[i]!.time - changes[i - 1]!.time).toBeGreaterThanOrEqual(
-        145,
-      );
+    app.advance(5000);
+    const before = new Map(app.occupied);
+    app.advance(500);
+    expect(
+      [...before].some(
+        ([cell, text]) =>
+          app.occupied.has(cell) && app.occupied.get(cell) !== text,
+      ),
+    ).toBe(true);
+    expect(app.occupied.size).toBeGreaterThan(7 * 10);
   });
 
   it("bounds decorative raster pixels on high-DPR and large viewports", () => {
@@ -135,21 +262,20 @@ describe("Matrix Worker frame independence", () => {
 
   it("pauses hidden work and resumes once without catch-up or duplicate loops", () => {
     const app = renderer();
-    app.advance(2000);
+    app.advance(2500);
     app.send({ type: "pause" });
-    const count = app.paints.length;
+    const count = app.clears.length;
     const pausedY = app.glyphs.at(-1)!.y;
     expect(app.pending.size).toBe(0);
     app.advance(60_000);
-    expect(app.paints.length).toBe(count);
+    expect(app.clears.length).toBe(count);
     app.send({ type: "resume" });
     app.send({ type: "resume" });
     app.send({ type: "resize", width: 140, height: 5000, dpr: 1 });
     expect(app.pending.size).toBe(1);
     app.advance(50);
-    expect(app.paints.length - count).toBeGreaterThanOrEqual(2);
-    expect(app.paints.length - count).toBeLessThanOrEqual(3);
-    expect(app.glyphs.at(-1)!.y - pausedY).toBeLessThan(20);
+    expect(app.ticks).toBeGreaterThan(0);
+    expect(app.glyphs.at(-1)!.y - pausedY).toBeLessThanOrEqual(20);
     expect(app.pending.size).toBe(1);
   });
 });

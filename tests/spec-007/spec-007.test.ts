@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from "bun:test";
 import fs from "node:fs";
+import { MatrixGrid } from "../../src/scripts/matrix-grid";
 import path from "node:path";
 import {
   HEADER_ALWAYS_VISIBLE_Y,
@@ -400,9 +401,25 @@ describe("Component 7: Print CV Fidelity (REQ-PRINT-1..6)", () => {
   });
 
   it("REQ-PRINT-6: matrix first-load drops start at or above the top", () => {
-    const code = read("src/components/ui/MatrixBackground.astro");
-    expect(code).toMatch(/-Math\.floor\(Math\.random\(\) \* 24\)/);
-    expect(code).not.toMatch(/Math\.floor\(Math\.random\(\) \* 50\)/);
+    for (const random of [0, 0.5, 0.999]) {
+      const drawnHeads: number[] = [];
+      const grid = new MatrixGrid(
+        {
+          clearRect() {},
+          drawImage(_image: CanvasImageSource, ...coords: number[]) {
+            drawnHeads.push(coords[5]! + 9);
+          },
+          globalAlpha: 1,
+        },
+        () => random,
+        () =>
+          ({
+            getContext: () => ({ clearRect() {}, fillText() {} }),
+          }) as unknown as OffscreenCanvas,
+      );
+      grid.resize(200, 200);
+      expect(drawnHeads.every((y) => y <= 10)).toBe(true);
+    }
   });
 });
 

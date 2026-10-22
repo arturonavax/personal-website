@@ -7,7 +7,100 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       launchOptions: { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH },
     });
   }
-  test("transition snapshots keep opaque main and footer above Matrix", async ({
+  test("Matrix visibility follows the selected theme rather than the OS theme", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.addInitScript(() => localStorage.setItem("theme", "dark"));
+    await page.goto(
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788",
+      { waitUntil: "networkidle" },
+    );
+    expect(
+      await page
+        .locator("#matrix-container")
+        .evaluate((el) => getComputedStyle(el).opacity),
+    ).toBe("0.28");
+    await page.evaluate(() => {
+      (window as any).__DISABLE_THEME_ANIMATION__ = true;
+    });
+    await page.locator("#theme-toggle").click();
+    expect(
+      await page
+        .locator("#matrix-container")
+        .evaluate((el) => getComputedStyle(el).opacity),
+    ).toBe("0.2");
+    await page.emulateMedia({ colorScheme: "dark" });
+    expect(
+      await page
+        .locator("#matrix-container")
+        .evaluate((el) => getComputedStyle(el).opacity),
+    ).toBe("0.2");
+  });
+
+  test("theme reveal preserves old pixels while its first animation frame is pending", async ({
+    page,
+  }) => {
+    const sharp = (await import("sharp")).default;
+    await page.addInitScript(() => localStorage.setItem("theme", "dark"));
+    await page.goto(
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788",
+      { waitUntil: "networkidle" },
+    );
+    await page.addStyleTag({
+      content: `#theme-pixel-probe { position:fixed;left:20px;top:500px;width:80px;height:80px;z-index:100000;background:rgb(17,34,51); } html[data-theme="light"] #theme-pixel-probe { background:rgb(221,238,255); }`,
+    });
+    await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.id = "theme-pixel-probe";
+      document.body.append(probe);
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (keyframes, options) {
+        const theme =
+          typeof options === "object" &&
+          options.pseudoElement === "::view-transition-new(root)";
+        const animation = animate.call(
+          this,
+          keyframes,
+          theme ? { ...options, delay: 500 } : options,
+        );
+        if (theme) (window as any).__themeProbeAnimation = animation;
+        return animation;
+      };
+    });
+    const sample = async () => {
+      const { data, info } = await sharp(await page.screenshot())
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const offset = (540 * info.width + 60) * info.channels;
+      return [...data.subarray(offset, offset + 3)];
+    };
+    for (const [oldPixel, newPixel] of [
+      [
+        [17, 34, 51],
+        [221, 238, 255],
+      ],
+      [
+        [221, 238, 255],
+        [17, 34, 51],
+      ],
+    ]) {
+      expect(await sample()).toEqual(oldPixel);
+      await page.evaluate(() => {
+        (window as any).__themeProbeAnimation = null;
+      });
+      await page.locator("#theme-toggle").click();
+      await page.waitForFunction(() => !!(window as any).__themeProbeAnimation);
+      expect(await sample()).toEqual(oldPixel);
+      await page.waitForFunction(
+        () =>
+          !document.documentElement.hasAttribute("data-theme-transitioning"),
+      );
+      expect(await sample()).toEqual(newPixel);
+    }
+  });
+
+  test("ordinary navigation keeps live foreground above Matrix without snapshot layers", async ({
     page,
   }) => {
     await page.goto(
@@ -15,10 +108,6 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       { waitUntil: "networkidle" },
     );
     const points = await page.evaluate(() => {
-      const style = document.createElement("style");
-      style.textContent =
-        "::view-transition-new(spa-main-content) { animation-duration: 2s !important; }";
-      document.head.append(style);
       // Put both foreground regions in view; their probes stay inside capture bounds.
       const footer = document.querySelector("footer")!;
       footer.style.cssText +=
@@ -56,43 +145,22 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     };
     // Establish that the exact sampled pixels belong to the foreground before capture.
     await assertOpaque();
-    const order = await page.evaluate(async () => {
+    const names = await page.evaluate(() =>
+      [...document.querySelectorAll("*")]
+        .map((element) => getComputedStyle(element).viewTransitionName)
+        .filter((name) => name !== "none"),
+    );
+    expect(names).toEqual([]);
+    await page.evaluate(async () => {
       const transition = document.startViewTransition(() => {
         document.documentElement.dataset.layerProbe = "new";
       });
-      await transition.ready;
-      document.documentElement.animate(
-        { opacity: [1, 1] },
-        { duration: 3000, pseudoElement: "::view-transition-group(root)" },
-      );
-      return Object.fromEntries(
-        [
-          "root",
-          "matrix-background",
-          "spa-main-content",
-          "site-footer",
-          "site-header",
-        ].map((name) => [
-          name,
-          getComputedStyle(
-            document.documentElement,
-            `::view-transition-group(${name})`,
-          ).zIndex,
-        ]),
-      );
+      await transition.finished;
     });
-    await page.waitForTimeout(220);
     await assertOpaque();
-    expect(order).toEqual({
-      root: "0",
-      "matrix-background": "1",
-      "spa-main-content": "2",
-      "site-footer": "2",
-      "site-header": "3",
-    });
     const released = await page.evaluate(() => {
       document.documentElement.classList.add("theme-transitioning");
-      const names = ["#matrix-container", "main", "footer"].map(
+      const names = ["html", "#matrix-container", "main", "footer"].map(
         (selector) =>
           getComputedStyle(document.querySelector(selector)!)
             .viewTransitionName,
@@ -100,7 +168,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       document.documentElement.classList.remove("theme-transitioning");
       return names;
     });
-    expect(released).toEqual(["none", "none", "none"]);
+    expect(released).toEqual(["root", "none", "none", "none"]);
   });
   test("Matrix Worker paints while navigation and main-thread work overlap", async ({
     page,
@@ -120,12 +188,12 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     await worker.evaluate(() => {
       const state = self as typeof self & { __paintTimes: number[] };
       state.__paintTimes = [];
-      const fillRect = OffscreenCanvasRenderingContext2D.prototype.fillRect;
-      OffscreenCanvasRenderingContext2D.prototype.fillRect = function (
+      const clearRect = OffscreenCanvasRenderingContext2D.prototype.clearRect;
+      OffscreenCanvasRenderingContext2D.prototype.clearRect = function (
         ...args
       ) {
         state.__paintTimes.push(Date.now());
-        return Reflect.apply(fillRect, this, args);
+        return Reflect.apply(clearRect, this, args);
       };
     });
     await page.route("**/services/", async (route) => {
@@ -148,7 +216,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     const times = await worker.evaluate(
       () => (self as typeof self & { __paintTimes: number[] }).__paintTimes,
     );
-    const during = times.filter(
+    const during = [...new Set(times)].filter(
       (time) => time >= interval.start && time <= interval.end,
     );
     expect(during.length).toBeGreaterThanOrEqual(8);
@@ -322,7 +390,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
         await page.locator('header a[href="/projects/"]').first().click();
         await page.waitForURL("**/projects/");
         await assertLive();
-        // ready samples the real active pseudo-elements, before finished removes them.
+        // The router still swaps normally, but Matrix must not acquire a snapshot.
         await expect
           .poll(() =>
             page.evaluate(
@@ -338,7 +406,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
               (window as Window & { __matrixTestSnapshots: unknown[] })
                 .__matrixTestSnapshots,
           ),
-        ).toEqual([{ name: "matrix-background", oldDisplay: "none" }]);
+        ).toEqual([{ name: "none", oldDisplay: "none" }]);
         await page.goBack();
         await page.waitForURL((url) => url.pathname === "/");
         await assertLive();

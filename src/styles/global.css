@@ -921,6 +921,8 @@ html.theme-transitioning::view-transition-old(root) {
 html.theme-transitioning::view-transition-new(root) {
   z-index: 9999 !important;
   opacity: 1 !important;
+  /* Keep the new theme hidden before WAAPI receives its first frame. */
+  clip-path: circle(0px);
 }
 
 /* ======================================================== */
@@ -958,6 +960,11 @@ header#site-header,
 #matrix-container {
   /* Keep the live canvas out of the frozen root snapshot on SPA navigation. */
   view-transition-name: matrix-background !important;
+}
+
+html[data-theme="dark"] #matrix-container {
+  /* Match the selected site theme, not the operating system color preference. */
+  opacity: 0.28;
 }
 
 matrix-canvas-layer {
@@ -1386,4 +1393,13 @@ html[data-theme="light"] #back-to-top-btn:hover {
 #floating-actions-stack #mobile-page-index-container.is-empty,
 #floating-actions-stack #mobile-page-index-container.force-hide-mobile {
   display: none !important;
+}
+
+/* Ordinary SPA swaps must present the live canvas, not frozen page captures.
+   Keep native routing/persistence; only explicit theme reveals capture pixels. */
+html:not(.theme-transitioning):not([data-theme-transitioning]),
+html:not(.theme-transitioning):not([data-theme-transitioning]) *,
+html:not(.theme-transitioning):not([data-theme-transitioning])
+  #matrix-container {
+  view-transition-name: none !important;
 }

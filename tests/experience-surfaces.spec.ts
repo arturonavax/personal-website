@@ -67,6 +67,14 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       const pastUrl = await past.getAttribute("href");
       await past.click();
       await page.waitForURL(new URL(pastUrl!, base).href);
+      // URL updates before the existing 240ms timeline animation releases its guard.
+      await expect
+        .poll(() =>
+          page
+            .locator("#experience-article-content")
+            .evaluate((element) => (element as HTMLElement).style.transition),
+        )
+        .toBe("");
       const future = page.locator('[data-timeline-nav="future"]');
       await expect(future).toHaveAttribute("href", "/experience/latam/");
       await future.click();
