@@ -7,6 +7,101 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       launchOptions: { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH },
     });
   }
+  test("transition snapshots keep opaque main and footer above Matrix", async ({
+    page,
+  }) => {
+    await page.goto(
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788",
+      { waitUntil: "networkidle" },
+    );
+    const points = await page.evaluate(() => {
+      const style = document.createElement("style");
+      style.textContent =
+        "::view-transition-new(spa-main-content) { animation-duration: 2s !important; }";
+      document.head.append(style);
+      // Put both foreground regions in view; their probes stay inside capture bounds.
+      const footer = document.querySelector("footer")!;
+      footer.style.cssText +=
+        ";position:fixed;left:0;top:400px;width:100%;height:120px;z-index:10;";
+      const points: { x: number; y: number }[] = [];
+      for (const [selector, left, top] of [
+        ["main", 100, 200],
+        ["footer", 180, 20],
+      ] as const) {
+        const probe = document.createElement("div");
+        probe.style.cssText = `position:absolute;left:${left}px;top:${top}px;width:80px;height:80px;background:red;z-index:100;`;
+        document.querySelector(selector)!.append(probe);
+        const bounds = probe.getBoundingClientRect();
+        points.push({
+          x: Math.floor(bounds.left + 40),
+          y: Math.floor(bounds.top + 40),
+        });
+      }
+      const backdrop = document.createElement("div");
+      backdrop.style.cssText = "position:absolute;inset:0;background:lime;";
+      document.querySelector("#matrix-container")!.append(backdrop);
+      return points;
+    });
+    const { default: sharp } = await import("sharp");
+    const assertOpaque = async () => {
+      const screenshot = await page.screenshot();
+      const { data, info } = await sharp(screenshot)
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      for (const { x, y } of points) {
+        const index = (y * info.width + x) * 3;
+        expect([...data.subarray(index, index + 3)]).toEqual([255, 0, 0]);
+      }
+    };
+    // Establish that the exact sampled pixels belong to the foreground before capture.
+    await assertOpaque();
+    const order = await page.evaluate(async () => {
+      const transition = document.startViewTransition(() => {
+        document.documentElement.dataset.layerProbe = "new";
+      });
+      await transition.ready;
+      document.documentElement.animate(
+        { opacity: [1, 1] },
+        { duration: 3000, pseudoElement: "::view-transition-group(root)" },
+      );
+      return Object.fromEntries(
+        [
+          "root",
+          "matrix-background",
+          "spa-main-content",
+          "site-footer",
+          "site-header",
+        ].map((name) => [
+          name,
+          getComputedStyle(
+            document.documentElement,
+            `::view-transition-group(${name})`,
+          ).zIndex,
+        ]),
+      );
+    });
+    await page.waitForTimeout(220);
+    await assertOpaque();
+    expect(order).toEqual({
+      root: "0",
+      "matrix-background": "1",
+      "spa-main-content": "2",
+      "site-footer": "2",
+      "site-header": "3",
+    });
+    const released = await page.evaluate(() => {
+      document.documentElement.classList.add("theme-transitioning");
+      const names = ["#matrix-container", "main", "footer"].map(
+        (selector) =>
+          getComputedStyle(document.querySelector(selector)!)
+            .viewTransitionName,
+      );
+      document.documentElement.classList.remove("theme-transitioning");
+      return names;
+    });
+    expect(released).toEqual(["none", "none", "none"]);
+  });
   test("Matrix Worker paints while navigation and main-thread work overlap", async ({
     page,
   }) => {

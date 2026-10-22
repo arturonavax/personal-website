@@ -54,6 +54,9 @@ const scope = self as unknown as WorkerScope;
 const FONT_SIZE = 14;
 const FRAME_INTERVAL = 1000 / 60;
 const SIMULATION_INTERVAL = 1000 / 22;
+const ROWS_PER_SECOND = 8;
+const GLYPH_HOLD_MS = 150;
+const MAX_BACKING_PIXELS = 1920 * 1080;
 const CHARACTERS =
   "01010123456789ABCDEFλ§µΔΨΩθπσ0x::->/*!=&|^GoRustSIMDAVX2ptrchnsync".split(
     "",
@@ -70,12 +73,19 @@ let frameTimerId: number | null = null;
 let drops: number[] = [];
 let speeds: number[] = [];
 let lastRenderTime: number | null = null;
+const glyphs: string[] = [];
+const highlights: boolean[] = [];
+let lastGlyphUpdate = -Infinity;
 
 function layout(w: number, h: number, dpr: number): void {
   if (!canvas || !ctx) return;
-  const clampedDpr = Math.min(dpr || 1, 1.25);
-  const targetW = Math.round(w * clampedDpr);
-  const targetH = Math.round(h * clampedDpr);
+  const clampedDpr = Math.min(
+    dpr || 1,
+    1,
+    Math.sqrt(MAX_BACKING_PIXELS / Math.max(1, w * h)),
+  );
+  const targetW = Math.max(1, Math.floor(w * clampedDpr));
+  const targetH = Math.max(1, Math.floor(h * clampedDpr));
   const dprChanged = Math.abs(currentDpr - clampedDpr) > 0.001;
 
   // CRITICAL: Setting canvas.width clears the entire bitmap buffer.
@@ -140,21 +150,25 @@ function stopFrameLoop(): void {
   frameTimerId = null;
 }
 
-function drawGlyphStreams(frameScale: number): void {
+function drawGlyphStreams(frameScale: number, refreshGlyphs = false): void {
   if (!ctx) return;
   ctx.font = `${FONT_SIZE}px ui-monospace, monospace`;
 
   for (let i = 0; i < drops.length; i++) {
     const dropY = drops[i] ?? 0;
     const speed = speeds[i] ?? 1;
-    const char =
-      CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)] || "0";
+    if (refreshGlyphs || glyphs[i] === undefined) {
+      glyphs[i] =
+        CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)] || "0";
+      highlights[i] = Math.random() < 0.12;
+    }
+    const char = glyphs[i] || "0";
     const x = i * FONT_SIZE;
     const y = dropY * FONT_SIZE;
 
-    if (dropY > 0) {
+    if (dropY > 0 && y < height + FONT_SIZE) {
       // Occasional glowing head glyph for organic matrix rain depth
-      const isLead = Math.random() < 0.12;
+      const isLead = highlights[i];
       if (isLead) {
         ctx.fillStyle = isLight ? "#8B1E17" : "#FEF08A";
       } else {
@@ -200,7 +214,9 @@ function render(now: number): void {
     ? `rgba(244, 246, 248, ${alpha})`
     : `rgba(26, 2, 5, ${alpha})`;
   ctx.fillRect(0, 0, width, height);
-  drawGlyphStreams(frameScale);
+  const refreshGlyphs = now - lastGlyphUpdate >= GLYPH_HOLD_MS;
+  if (refreshGlyphs) lastGlyphUpdate = now;
+  drawGlyphStreams((elapsed * ROWS_PER_SECOND) / 1000, refreshGlyphs);
   scheduleNextFrame();
 }
 

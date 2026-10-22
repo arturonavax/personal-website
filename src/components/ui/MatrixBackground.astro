@@ -225,8 +225,19 @@ const {
       const ctx = canvas.getContext("2d", { alpha: true });
       if (!ctx) return;
 
-      let w = (canvas.width = window.innerWidth);
-      let h = (canvas.height = window.innerHeight);
+      let w = window.innerWidth;
+      let h = window.innerHeight;
+      const resizeBackingStore = () => {
+        const scale = Math.min(
+          1,
+          Math.sqrt((1920 * 1080) / Math.max(1, w * h)),
+        );
+        canvas.width = Math.max(1, Math.floor(w * scale));
+        canvas.height = Math.max(1, Math.floor(h * scale));
+        ctx.resetTransform();
+        ctx.scale(scale, scale);
+      };
+      resizeBackingStore();
       const fontSize = 14;
       let columns = Math.ceil(w / fontSize);
       let drops =
@@ -243,6 +254,9 @@ const {
       let paused = false;
       let lastFrame = 0;
       const frameInterval = 1000 / 60;
+      const glyphs: string[] = [];
+      const highlights: boolean[] = [];
+      let lastGlyphUpdate = -Infinity;
 
       singleton.syncTheme = () => {
         const nextIsDark = getIsDark();
@@ -266,7 +280,10 @@ const {
         const elapsed =
           lastFrame === 0 ? frameInterval : Math.min(now - lastFrame, 100);
         const frameScale = elapsed / (1000 / 24);
+        const movementScale = (elapsed * 8) / 1000;
         lastFrame = now;
+        const refreshGlyphs = now - lastGlyphUpdate >= 150;
+        if (refreshGlyphs) lastGlyphUpdate = now;
 
         const alpha = 1 - (1 - (isDark ? 0.12 : 0.16)) ** frameScale;
         ctx.fillStyle = isDark
@@ -276,11 +293,15 @@ const {
         ctx.font = `${fontSize}px ui-monospace, monospace`;
 
         for (let i = 0; i < drops.length; i++) {
-          const char = chars[(Math.random() * chars.length) | 0] || "0";
+          if (refreshGlyphs || glyphs[i] === undefined) {
+            glyphs[i] = chars[(Math.random() * chars.length) | 0] || "0";
+            highlights[i] = Math.random() < 0.12;
+          }
+          const char = glyphs[i] || "0";
           const x = i * fontSize;
           const y = (drops[i] ?? 0) * fontSize;
-          if (y > 0) {
-            const isLead = Math.random() < 0.12;
+          if (y > 0 && y < h + fontSize) {
+            const isLead = highlights[i];
             ctx.fillStyle = isLead
               ? isDark
                 ? "#FEF08A"
@@ -290,10 +311,10 @@ const {
                 : "#7A1C16";
             ctx.fillText(char, x, y);
           }
-          if (y > h && Math.random() > 0.975) {
+          if (y > h && Math.random() > 0.975 ** frameScale) {
             drops[i] = -Math.floor(Math.random() * 24);
           }
-          drops[i] = (drops[i] ?? 0) + frameScale;
+          drops[i] = (drops[i] ?? 0) + movementScale;
         }
         window.__matrixDrops = drops;
       };
@@ -304,8 +325,9 @@ const {
           const currentWidth = window.innerWidth;
           const currentHeight = window.innerHeight;
           if (resizeManager.shouldResize(currentWidth, currentHeight)) {
-            w = canvas.width = currentWidth;
-            h = canvas.height = currentHeight;
+            w = currentWidth;
+            h = currentHeight;
+            resizeBackingStore();
             const newCols = Math.ceil(w / fontSize);
             if (newCols > columns) {
               for (let i = columns; i < newCols; i++) {

@@ -968,7 +968,57 @@ main#main-content {
   view-transition-name: spa-main-content;
 }
 
+body > footer {
+  position: relative;
+  z-index: 10;
+  view-transition-name: site-footer;
+}
+
+/* Snapshot layers have their own stacking tree, independent of DOM z-index. */
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(root) {
+  z-index: 0;
+}
+
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(matrix-background) {
+  z-index: 1;
+}
+
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(spa-main-content),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(site-footer) {
+  z-index: 2;
+}
+
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(site-header),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(page-index-nav),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(lang-suggestion-banner),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(back-to-top),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(floating-actions-stack),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(page-navigation-beacon) {
+  z-index: 3;
+}
+
 /* Exception for Theme Toggle Circular Reveal: release HUD chrome into unified root snapshot */
+html.theme-transitioning body > footer,
 html.theme-transitioning #matrix-container,
 html.theme-transitioning #main-header,
 html.theme-transitioning header#site-header,
@@ -982,6 +1032,7 @@ html.theme-transitioning #page-index-nav-shell,
 html.theme-transitioning #desktop-page-index-root,
 html.theme-transitioning main#main-content,
 :root[data-theme-transitioning] #matrix-container,
+:root[data-theme-transitioning] body > footer,
 :root[data-theme-transitioning] #main-header,
 :root[data-theme-transitioning] header#site-header,
 :root[data-theme-transitioning] #lang-suggestion-banner,
@@ -1025,6 +1076,19 @@ html:not(.theme-transitioning)::view-transition-new(matrix-background) {
   mix-blend-mode: normal !important;
 }
 
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(spa-main-content),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-group(site-footer),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-new(site-footer) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+
 /* Drop old snapshots for persistent HUD and Matrix layers so semi-transparent
    canvases, shadows, and backdrop-blurs NEVER double-stack during the 130ms route swap */
 html:not(.theme-transitioning):not(
@@ -1055,25 +1119,6 @@ html:not(.theme-transitioning):not(
   opacity: 0 !important;
 }
 
-/* Smooth 120 FPS SPA Content Transition on <main> During Route Changes */
-@keyframes spa-content-fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes spa-content-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 html:not(.theme-transitioning):not(
     [data-theme-transitioning]
   )::view-transition-old(root),
@@ -1086,14 +1131,22 @@ html:not(.theme-transitioning):not(
 
 html:not(.theme-transitioning):not(
     [data-theme-transitioning]
-  )::view-transition-old(spa-main-content) {
-  animation: 90ms cubic-bezier(0.22, 1, 0.36, 1) both spa-content-fade-out;
+  )::view-transition-old(spa-main-content),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(site-footer) {
+  display: none !important;
+  opacity: 0 !important;
 }
 
 html:not(.theme-transitioning):not(
     [data-theme-transitioning]
-  )::view-transition-new(spa-main-content) {
-  animation: 130ms cubic-bezier(0.22, 1, 0.36, 1) both spa-content-fade-in;
+  )::view-transition-new(spa-main-content),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-new(site-footer) {
+  animation: none !important;
+  opacity: 1 !important;
 }
 
 /* Instant suppression of transitions for swap frame */

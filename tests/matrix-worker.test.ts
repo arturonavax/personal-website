@@ -14,7 +14,7 @@ function renderer(ownerBlocked = false) {
   let id = 0;
   const pending = new Map<number, { at: number; run: () => void }>();
   const paints: { time: number; alpha: number }[] = [];
-  const glyphs: { time: number; y: number }[] = [];
+  const glyphs: { time: number; y: number; text: string }[] = [];
   const context = {
     fillStyle: "",
     font: "",
@@ -26,8 +26,8 @@ function renderer(ownerBlocked = false) {
         alpha: Number(context.fillStyle.split(",").at(-1)?.replace(")", "")),
       });
     },
-    fillText(_text: string, x: number, y: number) {
-      if (x === 0) glyphs.push({ time: now, y });
+    fillText(text: string, x: number, y: number) {
+      if (x === 0) glyphs.push({ time: now, y, text });
     },
   };
   const schedule = (run: () => void, delay: number) => {
@@ -51,9 +51,10 @@ function renderer(ownerBlocked = false) {
     Math: random,
   });
   const send = (data: object) => scope.onmessage({ data });
+  const canvas = { width: 0, height: 0, getContext: () => context };
   send({
     type: "init",
-    canvas: { width: 0, height: 0, getContext: () => context },
+    canvas,
     width: 140,
     height: 5000,
     dpr: 1,
@@ -70,7 +71,7 @@ function renderer(ownerBlocked = false) {
     }
     now = end;
   };
-  return { paints, glyphs, send, advance, pending };
+  return { paints, glyphs, send, advance, pending, canvas, random };
 }
 
 describe("Matrix Worker frame independence", () => {
@@ -84,10 +85,10 @@ describe("Matrix Worker frame independence", () => {
 
   it("moves smoothly while preserving stream speed and trail lifetime", () => {
     const app = renderer();
-    app.advance(1000);
+    app.advance(2000);
     const startY = app.glyphs.at(-1)!.y;
     app.advance(1000);
-    expect(app.glyphs.at(-1)!.y - startY).toBeCloseTo(22 * 14, -1);
+    expect(app.glyphs.at(-1)!.y - startY).toBeCloseTo(8 * 14, -1);
     expect(
       app.glyphs.some(({ y }) => Math.abs(y / 14 - Math.round(y / 14)) > 0.01),
     ).toBe(true);
@@ -97,9 +98,44 @@ describe("Matrix Worker frame independence", () => {
     expect(retention).toBeCloseTo(0.88 ** 22, 2);
   });
 
+  it("holds glyph identity long enough to read rather than randomizing each paint", () => {
+    const app = renderer();
+    app.advance(2000);
+    let seed = 1;
+    let calls = 0;
+    app.random.random = () => {
+      calls++;
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    const from = app.glyphs.length;
+    app.advance(1000);
+    const changes = app.glyphs
+      .slice(from)
+      .filter((glyph, i, all) => !i || glyph.text !== all[i - 1]!.text);
+    expect(calls).toBeLessThanOrEqual(160);
+    expect(changes.length).toBeGreaterThan(2);
+    for (let i = 2; i < changes.length; i++)
+      expect(changes[i]!.time - changes[i - 1]!.time).toBeGreaterThanOrEqual(
+        145,
+      );
+  });
+
+  it("bounds decorative raster pixels on high-DPR and large viewports", () => {
+    const app = renderer();
+    app.send({ type: "resize", width: 1440, height: 900, dpr: 2 });
+    expect(app.canvas.width).toBe(1440);
+    expect(app.canvas.height).toBe(900);
+    app.send({ type: "resize", width: 3840, height: 2160, dpr: 2 });
+    expect(app.canvas.width * app.canvas.height).toBeLessThanOrEqual(
+      1920 * 1080,
+    );
+    expect(app.pending.size).toBe(1);
+  });
+
   it("pauses hidden work and resumes once without catch-up or duplicate loops", () => {
     const app = renderer();
-    app.advance(1000);
+    app.advance(2000);
     app.send({ type: "pause" });
     const count = app.paints.length;
     const pausedY = app.glyphs.at(-1)!.y;
