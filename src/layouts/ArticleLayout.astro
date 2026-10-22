@@ -89,7 +89,13 @@ const jsonLd =
   availableLocales={availableLocales}
   jsonLd={jsonLd}
 >
-  <article class="mx-auto max-w-5xl px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8 sm:pb-12 matrix-readability-blur rounded-xl border border-[var(--color-surface-border-subtle)] shadow-sm">
+  <article
+    class={
+      collectionName === "posts"
+        ? "blog-article mx-auto max-w-5xl rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 sm:p-8 lg:p-10 shadow-sm"
+        : "mx-auto max-w-5xl px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8 sm:pb-12 matrix-readability-blur rounded-xl border border-[var(--color-surface-border-subtle)] shadow-sm"
+    }
+  >
     <div class="mb-3 sm:mb-5 lg:mb-6">
       <a
         href={backHref}
@@ -144,3 +150,17 @@ const jsonLd =
     </div>
   </article>
 </BaseLayout>
+
+<style>
+  .blog-article {
+    width: calc(100% - 2rem);
+    margin-block: 1.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .blog-article {
+      width: calc(100% - 3rem);
+      margin-block: 2.5rem;
+    }
+  }
+</style>

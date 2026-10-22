@@ -1,0 +1,31 @@
+# Software-rendered Matrix continuity and editorial surfaces
+
+Branch: `feat/spa-continuity-tasks12-13`; objective: reduce navigation-induced Matrix presentation stalls and correct experience/blog surfaces locally.
+Delivery: ask-on-risk, forecast approximately 420 authored lines across two small local review units (near the advisory 400-line heuristic; most lines are reproducible browser evidence, no code-golf or PR publication); baseline workspace tree `eb8b68e7441c047ece6681cb4c87ea94a5ade8cb`; runner: Bun + Playwright against local Worker localhost:8788. Prior approved uncommitted Matrix/theme edits remain separate.
+
+## Specs
+
+S1. "En ciertos dispositivos sin aceleracion de GPU se observan tirones o pausas temporales en el fondo matrix al cambiar de pagina, indistintamente el dispositivo la animacion del fondo debe ser totalmente fluida con continuedad sin pausas ni tirones aunque se esten cargando nuevas paginas."
+Scope/checks: reproduce with software-rendered Chromium; distinguish Worker draw timestamps from presented-frame changes; compare native route transitions with Astro's supported skip hook. Preserve approved glyph appearance, theme reveal, router/persistence and fetch behavior. Arbitrary hardware starvation cannot be guaranteed away; report measured limits rather than certifying universal uninterrupted frames.
+S2. "Y la linea de timeline con flechas en un experience no debe verse atraves del contenedor interno (ya que debe estar por detras, pero no verse por la transparencia del contenedor)."
+Scope/checks: opaque role header in both themes, rail visible outside it, no rail bleed in blank header pixels, past/future arrows still usable.
+S3. "Y mejora la estetica de los blogs para que sea mas acorde al estilo de la pagina (el contenedor total transparente pegado a los bordes superiores no esta bien bien)."
+Scope/checks: blog index/detail use existing editorial tokens, opaque readable surfaces and deliberate outer/top gutters on desktop/mobile and both locales; preserve other ArticleLayout consumers, SEO metadata and content.
+
+## Tasks
+
+T1 | S1 | delegated | Measurements/regression verified; no justified source fix; affected-device trace needed for remaining guarantee | commit pending | Risk: none (test-only; lifecycle untouched). Writer reason: launched with independent T3, disjoint source/test surfaces, each requires several minutes of browser work.
+T2 | S2 | inline | Verified RED2/GREEN2: opaque header masks rail; both arrows work | commit: UI surface work unit | Risk: none for scoped opaque header styling.
+T3 | S3 | delegated | Verified RED8/GREEN9 fixture coverage; parent seam passed, projects unchanged | commit: UI surface work unit | Risk: none if changes remain posts-scoped. Writer reason: independent parallel unit with T1; no shared edit surfaces.
+
+## Log
+
+L1. User request verbatim: "En ciertos dispositivos sin aceleracion de GPU se observan tirones o pausas temporales en el fondo matrix al cambiar de pagina, indistintamente el dispositivo la animacion del fondo debe ser totalmente fluida con continuedad sin pausas ni tirones aunque se esten cargando nuevas paginas. Y la linea de timeline con flechas en un experience no debe verse atraves del contenedor interno (ya que debe estar por detras, pero no verse por la transparencia del contenedor). Y mejora la estetica de los blogs para que sea mas acorde al estilo de la pagina (el contenedor total transparente pegado a los bordes superiores no esta bien bien)."
+L2. Read-only explorer mapped native Astro capture suppression, independent Worker execution, translucent role header and shared ArticleLayout. Performance experiment requires durable baseline/evidence across independent implementation/verification phases, so tracking is used. Native before-swap exposes ViewTransition.skipTransition; do not globally replace startViewTransition or remove theme animation. Timeline z-index is already correct; its blur utility overrides opaque background. Blog surfaces must branch on collectionName posts to avoid changing projects. Parent owns shared logbook, git and verification. No remote/deploy/push is authorized.
+
+L3. T2 RED2 on local Worker: role header computed85% opacity in both themes instead of opaque surface-card. Removed only its matrix-readability-blur class; existing z-index/rail/arrows unchanged. Public browser regression checks both themes, inside/outside rail pixels and past/future navigation. Candidate browser proof awaits shared rebuild after writers finish.
+
+L4. T1 software compositor confirmed. Three native/diagnostic-skip pairs: maximum sampled pixel gaps212.5/95.5/103.9ms vs490.7/500/495.4ms under300msfetch delay+450msmain contention; Worker21-23paints continued. Context-desynchronized and opaque-surface crossover variants showed no consistent gain. CDPcapture median34-49ms,p9570-114ms is itself a sampling limit, not physicalFPS proof; baselinebackdropfilter already computednone. Keep native lifecycle and approved appearance; add software-rendering regression, but no fabricated fix/RED. Remaining S1 needs a sanitized Performance trace from an actually affected device.
+L5. T3 isolated scratch-only visible en/es fixtures: valid baseline8failed/1passed -> candidate9passed,69pagebuilds. Workspace posts are draft:true/visible:false and stay unchanged; default public blog404 means fixture coverage must be reported separately from default skips. Posts-only ArticleLayout branch retains original project classes/geometry; index/detail gain opaque existing-token surfaces and top/side gutters. Shared-checkout build pending; no project styles/globalutilities changed.
+
+L6. Final normalized candidate:352unit tests PASS;124fileAstrocheck0diagnostics;architecture/format/diff checks PASS;65pagebuild+vaultisolation PASS. After restarting localWorker torefresh assetmanifest, full browser seam16passed/8skipped/0failed; skippedcases are unpublished blog combinations, covered separately by9isolatedfixturecases. Experience tests verify opaque pixel masking in both themes, rail visible outside and past/future navigation. Software-renderer test observes presented changes and independent Worker paints without claiming every physicalrefresh.
