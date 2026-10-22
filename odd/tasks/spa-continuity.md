@@ -13,6 +13,9 @@ S4. "Sigue exactamente igual, no funciona como un SPA, el fondo matrix se recarg
 
 S5. "Ya los toast no se recargan al navegar, pero el fondo matrix si se reinicia y no deberia."
 
+S6. "Ejecuto `pnpm run dev-prod` y pruebo con localhost:8788 todas las paginas, el fallo se ve en todas las paginas como yendo desde about -> experiences -> services -> projects e incluso navegando entre cada job individual con las flechas"
+S7. "No debes necesitar publicar ni desplegar nada en cloudflare, si no funciona localmente no funcionara desplegado"
+
 ## Tasks
 
 T1 | S1-S2 | inline | Verified existing implementation and repaired SPA navigation and typecheck | commit: 743d17a, 7dc94fc
@@ -22,6 +25,8 @@ T3 | S4 | inline | Historical production asset/routing mismatch; not revalidated
 T4 | S1-S2, S5 | inline | Verified locally: isolated Matrix layer, active old-snapshot suppression, live Worker/2D rendering and history | commit: e9527e0; Risk: none for scoped Matrix CSS
 
 T5 | S1-S2 | inline | Verified locally: one desktop transition/mobile fetch, persistent document/canvas/theme and banner | commit: e9527e0; Risk: none (language links only, no listener ordering changes)
+
+T6 | S1-S2, S6-S7 | inline | Verified locally: preserve SPA bootstrap through Worker HTML rewriting; independent verifier PASS | commit: pending; Risk: item 3 (shared HTML rewriting); independent verification required
 
 ## Log
 
@@ -55,3 +60,14 @@ L16. Final local functional proof: bun test 341 pass/0 fail; Astro check 123 fil
 L17. Remaining proof: production T3 remains unresolved and was not accessed, deployed or purged this session; no current remote authorization inferred from history. Lighthouse binary is not installed; 100/100 lab scores, real-user CWV and universal 120 FPS remain unmeasured, not certified. Matrix intentionally renders around 22 FPS independently of display refresh. No new runtime JavaScript/dependencies. Current work unit is under 400 authored lines; no push or PR.
 
 L18. Work unit committed as e9527e0 (fix(spa): isolate live matrix and language navigation), including tests and task log. Committed-range native assessment against 50594ec: medium, 272 lines, review_due=false/under_budget. Parent spot-check architectural audit PASS; clean tracked tree after commit. Rollback boundary is the Matrix layer CSS, three language-link exclusions and their regression tests; no Worker lifecycle, deployment or dependencies changed. Production and performance proof remain pending, so this feature is not globally complete.
+
+L19. Sigue igual de mal, al navegar por distintas paginas el fondo matrix se reinicia/resetea, incluso el toast aveces tiene saltos. Esto no es aceptable, TODO deberia funcionar como una SPA con continuidad visual perfecta.
+L20. Ejecuto `pnpm run dev-prod` y pruebo con localhost:8788 todas las paginas, el fallo se ve en todas las paginas como yendo desde about -> experiences -> services -> projects e incluso navegando entre cada job individual con las flechas
+L21. No debes necesitar publicar ni desplegar nada en cloudflare, si no funciona localmente no funcionara desplegado
+L22. Exact local Worker delivery defect reproduced by read-only explorer: broad challenge-script regex crosses script boundaries and removes 16,952 characters including Astro ClientRouter modules and transition metadata from dist/index.html. BaseLayout itself contains the marker in a defensive string. This explains preview/Worker discrepancy; no production investigation or deployment is needed to fix this deterministic local defect. Local port 8788 currently has no server accessible from this execution environment; start isolated local Wrangler without configured R2 custom build or remote bindings for browser proof.
+
+L23. Local Worker RED: browser on localhost:8788 showed routerEnabled=false, no ClientRouter module, original document marker lost, and two document requests on / -> /experience/. Focused public worker.fetch tests failed 3 cases because bootstrap/router/meta were deleted.
+L24. GREEN: script removal inspects each complete script separately and distinguishes parameter assignments from plain defensive marker references. Same Worker browser probe now has router/meta present, original document retained and only initial document request. Five focused Worker tests pass; full Bun suite345/0; Astro check123 files/0 diagnostics; architecture and formatting audits PASS.
+L25. All8 browser regressions pass on localhost:8788, not preview. New real header route test covers Projects -> About -> Experience -> LATAM job -> past arrow -> future arrow -> Services -> Projects; document/canvas/Worker identity and banner coordinates remain unchanged, no page errors and only initial document request. Default browser-test target changed to localhost8788 so future checks exercise Worker delivery.
+L26. Independent Risk-item3 verifier PASS in isolated baseline/candidate scratch: actual built HTML baseline loses16,952 characters; candidate preserves all21 scripts, transition metadata and JSON-LD byte-for-byte. Six challenge probes and six ordinary HTML/status/header differential cases pass; non200 output unchanged. Verification does not certify field CWV or universal perfect visual performance.
+L27. Native risk assessment high via named item3 (shared HTML delivery); applicable candidate review pending. No remote access, deploy, push, cache purge or new dependencies. Local test server uses existing Worker/ASSETS with temporary config omitting only remote-only AI/Vectorize/email bindings and the custom R2 build, local D1/R2 persistence and fake local admin token. No production configuration was changed.

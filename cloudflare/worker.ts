@@ -1092,15 +1092,20 @@ export default {
           text.includes("/cdn-cgi/challenge-platform/") ||
           text.includes("__CF$cv$params")
         ) {
-          text = text
-            .replace(
-              /<script\b[^>]*src=["'][^"']*\/cdn-cgi\/challenge-platform\/scripts\/jsd\/main\.js[^"']*["'][^>]*><\/script>/gi,
-              "",
-            )
-            .replace(
-              /<script\b[^>]*>[\s\S]*?__CF\$cv\$params[\s\S]*?<\/script>/gi,
-              "",
-            );
+          // Inspect one complete script at a time. Matching across closing tags
+          // can erase Astro's router and metadata before an unrelated marker.
+          text = text.replace(
+            /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi,
+            (script: string, attributes: string, body: string) => {
+              const challengeSource =
+                /\bsrc\s*=\s*(["'])[^"']*\/cdn-cgi\/challenge-platform\/scripts\/jsd\/main\.js[^"']*\1/i.test(
+                  attributes,
+                );
+              // The application's defensive script only references this marker.
+              const challengeAssignment = /\b__CF\$cv\$params\s*=/.test(body);
+              return challengeSource || challengeAssignment ? "" : script;
+            },
+          );
         }
         finalResponse = new Response(text, {
           status: response.status,

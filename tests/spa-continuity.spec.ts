@@ -7,13 +7,93 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       launchOptions: { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH },
     });
   }
+  test("Worker delivery retains the shell through real header and job-arrow navigation", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
+      Object.defineProperty(navigator, "languages", { get: () => ["es"] });
+    });
+    const documentRequests: string[] = [];
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("request", (request) => {
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame())
+        documentRequests.push(request.url());
+    });
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788";
+    await page.goto(`${baseUrl}/projects/`, { waitUntil: "networkidle" });
+    await expect(
+      page.locator('meta[name="astro-view-transitions-enabled"]'),
+    ).toHaveCount(1);
+    await page.mouse.move(400, 400);
+    await page.waitForFunction(() => window.__matrixSingleton?.initialized);
+    const originalDocument = await page.evaluateHandle(() => document);
+    const originalCanvas = await page.locator("#matrix-canvas").elementHandle();
+    const originalWorker = await page.evaluateHandle(
+      () => window.__matrixSingleton?.worker,
+    );
+    const banner = page.locator("#lang-suggestion-banner");
+    await expect(banner).toBeVisible();
+    await page.waitForTimeout(400);
+    const initialBanner = await banner.boundingBox();
+    const navigate = async (selector: string) => {
+      const link = page.locator(selector).first();
+      const href = await link.getAttribute("href");
+      const loaded = page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            document.addEventListener("astro:page-load", () => resolve(), {
+              once: true,
+            }),
+          ),
+      );
+      await link.click();
+      await page.waitForURL(
+        (url) => url.pathname === new URL(href!, baseUrl).pathname,
+      );
+      await loaded;
+      expect(
+        await page.evaluate(
+          (original) => document === original,
+          originalDocument,
+        ),
+      ).toBe(true);
+      expect(
+        await page
+          .locator("#matrix-canvas")
+          .evaluate((node, original) => node === original, originalCanvas),
+      ).toBe(true);
+      expect(
+        await page.evaluate(
+          (original) => window.__matrixSingleton?.worker === original,
+          originalWorker,
+        ),
+      ).toBe(true);
+      await expect(banner).toBeVisible();
+      const bounds = await banner.boundingBox();
+      expect(bounds?.x).toBe(initialBanner?.x);
+      expect(bounds?.y).toBe(initialBanner?.y);
+      await page.waitForTimeout(180);
+    };
+    await navigate('#header-desktop-nav a[data-nav-section="about"]');
+    await navigate('#header-desktop-nav a[data-nav-section="experience"]');
+    await navigate('main a[href="/experience/latam/"]');
+    await navigate('a[data-timeline-nav="past"]');
+    await navigate('a[data-timeline-nav="future"]');
+    await navigate('#header-desktop-nav a[data-nav-section="services"]');
+    await navigate('#header-desktop-nav a[data-nav-section="projects"]');
+    expect(documentRequests).toEqual([`${baseUrl}/projects/`]);
+    expect(errors).toEqual([]);
+  });
   for (const renderer of ["worker", "2d"] as const) {
     for (const atomicMove of [true, false]) {
       test(`Matrix stays live and isolated (${renderer}, atomic move: ${atomicMove})`, async ({
         page,
       }) => {
         const baseUrl =
-          process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:4329";
+          process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788";
         const errors: string[] = [];
         page.on("pageerror", (error) => errors.push(error.message));
         await page.addInitScript(
@@ -122,7 +202,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
   test("language banner stays mounted, aligned and dismissed across real navigation", async ({
     page,
   }) => {
-    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:4329";
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788";
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "languages", { get: () => ["es"] });
     });
@@ -157,7 +237,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
   test("mobile language switching uses one fetch without reloading", async ({
     page,
   }) => {
-    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:4329";
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788";
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${baseUrl}/es/`, { waitUntil: "networkidle" });
     await page.evaluate(() =>
@@ -188,7 +268,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
   test("navigation retains the canvas and theme without reloading the document", async ({
     page,
   }) => {
-    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:4329";
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788";
     const pageErrors: string[] = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
     await page.emulateMedia({ colorScheme: "dark" });
