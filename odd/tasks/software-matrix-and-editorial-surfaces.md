@@ -14,9 +14,9 @@ Scope/checks: blog index/detail use existing editorial tokens, opaque readable s
 
 ## Tasks
 
-T1 | S1 | delegated | Measurements/regression verified; no justified source fix; affected-device trace needed for remaining guarantee | commit pending | Risk: none (test-only; lifecycle untouched). Writer reason: launched with independent T3, disjoint source/test surfaces, each requires several minutes of browser work.
-T2 | S2 | inline | Verified RED2/GREEN2: opaque header masks rail; both arrows work | commit: UI surface work unit | Risk: none for scoped opaque header styling.
-T3 | S3 | delegated | Verified RED8/GREEN9 fixture coverage; parent seam passed, projects unchanged | commit: UI surface work unit | Risk: none if changes remain posts-scoped. Writer reason: independent parallel unit with T1; no shared edit surfaces.
+T1 | S1 | delegated | Partial: measurements/regression verified; affected-device trace needed for remaining continuity issue | commit: measurement work unit | Risk: none (test-only; lifecycle untouched). Writer reason: launched with independent T3, disjoint source/test surfaces, each requires several minutes of browser work.
+T2 | S2 | inline | Verified RED2/GREEN2: opaque header masks rail; both arrows work | commit: c5caba5 | Risk: none for scoped opaque header styling.
+T3 | S3 | delegated | Verified RED8/GREEN9 fixture coverage; parent seam passed, projects unchanged | commit: c5caba5 | Risk: none if changes remain posts-scoped. Writer reason: independent parallel unit with T1; no shared edit surfaces.
 
 ## Log
 
@@ -29,3 +29,6 @@ L4. T1 software compositor confirmed. Three native/diagnostic-skip pairs: maximu
 L5. T3 isolated scratch-only visible en/es fixtures: valid baseline8failed/1passed -> candidate9passed,69pagebuilds. Workspace posts are draft:true/visible:false and stay unchanged; default public blog404 means fixture coverage must be reported separately from default skips. Posts-only ArticleLayout branch retains original project classes/geometry; index/detail gain opaque existing-token surfaces and top/side gutters. Shared-checkout build pending; no project styles/globalutilities changed.
 
 L6. Final normalized candidate:352unit tests PASS;124fileAstrocheck0diagnostics;architecture/format/diff checks PASS;65pagebuild+vaultisolation PASS. After restarting localWorker torefresh assetmanifest, full browser seam16passed/8skipped/0failed; skippedcases are unpublished blog combinations, covered separately by9isolatedfixturecases. Experience tests verify opaque pixel masking in both themes, rail visible outside and past/future navigation. Software-renderer test observes presented changes and independent Worker paints without claiming every physicalrefresh.
+
+L7. UI surface work unit c5caba5:234authoredlines. Exact committed-range native assessment medium/review_duefalse/under_budget after explicitly excluding unrelated inventoried untracked files; delegated blog writer risk remains none. Parent experience spotcheck2passed. Earlier approved uncommitted Matrix/theme files remain separate and untouched by these commits.
+L8. Needs your decision for S1: provide a sanitized browser Performance trace from a device that exhibits the reported interruption. No production Matrix change demonstrated a reliable improvement; this task remains partial, not complete. The software-regression work unit records current continuity and sampling limits, not an advertised fix. Two reviewable local units are near the advisory400line total because presented-pixel evidence needs instrumentation; no code-golf, PR, push or deployment.
