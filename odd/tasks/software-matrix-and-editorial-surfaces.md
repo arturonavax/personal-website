@@ -14,7 +14,7 @@ Scope/checks: blog index/detail use existing editorial tokens, opaque readable s
 
 ## Tasks
 
-T1 | S1 | delegated | Partial: measurements/regression verified; affected-device trace needed for remaining continuity issue | commit: measurement work unit | Risk: none (test-only; lifecycle untouched). Writer reason: launched with independent T3, disjoint source/test surfaces, each requires several minutes of browser work.
+T1 | S1 | delegated | Partial: measurements/regression verified; affected-device trace needed for remaining continuity issue | commit: 6bb9e44 | Risk: none (test-only; lifecycle untouched). Writer reason: launched with independent T3, disjoint source/test surfaces, each requires several minutes of browser work.
 T2 | S2 | inline | Verified RED2/GREEN2: opaque header masks rail; both arrows work | commit: c5caba5 | Risk: none for scoped opaque header styling.
 T3 | S3 | delegated | Verified RED8/GREEN9 fixture coverage; parent seam passed, projects unchanged | commit: c5caba5 | Risk: none if changes remain posts-scoped. Writer reason: independent parallel unit with T1; no shared edit surfaces.
 
@@ -32,3 +32,5 @@ L6. Final normalized candidate:352unit tests PASS;124fileAstrocheck0diagnostics;
 
 L7. UI surface work unit c5caba5:234authoredlines. Exact committed-range native assessment medium/review_duefalse/under_budget after explicitly excluding unrelated inventoried untracked files; delegated blog writer risk remains none. Parent experience spotcheck2passed. Earlier approved uncommitted Matrix/theme files remain separate and untouched by these commits.
 L8. Needs your decision for S1: provide a sanitized browser Performance trace from a device that exhibits the reported interruption. No production Matrix change demonstrated a reliable improvement; this task remains partial, not complete. The software-regression work unit records current continuity and sampling limits, not an advertised fix. Two reviewable local units are near the advisory400line total because presented-pixel evidence needs instrumentation; no code-golf, PR, push or deployment.
+
+L9. Measurement work unit6bb9e44: software-renderer regression only. Combined committed-range assessment against2a46f37: medium,420authoredlines,review_duefalse/under_budget, no native review START. T2/T3 complete; S1 remains partial awaiting affected-device trace. No publishing/deployment.
