@@ -34,7 +34,7 @@ T6 | S1-S2, S6-S7 | inline | Verified locally: preserve SPA bootstrap through Wo
 
 T7 | S2, S8 | inline | Verified Worker frame independence and smooth time-based rendering; browser presentation caveat documented | commit: 0f02bb6; Risk: item 4 (animation scheduling); independent verifier PASS; native review declined
 
-T8 | S2, S9 | inline | Verified locally: slower stable glyphs, bounded raster size and foreground snapshot isolation | commit: this work unit; Risk: item 3 (shared transition styling); independent verifier PASS; native assessment pending
+T8 | S2, S9 | inline | Verified locally: slower stable glyphs, bounded raster size and foreground snapshot isolation | commit: f8ec5fd; Risk: item 3 (shared transition styling); independent verifier PASS; native reliability review approved and acknowledged
 
 ## Log
 
@@ -93,3 +93,5 @@ L34. Read-only mapping: Matrix randomizes character and brightness every60Hz pai
 L35. RED3 -> GREEN5 deterministic renderer tests:8rows/s,150ms glyph holds, bounded DPR1/1080p backing pixels, retained hidden/resume/single-timer behavior. Full350unit tests PASS; Astro check123files zero diagnostics;65page build and vault isolation PASS; architecture audit PASS. Ten browser regressions PASS on actual local Worker localhost8788, including live route/job continuity, delayed fetch+250ms main blocking, fallback modes, theme/language, and foreground pixel isolation. No production bindings, remote operations or deployment.
 L36. Independent verifier PASS: baseline22.066vs candidate8.024rows/s; actual fallback8rows/s and>=150ms glyph holds; theme/resize/visibility invariants preserved. Baseline CSS emulation (not full baseline build) reproduces pixel bleed at validated main/footer points: red[255,0,0] becomes[213,159,123]/[221,120,87] during transition; candidate remains red. Initial fixed-coordinate prototype was invalid and replaced by measured in-bounds probes validated before capture.
 L37. Synthetic software-GPU/4xmain-CPU Chromium stress atCSS2560x1440,DPR2 during3routes:1920x1080backing pixels;377Worker paints;paint gaps p50=17ms,p95=20ms,max40ms;paintCPU p95=0.5ms. This measures Worker work, not physical weak-GPU presentation or universal uninterrupted frames. No field CWV certification. Rollback boundary: T8 renderer legibility/raster changes and ordinary transition snapshot CSS/tests only; prior Worker scheduling and HTML delivery fixes remain separate. Native candidate review pending assessment.
+
+L38. User answered "granted" for f8ec5fd candidate review. Exact granted START created lineage review-61a02f85c1c08080. Native reliability reviewer inspected all six immutable patches: no findings, approved; no commands run by reviewer (functional evidence remains L35-L37). Exact acknowledgement returned action acknowledged and authority burned. No correction required. T8 complete; no deployment, publication or push.
