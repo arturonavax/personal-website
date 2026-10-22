@@ -36,6 +36,7 @@ const effectiveTargetUrl =
       : "/");
 ---
 
+<!-- The custom language swap owns these links; prevent a competing Astro navigation. -->
 <nav
   aria-label="Language selector"
   class="hidden min-[391px]:inline-flex items-center text-xs font-mono shrink-0 whitespace-nowrap"
@@ -79,6 +80,7 @@ const effectiveTargetUrl =
         lang="en"
         data-astro-prefetch="hover"
         data-lang-switch="en"
+        data-astro-reload
         class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
       >
         EN
@@ -101,6 +103,7 @@ const effectiveTargetUrl =
         lang="es"
         data-astro-prefetch="hover"
         data-lang-switch="es"
+        data-astro-reload
         class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
       >
         ES

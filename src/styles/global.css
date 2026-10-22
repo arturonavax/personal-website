@@ -955,7 +955,11 @@ header#site-header,
   view-transition-name: page-navigation-beacon;
 }
 
-#matrix-container,
+#matrix-container {
+  /* Keep the live canvas out of the frozen root snapshot on SPA navigation. */
+  view-transition-name: matrix-background !important;
+}
+
 matrix-canvas-layer {
   view-transition-name: none !important;
 }
@@ -1023,6 +1027,12 @@ html:not(.theme-transitioning)::view-transition-new(matrix-background) {
 
 /* Drop old snapshots for persistent HUD and Matrix layers so semi-transparent
    canvases, shadows, and backdrop-blurs NEVER double-stack during the 130ms route swap */
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(matrix-background),
+html:not(.theme-transitioning):not(
+    [data-theme-transitioning]
+  )::view-transition-old(matrix-canvas-background),
 html:not(.theme-transitioning):not(
     [data-theme-transitioning]
   )::view-transition-old(site-header),
