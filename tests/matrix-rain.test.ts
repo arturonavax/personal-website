@@ -81,14 +81,62 @@ describe("continuously falling Matrix rain", () => {
       (g) =>
         g.x === 0 &&
         g.alpha === 1 &&
-        g.y > before.y + before.size * 8 * 0.5 * 0.8 &&
-        g.y < before.y + before.size * 8 * 0.5 * 1.2,
+        g.y > before.y + before.size * 6.5 * 0.5 * 0.8 &&
+        g.y < before.y + before.size * 6.5 * 0.5 * 1.2,
     );
     expect(head).toBeDefined();
     expect(head!.symbol).not.toBe(before.symbol);
     expect(
       app.frame.some((g) => g.x === 0 && g.y < head!.y && g.alpha < 0.2),
     ).toBe(true);
+  });
+
+  it("refreshes every tail symbol on the same tick as its head", () => {
+    const app = rain(360, 1800);
+    const head = app.frame.find(
+      (g) => g.x === 0 && g.alpha === 1 && g.y > 600 && g.y < 1500,
+    )!;
+    const before = app.frame.filter(
+      (g) => g.x === head.x && g.y <= head.y && g.y > head.y - head.size * 10,
+    );
+    expect(before.length).toBeGreaterThan(5);
+    app.grid.draw(250);
+    const movedHead = app.frame.find(
+      (g) =>
+        g.x === head.x &&
+        g.alpha === 1 &&
+        g.y > head.y &&
+        g.y < head.y + head.size * 3,
+    )!;
+    expect(movedHead).toBeDefined();
+    const distance = movedHead.y - head.y;
+    for (const glyph of before) {
+      const after = app.frame.find(
+        (g) => g.x === glyph.x && Math.abs(g.y - glyph.y - distance) < 0.000001,
+      );
+      expect(after).toBeDefined();
+      expect(after!.symbol).not.toBe(glyph.symbol);
+    }
+  });
+
+  it("uses a calmer 5.2–7.8 rows per second without reducing frame cadence", () => {
+    const app = rain(1440, 1800);
+    const heads = app.frame.filter(
+      (g) => g.alpha === 1 && g.y > 0 && g.y < 1500,
+    );
+    app.grid.draw(1000 / 120);
+    for (const head of heads) {
+      const moved = app.frame.find(
+        (g) =>
+          g.x === head.x &&
+          g.alpha === 1 &&
+          g.y > head.y &&
+          g.y < head.y + head.size,
+      )!;
+      const rowsPerSecond = ((moved.y - head.y) / head.size) * 120;
+      expect(rowsPerSecond).toBeGreaterThanOrEqual(5.2 - 0.000001);
+      expect(rowsPerSecond).toBeLessThanOrEqual(7.8 + 0.000001);
+    }
   });
 
   it("uses bounded depth sizes with most visible glyphs larger than the old minimum", () => {

@@ -198,11 +198,13 @@ describe("Matrix Worker frame independence", () => {
     const cell = app.glyphs.at(-1)!.size;
     const before = position();
     app.stall(500);
-    expect(position() - before).toBeLessThanOrEqual((8 * cell) / 30 + 0.000001);
+    expect(position() - before).toBeLessThanOrEqual(
+      (6.5 * cell) / 30 + 0.000001,
+    );
     expect(position() - before).toBeGreaterThan(0);
     const resumed = position();
     app.advance(17);
-    expect(position() - resumed).toBeCloseTo((17 * 8 * cell) / 1000, 4);
+    expect(position() - resumed).toBeCloseTo((17 * 6.5 * cell) / 1000, 4);
     expect(app.pending.size).toBe(1);
   });
 
@@ -218,7 +220,7 @@ describe("Matrix Worker frame independence", () => {
       (glyph) => glyph.time === app.glyphs.at(-1)!.time && glyph.alpha === 1,
     );
     const advanced = heads.find(
-      (glyph) => Math.abs(glyph.y - startY - 8 * glyph.size) < 5,
+      (glyph) => Math.abs(glyph.y - startY - 6.5 * glyph.size) < 5,
     );
     expect(advanced).toBeDefined();
     expect(app.rasterizations).toBe(rasterizations);

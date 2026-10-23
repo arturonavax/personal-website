@@ -7,7 +7,7 @@ type GlyphCanvas = HTMLCanvasElement | OffscreenCanvas;
 
 const FONT_SIZES = [18, 21, 24, 28] as const;
 const LENS_RADIUS_SQUARED = 360 * 360;
-const ROWS_PER_SECOND = 8;
+const ROWS_PER_SECOND = 6.5;
 const MUTATION_INTERVAL = 120;
 const CHARACTERS = "012345789Z*+:=<>¦ｱｲｳｴｵｶｷｹｻｼｽｾﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾕﾗﾘﾜ";
 
@@ -218,7 +218,9 @@ export class MatrixGrid {
         for (let index = 0; index < stream.tailLength; index++) {
           const y = (head - index) * cell;
           if (y <= -cell || y >= this.height) continue;
-          if (mutate && (index === 0 || this.random() < 0.18)) {
+          // The entire train recodes at its head's cadence, rather than leaving
+          // most tail glyphs frozen across several head changes.
+          if (mutate) {
             state.target[index] = 0.6 + this.random() * 0.4;
             glyphs[index] =
               (glyphs[index]! +
