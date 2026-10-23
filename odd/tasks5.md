@@ -198,3 +198,7 @@ pnpm run build
 npx tsx scripts/audit-codebase.ts
 
 ```
+
+## 2026-10-23 security and routing amendment
+
+Public HTML remains Worker-first for server-side telemetry; immutable/discovery assets retain their explicit bypass. This supersedes an admin-only interpretation of Task 2. Public vault URLs are denied unconditionally, including forged internal headers. Authentication requires verified Access JWT claims/signature or an explicitly configured secret token: no mock email/JWT fallback is permitted in production. Access team/audience must match the real application; no bearer credential belongs in committed vars. See `tests/admin-boundary.test.ts` and `odd/tasks/production-spa-delivery.md` for verification and rollout state.

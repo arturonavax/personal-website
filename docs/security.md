@@ -151,3 +151,11 @@ Automated scanners (e.g. searching for `.env`, `wp-login.php`, `xmlrpc.php`, `ph
 - **Path Sanitization:** Rejects scanner paths and non-content URLs before processing.
 - **Server-Side Trust:** Client-supplied visitor hashes are discarded; hashes are derived deterministically on the edge server from request IP, User-Agent, and salt.
 - **Isolated Table Writes:** Writes exclusively to `edge_telemetry_events`, preventing beacon double-counting with server-side pageviews.
+
+## Authentication boundary corrections (2026-10-23)
+
+Identity headers, malformed JWTs and cookies are not authorization evidence when Access issuer/audience configuration is missing. The former mock fallback is removed from production code; fixtures must provide a signed JWT or configured test bearer. Malformed Access-cookie encoding fails closed without crashing the verifier.
+
+Every external `/__admin_vault__*` request returns 404, including requests carrying `x-admin-vault-internal: 1`. The header is not a capability. Authorized vault reads use the ASSETS binding directly and retain private/no-store headers.
+
+The formerly committed bearer credential is removed from production vars and must not be reused: its replacement is verified Cloudflare Access, not another plaintext source value. Historical Git objects still contain the old value; do not describe removing the current line as erasing history. Production readback must confirm the old binding is absent and preview URLs are disabled. A valid owner Access login requires interactive identity-provider authentication; unauthenticated probes alone cannot certify that session.

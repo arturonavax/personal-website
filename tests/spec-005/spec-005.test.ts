@@ -346,6 +346,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
       DB: createMockDb(),
       REQUIRE_CF_ACCESS: "true",
       REQUIRE_ADMIN_AUTH: "true",
+      ADMIN_ACCESS_TOKEN: "test-only-admin-bearer-at-least-20",
       ADMIN_AUTHORIZED_EMAILS: "arturonavax@gmail.com,contact@arturonava.com",
     };
 
@@ -389,12 +390,13 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     const unauthEmailRes = await worker.fetch(unauthEmailReq, env, ctx);
     expect(unauthEmailRes.status).toBe(401);
 
-    // 5. Request with authorized email returns HTTP 200 OK
+    // 5. Verified bearer authorization succeeds; identity headers alone never grant access.
     const authEmailReq = new Request(
       "https://admin.arturonavax.dev/api/telemetry",
       {
         headers: {
           "cf-access-authenticated-user-email": "arturonavax@gmail.com",
+          Authorization: "Bearer test-only-admin-bearer-at-least-20",
         },
       },
     );
@@ -407,12 +409,13 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     expect(authTelData.quotas.workers_ai_daily).toBeDefined();
     expect(authTelData.quotas.vectorize_monthly).toBeDefined();
 
-    // 6. Request with secondary authorized email returns HTTP 200 OK
+    // 6. Another protected endpoint preserves configured bearer authentication.
     const authEmail2Req = new Request(
       "https://admin.arturonavax.dev/api/metrics",
       {
         headers: {
           "cf-access-authenticated-user-email": "contact@arturonava.com",
+          Authorization: "Bearer test-only-admin-bearer-at-least-20",
         },
       },
     );

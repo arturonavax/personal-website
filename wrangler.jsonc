@@ -6,6 +6,7 @@
   "compatibility_date": "2026-09-26",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
+  "preview_urls": false,
   "build": {
     "command": "node scripts/r2-pull.mjs && pnpm run build",
   },
@@ -77,6 +78,7 @@
   ],
   "observability": {
     "enabled": true,
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 },
   },
   // Configurable Quota & Progressive Degradation Strategy (Free Tier -> Paid Plans)
   // Upgrade to Workers Paid with zero code changes by setting CLOUDFLARE_PLAN_TIER="paid"
@@ -89,9 +91,10 @@
     "D1_DAILY_WRITE_BUDGET": "100000",
     "D1_DAILY_READ_BUDGET": "5000000",
     "ENABLE_BOT_TELEMETRY": "false",
+    "CF_ACCESS_TEAM_DOMAIN": "orange-art-1302.cloudflareaccess.com",
+    "CF_ACCESS_AUD": "9b020275757d6aaf08b6f4a26febe94687d897aadfdf57895f9456f1708011cf",
     "REQUIRE_CF_ACCESS": "true",
     "REQUIRE_ADMIN_AUTH": "true",
     "ADMIN_AUTHORIZED_EMAILS": "arturonavax@gmail.com,contact@arturonava.com",
-    "ADMIN_ACCESS_TOKEN": "__REDACTED_ROTATE_THIS_SECRET__",
   },
 }

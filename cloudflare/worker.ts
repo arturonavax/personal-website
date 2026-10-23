@@ -419,12 +419,7 @@ export default {
     const pathname = cleanPath || "/";
 
     // 2. Block Direct External Access to /__admin_vault__*
-    const isInternalVaultFetch =
-      request.headers.get("x-admin-vault-internal") === "1";
-    if (
-      normalizedLowerPath.startsWith("/__admin_vault__") &&
-      !isInternalVaultFetch
-    ) {
+    if (normalizedLowerPath.startsWith("/__admin_vault__")) {
       return new Response("Not Found", {
         status: 404,
         headers: {
@@ -2846,7 +2841,12 @@ export async function verifyAdminAccess(
     const cookieHeader = request.headers.get("cookie") || "";
     const match = cookieHeader.match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
     if (match) {
-      cfJwt = decodeURIComponent(match[1]!.trim());
+      try {
+        cfJwt = decodeURIComponent(match[1]!.trim());
+      } catch {
+        // Malformed cookies are untrusted input, never authentication evidence.
+        cfJwt = null;
+      }
     }
   }
 
@@ -2864,48 +2864,6 @@ export async function verifyAdminAccess(
         status: 200,
         method: "cf_access",
         email: jwtResult.email,
-      };
-    }
-  }
-
-  // Fallback for mock environments with CF_Authorization or cf-access-authenticated-user-email
-  if (!hasCfAccessConfig) {
-    const cfUserEmail = request.headers.get(
-      "cf-access-authenticated-user-email",
-    );
-    if (cfUserEmail) {
-      const cleanEmail = cfUserEmail.trim().toLowerCase();
-      const authorizedEmails = (
-        env.ADMIN_AUTHORIZED_EMAILS ||
-        "arturonavax@gmail.com,contact@arturonava.com"
-      )
-        .split(",")
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
-
-      if (authorizedEmails.includes(cleanEmail)) {
-        return {
-          authorized: true,
-          status: 200,
-          email: cleanEmail,
-          method: "cf_access",
-        };
-      } else {
-        return {
-          authorized: false,
-          status: 401,
-          email: cleanEmail,
-          method: "cf_access",
-          reason: `Email ${cleanEmail} is not in the authorized administrator whitelist.`,
-        };
-      }
-    }
-    if (cfJwt) {
-      return {
-        authorized: true,
-        status: 200,
-        email: "access-jwt@arturonavax.dev",
-        method: "cf_access",
       };
     }
   }
