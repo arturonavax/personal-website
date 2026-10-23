@@ -1,27 +1,32 @@
-# openspec/config.yaml
+# Current documentation entry point: openspec/specs/README.md
 schema: spec-driven
 
 context: |
-  Tech stack: Astro v7.3.4 (SSG), Cloudflare Pages/Worker/D1, Tailwind v4.3.3, TypeScript 5.9.3, pnpm 12.5.1
-  Architecture: Pure Edge SSG (0 KB client JS baseline), Cloudflare Worker + D1 analytics, strict Zod content schemas
-  Testing: No automated test framework configured (unit/integration/e2e unavailable; strict_tdd: false)
-  Quality: pnpm check (astro check & TS diagnostics), pnpm format:check (Prettier)
+  Source baseline: 418703353838524a963362b081869510022a53ae (2026-10-23).
+  Stack: Astro 7.3.4 SSG, Cloudflare Workers + Static Assets/D1/R2, Tailwind 4.3.3, TypeScript 5.9.3, pnpm 12.5.1.
+  Architecture: static directory documents with persistent client navigation and justified native JavaScript; ports/adapters for edge services.
+  Current contracts: openspec/specs/README.md and current-*.md. SPEC-001 through SPEC-010 and odd/tasks*.md are historical records.
+  Tests: Bun unit/integration suites plus Playwright browser suites; browser checks require a running server, browser and suitable content.
+  Evidence: docs/verification.md distinguishes source assertions, runtime checks and production proof; no universal CWV/FPS or zero-cost certification.
+  Content: editorial files/assets/CVs are private external inputs; never commit them or credential values.
 
+# Preserve the existing strict-TDD switch; this documentation refresh does not
+# change user workflow preferences. Follow applicable agent test-first policy.
 strict_tdd: false
 
 testing:
   strict_tdd: false
-  detected: "2026-09-30"
-  workspace_test_command: ""
+  detected: "2026-10-23"
+  workspace_test_command: "pnpm test"
   projects:
     - path: "."
-      stack: "Astro v7.3.4, Cloudflare Pages/Worker/D1, Tailwind v4.3.3, TypeScript 5.9.3, pnpm 12.5.1"
-      test_command: ""
-      framework: ""
+      stack: "Astro SSG, Cloudflare Workers, TypeScript"
+      test_command: "pnpm test"
+      framework: "Bun unit/integration; Playwright browser (separate local harness)"
       layers:
-        unit: false
-        integration: false
-        e2e: false
+        unit: true
+        integration: true
+        e2e: true
       coverage_command: ""
       linter: "pnpm check"
       type_checker: "pnpm check"
@@ -29,9 +34,9 @@ testing:
 
 projects:
   - path: "."
-    stack: "Astro v7.3.4, Cloudflare Pages/Worker/D1, Tailwind v4.3.3, TypeScript 5.9.3, pnpm 12.5.1"
-    test_command: ""
-    framework: ""
+    stack: "Astro SSG, Cloudflare Workers, TypeScript"
+    test_command: "pnpm test"
+    framework: "Bun; Playwright"
     coverage_command: ""
     lint_command: "pnpm check"
     typecheck_command: "pnpm check"
@@ -39,27 +44,31 @@ projects:
 
 rules:
   proposal:
-    - Include rollback plan for risky changes
+    - Identify the affected current contract and behavioral evidence
+    - Include rollback for risky changes; do not authorize remote operations implicitly
   specs:
-    - Use Given/When/Then for scenarios
-    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Document current behavior with stable requirement IDs and Given/When/Then scenarios
+    - Use RFC 2119 terms for intended invariants; mark implementation limitations separately
+    - Link source and test evidence; do not claim unrun checks passed
   design:
-    - Include sequence diagrams for complex flows
-    - Document architecture decisions with rationale
-    - Maintain 0 KB baseline client JS and strict typing guarantees
+    - Preserve persistent SPA rendering, route ownership and telemetry deduplication
+    - Prefer minimal justified client JavaScript and existing typed ports/adapters
+    - Separate provider limits, application budgets and measured performance
   tasks:
-    - Group by phase, use hierarchical numbering
-    - Keep tasks completable in one session
+    - Keep tasks coherent and link them to current requirements
+    - Distinguish implementation, local proof and owner-authorized production proof
   apply:
     guidelines:
-      - Follow existing code patterns
-      - Pure Edge SSG compilation with 0 KB baseline client JS
-      - Strict TypeScript mode without any
+      - Follow existing code patterns and current contracts
+      - Keep Astro output static and preserve the admin boundary
+      - Use strict typing for new code; avoid adding untyped escape hatches
+      - Do not alter runtime behavior to make descriptive documentation appear correct
     tdd: false
-    test_command: ""
+    test_command: "pnpm test"
   verify:
-    test_command: ""
+    test_command: "pnpm test"
     build_command: "pnpm check && pnpm build"
     coverage_threshold: 0
   archive:
-    - Warn before merging destructive deltas
+    - Preserve historical records and link the current contracts
+    - Require explicit consent for destructive or remote operations
