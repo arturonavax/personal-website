@@ -1,417 +1,89 @@
-# ROLE & CORE OPERATIONAL PROFILE
+# Project engineering instructions
 
-You are a Staff Frontend Performance Engineer and Technical SEO Architect specializing in Astro SSG architectures, edge infrastructure optimization, and Cloudflare Pages deployments.
+Maintain a fast, accessible, bilingual personal website built with Astro SSG and Cloudflare Workers + Static Assets. Preserve the current user-visible behavior before optimizing or refactoring it.
 
-Your operational mandate is to engineer, maintain, and refactor an ultra-lean, high-visibility personal web portal and technical portfolio for a Senior Software Engineer. Every technical recommendation, architectural pattern, and code snippet you produce must enforce absolute minimal byte overhead, 100/100 Core Web Vitals, and maximum machine-readability for search indexing engines and AI scrapers.
+## Read first
 
----
+The current-state documentation starts at [the specification index](openspec/specs/README.md). Its baseline is source commit `418703353838524a963362b081869510022a53ae` (2026-10-23). The index explains precedence, evidence levels, and known limitations.
 
-## ARCHITECTURAL CONSTRAINTS & GUARANTEES
+| Work                                              | Current contract                                                 | Practical guide                                                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Routes, content, SEO, public tools                | [Platform](openspec/specs/current-platform.md)                   | [Architecture](docs/architecture.md), [content](docs/content-sync.md), [SEO](docs/seo-and-i18n.md) |
+| Navigation, Matrix, theme, interactions, surfaces | [SPA and presentation](openspec/specs/current-spa.md)            | [SPA continuity](docs/spa-continuity.md)                                                           |
+| Visits, quotas, storage, dashboard                | [Telemetry and admin](openspec/specs/current-telemetry-admin.md) | [Cloudflare](docs/cloudflare-edge.md)                                                              |
+| Routing boundaries, auth, services, operations    | [Edge operations](openspec/specs/current-edge-operations.md)     | [Security](docs/security.md)                                                                       |
+| Verification and evidence                         | [Verification guide](docs/verification.md)                       | Existing tests and source anchors in each contract                                                 |
 
-- **Target Platform**: Cloudflare Pages / Workers (`output: 'static'`, pure Edge SSG).
-- **Architecture Pattern**: Hexagonal Architecture (Ports & Adapters) providing 100% vendor decoupling. Domain and presentation layers interact exclusively through abstract interfaces (`src/lib/ports/`), allowing zero-code-change migrations across Cloudflare, AWS, Docker, Bun, or Node.js.
-- **Execution Budget**: 0 KB baseline client JavaScript. Any client-side JS must be treated as an architectural defect unless explicitly justified by irreversible user interaction.
-- **Strict Typing**: TypeScript in strictest mode (`strict: true`, `noImplicitAny: true`, `exactOptionalPropertyTypes: true`) across all components, layout contracts, frontmatter schemas, adapters, and data pipelines.
-- **Dependency Philosophy**: Zero extraneous dependencies. Native web platform APIs (`Intl`, Web Share API, modern CSS `:has()`, `:popover`, dialogs) must always supersede external NPM libraries.
+Historical `SPEC-001`–`SPEC-010` documents and `odd/tasks*.md` are decision/history records, not a current certification. Do not copy their stale code snippets, universal performance promises, or old route/security policies into new work.
 
----
+## Future frontend redesign
 
-## SKILLS ACTIVATION & DECISION MATRIX (`.agents/skills`)
+Read [the redesign preservation contract](docs/frontend-redesign.md) before changing the frontend. Separate visual freedom from functional invariants; map every affected capability to existing owners, tests and evidence. A new visual direction is not permission to remove features, restart persistent rendering, change telemetry/API contracts, weaken security, or alter infrastructure. Keep known limitations explicit instead of treating bugs as immutable requirements.
 
-Every operational command, architectural proposal, and code modification must activate and adhere to the specialized skills located in `.agents/skills/`:
+## Architecture and scope
 
-| Operation / Decision Domain                                | Active Skill      | Path                                      | Mandatory Directives & Deliverables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| :--------------------------------------------------------- | :---------------- | :---------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Astro SSG, Routing, Content Layer & Islands**            | `astro`           | `.agents/skills/astro/SKILL.md`           | - Pure Edge SSG compilation (`output: 'static'`) with Bun runtime.<br>- Content Layer API schema modeling with strict Zod validation and `localizedBaseSchema`.<br>- 0 KB baseline client JS; framework hydration islands banned by default.<br>- Build-time data fetching, filtering, and static parameter mappings in frontmatter (`---`).<br>- Hardware-accelerated image pipeline with `astro:assets`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| **Visual Architecture, UI/UX, Typography & Layout**        | `frontend-design` | `.agents/skills/frontend-design/SKILL.md` | - Aesthetic vernacular tailored to Senior Backend & Distributed Systems Engineer (telemetry density, precision borders, restrained palette).<br>- Zero AI design clichés (no arbitrary rounded SaaS blobs, no cream/terracotta, no decorative meaningless arrows).<br>- Self-hosted WOFF2 fonts (`Geist Sans` / `Geist Mono`), zero external CDNs, preloaded critical body font.<br>- Semantic HTML5/CSS-only interactive primitives (`:has()`, `<details>`, `:popover`) preserving 100/100 CWV.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| **Technical SEO, i18n Hreflang, Schema.org & Performance** | `seo-audit`       | `.agents/skills/seo-audit/SKILL.md`       | - Normalized canonical URLs with trailing slash matching SSG directory format.<br>- Reciprocal bidirectional `hreflang` tags (`en`, `es`, `x-default`) conditionally emitted only for existing counterparts (0 phantom 404s).<br>- Multilingual Routing: device language detection on root entry with persistent choice (`localStorage` + cookie); deep links and search engine referrers strictly preserved without forced redirects.<br>- Discreet Language Suggestion: `LanguageSuggestionBanner` offers curated native translations without triggering invasive browser prompts for supported languages, while allowing native browser translation for unsupported languages.<br>- Complete JSON-LD structured data (`ProfilePage`, `Person`, `TechArticle`, `ItemList`) with stable global `@id: "https://arturonavax.dev/#person"`.<br>- Core Web Vitals guarantees: LCP < 0.8s, INP = 0ms, CLS = 0.00, TTFB < 25ms.<br>- Machine readability for search indexing crawlers and AI search agents. |
+- Keep `output: "static"`, directory output, and trailing-slash document routes. The production entrypoint is `cloudflare/entrypoint.ts`; Astro does not provide a deployed SSR application here.
+- Read versions and commands from `package.json` and `pnpm-lock.yaml`; the baseline uses Astro 7.3.4, Tailwind 4.3.3, TypeScript 5.9.3, and pnpm 12.5.1. Bun runs the unit/integration suite.
+- Use the strictest Astro TypeScript configuration and typed ports under `src/lib/ports/`. Reuse adapter factories rather than importing Cloudflare implementations into presentation components. Existing legacy `any` usage is not permission to add more.
+- Prefer native browser APIs and existing helpers. Add dependencies only for a justified requirement; do not add framework hydration for interactions already handled by the persistent shell.
+- Public pages intentionally ship client JavaScript for the router, Matrix, theme, accessibility, tools, and telemetry. The constraint is minimal justified JavaScript and no unnecessary framework islands, NOT a literal zero-byte payload.
+- Editorial collections, downloaded CVs, and remote assets are ignored by Git and hydrated from private R2 or existing local files. Never commit personal content or overwrite it with fixtures. The public repository is not a content backup.
+- Configuration and provider resources are not interchangeable: the content-sync bucket and deployed storage binding have distinct roles. Do not silently merge them.
 
----
+## Non-regression invariants
 
-## OPENSPEC SPECIFICATIONS & TRI-AXIS ARCHITECTURE (`openspec/specs/`)
+### Persistent navigation and rendering
 
-The engineering roadmap, architecture, and verification invariants are rigorously specified across ten interconnected specifications in [`openspec/specs/`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/), all structured under the unified Tri-Axis Model:
+- Keep one persistent Matrix canvas/Worker, renderer clock, UI state, and installed telemetry owner across Astro route swaps. Do not remount/reset them to change appearance.
+- Preserve the cached experience-job navigation path separately from Astro ClientRouter. Mark speculative requests `X-Astro-Prefetch: true`; dispatch `site:route-committed` only after the selected route commits. Keep history, controls, language state, and back/forward behavior in sync.
+- Preserve Matrix lane phases through viewport/zoom/DPR changes. Baseline glyph sizes are 18/21/24/28px, base speed 6.5 rows/s, lens radius 360px, and elapsed-time pointer easing 300ms. Consult the SPA contract for tail mutation, train scheduling, caching, worker/fallback, visibility, and reduced-motion behavior.
+- Keep the Matrix below readable page surfaces during loading and transitions. Worker rendering reduces main-thread interference; it does not guarantee universal frame rates on every device.
+- Keep theme prepaint protection, native View Transition rounded-inset reveal, reduced-motion fallback, cached palettes, and exactly one completion notification. Do not restore obsolete snapshot/clip approaches without measurements.
+- Keep toasts, language suggestions, dialogs, shortcuts, focus/scroll restoration, and the pinned header compatible with repeated navigation. Use lifecycle-safe singleton installation and cleanup for page-local listeners.
 
-- **Spec-Driven Development (SDD):** Strict TypeScript contracts, Zod v4 validation, and formal domain ports.
-- **Requirement-Driven Development (RDD):** Quantitative PASS/FAIL gates and acceptance criteria (REQ-*).
-- **Organic/Operational-Driven Development (ODD):** Edge runtime telemetry, chaos testing, cross-browser print, and automated static gatekeeping.
+### Visual and content contracts
 
-| Specification                                                                                                                                                | Document ID                                            | Title                                                                                 | Key Architectural Directives                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| :----------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`SPEC-001`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-001-big-refactor.md)                                 | `SPEC-001-ARCH-EDGE-I18N`                              | Enterprise Astro Edge Architecture & Zero-Duplication i18n                            | - Dynamic parameterized `src/pages/[...lang]/` routes (50% page surface reduction).<br>- Native Web Component lifecycle (`connectedCallback`/`disconnectedCallback`) for SPA-safe transitions.<br>- Atomic Nano Stores state management (<1.5 KB).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| [`SPEC-002`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-002-general-tasks.md)                                | `SPEC-002-REFACTOR-FEATURE`                            | System Refactoring, Edge Hardening & Resume Maker Studio                              | - Asset pruning and `mailto:` clipboard protocol.<br>- Prefetch telemetry shielding (HTTP 204 bypass on `Purpose: prefetch`).<br>- Modular `/resume/` & `/tools/resume-maker/` with multi-format serializers (Schema.org JSON, TOML, XML) with dynamic UTM injection.<br>- Cross-browser `@media print` normalization with dynamic title synchronization.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| [`SPEC-003`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-003-future-improves.md)                              | `SPEC-003-CF-EDGE-DECOUPLED-I18N`                      | Decoupled Cloudflare Edge Architecture & Scalability                                  | - Hexagonal Architecture (`src/lib/ports/` and `src/lib/adapters/`) with 100% vendor decoupling.<br>- Cloudflare R2 + Workers Cache API (`caches.default`) absorption for 0 Class B reads.<br>- Vectorize + Workers AI search with static in-memory fallback.<br>- D1 daily analytics rollups cron trigger (`0002_analytics_rollups.sql`).<br>- Serverless corporate email routing ingestion (`email-worker.ts`).<br>- Extensible multi-language engine (`src/i18n/locales.ts`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| [`SPEC-004`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-004-audit.md)                                        | `SPEC-004-GLOBAL-AUDIT-VERIFICATION`                   | Global Architectural Audit & Extreme Quality Verification                             | - Automated gatekeeper `scripts/audit-codebase.ts` (0 layout animations, 0 static `will-change`, 0 unmanaged `<img>`).<br>- Strict Core Web Vitals (CLS = 0.000, LCP < 800ms, INP < 50ms).<br>- WAAPI circular theme reveal with compositor containment.<br>- Isolated monobilingual JSON-LD with permanent anchor `@id: "https://arturonavax.dev/#person"`.<br>- 100% certified Master Scorecard.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| [`SPEC-005`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-005-performance-content-delivery.md)                 | `SPEC-005-EDGE-CONTENT-PERFORMANCE`                    | Performance-Driven Edge Content Delivery & Zero-Latency Infrastructure Isolation      | - Inviolable "Content-First" Edge Delivery Invariant (0ms latency penalty on public content).<br>- Cloudflare Access Zero Trust & Private Dashboard dedicated to `admin.arturonavax.dev` with immediate 308 redirect from `/admin` and universal `run_worker_first: true` interception.<br>- Strict authentication: whitelisted admin emails + token dual-auth, HTTP 401 challenge screen, zero data leakage.<br>- Live quota monitoring: D1 writes (100k/day), D1 reads, Workers AI neurons, Vectorize, and R2 storage.<br>- Edge 308 canonicalization for vanity subdomains (`blog.`, `projects.`, `services.`) preserving SEO PageRank.<br>- Asynchronous non-blocking telemetry via `ctx.waitUntil()` and Fail-Open resilience.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| [`SPEC-006`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-006-ux-editorial-refinements.md)                     | `SPEC-006-UX-EDITORIAL-REFINEMENTS`                    | Editorial Taxonomy, Deterministic Ergonomics, Search Scoring & CSP Security Hardening | - Eradication of "Technical Essays" in favor of flexible Blog/Notes taxonomy.<br>- Universal pagination across Blog, Projects, Services, and Case Studies.<br>- Deterministic Esc navigation state machine & J/K TOC jitter elimination.<br>- Cross-browser print normalization (@page margin: 0 for Firefox).<br>- Dynamic phone toggle, reversible strip links, and recruiter tagging in /tools/resume-maker/.<br>- Content-Security-Policy data: URI script-src remediation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| [`SPEC-007`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-007-frontend-stability-and-ux-polish.md)             | `SPEC-007-FRONTEND-STABILITY-UX`                       | Frontend Stability, Layout Glitch Elimination & UX Polish                             | - Header scroll hysteresis (16px) & anchor lock.<br>- Progressive content blur-in (.progressive-reveal).<br>- Session-isolated language suggestion banner.<br>- Route isolation: /services/* activates only Services, never More.<br>- MatrixBackground continuous persistence & SPA transitions with navigate().<br>- Unified print CV geometry (@page A4 12mm 15mm) across /resume/ and /tools/resume-maker/.<br>- Print CV invariants (REQ-PRINT-1..6): static Geist fonts only (variable fonts make Firefox PDF text unselectable), header-only underlined links, single-paragraph header, top-layer copy toast.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| [`SPEC-008`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-008-edge-performance-re-architecture-restoration.md) | `SPEC-008-EDGE-ARCHITECTURE-RESTORATION-AND-HARDENING` | Edge Infrastructure Restoration, Pure SSG Hardening & Anti-Regression Invariants      | - Formal diagnosis and eradication of destructive re-architecture overwrites.<br>- Cloudflare Workers + Static Assets pure edge SSG compilation (`output: 'static'`, 0 KB client JS).<br>- Preservation of Hexagonal Architecture, Ports & Adapters, fail-open search, and 308 canonicalization.<br>- Restoration of 100% test integrity (140/140 pass) and static gatekeeping.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| [`SPEC-009`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-009-ux-ergonomics-and-keyboard-isolation.md)         | `SPEC-009-UX-ERGONOMICS-AND-INPUT-ISOLATION`           | Keyboard Input Isolation, Modal Ergonomics & Micro-Interaction Polish                 | - Strict input shielding in PageIndexNav: zero shortcut collisions when typing in inputs, textareas, selects, or contenteditable.<br>- Modal isolation: global shortcuts inhibited during open dialogs.<br>- Coffee modal immediate scroll detection via MutationObserver, ResizeObserver, and multi-stage layout timing.<br>- Shortcuts modal clean footer with misleading J/K scroll indications eliminated.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| [`SPEC-010`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/openspec/specs/SPEC-010-refine-top1.md)                                  | `SPEC-010-TOP1-EDGE-PERF-CLOUDFLARE`                   | Top #1 Architecture, Edge Performance & Cloudflare Ecosystem Maximization             | - Consolidación tipográfica Zero-CLS con descriptores métricos de reserva (`size-adjust`, `ascent-override`), precarga selectiva y compatibilidad de impresión.<br>- Orquestación Edge Cache L1/L2 con `stale-while-revalidate` y purga selectiva programática vía cabeceras `Cache-Tag`.<br>- Buffer y batching asíncrono en escrituras de telemetría a Cloudflare D1 vía `ctx.waitUntil()` blindando el límite de cuota gratuita (100k writes/día).<br>- Telemetría segmentada de prefetch en tabla aislada (`prefetch_analytics_events`) con circuit breaker dinámico (`PrefetchQuotaCircuitBreaker`), margen inteligente de cuota y kill-switch configurable (`ENABLE_PREFETCH_TELEMETRY`), blindando la prioridad P0 de visitas anti-adblocker.<br>- Inferencia y embeddings semánticos 100% Edge-Nativos con Workers AI (`@cf/baai/bge-small-en-v1.5`) acoplado a Vectorize sin dependencias externas.<br>- Generación dinámica de tarjetas Open Graph en tiempo de compilación (Zero-Runtime, `/og/[...slug].png`) con Satori + resvg.<br>- Virtualización agnóstica de renderizado en CSS (`content-visibility: auto`, `contain-intrinsic-size`) en feeds y catálogos extensos.                                                                                                                                                                                                   |
-| [`SPEC-011`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/odd/tasks2.md)                                                           | `SPEC-011-EDGE-TELEMETRY-DEDUPE-R2-WAL`                | Hybrid Edge Telemetry, L1 Dedupe, Index Pruning, 5-Tier Degradation & Low-Quota Admin | - Deduplicación determinista SHA-256 de 30m en Edge Cache L1 (`caches.default`) con 0 lecturas y 0 escrituras D1 en hits repetidos.<br>- Coordinación SSR/ClientRouter (`X-Edge-Visit-Logged: 1` + cookie `ev_init=1`) con telemetría en transiciones SPA y restauraciones bfcache.<br>- Poda de índices D1 redundantes (>65% de reducción en amplificación de escritura) y rollups atómicos `INSERT ... ON CONFLICT DO UPDATE`.<br>- Máquina de estados de degradación progresiva de 5 niveles (`NOMINAL`, `CONSERVATIVE`, `COMPACT_ROLLUP`, `CRITICAL_SURVIVAL`, `R2_WAL_FALLBACK`) con búfer WAL en R2 y reconciliación programada (`reconcileR2WalToD1`).<br>- Integración ultra eficiente de `/admin`: caché L1 de 120s TTL, cooldown de 15s en `fresh=true`, paginación `page_only=1` sin re-escaneos y monitoreo integral de cuota.<br>- Sincronización R2 ultra veloz con `content/_manifest.v2.json`, `rootHash` determinista y bundle único tar.gz.                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| [`SPEC-012`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/odd/tasks3.md)                                                           | `SPEC-012-AEO-SEO-GRAPH-DB-COMPACTION`                 | D1 Baseline Compaction, Unified `@graph` Knowledge Graph, Deterministic Sitemap & AEO | - Compactación total de migraciones D1 en la línea base única `0001_initial_schema.sql` y `schema.sql`, con script determinista `reset.sql` (`pnpm run db:reset:local` / `db:reset:remote`).<br>- Motor de cuotas y tier dinámicamente configurable vía variables de entorno (`CLOUDFLARE_PLAN_TIER`, `D1_DAILY_WRITE_BUDGET`, etc.) para migración sin código de Free Tier a Paid Plans.<br>- Compuerta estricta de hidratación de contenido en compilación (`verifyContentHydration()`) evitando despliegues Soft-404.<br>- Grafo de conocimiento Schema.org unificado (`@graph`) en todas las páginas con nodos conectados (`#person`, `#website`, `#webpage`, `#breadcrumb`) y esquemas verticales (`TechArticle`, `SoftwareSourceCode`, `Service`, `ProfilePage`).<br>- Sitemap XML con `lastmod` determinista por ruta (frontmatter/mtime) y filtrado estricto.<br>- Hreflang verificado con omisión de 404s y fallback `x-default`.<br>- Cabeceras HTTP Edge AEO (`X-Robots-Tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1`, `Link: <https://arturonavax.dev/llms.txt>; rel="llms-txt"`).<br>- Negociación de contenido Markdown (`Accept: text/markdown` y sufijo `.md`) y notificación automática IndexNow (`notifyIndexNow`).                                                                                                                |
-| [`SPEC-013`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/odd/tasks5.md)                                                           | `SPEC-013-ZERO-TRUST-VAULT-ASSET-BYPASS`               | Fail-Closed Zero-Trust Vault Isolation, Selective Asset Bypass & Ingress Hardening    | - Desactivación de endpoints preview en producción (`workers_dev: false`) en `wrangler.jsonc`.<br>- Bypass selectivo de cómputo Worker en activos estáticos inmutables (`assets.run_worker_first` array) garantizando 0 ms de sobrecarga de CPU en `/_astro/*`, `/fonts/*`, `/remote-assets/*`, favicons y manifiestos.<br>- Aislamiento post-build de HTML administrativo (`scripts/isolate-admin-build.mjs`) hacia bóveda interna segura `dist/__admin_vault__/{default,en,es}/index.html`, purgando rutas públicas para prevenir exposición estática directa.<br>- Bloqueo perimetral estricto con HTTP 404 ante accesos externos directos a `/__admin_vault__*`.<br>- Normalización canónica de URL en el inicio de `fetch` (decodificación URI, colapso de barras diagonales, eliminación de `.html` y minúsculas canónicas).<br>- Autenticación criptográfica estricta Fail-Closed (`verifyAdminAccess`) evaluando JWTs de Cloudflare Access (verificación RSASSA-PKCS1-v1_5 contra JWKS cacheados) y tokens Bearer en tiempo constante (`timingSafeEqualSha256`).<br>- Reescritura interna a bóveda segura con cabeceras `Cache-Control: private, no-store, no-cache, must-revalidate` y `X-Robots-Tag: noindex, nofollow, noarchive`.<br>- Expiración inmediata de cookie `ev_init` (`Max-Age=0`) en `EdgeViewCounter.astro` y soporte de restauraciones `bfcache` en `pageshow`. |
-| [`SPEC-014`](file:///home/arthurnavah/repos/github.com/arturonavax/personal-website/odd/tasks7.md)                                                           | `SPEC-014-GSC-CANONICAL-ROBOTS-HARDENING`              | GSC Exclusion Eradication, Edge Trailing-Slash 301 Normalization & Crawl Shielding    | - Normalización absoluta de enlaces internos con barra final (`trailingSlash: "always"`), incluyendo `/es/`, `/projects/${slug}/`, `/resume/` y búsqueda en `searchIndex.ts`.<br>- Redirección canónica 301 permanente en el Edge Worker (`resolveCanonicalRedirect`) para peticiones `GET`/`HEAD` a documentos públicos sin barra final, eliminando canibalización y visitas duplicadas.<br>- Escudo contra trampas de rastreo: enlaces `@Company` marcados con `rel="nofollow"` y `data-company-filter` para activación exclusiva en cliente, directivas `Disallow: /*?company=`, `/*?filters=` y `/*?q=` en `public/robots.txt`.<br>- Cabeceras dinámicas `X-Robots-Tag: noindex, nofollow` en el Worker para endpoints `/search/` y peticiones con parámetros de consulta.<br>- Desbloqueo indexable de `/case-studies/` y `/es/case-studies/` con `getStaticPaths` desacoplado, integración automática en sitemap XML y `robots.txt` limpio.<br>- Sincronización de tipos de Worker con `pnpm run types:worker` (`wrangler types -c wrangler.jsonc`).                                                                                                                                                                                                                                                                                                                                |
+- Reuse existing semantic color/spacing/type tokens and local Geist fonts. Do not add external font CDNs or layout-shifting image geometry.
+- Shared `.geometric-box` normal/accent strokes use identical full bounds and inherited radii. Preserve responsive radius utilities, overflow clipping, pointer pass-through, and `no-corner-accents` behavior.
+- Project/post details use separate header and content surfaces, not a giant transparent wrapper. Experience timeline lines remain behind opaque inner content.
+- Preserve visibility filtering, existing translations, canonical/hreflang rules, semantic HTML, keyboard isolation, reduced-motion handling, and print behavior. Do not make hidden posts public to satisfy tests.
 
----
+### Telemetry, admin, and quotas
 
-## 1. PERFORMANCE ENGINEERING (LOAD & RUNTIME)
+- Reuse `installEdgeTelemetry()`, `/api/telemetry/collect`, and authoritative backend deduplication. Capture route paths before deferred work. Do not create a second ingestion backend or count speculative requests as committed visits.
+- Retain asynchronous `waitUntil()` work and fail-open public delivery. Keep optional bot/prefetch counters separate from human visits; document their quota and accuracy limits.
+- Preserve the configured Worker-first public HTML path and explicit static-asset exclusions. Restricting execution to `/admin` alone would remove initial server-side public visit interception.
+- Never authorize from an email header or unverified JWT/cookie. Preserve Access issuer/audience/signature/expiry/email validation and the explicitly configured secret-token path; inspect the actual guard before changing either.
+- Deny external vault URLs regardless of caller-supplied internal headers. Authorized vault retrieval uses the ASSETS binding; private responses must not become public cache entries.
+- Never commit secrets or copy production credential values into examples, fixtures, generated types, or memory. Secret names are documentation; secret values are not.
+- Preserve quota degradation and fallback semantics. Isolate-local counters/caches are not globally exact account usage, and free-tier configuration is not a zero-cost guarantee.
+- Do not treat populated admin charts as proof of persisted visits: the current telemetry API can synthesize fallback data. Production Access and D1 persistence require separate owner-authorized evidence.
 
-### Zero-JS & Island Isolation Principles
+## Skills and codebase knowledge
 
-1. **SSG Purity**: Every page route must compile to static HTML and atomic CSS at build time. Server-Side Rendering (SSR) adapters are forbidden.
-2. **Interactive UI Heuristics**:
-   - Priority 1: Pure HTML/CSS solutions (native `<details>`, checkbox patterns, CSS `:target`, CSS Grid animations).
-   - Priority 2: Scoped inline Vanilla JS via Astro `<script>` tags (processed and bundled with zero framework overhead).
-   - Priority 3 (Strict Exception Only): Framework UI islands (e.g., Svelte, Preact, React). Use only when state orchestration makes Vanilla JS unmaintainable. Load them solely with deferred directives (`client:idle`, `client:visible`, or media queries like `client:media="(min-width: 768px)"`). `client:load` is banned unless directly mitigating layout shifts above the fold.
+Load matching local instructions before work:
 
-### Asset & Critical Path Optimization
+| Domain                     | Skill                                            |
+| -------------------------- | ------------------------------------------------ |
+| Astro routes/content/build | `.agents/skills/astro/SKILL.md`                  |
+| Visual changes             | `.agents/skills/frontend-design/SKILL.md`        |
+| SEO and discovery          | `.agents/skills/seo-audit/SKILL.md`              |
+| Performance measurements   | `.agents/skills/core-web-vitals/SKILL.md`        |
+| Cloudflare architecture    | `.agents/skills/cloudflare/SKILL.md`             |
+| Worker implementation      | `.agents/skills/workers-best-practices/SKILL.md` |
+| Wrangler operations        | `.agents/skills/wrangler/SKILL.md`               |
+| Security review            | `.agents/skills/security-audit/SKILL.md`         |
 
-1. **Images (`astro:assets`)**:
-   - Always route images through `<Image />` or `<Picture />`.
-   - Hero/LCP images: Must use `loading="eager"`, `fetchpriority="high"`, explicit dimensions (`width` and `height`), and WebP/AVIF formats.
-   - Below-the-fold images: Explicit dimensions, `loading="lazy"`, `decoding="async"`.
-2. **Typography**:
-   - Self-host all fonts in WOFF2 format inside `public/fonts/` or bundled via Vite assets. Third-party font CDNs (e.g., Google Fonts) are banned.
-   - Use `font-display: swap` and inject `<link rel="preload" as="font" type="font/woff2" crossorigin>` in `<head>` only for the critical body font (`Geist-Variable.woff2`).
-   - Zero-CLS Font Metric Overrides (SPEC-010): Define system fallback font metrics (`size-adjust`, `ascent-override`, `descent-override`, `line-gap-override`) in `src/styles/global.css` to guarantee CLS = 0.000 during web font swap. Preserve static font compatibility for print PDF selectable text (REQ-PRINT-1).
-3. **Edge Caching Rules (`public/_headers` & `cloudflare/worker.ts`)**:
-   - Immutable assets (`/_astro/*`): `Cache-Control: public, max-age=31536000, immutable`.
-   - Fonts (`/fonts/*`): `Cache-Control: public, max-age=31536000, immutable`.
-   - PDF Documents (`/*.pdf`): `Cache-Control: public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400`.
-   - HTML documents: `Cache-Control: public, max-age=0, must-revalidate`.
-   - Programmatic Edge Cache L1/L2 (SPEC-010): Dynamic Worker GET endpoints must use `caches.default` with `stale-while-revalidate=86400` and `Cache-Tag` headers for sub-15ms edge hits and surgical invalidation.
-   - Telemetry Buffer & D1 Quota Shield (SPEC-010): Synchronous D1 writes on telemetry/page views are forbidden. Ingestions must be buffered or dispatched via `ctx.waitUntil()` to strictly protect the 100,000 writes/day free tier quota.
-4. **CSS Rendering Virtualization (SPEC-010)**:
-   - For extensive catalog/feed items (Blog, Projects, Experience), declare `content-visibility: auto` and `contain-intrinsic-size` in CSS feed utilities to eliminate off-screen layout work without touching visual presentation tokens.
-5. **Selective Worker Interception & Asset Fast-Path (`wrangler.jsonc` SPEC-013)**:
-   - Public preview endpoint disabled in production (`"workers_dev": false`).
-   - `assets.run_worker_first` keeps public HTML, `/admin*`, localized admin paths, `/__admin_vault__*`, and `/api/*` Worker-first for server-side visits and fail-closed guards, while bypassing the Worker on immutable assets (`!/_astro/*`, `!/fonts/*`, `!/remote-assets/*`, `!/favicon*`, `!/site.webmanifest`, `!/robots.txt`, `!/sitemap*.xml`, `!/llms.txt`). This achieves 0 ms Worker CPU latency and 0 unnecessary subrequests on static asset delivery.
+Use CodeGraph before structural exploration or source refactoring. Check the local `.codegraph/` index; synchronize before CLI intelligence reads. Do not index editorial Markdown into the code graph. If it is unavailable, disclose the limitation and use bounded source inspection.
 
----
+Use the active Engram protocol for project resolution, recall, proactive discoveries, and session summaries. Never invent a session identity. Memory bookkeeping does not replace delivering an answer or recording verification evidence.
 
-## 2. ADVANCED TECHNICAL SEO & EXPOSURE
+## Checks and delivery
 
-### Semantic Integrity & Accessibility
-
-- Strict HTML5 landmark hierarchy: `<header>`, `<nav>`, `<main>`, `<article>`, `<section>`, `<aside>`, `<footer>`.
-- Enforce strict heading nesting ($H_1 \to H_2 \to H_3$). Only one `<h1>` per document, mapped directly to page intent.
-- Ensure all interactive triggers provide accessible ARIA attributes (`aria-label`, `aria-expanded`, `aria-controls`) and focus-visible rings for keyboard navigation.
-
-### Metadata & Discovery Pipelines
-
-Every page must consume a reusable `SEOHead.astro` component enforcing:
-
-1. **Canonical URLs**: Fully qualified, normalized URLs with no trailing slashes.
-2. **Open Graph & Twitter Cards**: Dynamic build-time generation via Satori + resvg (`src/pages/og/[...slug].png.ts`, SPEC-010) creating per-entry high-fidelity cards with zero runtime latency, coupled with standard fallback `og:image`, `og:url`, and `twitter:card: "summary_large_image"`.
-3. **Structured Data (JSON-LD)**:
-   - Generated via `src/lib/seo/schema-builder.ts` with permanent invariant `@id: "https://arturonavax.dev/#person"`.
-   - Homepage: `schema.org/ProfilePage` coupled with a detailed `schema.org/Person` entity.
-   - Blog Posts: `schema.org/TechArticle` featuring author attribution, date published/modified, reading time, and headline.
-   - Experience/Projects: Nested `schema.org/ItemList` with entity links.
-4. **Feeds & Crawlers**:
-   - Complete `public/robots.txt` referencing sitemap locations.
-   - Dynamic XML sitemap via `@astrojs/sitemap`.
-   - Full-text technical RSS feed generated via `@astrojs/rss` at `src/pages/rss.xml.ts`.
-   - AI Search & LLM Discovery (SPEC-010): Curated `/llms.txt` and full markdown tree `/llms-full.txt` synchronized with all published services, projects, and posts.
-
----
-
-## 3. FILE SYSTEM & CONTENT ARCHITECTURE
-
-Maintain this standardized folder structure optimized for developer ergonomics, decoupled content modeling, hexagonal ports/adapters, and rapid compile passes:
-
-```text
-├── cloudflare/
-│   ├── d1/
-│   │   ├── migrations/     # Versioned SQL migrations (0001, 0002_rollups, 0003_leads)
-│   │   └── schema.sql      # Consolidated SQLite/D1 schema definition
-│   ├── security/           # WAF bot defense, zero-trust tunnel, vendor exit guides
-│   ├── cron-scheduler.ts   # Daily analytics rollups and 7-day event pruning
-│   ├── email-worker.ts     # Inbound corporate email ingestion & Discord webhooks
-│   └── worker.ts           # Unified Edge Worker (Assets, API search, captcha, telemetry)
-├── public/
-│   ├── fonts/              # Self-hosted critical WOFF2 fonts
-│   ├── _headers            # Cloudflare Pages edge cache directives
-│   ├── favicon.svg         # Modern vector favicon
-│   └── robots.txt          # Crawler instructions
-├── src/
-│   ├── assets/             # Raw images & vector assets processed by Sharp
-│   ├── components/
-│   │   ├── common/         # Header.astro, Footer.astro, SEOHead.astro
-│   │   ├── content/        # Callout.astro, CodeBlock.astro, FormattedDate.astro
-│   │   └── ui/             # Card.astro, Badge.astro, ProjectCard.astro, Modals
-│   ├── content/
-│   │   ├── experience/     # Career timeline records (.md) [en/, es/]
-│   │   ├── posts/          # Deep technical essays (.md, .mdx) [en/, es/]
-│   │   ├── projects/       # Architectural breakdowns (.md) [en/, es/]
-│   │   ├── resume/         # Structured curriculum vitae (.md) [en/, es/]
-│   │   └── services/       # Engineering consultation services (.md) [en/, es/]
-│   ├── content.config.ts   # Content Layer API schemas backed by Zod
-│   ├── data/               # Static datasets (resume.ts, searchIndex.ts, shortcuts.ts)
-│   ├── i18n/
-│   │   ├── locales.ts      # Central registry (SUPPORTED_LOCALES, DEFAULT_LOCALE = "en")
-│   │   ├── config.ts       # Route paths and helpers
-│   │   ├── ui.ts           # UI translation dictionaries
-│   │   └── utils.ts        # Translation helpers and locale detection
-│   ├── layouts/
-│   │   ├── BaseLayout.astro
-│   │   └── ArticleLayout.astro
-│   ├── lib/
-│   │   ├── adapters/       # Hexagonal Adapters (Cloudflare & Fallback drivers + factory)
-│   │   ├── ports/          # Domain contracts (Storage, Search, Telemetry, Captcha, Cache)
-│   │   ├── content/        # Content providers and repository abstractions
-│   │   └── seo/            # Canonical schema-builder.ts
-│   ├── pages/
-│   │   ├── 404.astro
-│   │   ├── rss.xml.ts
-│   │   ├── search-index.json.ts
-│   │   ├── llms-full.txt.ts
-│   │   ├── og/             # Dynamic build-time Open Graph generator ([...slug].png.ts)
-│   │   └── [...lang]/      # Zero-duplication parameterized i18n dynamic routes
-│   │       ├── index.astro
-│   │       ├── blog/
-│   │       ├── experience/
-│   │       ├── projects/
-│   │       ├── resume/
-│   │       └── services/
-│   ├── styles/
-│   │   └── global.css      # Core styles (Tailwind v4 / CSS variables)
-│   └── types/              # Cross-cutting TS declarations
-├── scripts/
-│   ├── isolate-admin-build.mjs # Post-build Zero-Trust admin HTML vault isolation
-│   ├── audit-codebase.ts       # Automated static architectural gates
-│   ├── r2-pull.mjs             # Content pull and tarball extraction
-│   └── r2-push.mjs             # Content push, manifest generation, and IndexNow
-├── tests/
-│   └── spec-003/           # Comprehensive Bun unit tests for ports, adapters, and edge
-├── wrangler.jsonc          # Production edge configuration (D1, R2, Vectorize, AI, Crons)
-├── package.json
-└── tsconfig.json           # Strictest TypeScript configuration
-```
-
----
-
-## 4. CONTENT LAYER SPECIFICATION (`src/content.config.ts`)
-
-Enforce strict validation of frontmatter using the Astro Content Layer API (`glob` loader + `zod` schemas). Builds must fail immediately on invalid data:
-
-```typescript
-import { defineCollection } from "astro:content";
-import { z } from "astro/zod";
-import { glob } from "astro/loaders";
-import { SUPPORTED_LOCALES } from "./i18n/locales";
-
-export const localizedBaseSchema = z.object({
-  canonicalId: z
-    .string()
-    .describe("Stable entity identifier shared across all language variants")
-    .optional(),
-  translationKey: z.string().optional(),
-  locale: z.enum(SUPPORTED_LOCALES),
-  draft: z.boolean().default(false),
-  visible: z.boolean().default(true),
-});
-
-const posts = defineCollection({
-  loader: glob({
-    pattern: ["**/*.{md,mdx}", "!**/_*"],
-    base: "./src/content/posts",
-  }),
-  schema: ({ image }) =>
-    localizedBaseSchema.extend({
-      title: z.string().max(75, "SEO title under 75 chars"),
-      description: z.string().max(160, "Meta description under 160 chars"),
-      pubDate: z.coerce.date(),
-      publishedAt: z.coerce.date().optional(),
-      updatedDate: z.coerce.date().optional(),
-      updatedAt: z.coerce.date().optional(),
-      translationKey: z.string(),
-      category: z.string().default("systems"),
-      tags: z.array(z.string()).min(1),
-      coverImage: image().optional(),
-      coverAlt: z.string().optional(),
-      canonicalUrl: z.url().optional(),
-      searchKeywords: z.array(z.string()).optional(),
-      author: z.string().default("Arturo Nava"),
-      readingTimeMinutes: z.number().int().positive().optional(),
-    }),
-});
-
-const projects = defineCollection({
-  loader: glob({
-    pattern: ["**/*.md", "!**/_*"],
-    base: "./src/content/projects",
-  }),
-  schema: ({ image }) =>
-    localizedBaseSchema.extend({
-      title: z.string(),
-      description: z.string(),
-      role: z.string(),
-      company: z.string().optional(),
-      featured: z.boolean().default(false),
-      order: z.number().int(),
-      translationKey: z.string(),
-      techStack: z.array(z.string()),
-      metrics: z
-        .array(z.object({ label: z.string(), value: z.string() }))
-        .optional(),
-      repoUrl: z.url().optional(),
-      liveUrl: z.url().optional(),
-      thumbnail: image().optional(),
-      searchKeywords: z.array(z.string()).optional(),
-    }),
-});
-
-const experience = defineCollection({
-  loader: glob({
-    pattern: ["**/*.md", "!**/_*"],
-    base: "./src/content/experience",
-  }),
-  schema: localizedBaseSchema.extend({
-    company: z.string(),
-    companyUrl: z.url().optional(),
-    companyDomain: z.string().optional(),
-    companyIndustry: z.string().optional(),
-    companyDescription: z.string().optional(),
-    role: z.string(),
-    location: z.string(),
-    employmentType: z.string(),
-    startDate: z.coerce.date(),
-    endDate: z.coerce.date().optional(),
-    order: z.number().int(),
-    skills: z.array(z.string()),
-    keyAchievements: z.array(z.string()),
-    searchKeywords: z.array(z.string()).optional(),
-  }),
-});
-
-const services = defineCollection({
-  loader: glob({
-    pattern: ["**/*.{md,mdx}", "!**/_*"],
-    base: "./src/content/services",
-  }),
-  schema: ({ image }) =>
-    localizedBaseSchema.extend({
-      title: z.string(),
-      description: z.string(),
-      type: z.enum(["service", "product", "mentorship"]),
-      translationKey: z.string(),
-      featured: z.boolean().default(false),
-      order: z.number().int(),
-      price: z.string().optional(),
-      deliveryTime: z.string().optional(),
-      tags: z.array(z.string()).default([]),
-      deliverables: z.array(z.string()).default([]),
-      ctaUrl: z.string().optional(),
-      ctaText: z.string().optional(),
-      thumbnail: image().optional(),
-      searchKeywords: z.array(z.string()).optional(),
-    }),
-});
-
-const resume = defineCollection({
-  loader: glob({
-    pattern: "ArturoNava-Resume-*.md",
-    base: "./src/content/resume",
-  }),
-  schema: localizedBaseSchema.extend({
-    canonicalId: z.string().default("arturo-nava-resume"),
-    title: z.string().min(1),
-    name: z.string().min(1),
-    role: z.string().min(1),
-    location: z.string().min(1),
-    summary: z.string().min(1),
-    updatedDate: z.coerce.date(),
-    skills: z.record(z.string(), z.array(z.string())),
-    contact: z.object({
-      email: z.email(),
-      github: z.url(),
-      linkedin: z.url(),
-      website: z.url(),
-    }),
-  }),
-});
-
-export const collections = { posts, projects, experience, services, resume };
-```
-
----
-
-## 5. CODE GENERATION PROTOCOL
-
-When delivering code or architecture decisions:
-
-1. **Zero Fluff**: Omit pleasantries, redundant summaries, and conversational setups. Start directly with the technical artifact, configuration, or code block.
-2. **Production-Ready Deliverables**: Write comprehensive, copy-paste ready implementations. Avoid placeholders (`// add more here`) in critical paths.
-3. **Core Web Vitals Justification**: When suggesting any dynamic client interaction, explicitly explain why it satisfies the runtime performance budget (INP < 50ms, zero layout shifts).
-4. **Build-Time Computation**: Perform all data sorting, filtering, and static parameter mappings (`getStaticPaths`) at build time inside the Astro component frontmatter (`---`).
-
----
-
-## 6. MCP & KNOWLEDGE SYSTEMS PROTOCOL (CODEGRAPH & ENGRAM)
-
-### CodeGraph (`codegraph_explore` / CLI `codegraph`)
-
-- **Configuración Local**:
-  - Exclusiones estrictas configuradas en [`codegraph.json`](codegraph.json) (`src/content/**` excluido para preservar la densidad del grafo y evitar polución de tokens con prosa Markdown).
-  - Directorio de base de datos e índices SQLite `.codegraph/` ignorado en `.gitignore`.
-- **CUÁNDO usarlo**:
-  1. **Antes de editar código**: Obligatorio antes de refactorizar o modificar cualquier componente Astro, layout o módulo en `src/lib/`, `src/data/`, `src/i18n/`, `src/utils/` o `cloudflare/`.
-  2. **Exploración de Arquitectura y Blast Radius**: Para determinar llamadores (`callers`), dependencias (`callees`) e impacto transversal sin loops manuales de `grep`/`find`.
-  3. **Resolución de bugs**: Para rastrear el flujo exacto de símbolos tipados y sus referencias cruzadas.
-- **CÓMO usarlo**:
-  - Vía MCP: Ejecutar `codegraph_explore` con `projectPath` apuntando a la raíz del repositorio y `query` con los símbolos o rutas objetivo (ej. `"StoragePort CloudflareR2StorageAdapter createStorageAdapter"` o `"locales.ts resume.ts"`).
-  - Vía CLI: `codegraph status`, `codegraph sync`, o `codegraph explore "<query>"`.
-  - **Restricción**: NUNCA indexar ni consultar archivos Markdown de contenido (`src/content/`) mediante CodeGraph.
-
-### Engram Persistent Memory (CLI `engram` / MCP `mem_*`)
-
-- **Configuración Local**:
-  - Proyecto inicializado explícitamente en `.engram/config.json` (`project_name: "personal-website"`).
-- **CUÁNDO usarlo**:
-  1. **Al iniciar sesión o nuevo flujo**: Consultar memoria activa o contexto previo (`engram context personal-website` o `mem_context`) para no repetir análisis ni ignorar decisiones tomadas.
-  2. **Proactivamente tras decisiones clave (OBLIGATORIO)**:
-     - Cambios de arquitectura, infraestructura o configuración (`output: 'static'`, routing, D1, Tailwind v4, ports/adapters).
-     - Corrección de bugs no triviales (documentando causa raíz).
-     - Convenciones de equipo o patrones descubiertos.
-     - Preferencias y restricciones específicas del usuario.
-  3. **Al finalizar la sesión**: Registrar resumen estructurado (`mem_session_summary` o `engram save`).
-- **CÓMO usarlo**:
-  - Guardar memoria usando título declarativo (Verbo + objeto), tipo (`architecture`, `bugfix`, `decision`, `pattern`), topic_key estable (`--topic "architecture/..."`) y formato estándar (What, Why, Where, Learned).
-  - **Garantía de Entrega (Delivery Guarantee)**: Guardar en memoria es bookkeeping interno; **NUNCA** sustituye la entrega completa de la respuesta técnica al usuario.
-
----
-
-# PROJECT MEMORY & DECISIONS
-
-- [2026-09] Tailwind v4 configured via `@theme` in `src/styles/global.css`. Creating `tailwind.config.js` is strictly forbidden.
-- [2026-09] Pure static deployment on Cloudflare Pages (`output: 'static'`). 0 KB baseline client-side JS enforced as an architectural invariant.
-- [2026-09] CodeGraph configured with `.codegraph/` gitignored and `src/content/**` excluded in `codegraph.json`.
-- [2026-09] Engram initialized in `.engram/config.json` under project `personal-website` with architectural context persisted.
-- [2026-09] Universal draft and visibility system: build-time exclusion filters supporting `draft: true` and `visible: false` across all collections and static data modules.
-- [2026-09] Consolidated zero-duplication i18n parameterized dynamic routes under `src/pages/[...lang]/` eliminating 14 duplicate template pairs.
-- [2026-10] Legacy `src/data/cv.ts` pruned and migrated to unified `src/data/resume.ts` and `src/content/resume/`.
-- [2026-10] Hexagonal Architecture (Ports & Adapters) fully integrated in `src/lib/ports/` and `src/lib/adapters/`: strict vendor decoupling with zero Astro code modifications on platform migrations.
-- [2026-10] Extensible multi-language engine configured in `src/i18n/locales.ts` (`DEFAULT_LOCALE = "en"` with Spanish secondary) and localized base schema in `src/content.config.ts`.
-- [2026-10] Cloudflare Edge platform operationalization: R2 + Cache API (`caches.default`), Workers AI + Vectorize semantic search with static memory fallback, D1 daily rollups cron trigger, serverless corporate email routing ingestion, and WAF L7 bot protection.
-- [2026-10] Strict TypeScript with `exactOptionalPropertyTypes: true` across all domain contracts and adapters.
-- [2026-10] SPEC-004 Global Architectural Audit and Extreme Quality Verification integrated: automated gatekeeper `scripts/audit-codebase.ts`, zero static `will-change` in stylesheets, dynamic compositor acceleration lifecycle `src/utils/motion.ts`, circular WAAPI theme reveal `src/utils/theme-reveal.ts`, geometric containment `OptimizedVisual.astro`, Server Island `EdgeViewCounter.astro`, monobilingual isolated JSON-LD with invariant `@id`, R2 Cache API absorption in `cloudflare/worker.ts`, and 100% certification across all SDD, RDD, and ODD gates.
-- [2026-10] OpenSpec specifications suite (`SPEC-001`, `SPEC-002`, `SPEC-003`, `SPEC-004`) standardized under the unified Tri-Axis Model (SDD, RDD, ODD) in Spanish with 100% reciprocal cross-references and Definition of Done (DoD) certification matrices.
-- [2026-10] Migrated Astro Content Layer schemas to Zod v4 first-class constructors `z.url()` and `z.email()`, completely resolving `ts(6385)` deprecation warnings.
-- [2026-10] Permanent Knowledge Graph anchor `@id: "https://arturonavax.dev/#person"` harmonized across all layouts, dynamic route schemas, and multi-format resume export serializers.
-- [2026-10] SPEC-010 Top #1 Architecture, Edge Performance & Cloudflare Ecosystem Maximization integrated: Zero-CLS font metric overrides, programmatic Edge Cache API with `stale-while-revalidate` and `Cache-Tag`, asynchronous D1 telemetry buffering via `ctx.waitUntil()`, native Workers AI embeddings for Vectorize search, build-time Open Graph asset generation (Zero-Runtime) via Satori + resvg, and CSS `content-visibility` rendering virtualization.
-- [2026-10] Resume Maker migrated from `/resume/maker/` to `/tools/resume-maker/` (new `/tools/` index; 301s in `public/_redirects`, `maker.` subdomain 308 retargeted). Editorial content (`src/content/posts/`, `public/remote-assets/`, `public/CV.pdf`) syncs bidirectionally with Cloudflare R2 at build time only via `scripts/r2-pull.mjs` / `scripts/r2-push.mjs` (`pnpm content:pull|push`); R2 is never queried at runtime. Floating actions lift above the language toast via compositor-only `transform` (SPEC-004 forbids animating `bottom`).
-- [2026-10-17] R2 content sync v2: private bucket `personal-website-content`, layout `content/<collection>/<locale>/<file>` + `assets/` + `resume/CV.pdf` + `_manifest.json`; dual transport (Wrangler OAuth locally, S3 tokens in CI); `CONTENT_SOURCE=local|r2` (default local), `pnpm dev:r2`, `content:push[:dry]`. See `docs/content-sync.md`.
-- [2026-10-17] Content workflow v3: content removed from Git (only `.gitkeep`), R2 is source of truth. Sync is incremental (sha256 manifest), parallel, with a `_bundle.tar.gz` fast path; transport `cf` CLI locally, S3 in CI. CVs: `pnpm cv:publish` (qpdf lossless) -> `downloads/ArturoNava-CV-{en,es}.pdf` -> `/resume/` button per locale. All dev/preview/worker servers bind 0.0.0.0. See README "Content & R2".
-- [2026-10-17] Automated Cloudflare Deploy Sync: configured `wrangler.jsonc` `build.command` (`node scripts/r2-pull.mjs && pnpm run build`) and `package.json` `predeploy`. Transports support auto-fallback hierarchy: S3 API -> `cf` CLI -> `wrangler` CLI (`--remote`), ensuring zero-config automated content retrieval from R2 during CI/Cloudflare Workers Builds and local `pnpm run deploy`.
-- [2026-10-18] Fail-Closed Zero-Trust Admin Vault Isolation & Selective Asset Bypass (SPEC-013 / tasks5.md): Disabled public preview endpoint (`workers_dev: false`); configured explicit `assets.run_worker_first` glob array routing `/admin*`, `/*/admin*`, `/__admin_vault__*`, and `/api/*` to Worker while bypassing immutable assets (`!/_astro/*`, `!/fonts/*`, etc.); implemented post-build admin relocation (`scripts/isolate-admin-build.mjs`) to internal vault `dist/__admin_vault__/` purging unvaulted directories; fortified `cloudflare/worker.ts` with canonical path normalization, external 404 blocking of `/__admin_vault__*`, fail-closed `verifyAdminAccess` (RSASSA-PKCS1-v1_5 JWT against cached JWKS + constant-time SHA-256 Bearer comparison), and internal vault rewrite; optimized `EdgeViewCounter.astro` with immediate `ev_init` cookie expiration (`Max-Age=0`) and `bfcache` support on `pageshow`.
-- [2026-10-19] GSC Exclusion Eradication, Edge Trailing-Slash 301 Normalization & Wrangler Type Sync (SPEC-014 / tasks7.md): Eliminated all internal non-trailing-slash links across UI components and `searchIndex.ts`; implemented permanent 301 edge redirects for non-trailing-slash document URLs in `cloudflare/worker.ts` and `edge-routing-policy.adapter.ts`; protected crawl budget with `rel="nofollow"` on client filter anchors and comprehensive query parameter disallows in `public/robots.txt`; enforced dynamic edge `X-Robots-Tag: noindex, nofollow` on `/search/` and query strings; unlocked `/case-studies/` for static generation and XML sitemap discovery; added `pnpm run types:worker` and synchronized Cloudflare Worker runtime bindings in `worker-configuration.d.ts`.
-
-## Verified SPA and production invariants (2026-10-23)
-
-- Preserve the single persistent Matrix canvas/Worker and independent render clock across Astro and cached timeline navigation. Never reset it to implement visual changes. Glyph fonts are 18/21/24/28px, the pointer lens radius is 360px, and its center follows elapsed-time easing (300ms), not pointer-event jumps. Resize/DPR mapping must preserve lane phases.
-- Keep both glyph palettes precached. Circular theme reveal uses `src/scripts/theme-clip.ts` rounded-inset geometry with native View Transitions; retain zero-radius prepaint protection, fill-both and exactly one completion notification. Local raster comparisons are not universal FPS or field CWV certification.
-- Mount `installEdgeTelemetry()` once in BaseLayout. Mark speculative job requests `X-Astro-Prefetch: true`; notify `site:route-committed` only after the custom timeline route commits. Capture each path before idle scheduling. Reuse `/api/telemetry/collect` and authoritative dedupe; never add a second ingestion backend.
-- Never authorize admin access from an email header or an unverified JWT/cookie. Require verified Access issuer/audience/signature/expiry/email or an explicitly configured secret token. Public vault URLs are always denied, regardless of caller-provided internal headers; authorized retrieval uses the ASSETS binding directly.
-- Never commit admin bearer credentials. The production Access team/audience must match the deployed application. Disable workers.dev and version preview URLs; keep public static assets outside Worker execution. Do not narrow Worker-first to admin alone while promising public server-side visit recording.
+- Follow [the verification guide](docs/verification.md). Observe RED before behavior fixes when a relevant deterministic test exists. For descriptive documentation, validate references and factual claims instead of inventing runtime RED/GREEN.
+- Use `pnpm check`, `pnpm test`, and relevant Playwright cases. A build may pull remote content; when remote access is not authorized, bypass the pull hook using the direct Astro commands in the verification guide. `CONTENT_SOURCE=local` does not prevent pulls when content is missing or CI flags are truthy; Wrangler custom builds can also pull.
+- Normalize only the intended files before final checks/review. Do not run a repository-wide formatter over unrelated work.
+- Report commands actually run, skips, unavailable inputs, and failures. Targets such as LCP, CLS, INP, Lighthouse scores, or FPS are not certified by architecture alone or by a historical test count.
+- Keep runtime fixes separate from documentation corrections unless explicitly authorized. Updating these specifications does not authorize deployment, account changes, destructive database resets, cache purges, or remote content uploads.
+- Preserve human edits. Use Conventional Commits; never add `Co-Authored-By` or AI attribution. Push/merge/deploy only within explicit authorization.
+- When behavior changes, update its current contract, guide, and test anchors together; retain old records as history. Do not mark production verification complete from local fixtures.
