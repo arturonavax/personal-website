@@ -1,155 +1,76 @@
-# Content Synchronization & Cloudflare R2 Workflow
+# Editorial content and R2 synchronization
 
-This project implements an **R2-decoupled content architecture**. Editorial content (Markdown/MDX articles, project case studies, client services, work experience, resume data, assets, and CV PDFs) is **never committed to Git**. Instead, the private Cloudflare R2 bucket `personal-website-content` serves as the single source of truth across all machines and CI/CD pipelines.
+Editorial Markdown/MDX, synced images and CV PDFs are ignored by Git. The current-state contract is [PLAT08–09](../openspec/specs/current-platform.md#plat-08--content-synchronization-and-publication-inputs). Obtain an owner-authorized content backup or scoped bucket access before expecting a complete site.
 
----
+## Source inputs
 
-## 1. Why Decouple Content from Git?
+| Remote prefix                              | Local destination                                                        | Current content                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `content/`                                 | `src/content/`                                                           | Posts, projects, services, experience, resume                         |
+| `assets/`                                  | `public/remote-assets/`                                                  | Editorial images/diagrams                                             |
+| `downloads/`                               | `public/downloads/`                                                      | Downloadable CV PDFs                                                  |
+| `content/_manifest.v2.json`                | `.cache/r2-manifest.json` and compatibility `.remote-sync-manifest.json` | Hash/size/type catalogue, root hash, bundle metadata                  |
+| `content/_bundle-<rootHash-prefix>.tar.gz` | Temporary extraction input                                               | Content-addressed bulk transfer; `_bundle.tar.gz` compatibility alias |
 
-1. **Lightweight & Clean Repository:** The Git repository contains 100% executable architecture, layouts, styles, and tools. Clones are near-instantaneous (< 15 MB) and history is never bloated by large PDFs, screenshots, or frequent editorial typo commits.
-2. **True Multi-Machine Workflow:** Whether developing on a laptop, desktop, or cloud workstation, running `pnpm dev` or `pnpm content:pull` instantly hydrates the local filesystem with the latest remote content in ~2-3 seconds.
-3. **Proprietary Asset Protection:** When open-sourcing the portal template, the owner's personal essays, proprietary client descriptions, and resume PDFs remain private inside the authenticated R2 bucket.
-4. **Zero Runtime Latency:** R2 is accessed **strictly at build or development time**. When deploying to Cloudflare Workers, Astro compiles the Markdown files into pure static HTML (`dist/`). Public visitors receive edge-accelerated static assets with **0 Class B read requests** to R2.
+The build-time bucket defaults to `personal-website-content`, overridable by `R2_BUCKET_NAME`. It is not necessarily the same bucket as the Worker's `STORAGE_BUCKET` used for application storage and telemetry WAL.
 
----
+Resume's current Content Layer loader expects flat `ArturoNava-Resume-{en,es}.md` files, not structured JSON resumes. Other collections use locale directories and their declared Markdown/MDX extensions. The separate resume resolver retains compatibility paths; see [PLAT02/06](../openspec/specs/current-platform.md).
 
-## 2. Directory Layout & Source of Truth
+## Local commands and side effects
 
-| In R2 Bucket (`personal-website-content`) | Local Directory (Ignored by `.gitignore`)                | Purpose                                                  |
-| :---------------------------------------- | :------------------------------------------------------- | :------------------------------------------------------- |
-| `content/posts/<locale>/<slug>.md(x)`     | `src/content/posts/<locale>/<slug>.md(x)`                | Technical essays & blog posts                            |
-| `content/projects/<locale>/<slug>.md`     | `src/content/projects/<locale>/<slug>.md`                | Portfolio case studies                                   |
-| `content/services/<locale>/<slug>.md`     | `src/content/services/<locale>/<slug>.md`                | Architectural consulting services                        |
-| `content/experience/<locale>/<slug>.md`   | `src/content/experience/<locale>/<slug>.md`              | Career timeline entries                                  |
-| `content/resume/<file>.json`              | `src/content/resume/<file>.json`                         | Structured resume & skill data                           |
-| `assets/<path>`                           | `public/remote-assets/<path>`                            | Post images, diagrams, architecture charts               |
-| `downloads/ArturoNava-CV-{en,es}.pdf`     | `public/downloads/ArturoNava-CV-{en,es}.pdf`             | Downloadable CV PDFs (on `/resume/`)                     |
-| `content/_manifest.v2.json`               | `.cache/r2-manifest.json` (`.remote-sync-manifest.json`) | SHA-256 hash catalogue + `rootHash` for incremental sync |
-| `content/_bundle-<shortHash>.tar.gz`      | (Generated & stored in R2)                               | Gzip bundle for 1-request cold start hydration           |
+| Command                            | Behavior                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev`                         | Pull `--auto`, then Astro dev; keeps local content when present unless remote freshness is requested         |
+| `pnpm dev:local`                   | Starts Astro without content synchronization                                                                 |
+| `pnpm dev:r2`                      | Checks remote content before Astro dev                                                                       |
+| `pnpm content:pull`                | Reads the remote manifest and downloads changed/missing mapped files                                         |
+| `pnpm content:push:dry`            | Local plan only; does not query remote state or show an authoritative remote diff                            |
+| `pnpm content:push`                | Publishes local content/manifest/bundle and can notify IndexNow; requires explicit publication authorization |
+| `node scripts/r2-pull.mjs --force` | Redownloads files instead of trusting equal local hashes                                                     |
 
-> [!NOTE]
-> Only `.gitkeep` placeholder files under `src/content/*/` and `public/{downloads,remote-assets}/` are tracked in Git so directory structures exist on fresh checkouts.
+Dev scripts use `--host`; they expose the server to the local network. Use a trusted network or explicitly bind loopback when appropriate.
 
----
+Do **not** put prune commands into normal setup. Pull `--prune` deletes local-only synced files. Push `--prune` deletes remote-only objects. Back up the authoritative content and review the intended deletion set before either operation; a partial checkout is not a safe prune source. Ordinary push preserves remote-only files.
 
-## 3. High-Performance Sync Engine (`scripts/lib/r2-content.mjs`)
+## Transport selection
 
-The sync engine is engineered in pure Node.js (ESM) with zero heavy external dependencies. It guarantees idempotency, speed, and safety while protecting Cloudflare R2 Free Tier Class A (1M/month) and Class B (10M/month) quotas.
+`scripts/lib/r2-content.mjs#createDriver` selects:
 
-### 3.1. Three-Tier Resilient Transport
+1. S3-compatible API when `R2_DRIVER=s3` or the expected account/access-key/secret environment values are available, unless another driver was selected.
+2. `cf` CLI when available and not explicitly disabled by the driver selection.
+3. Wrangler CLI fallback with remote object operations.
 
-The driver auto-detects available credentials and selects the optimal transport:
+`R2_DRIVER` can pin `s3`, `cf` or `wrangler`. CLI availability is not proof of login or bucket permission. A selected driver's failed operation is not guaranteed to retry through every other driver. Obtain authorization before using an existing authenticated session; never publish credential values in docs or logs.
 
-```
-                  ┌──────────────────────────────────────────────┐
-                  │ Does S3 credentials exist in environment?     │
-                  │ (CLOUDFLARE_ACCOUNT_ID + R2_ACCESS_KEY_ID)   │
-                  └───────────────────────┬──────────────────────┘
-                                          │
-                                 YES ─────┴───── NO
-                                  │               │
-                                  ▼               ▼
-                        ┌────────────────┐  ┌────────────────────────────────────┐
-                        │ S3 REST Driver │  │ Is 'cf' CLI installed & logged in? │
-                        │ (Fastest / CI) │  └─────────────────┬──────────────────┘
-                        └────────────────┘                    │
-                                                     YES ─────┴───── NO
-                                                      │               │
-                                                      ▼               ▼
-                                            ┌────────────────┐  ┌─────────────────┐
-                                            │ 'cf' CLI Driver│  │ Wrangler Driver │
-                                            │ (OAuth Local)  │  │ (CLI Fallback)  │
-                                            └────────────────┘  └─────────────────┘
-```
+## Manifest and transfer algorithm
 
-1. **S3 REST API (Tier 1):** Uses standard AWS Signature v4 over HTTPS. Ideal for CI/CD environments and automated builds. Activated whenever `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` are provided.
-2. **`cf` CLI (Tier 2):** Uses the official Cloudflare CLI (`npm i -g cf@latest`). Provides zero-configuration local authentication via browser OAuth (`cf auth login`).
-3. **`wrangler` CLI (Tier 3):** Uses `wrangler r2 object get/put` with `--remote`.
+- The v2 manifest contains sorted files/entries, SHA-256, size, content type, immutable-key metadata, `rootHash`, and a content-addressed bundle key.
+- Pull can exit after a conditional 304 or equal root hash. Normal no-change v2 paths avoid listing all objects; actual request counts depend on transport/fallback behavior.
+- Default concurrency is 6 (`R2_CONCURRENCY` override). More than 5 stale files triggers a bundle attempt; failed/unusable bundle transfer falls back to individual file downloads.
+- Individual downloads are checked against their manifest SHA-256. Bundle checksum is checked when metadata supplies it; files are re-evaluated after extraction.
+- Path mapping rejects escapes outside the mapped directory. Archive extraction retains its entry validation. Do not bypass those helpers in new sync tools.
+- Push skips unchanged data, updates the manifest/bundle, and garbage-collects obsolete bundles while preserving current/previous and compatibility keys. It is not a globally atomic multi-object transaction or a full versioned editorial backup.
 
-### 3.2. Incremental SHA-256 Manifest Diffing (`content/_manifest.v2.json` & `rootHash`)
+## Build hooks and integrity checks
 
-Before transferring files, the sync engine fetches `content/_manifest.v2.json` once from R2 (**1 Class B op, 0 `ListObjectsV2` calls**), computes the deterministic `rootHash` (`computeRootHash`) and SHA-256 hash of each local file using a bounded concurrency worker pool (`CONCURRENCY = 6`), and executes `computeRemoteManifestDiff(localFiles, remoteManifest)`:
+`package.json` is authoritative: `prebuild` runs pull `--auto`; `build` runs Astro then admin-vault isolation; `predeploy` pulls content and builds. Wrangler also declares a build command containing pull and `pnpm run build`. Do not copy old snippets that redefine those scripts differently.
 
-- On `r2-pull.mjs`, if `.cache/r2-manifest.json` exists and the remote ETag (`If-None-Match` -> `304 Not Modified`) or `rootHash` matches the cached `rootHash`, the sync exits immediately with **1 Class B operation and 0 file downloads**.
-- On `r2-push.mjs`, if `remoteManifest.rootHash === localManifest.rootHash` (`toUpload.length === 0`), **zero Class A write operations are executed** and `content/_manifest.v2.json` is not re-uploaded.
-- Only changed or missing files (`toUpload` / `toDownload`) are uploaded or downloaded in parallel with `concurrency = 6`.
-- After a successful push or pull, the manifest is cached locally in `.cache/r2-manifest.json` (and `.remote-sync-manifest.json`).
+Auto mode requests remote freshness when `CONTENT_SOURCE=r2` or CI/Cloudflare/GitHub environment detection is active. Otherwise it skips a remote transfer if local content exists. Missing/unusable manifest is an error, not an instruction to deploy an empty site.
 
-### 3.3. Fast-Pull Tarball Bundle (`content/_bundle-<shortHash>.tar.gz`)
+`verifyContentHydration()` expects at least one recognized `md`/`mdx`/`json` file per collection and locale, supporting subdirectories and flat locale suffixes. It is a presence check, **not** schema validation, draft visibility validation, or a content-completeness proof. `ALLOW_EMPTY_CONTENT=true|1` deliberately bypasses failure and must remain explicit.
 
-When a developer checks out the repo on a brand-new machine or CI runner, syncing 50+ individual objects through sequential calls would waste time and Class B operations.
+Current limitation: several early pull exits (304/root-hash/up-to-date files) return before the final hydration check. Do not assume every successful sync ran it. Astro schema validation and a successful content-bearing build remain separate checks. See `tests/spec-012/seo-aeo-and-db-compaction.test.ts` for existing structural/algorithm regressions.
 
-- **The Optimization:** `scripts/r2-push.mjs` automatically packages all content files into a single `content/_bundle-${rootHash.slice(0, 12)}.tar.gz` archive (plus `_bundle.tar.gz`) and uploads it alongside `content/_manifest.v2.json` whenever at least 1 file changes or is pruned.
-- When `scripts/r2-pull.mjs` detects a cold start or more than `BUNDLE_THRESHOLD = 5` modified/missing files, it downloads the single compressed tarball (**2 Class B ops total**: 1 manifest + 1 bundle) and unpacks it locally, completing the full sync in **under 2.5 seconds**.
+## CV PDF pipeline
 
-### 3.4. Safety Guards, Path Normalization & Orphan Pruning (`pruneOrphanRemoteKeys`)
+`pnpm cv:optimize` reads `.cv/ArturoNava-CV-*.pdf` by default; `node scripts/optimize-pdf.mjs <input.pdf>` accepts explicit inputs. qpdf compresses streams and linearizes the PDF, preserving text/vector content. It writes the same filename under `public/downloads/` and copies the original if compression would enlarge it.
 
-- **Path Traversal Protection:** Every entry inside `content/_bundle-<shortHash>.tar.gz` is validated to prevent path traversal (`..` and absolute paths are rejected).
-- **Prune Safety (`--prune`):** `pnpm content:push` never deletes remote objects unless explicitly passed the `--prune` flag, which invokes `pruneOrphanRemoteKeys(orphanKeys, { driver })` to batch-delete stale R2 keys. This prevents an empty checkout from inadvertently wiping remote production content.
+`pnpm cv:publish` runs optimization **and the full content push**, not just a local PDF update. Required qpdf installation, source PDFs and publication credentials are external prerequisites. A particular size reduction or completion time is not guaranteed.
 
----
+## Recovery checklist
 
-## 4. Automated Deployment & Build Hooks
-
-Content synchronization is wired directly into the build pipeline in `wrangler.jsonc` and `package.json`:
-
-```jsonc
-// wrangler.jsonc
-{
-  "build": {
-    "command": "node scripts/r2-pull.mjs && pnpm run build",
-  },
-}
-```
-
-```json
-// package.json
-{
-  "scripts": {
-    "predeploy": "node scripts/r2-pull.mjs --auto",
-    "deploy": "pnpm predeploy && wrangler deploy"
-  }
-}
-```
-
-When building in Cloudflare Workers CI:
-
-1. `node scripts/r2-pull.mjs` executes automatically.
-2. If `CI`, `CF_PAGES`, or `CLOUDFLARE_BUILD` is detected, it forces an incremental sync against R2.
-3. `pnpm run build` compiles the statically hydrated Astro site into `./dist`.
-4. Wrangler deploys the static assets and unified Worker to Cloudflare.
-
----
-
-## 5. Lossless CV PDF Optimization Pipeline
-
-CV documents placed in `public/downloads/` must remain lightweight (< 200 KB) for instantaneous downloads, yet preserve selectable vector fonts and pristine print geometry.
-
-The project includes an automated lossless compression pipeline (`scripts/optimize-pdf.mjs`) using `qpdf`:
-
-```sh
-pnpm cv:publish
-```
-
-### What `pnpm cv:publish` Does:
-
-1. Reads source PDFs from `.cv/ArturoNava-CV-en.pdf` and `.cv/ArturoNava-CV-es.pdf`.
-2. Runs `qpdf --linearize --object-streams=generate --recompress-flate` to compress streams and optimize for Web Fast View.
-3. Achieves **~19% size reduction** without downsampling text or rasterizing vector glyphs.
-4. Copies the optimized files to `public/downloads/`.
-5. Uploads the optimized PDFs directly to the R2 bucket.
-
----
-
-## 6. Daily Developer Command Cheatsheet
-
-| Task                      | Command                            | Notes                                              |
-| :------------------------ | :--------------------------------- | :------------------------------------------------- |
-| **Start Dev Server**      | `pnpm dev`                         | Auto-pulls from R2 only if local content is absent |
-| **Dev with Fresh Pull**   | `pnpm dev:r2`                      | Forces remote check before launching Astro dev     |
-| **Dev Fully Offline**     | `pnpm dev:local`                   | Uses local files without network check             |
-| **Pull Remote Changes**   | `pnpm content:pull`                | Downloads latest updates from R2                   |
-| **Dry Run Remote Push**   | `pnpm content:push:dry`            | Shows files that would be uploaded/updated         |
-| **Upload Local Changes**  | `pnpm content:push`                | Pushes local content and updates manifest/bundle   |
-| **Upload with Prune**     | `node scripts/r2-push.mjs --prune` | Deletes remote files removed locally               |
-| **Optimize & Publish CV** | `pnpm cv:publish`                  | Runs qpdf optimization and syncs to R2             |
+- Preserve an owner-controlled backup of content, remote assets, PDFs, and a matching manifest.
+- Inspect local edits before pulling; pull can overwrite changed local files that differ from the remote manifest.
+- Use an explicitly authorized destination/session for sync; never infer permission from an available OAuth token.
+- Verify the collection schema, locale visibility and generated routes after restoration.
+- Keep `.cache/`, downloaded content, PDFs, secrets and build artifacts out of the commit.

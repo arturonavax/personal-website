@@ -1,178 +1,65 @@
-# Template Customization & Deployment Guide
+# Adapting the website without losing its behavior
 
-This project is structured as a **world-class open source template** for Senior Software Engineers, Technical Architects, Consultants, and Engineering Leaders who want an ultra-fast, zero-overhead, highly polished personal brand platform.
+Start with the [current specification index](../openspec/specs/README.md). This is a maintained application with private editorial inputs and account-side integrations, not an instant fully configured template. Review [LICENSE](../LICENSE) before reuse.
 
-Follow this guide to fork, customize, and deploy your own instance to Cloudflare in under 15 minutes.
+## Establish a local baseline
 
----
+1. Use the repository's `packageManager`/lockfile and install the declared dependencies. The inspected baseline records pnpm 12.5.1 and Astro 7.3.4; do not follow old Astro 5 or generic pnpm 9 examples.
+2. Obtain your own authorized editorial files/assets/PDFs or create schema-valid content. The public checkout intentionally contains placeholders rather than the owner's private R2 data.
+3. Use `pnpm dev:local` for Astro-only development with local content. It does not emulate the production Worker APIs, Access, telemetry or Static Assets routing.
+4. Use `pnpm dev-prod` for the project's check/build/local-Worker workflow on port 8788 when inputs and local bindings are ready. It performs content/build hooks; it is not a read-only command.
 
-## 1. Prerequisites
+Dev scripts expose `0.0.0.0` by default; prefer loopback or a trusted LAN. Bun is required for `pnpm test`/audit. qpdf and `tar` are needed only for their respective PDF/bundle workflows. Browser tests additionally need a compatible executable and running server.
 
-Before starting, ensure you have the following installed locally:
+## Change identity at the real sources
 
-- **Node.js**: v22.0.0 or higher
-- **pnpm**: v9.0.0 or higher (`npm install -g pnpm`)
-- **Cloudflare CLI (`cf`)**: `npm install -g cf@latest`
-- **Wrangler**: Installed locally in `devDependencies` (run via `pnpm exec wrangler`)
-- **Bun**: (Optional, for running tests and audit scripts: `curl -fsSL https://bun.sh/install | bash`)
-- **qpdf**: (Optional, for lossless PDF optimization: `sudo apt install qpdf` or `brew install qpdf`)
+| Area                             | Where to inspect/change                                                                       |
+| -------------------------------- | --------------------------------------------------------------------------------------------- |
+| Site URL and static routing      | `astro.config.mjs`, `wrangler.jsonc`, Worker routing, `public/_redirects`                     |
+| Owner/schema identity            | `src/lib/seo/schema-builder.ts`, `src/utils/seo.ts`, resume serializers, metadata literals    |
+| UI language and names            | `src/i18n/`, layouts/components, page frontmatter                                             |
+| Profile/content                  | Schema-valid files under `src/content/`, `src/data/resume.ts` resolver conventions            |
+| Public identity/link data        | `src/data/` social links, companies, sponsorships, online judges, tools and simulations       |
+| Visual identity                  | `src/styles/global.css`, portrait/assets, favicon files, `site.webmanifest`, default OG image |
+| Search/machine-readable identity | Search documents, RSS, `public/llms.txt`, full catalog generator, robots and sitemap URLs     |
 
----
+There is no demonstrated single `SITE_URL` environment switch that rewrites every tracked identity literal. Search references deliberately, review generated metadata in both languages, and keep `#person` identity consistent. Do not copy the original owner's administrative email allowlist, Access audience, account/database IDs, secrets or session configuration into a new account.
 
-## 2. Quick Setup & Local Run
+## Supply content correctly
 
-### Step 1: Fork and Clone
+Use [the content guide](content-sync.md) and `src/content.config.ts`. Required publication inputs are posts/projects/services/experience in their supported Markdown formats and flat locale-suffixed resume Markdown. The schema has five collections; case-study simulations are tracked code/data, not a sixth R2 collection.
 
-```sh
-git clone https://github.com/<your-username>/personal-website.git
-cd personal-website
-pnpm install
-```
+- Use stable translation keys for real counterpart entries; translated slugs may differ.
+- Keep draft/hidden flags explicit and verify that unpublished entries are absent from public outputs.
+- Keep downloaded content and remote assets ignored by Git.
+- Keep an owner-controlled backup; bucket availability and a public repository are not a complete backup strategy.
 
-### Step 2: Environment Configuration
+`content:push` publishes and can notify IndexNow. Its dry-run is local-only and does not prove the remote diff. Prune can delete content and must never be an automatic setup step.
 
-Copy `.env.example` to `.env`:
+## Configure integrations separately
 
-```sh
-cp .env.example .env
-```
+| Integration                    | Prerequisites and boundary                                                                                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build-time R2 content          | Your bucket/backup and explicitly authorized S3 or CLI access; separate from Worker runtime storage                                                               |
+| Runtime D1/R2                  | Your bindings, fresh schema/upgrade plan, persistence and quota verification                                                                                      |
+| Admin                          | Your Cloudflare Access application/team/audience/email policy and/or configured secret-token method; preserve fail-closed Worker verification and vault isolation |
+| Search                         | Optional AI/Vectorize configuration; retain static-index/static-memory fallback                                                                                   |
+| Contact/captcha/email/webhooks | Your service credentials/site keys and delivery configuration; preserve validation and abuse controls                                                             |
+| Domains and deployment         | Your DNS/custom-domain routes, cache/security policy, build environment and deploy authorization                                                                  |
 
-Review the key settings:
+Follow [edge operations](../openspec/specs/current-edge-operations.md) for safe bootstrap/release boundaries. Do not run remote schema resets, content pruning, deployment or credential discovery merely to customize styles. Environment examples are configuration references; copy only needed variable names into private local/CI secret stores.
 
-```ini
-# Domain & General Configuration
-SITE_URL="https://yourdomain.dev"
-PUBLIC_SITE_URL="https://yourdomain.dev"
+## Preserve non-negotiable behavior
 
-# R2 Content Storage (Optional for local testing; needed for remote sync)
-R2_BUCKET_NAME="your-content-bucket"
-CLOUDFLARE_ACCOUNT_ID="your_account_id"
-R2_ACCESS_KEY_ID="your_r2_access_key"
-R2_SECRET_ACCESS_KEY="your_r2_secret_key"
+- Keep one persistent Matrix canvas/Worker and the same render clock through Astro navigation and cached timeline commits.
+- Keep theme snapshot/reveal lifecycle, reduced-motion paths, keyboard/input isolation and persistent toast behavior.
+- Preserve separate project/post article header/content surfaces and shared scalable corner geometry.
+- Keep initial server-side visit recording plus committed-route collector events and dedupe. Narrowing Worker-first to admin-only changes that contract.
+- Preserve public-asset bypasses, protected admin vault, auth checks, quota degradation and clear failure behavior.
+- Keep resume print/selectable text, live exports and recruiter UTM behavior; do not replace them with screenshot-only PDFs.
 
-# Bot & Captcha Protection
-TURNSTILE_SITE_KEY="your_turnstile_site_key"
-TURNSTILE_SECRET_KEY="your_turnstile_secret_key"
+## Verify before publishing
 
-# Contact Webhooks (Discord, Slack, or Telegram)
-DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
-SLACK_WEBHOOK_URL=""
-```
+Use the current [coverage/evidence index](../openspec/specs/README.md), not historical fixed test counts. At minimum verify the changed domain, typecheck, static/unit checks and applicable browser paths using both locales/themes. Content-dependent browser skips must be explained. Inspect rendered head/sitemap/feeds and protect admin/API access with realistic requests.
 
-### Step 3: Run the Development Server
-
-```sh
-pnpm dev:local
-```
-
-The server will start on `http://0.0.0.0:4321`. Because `--host` is enabled by default, you can preview the site simultaneously on your mobile phone and local network by opening `http://<your-lan-ip>:4321`.
-
----
-
-## 3. Customizing Your Personal Identity & Branding
-
-### 3.1. General Metadata & Links
-
-Edit `src/data/` to match your personal identity:
-
-- `src/data/shortcuts.ts`: Global keyboard navigation commands (Ctrl+K, G+H, etc.).
-- `src/data/sponsorships.ts`: Coffee / GitHub Sponsors links.
-- `src/data/onlineJudges.ts`: Codeforces, LeetCode, Kaggle, GitHub handles.
-
-### 3.2. Multilingual UI Strings
-
-Edit `src/i18n/ui.ts` to customize labels, navigation titles, and footer copy in English and Spanish.
-
-### 3.3. Headshot & Favicons
-
-- Replace `src/assets/arturonava.jpg` with your own square portrait image.
-- Replace `public/favicon.svg`, `public/favicon-48x48.png`, and `public/apple-touch-icon.png` with your personal logo or monogram.
-- Update `public/site.webmanifest` with your name and theme color preferences.
-
----
-
-## 4. Setting up Cloudflare Services
-
-### 4.1. Create the R2 Bucket
-
-Create a private R2 bucket for your editorial content:
-
-```sh
-cf r2 bucket create your-content-bucket
-```
-
-### 4.2. Create the D1 Database (Analytics)
-
-```sh
-pnpm exec wrangler d1 create your-website-analytics
-```
-
-Copy the generated `database_id` into your `wrangler.jsonc`:
-
-```jsonc
-"d1_databases": [
-  {
-    "binding": "DB",
-    "database_name": "your-website-analytics",
-    "database_id": "<your-database-id>",
-    "migrations_dir": "./cloudflare/d1/migrations"
-  }
-]
-```
-
-Apply the database migrations:
-
-```sh
-pnpm exec wrangler d1 migrations apply your-website-analytics --remote
-```
-
-### 4.3. Configure `wrangler.jsonc`
-
-Open `wrangler.jsonc` and update:
-
-- `name`: Name of your Cloudflare Worker.
-- `routes`: Set your domain patterns (e.g. `yourdomain.dev`, `admin.yourdomain.dev`, `blog.yourdomain.dev`).
-- `r2_buckets`: Set `bucket_name` to your R2 bucket.
-
----
-
-## 5. Adding Your Content
-
-You can add Markdown and MDX files directly into `src/content/`:
-
-- `src/content/posts/`: Technical articles and thoughts.
-- `src/content/projects/`: Featured engineering case studies.
-- `src/content/services/`: Consulting offerings and competencies.
-- `src/content/experience/`: Work history and engineering roles.
-- `src/content/resume/`: Structured JSON resume.
-- `public/downloads/`: Your English and Spanish CV PDFs.
-
-### Pushing Content to R2:
-
-Once you have written or customized your content locally, upload it to your private R2 bucket:
-
-```sh
-pnpm content:push
-```
-
-To preview the files that would be uploaded first:
-
-```sh
-pnpm content:push:dry
-```
-
----
-
-## 6. Production Deployment
-
-To build and deploy your site to Cloudflare Workers with Static Assets:
-
-```sh
-pnpm run deploy
-```
-
-The pre-deploy hook will:
-
-1. Automatically pull the latest remote content from R2 if needed.
-2. Compile the static site via Astro (`pnpm run build`).
-3. Deploy the unified Worker and static assets to Cloudflare's Edge network via Wrangler.
+A successful local build does not certify an account's deployed Access policy, external delivery, D1 writes, free-tier headroom or field Core Web Vitals. Record those checks separately. Remote changes and publishing require explicit destination/operation/session authorization; local development does not grant it.
