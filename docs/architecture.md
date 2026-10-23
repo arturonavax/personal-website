@@ -1,127 +1,59 @@
-# Architecture & Technical Design
+# Current architecture and system boundaries
 
-This project is engineered as an ultra-high performance, edge-first web portal and personal brand platform for Senior Software Engineers and Systems Architects. It implements **Hexagonal Architecture (Ports & Adapters)** coupled with **Astro 7 Static Site Generation (SSG)** and **Cloudflare Workers with Static Assets**, achieving 0 KB baseline client JavaScript on static content and a certified 100/100 across all Core Web Vitals.
+The site is an Astro static build plus a Cloudflare Worker serving Static Assets and dynamic APIs. The current behavior contracts start at the [specification index](../openspec/specs/README.md); historical design documents are not evidence that every proposal is implemented.
 
----
+## Read the system in execution order
 
-## 1. High-Level Architecture Overview
-
-```
-                                      ┌─────────────────────────────────────────────────────────┐
-                                      │              Cloudflare Edge Network                    │
-                                      │                                                         │
-   User / Bot / Crawler               │  ┌──────────────────────┐    ┌───────────────────────┐  │
- ─────────────────────────► HTTPS ────┼─►│  Edge Routing Policy │───►│ Cloudflare Redirects  │  │
-                                      │  │ (308 Canonicalization)│    │ (blog., resume., etc.) │  │
-                                      │  └──────────┬───────────┘    └───────────────────────┘  │
-                                      │             │                                           │
-                                      │             ▼                                           │
-                                      │  ┌──────────────────────────────────────────────────┐   │
-                                      │  │       Unified Edge Worker (cloudflare/worker.ts) │   │
-                                      │  │  - Fast-Path Dispatcher                          │   │
-                                      │  │  - Circuit Breakers (Prefetch / Bot Protection)  │   │
-                                      │  │  - Edge Cache API (caches.default)               │   │
-                                      │  └──────────┬───────────────────────────┬───────────┘   │
-                                      │             │ (Fast Path)               │ (Dynamic API) │
-                                      │             ▼                           ▼               │
-                                      │  ┌──────────────────────┐    ┌───────────────────────┐  │
-                                      │  │ Cloudflare Static    │    │ Cloudflare Services:  │  │
-                                      │  │ Assets (dist/)       │    │ - D1 (Analytics)      │  │
-                                      │  │ 0 KB Client JS Pages │    │ - Workers AI          │  │
-                                      │  │ HTML, CSS, Fonts     │    │ - Vectorize (Search)  │  │
-                                      │  └──────────────────────┘    │ - Email Routing       │  │
-                                      │                              └───────────────────────┘  │
-                                      └─────────────────────────────────────────────────────────┘
+```text
+Private editorial content/assets -> build-time R2 sync -> Astro SSG -> dist/
+                                                              -> admin HTML isolation
+Browser -> asset-routing rules -> Worker document/API handling -> ASSETS / D1 / R2 / AI
+Browser -> persistent Astro shell -> vanilla interactive modules / Matrix Worker
 ```
 
----
+1. `package.json` and the lockfile define the toolchain; the inspected baseline uses Astro 7.3.4, Tailwind 4.3.3, TypeScript 5.9.3 and pnpm 12.5.1.
+2. `scripts/r2-pull.mjs` hydrates ignored editorial directories. Git is not a backup of the site's private content.
+3. `astro.config.mjs` builds static directory-form HTML with trailing slashes and EN/ES routes. `scripts/isolate-admin-build.mjs` moves administrative HTML into the protected build vault.
+4. `cloudflare/entrypoint.ts`/`worker.ts` handle documents, canonical redirects, APIs, auth and background work. `wrangler.jsonc` is the deployed-binding/routing declaration.
+5. `BaseLayout.astro` supplies a persistent ClientRouter shell and shared controls. Ordinary navigation and cached experience-arrow navigation have different commit pipelines but the same continuity and telemetry invariants.
 
-## 2. Hexagonal Architecture (Ports & Adapters)
+## Architecture map
 
-To ensure zero vendor lock-in and complete decoupling from proprietary cloud APIs, all business logic and presentation layers interact exclusively through abstract TypeScript contracts defined in `src/lib/ports/`.
+| Boundary                                                    | Source of truth                                                               | Contract                                                        |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Routes, collections, visibility, search index, feeds        | `src/pages/`, `src/content.config.ts`, `src/utils/visibility.ts`, `src/data/` | [Platform](../openspec/specs/current-platform.md)               |
+| Persistent UI, Matrix, theme, dialogs, keyboard, print      | `src/layouts/`, `src/components/`, `src/scripts/`, `src/lib/navigation/`      | [SPA](../openspec/specs/current-spa.md)                         |
+| Visit collection, aggregation, quota degradation, dashboard | `cloudflare/worker.ts`, `cron-scheduler.ts`, telemetry adapters               | [Telemetry/admin](../openspec/specs/current-telemetry-admin.md) |
+| Auth, vault, resource bindings, build/release and recovery  | `wrangler.jsonc`, `cloudflare/`, `scripts/`, D1 SQL                           | [Edge operations](../openspec/specs/current-edge-operations.md) |
 
-```
-src/
-├── lib/
-│   ├── ports/                 # Pure TypeScript abstract interfaces
-│   │   ├── edge-delivery.port.ts
-│   │   ├── search.port.ts
-│   │   ├── telemetry.port.ts
-│   │   ├── captcha.port.ts
-│   │   ├── storage.port.ts
-│   │   └── email.port.ts
-│   └── adapters/              # Pluggable concrete implementations
-│       ├── cloudflare/        # Cloudflare Workers, D1, Vectorize, R2
-│       ├── in-memory/         # Zero-dependency local fallbacks
-│       └── factory.ts         # Environment-driven adapter instantiation
-```
+## Ports and adapters
 
-### Pluggable Adapter Matrix
+`src/lib/ports/` contains storage, search, telemetry, captcha, edge delivery and email contracts. `src/lib/adapters/factory.ts` selects these concrete runtime implementations:
 
-| Port Domain              | Cloudflare Adapter                 | Local / Memory / Fallback Adapter | Switch Mechanism                       |
-| :----------------------- | :--------------------------------- | :-------------------------------- | :------------------------------------- |
-| **Edge Delivery**        | `CloudflareEdgeRoutingPolicy`      | In-memory path normalizer         | Runtime classification                 |
-| **Semantic Search**      | `CloudflareVectorizeSearchAdapter` | `StaticMemorySearchAdapter`       | `APP_SEARCH_DRIVER` / timeout failover |
-| **Telemetry & Metrics**  | `CloudflareD1TelemetryAdapter`     | `InMemoryTelemetryAdapter`        | `APP_TELEMETRY_DRIVER`                 |
-| **Captcha Verification** | `CloudflareTurnstileAdapter`       | `PassThroughCaptchaAdapter`       | `APP_CAPTCHA_DRIVER`                   |
-| **Asset Storage**        | `CloudflareR2StorageAdapter`       | Local filesystem / S3             | `APP_STORAGE_DRIVER`                   |
-| **Transactional Email**  | `CloudflareEmailRoutingAdapter`    | Console / Webhook fallback        | `ENABLE_EMAIL_ROUTING`                 |
+| Factory   | Preferred implementation when configured  | Fallback                 |
+| --------- | ----------------------------------------- | ------------------------ |
+| Storage   | R2 binding; optional S3-compatible driver | Local filesystem adapter |
+| Search    | Workers AI + Vectorize bindings           | Static-memory search     |
+| Telemetry | D1 binding                                | SQLite fallback adapter  |
+| Captcha   | Turnstile secret configuration            | Honeypot adapter         |
 
----
+The `APP_*_DRIVER` environment names select supported alternatives. Missing cloud bindings can cause factory fallback; they do not prove production equivalence, durable storage, or adequate abuse protection. The fallback directory is `src/lib/adapters/fallback/`, not the historical `in-memory/` tree. Email and deployment flows also have direct Worker/platform integration; not every line of application code is provider-independent.
 
-## 3. Astro 7 Static Site Generation (SSG)
+## Static does not mean zero JavaScript
 
-### 0 KB Baseline Client JavaScript
+There are no React/Vue-style hydrated islands in this baseline. There **is** delivered client JavaScript for ClientRouter, telemetry, Matrix, theme transitions, modals, navigation, search, filters, resume editing/export and other interactions. Nano Stores coordinates shared UI state; a dedicated Worker supports independent decorative rendering.
 
-Public documents (Blog posts, Case Studies, Experience entries, Project showcases, Services, and Resume) ship with **0 KB client JavaScript**. All interactions on content pages are implemented using modern web standards:
+Minimize bytes and main-thread work while preserving the accepted behavior. Do not delete client modules to satisfy an inaccurate “0KB baseline” label. Similarly, TypeScript configuration and ports do not certify that every source file has no `any`.
 
-- **Navigation & Collapsibles:** CSS `:has()`, `<details>`, `<dialog>`, and `:popover`.
-- **Keyboard Shortcuts:** Single vanilla script tag executing in `<script is:inline>` with zero external frameworks.
-- **Micro-State Management:** Nano Stores (< 1.5 KB) only when reactive state is strictly necessary (e.g. dynamic CV filter studio).
+## Document requests versus asset bypass
 
-### Dynamic Parameterized Routing (`[...lang]`)
+`assets.run_worker_first` currently starts with `/*` and excludes explicit static paths. Public HTML intentionally passes through the Worker so initial visits can be recorded server-side. Serving `env.ASSETS` from a Worker is not the same as bypassing Worker execution. Narrowing interception to `/admin` alone would change public document telemetry.
 
-All pages leverage Astro's catch-all parameterized routing in `src/pages/[...lang]/` to eliminate duplicate templates:
+Telemetry persistence is generally scheduled with `ctx.waitUntil()` and failures are isolated from public content delivery. This avoids awaiting database writes in the document path; it is not a measurable guarantee of zero overhead or zero lost events. Browser-cache/custom-timeline navigations additionally notify the collector after a committed route.
 
-- `params: { lang: undefined }` compiles to `/` (default English canonical).
-- `params: { lang: "es" }` compiles to `/es/` (Spanish localized canonical).
+## Evidence and limitations
 
-This reduces template maintenance surface by 50% while guaranteeing exact design parity across languages.
-
----
-
-## 4. Edge Fast-Path vs. Dynamic Path
-
-Requests arriving at the Cloudflare Edge are evaluated deterministically in `cloudflare/worker.ts`:
-
-1. **Fast-Path (Static Assets & Documents):**
-   - Bypasses Worker CPU overhead by streaming directly from `env.ASSETS`.
-   - Non-blocking telemetry runs in the background using `ctx.waitUntil()` so visitors experience **0 ms telemetry latency penalty**.
-2. **Subdomain Canonicalization:**
-   - Evaluated before asset fetching.
-   - Thematic vanity subdomains (`blog.arturonavax.dev`, `projects.arturonavax.dev`, `services.arturonavax.dev`, `resume.arturonavax.dev`) return an immediate **HTTP 308 Permanent Redirect** to the canonical apex path, consolidating SEO PageRank.
-3. **Admin Surface Isolation:**
-   - `/admin` requests on the apex domain are 308-redirected to `https://admin.arturonavax.dev`.
-   - The admin subdomain is gated behind **Cloudflare Zero Trust Access** (WebAuthn / GitHub OAuth), preventing unauthorized execution.
-4. **Dynamic API Endpoints:**
-   - `/api/contact`: Honeypot detection, Turnstile captcha validation, rate limiting, and webhook forwarding.
-   - `/api/search`: Edge-cached semantic vector search with instant in-memory fallback.
-   - `/api/v1/telemetry`: High-efficiency batching and circuit-breaker guarded ingestion.
-
----
-
-## 5. Build-Time Static Architecture Gates
-
-Quality is enforced through automated static analysis before any build or commit:
-
-- `scripts/audit-codebase.ts`: Scans for banned CSS transitions (`width`, `height`, `padding`, `margin` to prevent layout shifts), checks for unmanaged `<img>` tags, and bans legacy Tailwind configurations.
-- `bun test`: Validates all hexagonal adapters, circuit breakers, routing policies, and fallback mechanics.
-- `pnpm check`: Validates full TypeScript schema compliance across all Astro components.
-
-## Continuous decorative rendering
-
-The Matrix background is a persistent singleton canvas with an independently scheduled OffscreenCanvas Worker and a bounded 2D fallback. Both share `matrix-grid.ts`: fractional falling trains, dynamic tails, precached dual palettes, 18–28px depth variants and a 360px pointer lens eased over time (300ms constant). Geometry updates retain lane phases and map backing pixels precisely during live zoom.
-
-Theme transitions retain the native snapshot lifecycle and animate rounded-inset circular geometry rather than scaling content. In matched local Chromium traces this reduced raster work about 9–10%; median rAF cadence did not improve. This is a measured implementation choice, not a universal GPU/FPS or field CWV guarantee.
-
-The global telemetry singleton is separate from optional visible view counters. Cached timeline commits notify it explicitly; it captures route identity before idle scheduling and uses the existing server collector/dedupe.
+- [Content workflow](content-sync.md), [SEO/i18n](seo-and-i18n.md), [SPA continuity](spa-continuity.md), [Cloudflare](cloudflare-edge.md), and [security](security.md) are operator-oriented guides to the contracts.
+- `pnpm check`, `pnpm test`, `pnpm run audit` and browser suites cover different layers; a static assertion is not a full browser or production integration test.
+- Performance targets require current measurements. No architecture diagram certifies universal 100/100 scores, fixed TTFB, or uninterrupted FPS on every device.
+- Account-side Access/DNS/WAF settings, private R2 content, secrets, and production D1 state remain external inputs. Their presence in an old task log is not current verification.
