@@ -1,3 +1,5 @@
+> **Historical specification.** This record describes an earlier design or implementation phase. For current behavior, requirements, evidence levels, and limitations, use the [current specification index](README.md). Historical completion claims and numerical targets are not current certification.
+
 # SPEC-008: RESTAURACIÓN ARQUITECTÓNICA PERIMETRAL, BLINDAJE SSG PURO Y CONTROL ANTI-REGRESIÓN
 
 ## Diagnóstico Forense de la Re-arquitectura Fallida, Alineación con Workers Static Assets y Recuperación de Invariantes del Sistema

@@ -1,3 +1,5 @@
+> **Historical specification.** This record describes an earlier design or implementation phase. For current behavior, requirements, evidence levels, and limitations, use the [current specification index](README.md). Historical completion claims and numerical targets are not current certification.
+
 # SPEC-005: ENTREGA DE CONTENIDO EDGE DE ALTO RENDIMIENTO Y AISLAMIENTO DE INFRAESTRUCTURA DE CERO LATENCIA
 
 ## Arquitectura Perimetral Content-First en Cloudflare Edge, Aislamiento de Zero Trust, Normalización de Subdominios y Resiliencia Fail-Open

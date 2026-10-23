@@ -1,3 +1,5 @@
+> **Historical specification.** This record describes an earlier design or implementation phase. For current behavior, requirements, evidence levels, and limitations, use the [current specification index](README.md). Historical completion claims and numerical targets are not current certification.
+
 # SPEC-006: REFINAMIENTO DE EXPERIENCIA EDITORIAL, ERGONOMÍA DE INTERACCIÓN, PUNTUACIÓN DE BÚSQUEDA Y BLINDAJE DE IMPRESIÓN Y SEGURIDAD
 
 ## Taxonomía de Contenidos Unificada, Micro-Interacciones Deterministas por Teclado, Motor de Relevancia, Impresión Cross-Browser y Remediación CSP

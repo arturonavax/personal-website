@@ -1,3 +1,5 @@
+> **Historical specification.** This record describes an earlier design or implementation phase. For current behavior, requirements, evidence levels, and limitations, use the [current specification index](README.md). Historical completion claims and numerical targets are not current certification.
+
 # SPEC-001: ARQUITECTURA ENTERPRISE EDGE, RUTAS DINÁMICAS i18n Y RENDIMIENTO SPA
 
 ## Especificación Arquitectónica de Alto Rendimiento, Cero Duplicación de Código y Optimización Perimetral en Cloudflare

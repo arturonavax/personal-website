@@ -1,3 +1,5 @@
+> **Historical specification.** This record describes an earlier design or implementation phase. For current behavior, requirements, evidence levels, and limitations, use the [current specification index](README.md). Historical completion claims and numerical targets are not current certification.
+
 # SPEC-002: REFACTORIZACIÓN GENERAL, HARDENING DE EDGE Y ESTUDIO RESUME MAKER
 
 ## Refactorización del Sistema, Blindaje Perimetral en Cloudflare Edge, Motor de Impresión Cross-Browser y Estudio Interactivo de Currículum

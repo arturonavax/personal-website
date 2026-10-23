@@ -1,3 +1,5 @@
+> **Historical specification.** This record describes an earlier design or implementation phase. For current behavior, requirements, evidence levels, and limitations, use the [current specification index](README.md). Historical completion claims and numerical targets are not current certification.
+
 # SPEC-009: AISLAMIENTO DE ATAJOS DE TECLADO, ERGONOMÍA DE MODALES Y PULIDO DE MICRO-INTERACCIONES
 
 ## Invariantes de Aislamiento de Entradas Editables, Detección Inmediata de Desbordamiento y Eliminación de Indicadores Redundantes
