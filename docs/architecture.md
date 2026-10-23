@@ -117,3 +117,11 @@ Quality is enforced through automated static analysis before any build or commit
 - `scripts/audit-codebase.ts`: Scans for banned CSS transitions (`width`, `height`, `padding`, `margin` to prevent layout shifts), checks for unmanaged `<img>` tags, and bans legacy Tailwind configurations.
 - `bun test`: Validates all hexagonal adapters, circuit breakers, routing policies, and fallback mechanics.
 - `pnpm check`: Validates full TypeScript schema compliance across all Astro components.
+
+## Continuous decorative rendering
+
+The Matrix background is a persistent singleton canvas with an independently scheduled OffscreenCanvas Worker and a bounded 2D fallback. Both share `matrix-grid.ts`: fractional falling trains, dynamic tails, precached dual palettes, 18–28px depth variants and a 360px pointer lens eased over time (300ms constant). Geometry updates retain lane phases and map backing pixels precisely during live zoom.
+
+Theme transitions retain the native snapshot lifecycle and animate rounded-inset circular geometry rather than scaling content. In matched local Chromium traces this reduced raster work about 9–10%; median rAF cadence did not improve. This is a measured implementation choice, not a universal GPU/FPS or field CWV guarantee.
+
+The global telemetry singleton is separate from optional visible view counters. Cached timeline commits notify it explicitly; it captures route identity before idle scheduling and uses the existing server collector/dedupe.

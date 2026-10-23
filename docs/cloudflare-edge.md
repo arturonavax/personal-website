@@ -252,3 +252,11 @@ The project synchronizes Cloudflare Worker runtime bindings directly from `wrang
 
 - **Command:** `pnpm run types:worker` (executes `wrangler types -c wrangler.jsonc`).
 - Generates `__BaseEnv_Env` and ambient `Cloudflare.Env` types for D1, R2, Vectorize, Workers AI, Email Routing, and environment variables, keeping strict TypeScript checking 100% synchronized with the edge configuration.
+
+## Verified routing and telemetry contract (2026-10-23)
+
+`assets.run_worker_first` deliberately includes public HTML, not just admin/API: initial visits and uncached SPA document fetches need the Worker to schedule server telemetry with `ctx.waitUntil()`. Fingerprinted scripts, fonts and other configured static paths bypass execution. An admin-only array is incompatible with this server-side logging guarantee; Access protection and asset routing are separate controls.
+
+Adjacent job prefetches use `X-Astro-Prefetch: true` and do not count as real page views. The mounted `edge-telemetry.ts` singleton suppresses the initial duplicate beacon, clears `ev_init`, and handles Astro page-load, explicit cached timeline commits and bfcache. It captures the committed path and sends the background beacon immediately; optional view counters wait for idle. Consecutive duplicate notifications for the same path are coalesced. All events use `/api/telemetry/collect`; shared L1 dedupe suppresses a duplicate HTML visit/client beacon; D1 uniqueness protects authoritative pageview writes. The short isolate optimization, Cache API protection and authoritative dedupe are distinct layers, not interchangeable guarantees.
+
+Production uses the existing Access application for `admin.arturonavax.dev`; issuer/team and audience are explicit non-secret configuration. No committed bearer credential is allowed. Disable preview endpoints and preserve all external vault-prefix denials. Native logs remain enabled and traces are sampled at 1% to limit overhead. Run the local auth, telemetry and SPA regressions before publishing; inspect the actual deployed version and bindings afterward.

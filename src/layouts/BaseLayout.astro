@@ -446,6 +446,10 @@ const hasShortcuts = Boolean(shortcuts?.length);
     </aside>
 
     <script>
+      import { installEdgeTelemetry } from "../scripts/edge-telemetry";
+      installEdgeTelemetry();
+    </script>
+    <script>
       // @ts-nocheck
       (function () {
         function updateToastCollision(immediate) {

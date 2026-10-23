@@ -704,7 +704,7 @@ const jobIndexItems: IndexItem[] = [
 
       function prefetchUrl(url) {
         if (!url || cache[url]) return;
-        fetch(url, { priority: "low" })
+        fetch(url, { priority: "low", headers: { "X-Astro-Prefetch": "true" } })
           .then(function (res) {
             if (res.ok) return res.text();
             throw new Error("Failed to prefetch");
@@ -893,7 +893,6 @@ const jobIndexItems: IndexItem[] = [
               }
             }, 240);
 
-            updateStickyHeader();
             setupTimelineNav();
             if (typeof window.__initSimulationCards === "function") {
               window.__initSimulationCards();
@@ -901,6 +900,8 @@ const jobIndexItems: IndexItem[] = [
             if (typeof window.__setupPageIndex === "function") {
               window.__setupPageIndex();
             }
+            // Notify only after the cached route and its controls are committed.
+            document.dispatchEvent(new Event("site:route-committed"));
           })
           .catch(function () {
             if (typeof window.__hideBeacon === "function") {

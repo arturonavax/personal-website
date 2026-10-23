@@ -17,7 +17,7 @@ Acceptance: prefetch must not count as a page visit; successful custom timeline 
 ## Tasks
 
 T1 | S1 | inline | verified: accepted SPA implementation and documentation; commit: 424ee23 | Risk: none; existing implementation already verified, 374 Bun and 17 browser tests pass.
-T2 | S2 | inline | implemented: auth/vault regressions GREEN; independent verification PASS; commit pending | Risk: item 2 (auth boundary), item 5 (deployment configuration); independent verifier required.
+T2 | S2 | inline | implemented: auth/vault regressions GREEN; independent verification PASS; commit: fc185fb; native risk/reliability review approved and acknowledged | Risk: item 2 (auth boundary), item 5 (deployment configuration); independent verifier required.
 T3 | S3 | inline | implemented: mounted singleton, marked prefetch and corrected custom route fallback; browser recheck PASS; independent verification PASS; commit pending | Risk: item 4 (route commit and deferred telemetry ordering); independent verifier required.
 T4 | S1-S3 | inline | pending: push, fast-forward merge, automatic deployment/version and route/security/telemetry verification | Risk: item 5 (production delivery); bounded read-only remote verification.
 
@@ -40,3 +40,5 @@ L10. Local checks: 382 Bun tests pass; Astro check 127 files with zero diagnosti
 L11. Browser: 16/18 pass after source corrections; two obsolete test assumptions corrected (Astro event on cached jobs and unconditional unpublished blog). Scoped six-case recheck passes. Independent verifier: 54 Bun tests, four focused browser tests, one real history-navigation probe and four public-boundary probes pass; zero private reads/side effects on rejected requests. Adopted the history probe as a committed regression. Full verification has no change-caused blocker.
 L12. Real local D1 integration: cached /experience/leal/ commit returns 202 recorded=true/storageTier=D1; immediate duplicate returns recorded=false/deduped=true/storageTier=L1_CACHE. Remote deployment/D1 proof and a real interactive owner Access session remain unverified. No manual deploy or production data mutation performed.
 L13. Commit 424ee23 contains the coherent accepted Matrix iteration with tests/docs; native committed-range assessment from bf77127: medium, review_due=false, under_budget. Its 1,262 changed lines preserve tightly coupled renderer/zoom/proof invariants instead of artificially separating tests. No PR was created; the user explicitly authorized direct merge.
+
+L14. User granted the isolated security commit review. Native risk and reliability reviewers inspected all eight immutable patches and reported no findings (functional evidence remains L10–L12). Exact acknowledgement returned acknowledged/authority burned for lineage review-7b768356b07c2ef2, target sha256:91b879a68be78c11a3c2e0aa5a4fed44af41bb0a65ce10017205a8a9d5772dab. Commit fc185fb is unchanged; no correction required.

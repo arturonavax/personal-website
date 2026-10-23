@@ -831,13 +831,12 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     expect(d1Calls).toBe(0);
   });
 
-  it("6. EdgeViewCounter.astro clears ev_init immediately (Max-Age=0) upon initial consumption and listens to pageshow (event.persisted)", () => {
+  it("6. Mounted singleton clears ev_init immediately (Max-Age=0) upon initial consumption and listens to pageshow (event.persisted)", () => {
     const componentPath = path.join(
       process.cwd(),
       "src",
-      "components",
-      "ui",
-      "EdgeViewCounter.astro",
+      "scripts",
+      "edge-telemetry.ts",
     );
     const content = fs.readFileSync(componentPath, "utf8");
 
@@ -846,6 +845,6 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     );
     expect(content).toContain('window.addEventListener("pageshow"');
     expect(content).toContain("event.persisted");
-    expect(content).toContain('sendEdgeVisitBeacon("bfcache")');
+    expect(content).toContain('record("bfcache")');
   });
 });

@@ -283,12 +283,15 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       const link = page.locator(selector).first();
       const href = await link.getAttribute("href");
       const loaded = page.evaluate(
-        () =>
+        (eventName) =>
           new Promise<void>((resolve) =>
-            document.addEventListener("astro:page-load", () => resolve(), {
+            document.addEventListener(eventName, () => resolve(), {
               once: true,
             }),
           ),
+        selector.includes("data-timeline-nav")
+          ? "site:route-committed"
+          : "astro:page-load",
       );
       await link.click();
       await page.waitForURL(
@@ -316,7 +319,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       const bounds = await banner.boundingBox();
       expect(bounds?.x).toBe(initialBanner?.x);
       expect(bounds?.y).toBe(initialBanner?.y);
-      await page.waitForTimeout(180);
+      await page.waitForTimeout(280);
     };
     await navigate('#header-desktop-nav a[data-nav-section="about"]');
     await navigate('#header-desktop-nav a[data-nav-section="experience"]');
@@ -531,10 +534,12 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     expect(chosenTheme).toBe("light");
     await expect(page.locator("html")).not.toHaveClass(/theme-transitioning/);
 
+    // The index is intentionally omitted from SSG while all posts are drafts.
+    const blogPublished = (await page.request.get(`${baseUrl}/blog/`)).ok();
     for (const path of [
       "/projects/",
       "/experience/",
-      "/blog/",
+      ...(blogPublished ? ["/blog/"] : []),
       "/services/",
       "/case-studies/",
       "/resume/",
