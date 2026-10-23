@@ -46,6 +46,7 @@
 
 <script>
   // @ts-nocheck
+  import { circularThemeClip } from "../../scripts/theme-clip";
   // Rapid Master Toggle to enable/disable circular theme animation
   // Can be toggled in code (ENABLE_THEME_ANIMATION = false) or dynamically at runtime:
   //   window.__DISABLE_THEME_ANIMATION__ = true;
@@ -159,9 +160,11 @@
         event && typeof event.clientY === "number" && event.clientY > 0
           ? event.clientY
           : rect.top + rect.height / 2;
-      var endRadius = Math.hypot(
-        Math.max(x, window.innerWidth - x),
-        Math.max(y, window.innerHeight - y),
+      var clipFrames = circularThemeClip(
+        x,
+        y,
+        window.innerWidth,
+        window.innerHeight,
       );
 
       var direction = activeTheme === "light" ? "to-dark" : "to-light";
@@ -176,7 +179,10 @@
         applyTheme(nextTheme, true);
       });
 
+      var cleanupScheduled = false;
       var cleanUp = function () {
+        if (cleanupScheduled) return;
+        cleanupScheduled = true;
         requestAnimationFrame(function () {
           document.documentElement.classList.remove("theme-transitioning");
           document.documentElement.removeAttribute("data-theme-transitioning");
@@ -191,10 +197,7 @@
         .then(function () {
           var animation = document.documentElement.animate(
             {
-              clipPath: [
-                "circle(0px at " + x + "px " + y + "px)",
-                "circle(" + endRadius + "px at " + x + "px " + y + "px)",
-              ],
+              clipPath: clipFrames,
             },
             {
               duration: 420,

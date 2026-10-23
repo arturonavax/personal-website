@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { MatrixGrid } from "../src/scripts/matrix-grid";
+import { resizeMatrixSurface } from "../src/scripts/matrix-viewport";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
@@ -7,7 +8,10 @@ const source = new Bun.Transpiler({ loader: "ts" }).transformSync(
   readFileSync(
     new URL("../src/scripts/matrix.worker.ts", import.meta.url),
     "utf8",
-  ).replace(/import \{ MatrixGrid \} from "\.\/matrix-grid";\s*/, ""),
+  ).replace(
+    /import \{ (?:MatrixGrid|resizeMatrixSurface) \} from "\.\/matrix-(?:grid|viewport)";\s*/g,
+    "",
+  ),
 );
 
 function renderer(ownerBlocked = false) {
@@ -19,8 +23,16 @@ function renderer(ownerBlocked = false) {
   const occupied = new Map<string, string>();
   const pending = new Map<number, { at: number; run: () => void }>();
   const paints: { time: number; alpha: number }[] = [];
-  const glyphs: { time: number; y: number; text: string; alpha: number }[] = [];
+  const glyphs: {
+    time: number;
+    y: number;
+    text: string;
+    alpha: number;
+    size: number;
+  }[] = [];
   const clears: number[] = [];
+  let appliedScale = [1, 1];
+  let glyphSize = 18;
   const context = {
     fillStyle: "",
     font: "",
@@ -33,7 +45,9 @@ function renderer(ownerBlocked = false) {
       }
     },
     resetTransform() {},
-    scale() {},
+    scale(x: number, y: number) {
+      appliedScale = [x, y];
+    },
     fillRect() {
       paints.push({
         time: now,
@@ -53,14 +67,21 @@ function renderer(ownerBlocked = false) {
           glyph.y >= sy! &&
           glyph.y < sy! + sh!,
       );
+      glyphSize = dw!;
       if (glyph) context.fillText(glyph.text, dx! + dw! / 2, dy! + dh! / 2);
     },
     fillText(text: string, x: number, y: number) {
       const key = `${x}:${y}`;
       if (occupied.has(key)) overlaps++;
       occupied.set(key, text);
-      if (x === 9)
-        glyphs.push({ time: now, y, text, alpha: context.globalAlpha });
+      if (x < glyphSize)
+        glyphs.push({
+          time: now,
+          y,
+          text,
+          alpha: context.globalAlpha,
+          size: glyphSize,
+        });
     },
   };
   const schedule = (run: () => void, delay: number) => {
@@ -80,6 +101,7 @@ function renderer(ownerBlocked = false) {
   random.random = () => 0.5;
   runInNewContext(source, {
     self: scope,
+    resizeMatrixSurface,
     performance: { now: () => now },
     Math: random,
     MatrixGrid: class extends MatrixGrid {
@@ -140,6 +162,9 @@ function renderer(ownerBlocked = false) {
     },
     pending,
     canvas,
+    get appliedScale() {
+      return appliedScale;
+    },
     random,
     occupied,
     get ticks() {
@@ -166,34 +191,46 @@ describe("Matrix Worker frame independence", () => {
   it("bounds a delayed callback without accumulating catch-up debt", () => {
     const app = renderer();
     app.advance(3500);
-    const position = () => {
-      const head = app.glyphs.at(-1)!;
-      return head.y - 9 - 18 + head.alpha * 18;
-    };
+    const position = () =>
+      app.glyphs
+        .filter((glyph) => glyph.time === app.glyphs.at(-1)!.time)
+        .find((glyph) => glyph.alpha === 1 && glyph.y > 1000)!.y;
+    const cell = app.glyphs.at(-1)!.size;
     const before = position();
     app.stall(500);
-    expect(position() - before).toBeLessThanOrEqual(4.800001);
+    expect(position() - before).toBeLessThanOrEqual((8 * cell) / 30 + 0.000001);
     expect(position() - before).toBeGreaterThan(0);
     const resumed = position();
     app.advance(17);
-    expect(position() - resumed).toBeCloseTo((17 * 8 * 18) / 1000, 4);
+    expect(position() - resumed).toBeCloseTo((17 * 8 * cell) / 1000, 4);
     expect(app.pending.size).toBe(1);
   });
 
   it("advances the head while retaining a fading code trail without per-frame text rasterization", () => {
     const app = renderer();
     app.advance(3500);
-    const startY = app.glyphs.at(-1)!.y;
+    const startY = app.glyphs
+      .filter((glyph) => glyph.time === app.glyphs.at(-1)!.time)
+      .find((glyph) => glyph.alpha === 1 && glyph.y > 1000)!.y;
     const rasterizations = app.rasterizations;
     app.advance(1000);
-    expect(app.glyphs.at(-1)!.y - startY).toBeCloseTo(8 * 18, -1);
+    const heads = app.glyphs.filter(
+      (glyph) => glyph.time === app.glyphs.at(-1)!.time && glyph.alpha === 1,
+    );
+    const advanced = heads.find(
+      (glyph) => Math.abs(glyph.y - startY - 8 * glyph.size) < 5,
+    );
+    expect(advanced).toBeDefined();
     expect(app.rasterizations).toBe(rasterizations);
     const frame = app.glyphs.filter(
       (glyph) => glyph.time === app.glyphs.at(-1)!.time,
     );
     expect(frame.length).toBeGreaterThanOrEqual(12);
-    expect(frame[0]!.alpha).toBeLessThan(frame.at(-2)!.alpha);
-    expect(frame[0]!.alpha).toBeLessThan(0.2);
+    const firstHead = frame.findIndex(
+      (glyph) => glyph.alpha === 1 && glyph.y > 1000,
+    );
+    expect(frame[firstHead + 1]!.alpha).toBeLessThan(frame[firstHead]!.alpha);
+    expect(frame[firstHead + 12]!.alpha).toBeLessThan(0.2);
   });
 
   it("clears every frame instead of accumulating ghost letters", () => {
@@ -202,12 +239,14 @@ describe("Matrix Worker frame independence", () => {
     expect(app.glyphs.length).toBeGreaterThan(0);
     expect(app.overlaps).toBe(0);
     expect(app.paints.length).toBe(0);
-    expect(app.occupied.size).toBeLessThanOrEqual(8 * 18);
+    expect(app.occupied.size).toBeLessThanOrEqual(
+      8 * (Math.ceil(5000 / 18) + 2),
+    );
     app.send({ type: "theme", isLight: true });
     expect(app.overlaps).toBe(0);
   });
 
-  it("updates the light envelope every frame while keeping one character in each spaced position", () => {
+  it("moves glyph positions every frame while keeping characters separated", () => {
     const app = renderer();
     app.advance(3500);
     const from = app.glyphs.length;
@@ -220,12 +259,15 @@ describe("Matrix Worker frame independence", () => {
     }
     expect(frames.size).toBeGreaterThanOrEqual(5);
     expect(
-      new Set([...frames.values()].map((rows) => rows[0]!.alpha)).size,
+      new Set([...frames.values()].map((rows) => rows[0]!.y)).size,
     ).toBeGreaterThanOrEqual(5);
     for (const rows of frames.values()) {
       expect(new Set(rows.map((glyph) => glyph.y)).size).toBe(rows.length);
-      for (let i = 1; i < rows.length; i++)
-        expect(rows[i]!.y - rows[i - 1]!.y).toBe(18);
+      const positions = rows.map((glyph) => glyph.y).sort((a, b) => a - b);
+      for (let i = 1; i < positions.length; i++)
+        expect(positions[i]! - positions[i - 1]!).toBeGreaterThanOrEqual(
+          17.999999,
+        );
     }
   });
 
@@ -237,15 +279,33 @@ describe("Matrix Worker frame independence", () => {
       return seed / 4294967296;
     };
     app.advance(5000);
-    const before = new Map(app.occupied);
+    const before = [...app.occupied.values()];
     app.advance(500);
-    expect(
-      [...before].some(
-        ([cell, text]) =>
-          app.occupied.has(cell) && app.occupied.get(cell) !== text,
-      ),
-    ).toBe(true);
+    expect([...app.occupied.values()]).not.toEqual(before);
     expect(app.occupied.size).toBeGreaterThan(7 * 10);
+  });
+
+  it("maps the full backing store after small resizes and live DPR changes", () => {
+    const app = renderer();
+    for (const [width, height, dpr] of [
+      [1440, 900, 1],
+      [1460, 910, 1],
+      [1430, 895, 0.8],
+      [3840, 2160, 2],
+      [3820, 2150, 2],
+    ]) {
+      app.send({ type: "resize", width, height, dpr });
+      expect(app.appliedScale[0]! * width!).toBeCloseTo(app.canvas.width, 5);
+      expect(app.appliedScale[1]! * height!).toBeCloseTo(app.canvas.height, 5);
+      const scale = Math.min(
+        dpr!,
+        1,
+        Math.sqrt((1920 * 1080) / (width! * height!)),
+      );
+      expect(app.canvas.width).toBe(Math.max(1, Math.floor(width! * scale)));
+      expect(app.canvas.height).toBe(Math.max(1, Math.floor(height! * scale)));
+      expect(app.pending.size).toBe(1);
+    }
   });
 
   it("bounds decorative raster pixels on high-DPR and large viewports", () => {
@@ -275,7 +335,9 @@ describe("Matrix Worker frame independence", () => {
     expect(app.pending.size).toBe(1);
     app.advance(50);
     expect(app.ticks).toBeGreaterThan(0);
-    expect(app.glyphs.at(-1)!.y - pausedY).toBeLessThanOrEqual(20);
+    expect(app.glyphs.at(-1)!.y - pausedY).toBeLessThanOrEqual(
+      app.glyphs.at(-1)!.size,
+    );
     expect(app.pending.size).toBe(1);
   });
 });

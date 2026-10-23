@@ -281,7 +281,7 @@ describe("ODD Task 3: Mobile View Transitions Hardening & Anti-Squishing", () =>
     expect(themeContent).not.toMatch(
       /isMobile[\s\S]*?!document\.startViewTransition\s*\|\|\s*prefersReduced\s*\|\|\s*isAnimationDisabled\s*\|\|\s*isMobile/,
     );
-    expect(themeContent).toContain("circle(");
+    expect(themeContent).toContain("circularThemeClip(");
     expect(themeContent).toContain("::view-transition-new(root)");
   });
 

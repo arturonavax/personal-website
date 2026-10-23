@@ -400,14 +400,14 @@ describe("Component 7: Print CV Fidelity (REQ-PRINT-1..6)", () => {
     expect(code).toMatch(/showPopover\(\)/);
   });
 
-  it("REQ-PRINT-6: matrix first-load drops start at or above the top", () => {
+  it("Matrix initializes distributed rain instead of a synchronized entrance wave", () => {
     for (const random of [0, 0.5, 0.999]) {
       const drawnHeads: number[] = [];
       const grid = new MatrixGrid(
         {
           clearRect() {},
           drawImage(_image: CanvasImageSource, ...coords: number[]) {
-            drawnHeads.push(coords[5]! + 9);
+            drawnHeads.push(coords[5]! + coords[7]! / 2);
           },
           globalAlpha: 1,
         },
@@ -418,7 +418,10 @@ describe("Component 7: Print CV Fidelity (REQ-PRINT-1..6)", () => {
           }) as unknown as OffscreenCanvas,
       );
       grid.resize(200, 200);
-      expect(drawnHeads.every((y) => y <= 10)).toBe(true);
+      expect(drawnHeads.some((y) => y > 10)).toBe(true);
+      expect(
+        drawnHeads.every((y) => Number.isFinite(y) && y > -30 && y < 230),
+      ).toBe(true);
     }
   });
 });

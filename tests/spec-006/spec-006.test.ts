@@ -633,15 +633,16 @@ describe("SPEC-006 REQ-UXE-23: Resume Maker Synchronized Scroll & Vertical Toggl
 });
 
 describe("SPEC-006 REQ-UXE-24: Matrix Background Continuous Stream & Title Flicker Fix", () => {
-  it("MatrixBackground prevents drops reset unless dimensions change by > 50px and preserves singleton state", () => {
+  it("MatrixBackground observes real geometry changes while preserving singleton state", () => {
     const matrixPath = path.join(
       ROOT_DIR,
       "src/components/ui/MatrixBackground.astro",
     );
     const content = fs.readFileSync(matrixPath, "utf-8");
 
-    expect(content).toContain("Math.abs(currentWidth - this.lastWidth) > 50");
-    expect(content).toContain("Math.abs(currentHeight - this.lastHeight) > 50");
+    expect(content).toContain("observeMatrixViewport");
+    expect(content).toContain("resizeMatrixSurface");
+    expect(content).not.toContain("shouldResize");
     expect(content).toContain("__matrixDrops");
   });
 

@@ -35,6 +35,11 @@ const {
 
 <script>
   import { MatrixGrid } from "../../scripts/matrix-grid";
+  import {
+    resizeMatrixSurface,
+    observeMatrixViewport,
+    observeMatrixPointer,
+  } from "../../scripts/matrix-viewport";
   interface MatrixSingleton {
     initialized: boolean;
     bootScheduled: boolean;
@@ -129,21 +134,8 @@ const {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       singleton.lastIsDark = getIsDark();
 
-      const resizeManager = {
-        lastWidth: window.innerWidth,
-        lastHeight: window.innerHeight,
-        shouldResize(currentWidth: number, currentHeight: number): boolean {
-          if (
-            Math.abs(currentWidth - this.lastWidth) > 50 ||
-            Math.abs(currentHeight - this.lastHeight) > 50
-          ) {
-            this.lastWidth = currentWidth;
-            this.lastHeight = currentHeight;
-            return true;
-          }
-          return false;
-        },
-      };
+      const width = canvas.clientWidth || window.innerWidth;
+      const height = canvas.clientHeight || window.innerHeight;
 
       const markCanvasVisible = () => {
         requestAnimationFrame(() => {
@@ -174,8 +166,8 @@ const {
             {
               type: "init",
               canvas: offscreen,
-              width: resizeManager.lastWidth,
-              height: resizeManager.lastHeight,
+              width,
+              height,
               dpr,
               isLight: !singleton.lastIsDark,
             },
@@ -194,26 +186,12 @@ const {
             worker.postMessage({ type: paused ? "pause" : "resume" });
           };
 
-          let resizeTimer: number | undefined;
-          window.addEventListener(
-            "resize",
-            () => {
-              window.clearTimeout(resizeTimer);
-              resizeTimer = window.setTimeout(() => {
-                const currentWidth = window.innerWidth;
-                const currentHeight = window.innerHeight;
-                if (resizeManager.shouldResize(currentWidth, currentHeight)) {
-                  worker.postMessage({
-                    type: "resize",
-                    width: currentWidth,
-                    height: currentHeight,
-                    dpr: Math.min(window.devicePixelRatio || 1, 2),
-                  });
-                }
-              }, 150);
-            },
-            { passive: true },
-          );
+          observeMatrixViewport(canvas, (width, height, dpr) => {
+            worker.postMessage({ type: "resize", width, height, dpr });
+          });
+          observeMatrixPointer((x, y, active) => {
+            worker.postMessage({ type: "pointer", x, y, active });
+          });
 
           markCanvasVisible();
           return;
@@ -226,19 +204,9 @@ const {
       const ctx = canvas.getContext("2d", { alpha: true });
       if (!ctx) return;
 
-      let w = window.innerWidth;
-      let h = window.innerHeight;
-      const resizeBackingStore = () => {
-        const scale = Math.min(
-          1,
-          Math.sqrt((1920 * 1080) / Math.max(1, w * h)),
-        );
-        canvas.width = Math.max(1, Math.floor(w * scale));
-        canvas.height = Math.max(1, Math.floor(h * scale));
-        ctx.resetTransform();
-        ctx.scale(scale, scale);
-      };
-      resizeBackingStore();
+      let w = width;
+      let h = height;
+      resizeMatrixSurface(canvas, ctx, w, h, dpr);
       const grid = new MatrixGrid(ctx);
       grid.setTheme(!getIsDark());
       grid.resize(w, h);
@@ -267,20 +235,13 @@ const {
         grid.draw(elapsed);
       };
 
-      window.addEventListener(
-        "resize",
-        () => {
-          const currentWidth = window.innerWidth;
-          const currentHeight = window.innerHeight;
-          if (resizeManager.shouldResize(currentWidth, currentHeight)) {
-            w = currentWidth;
-            h = currentHeight;
-            resizeBackingStore();
-            grid.resize(w, h);
-          }
-        },
-        { passive: true },
-      );
+      observeMatrixViewport(canvas, (width, height, dpr) => {
+        w = width;
+        h = height;
+        resizeMatrixSurface(canvas, ctx, w, h, dpr);
+        grid.resize(w, h);
+      });
+      observeMatrixPointer((x, y, active) => grid.setPointer(x, y, active));
 
       singleton.rafId = requestAnimationFrame(draw);
       markCanvasVisible();

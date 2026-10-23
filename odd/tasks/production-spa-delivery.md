@@ -1,0 +1,35 @@
+# Production SPA delivery and edge verification
+
+Branch: `feat/spa-continuity-tasks12-13`. Delivery: explicitly authorized commits, push and direct merge to main; no PR or manual deployment. Keep independently reversible behavior units with tests and docs.
+Checks: Bun, Astro check/build, audit, local Chromium; cf/Wrangler production readback. Forecast: approximately 1,700 authored changed lines including the already verified SPA iteration; do not split tightly coupled renderer invariants artificially.
+
+## Specs
+
+S1. "Ahora si todo esta perfecto, actualiza documentacion, specs, agents.md y memoria, haz commit, push y merge a main para que cloudflare haga el despliegue automatico"
+Acceptance: document the accepted 18–28px Matrix, eased lens, native rounded-inset reveal and proof limits; preserve verified SPA behavior; publish using existing authorized sessions without force-push or a manual deployment.
+
+S2. "luego dedarle un tiempo al despliegue usa el comando `cf` y `wrangler` para comprobar que todas las configuraciones del website esten perfectas priorizando el rendimiento del usuario final y seguridad, incluyendo el hecho de solo aplicar run_worker_first en las paginas y endpoints de /admin para protegerlos con Zero Trust Access de ser posible"
+Acceptance: check actual production settings and Access; fix reproduced local auth/vault bypasses before delivery. The admin-only proposal is conditional: preserve public server-side logging and immutable-asset bypass; document why public HTML still needs interception. Do not claim an exhaustive or perfect security certification.
+
+S3. "y garantizar que la implementacion de registro de telemetria server-side este perfecto y detectara los ingresos a las paginas incluso las navegaciones entre jobs del timeline con las flechas."
+Acceptance: prefetch must not count as a page visit; successful custom timeline commits, including cache hits and history navigation, must reach the existing server collector for their committed path. Retain dedupe and waitUntil ingestion; verify with local tests and scoped production evidence without dumping private records.
+
+## Tasks
+
+T1 | S1 | inline | verified: accepted SPA implementation and documentation; commit pending | Risk: none; existing implementation already verified, 374 Bun and 17 browser tests pass.
+T2 | S2 | inline | implemented: auth/vault regressions GREEN; independent verification and commit pending | Risk: item 2 (auth boundary), item 5 (deployment configuration); independent verifier required.
+T3 | S3 | inline | implemented: mounted singleton, marked prefetch and corrected custom route fallback; browser recheck pending | Risk: item 4 (route commit and deferred telemetry ordering); independent verifier required.
+T4 | S1-S3 | inline | pending: push, fast-forward merge, automatic deployment/version and route/security/telemetry verification | Risk: item 5 (production delivery); bounded read-only remote verification.
+
+## Log
+
+L1. User request: "$cloudflare $workers-best-practices $wrangler Ahora si todo esta perfecto, actualiza documentacion, specs, agents.md y memoria, haz commit, push y merge a main para que cloudflare haga el despliegue automatico, luego dedarle un tiempo al despliegue usa el comando `cf` y `wrangler` para comprobar que todas las configuraciones del website esten perfectas priorizando el rendimiento del usuario final y seguridad, incluyendo el hecho de solo aplicar run_worker_first en las paginas y endpoints de /admin para protegerlos con Zero Trust Access de ser posible, y garantizar que la implementacion de registro de telemetria server-side este perfecto y detectara los ingresos a las paginas incluso las navegaciones entre jobs del timeline con las flechas."
+L2. Remote-session question: "¿Autorizás usar las sesiones ya configuradas de Git/GitHub y Cloudflare (`cf` y Wrangler) para hacer push y merge en `arturonavax/personal-website` y verificar la producción de `arturonavax.dev`?" User: "Si, autorizo". Authorized existing sessions only; do not disclose secrets or perform unrelated remote mutations.
+L3. Read-only exploration verified two local security bypasses: unverified Access identity fallback when team/audience are absent; caller-controlled internal header bypasses vault perimeter. Public HTML interception is required for current server visits. Timeline adjacent fetches lack prefetch markers and custom cached commits omit collector notification. These concrete defects are in scope before production delivery.
+L4. Remote readback: main is an ancestor of the feature branch (0 behind, 18 ahead); existing Cloudflare OAuth sessions authenticate the intended account. Access application exists for admin.arturonavax.dev. No production mutations performed yet.
+
+L5. Security RED: six forged-identity/vault cases failed before the fix; valid configured bearer remained valid. GREEN: eight boundary tests including a signed RSA JWT fixture plus 26 SPEC-005 cases passed. Source mock fallback removed, external vault requests denied unconditionally, malformed Access-cookie encoding treated as unauthenticated.
+L6. Verified remote Access team and audience against the owner-only application; configured both non-secret identifiers, removed the formerly committed plaintext bearer, disabled preview URLs and enabled 1% trace sampling. No manual production mutation; automatic deployment must remove the stale bearer binding and verify the result. Historical Git objects are not erased.
+L7. Mounted collector globally; marked speculative job fetches; successful custom route commit emits one dedicated event. Browser RED confirmed missing prefetch marker and, with the existing 240ms navigation guard settled, zero captured visits instead of both committed paths. No synthetic Astro lifecycle dispatch and no Matrix scheduling changes.
+
+L8. Browser verification exposed a swallowed pre-existing scope error: custom timeline navigation called an updater nested inside setupTimelineNav, causing Astro fallback after successful article/history commit. Runtime trace observed custom commit then a second Astro navigation and duplicate visits. Removed only the out-of-scope call (setup already invokes the updater); notify after successful setup. Collector sends the beacon immediately, defers only optional counters and coalesces duplicate same-path notifications. Added no-extra-Astro-navigation assertion. Earlier suite: 15/18 pass; timeline duplicate and navigation guard/routing failures require scoped recheck after correction.

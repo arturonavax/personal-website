@@ -51,6 +51,11 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       content: `#theme-pixel-probe { position:fixed;left:20px;top:500px;width:80px;height:80px;z-index:100000;background:rgb(17,34,51); } html[data-theme="light"] #theme-pixel-probe { background:rgb(221,238,255); }`,
     });
     await page.evaluate(() => {
+      (window as any).__themeEndEvents = 0;
+      window.addEventListener(
+        "theme-transition-end",
+        () => (window as any).__themeEndEvents++,
+      );
       const probe = document.createElement("div");
       probe.id = "theme-pixel-probe";
       document.body.append(probe);
@@ -75,6 +80,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       const offset = (540 * info.width + 60) * info.channels;
       return [...data.subarray(offset, offset + 3)];
     };
+    let completedThemes = 0;
     for (const [oldPixel, newPixel] of [
       [
         [17, 34, 51],
@@ -91,12 +97,29 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       });
       await page.locator("#theme-toggle").click();
       await page.waitForFunction(() => !!(window as any).__themeProbeAnimation);
+      expect(
+        await page.evaluate(() =>
+          (window as any).__themeProbeAnimation.effect
+            .getKeyframes()
+            .every((frame: any) => frame.clipPath.startsWith("inset(")),
+        ),
+      ).toBe(true);
       expect(await sample()).toEqual(oldPixel);
       await page.waitForFunction(
         () =>
           !document.documentElement.hasAttribute("data-theme-transitioning"),
       );
       expect(await sample()).toEqual(newPixel);
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          ),
+      );
+      completedThemes++;
+      expect(await page.evaluate(() => (window as any).__themeEndEvents)).toBe(
+        completedThemes,
+      );
     }
   });
 
