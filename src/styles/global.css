@@ -410,13 +410,21 @@ html[data-theme="light"] body {
   color: var(--color-text-primary);
 }
 
-/* Pliegues angulares y esquinas geométricas con sombras inteligentes adaptativas */
+/* Radius utilities remain authoritative unless a surface supplies its own token. */
+@layer components {
+  .geometric-box {
+    border-radius: 0.25rem;
+  }
+}
+
+/* Both strokes share one full-size outline, including inside clipped surfaces.
+   Keep their geometry independent of class names and responsive utility syntax. */
 .geometric-box {
   position: relative;
-  border: 1px solid var(--color-surface-border);
+  border: 0 solid var(--color-surface-border);
+  border-radius: var(--geometric-radius, revert-layer);
   background-color: var(--color-surface-card);
   box-shadow: var(--shadow-card);
-  border-radius: 4px;
   transition:
     border-color 200ms ease,
     box-shadow 200ms ease;
@@ -426,60 +434,33 @@ html[data-theme="light"] body {
 .geometric-box::after {
   content: "";
   position: absolute;
-  width: 14px;
-  height: 14px;
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
   z-index: 5;
   box-sizing: border-box;
-  transition: border-color 200ms ease;
 }
 
 .geometric-box::before {
-  top: -1px;
-  left: -1px;
-  border-top: 2px solid var(--color-accent-gold);
-  border-left: 2px solid var(--color-accent-gold);
-  border-top-left-radius: 4px;
+  border: var(--geometric-border-width, 1px) solid;
+  border-color: inherit;
 }
 
 .geometric-box::after {
-  bottom: -1px;
-  right: -1px;
-  border-bottom: 2px solid var(--color-accent-gold);
-  border-right: 2px solid var(--color-accent-gold);
-  border-bottom-right-radius: 4px;
+  --corner-extent: var(
+    --geometric-corner-size,
+    max(1rem, calc(var(--geometric-radius, 0px) + 0.5rem))
+  );
+  border: var(--geometric-accent-width, 2px) solid var(--color-accent-gold);
+  mask-image: linear-gradient(
+    135deg,
+    #000 0 var(--corner-extent),
+    transparent var(--corner-extent) calc(100% - var(--corner-extent)),
+    #000 calc(100% - var(--corner-extent))
+  );
 }
 
-/* Prevención robusta de rotura de esquinas en contenedores con overflow u offsets fraccionarios */
-.geometric-box.overflow-hidden::before,
-.geometric-box[class*="overflow-hidden"]::before {
-  top: 0;
-  left: 0;
-  border-top-left-radius: 3px;
-}
-
-.geometric-box.overflow-hidden::after,
-.geometric-box[class*="overflow-hidden"]::after {
-  bottom: 0;
-  right: 0;
-  border-bottom-right-radius: 3px;
-}
-
-/* Soporte adaptativo para contenedores con esquinas redondeadas tipo rounded-lg (8px) */
-.geometric-box.rounded-lg::before,
-.geometric-box[class*="rounded-lg"]::before {
-  border-top-left-radius: 8px;
-}
-
-.geometric-box.rounded-lg::after,
-.geometric-box[class*="rounded-lg"]::after {
-  border-bottom-right-radius: 8px;
-}
-
-/* Modificador para contenedores que no deben llevar esquinas geométricas */
-.no-corner-accents::before,
-.no-corner-accents::after,
-.geometric-box.no-corner-accents::before,
+/* Opt-out removes decoration, never the surface's structural outline. */
 .geometric-box.no-corner-accents::after {
   display: none !important;
 }

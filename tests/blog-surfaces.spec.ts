@@ -66,12 +66,15 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
 
           const detail = await page.goto(`${baseUrl}${prefix}/blog/${slug}/`);
           expect(detail?.status()).toBe(200);
-          const article = await inspect("#main-content > article");
+          const article = await inspect(".article-detail__content");
           expect(article.background).toBe(article.expectedBackground);
           expect(article.backdrop).toBe("none");
           expect(article.left).toBeGreaterThanOrEqual(16);
           expect(article.right).toBeGreaterThanOrEqual(16);
           expect(article.mainGap).toBeGreaterThanOrEqual(24);
+          await expect(
+            page.locator(".article-detail__header.geometric-box"),
+          ).toBeVisible();
           expect(article.headerGap).toBeGreaterThanOrEqual(24);
           await expect(page.locator("#main-content h1")).toBeVisible();
         });
@@ -79,20 +82,47 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     }
   }
 
-  test("project ArticleLayout keeps its existing surface and spacing", async ({
-    page,
-  }) => {
-    await page.goto(`${baseUrl}/projects/fyld/`);
-    await expect(page.locator("#main-content > article")).toHaveAttribute(
-      "class",
-      "mx-auto max-w-5xl px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8 sm:pb-12 matrix-readability-blur rounded-xl border border-[var(--color-surface-border-subtle)] shadow-sm",
-    );
-    expect(
-      await page.locator("#main-content > article").evaluate((element) => ({
-        gap:
-          element.getBoundingClientRect().top -
-          document.getElementById("main-content")!.getBoundingClientRect().top,
-      })),
-    ).toEqual({ gap: 0 });
-  });
+  for (const theme of ["dark", "light"]) {
+    for (const width of [390, 1440]) {
+      test(`project detail matches service composition: ${theme}, ${width}px`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.addInitScript(
+          (selected) => localStorage.setItem("theme", selected),
+          theme,
+        );
+        await page.goto(`${baseUrl}/projects/fyld/`);
+        const article = page.locator(".article-detail");
+        const header = article.locator(".article-detail__header.geometric-box");
+        const content = article.locator(".article-detail__content");
+        await expect(header).toBeVisible();
+        await expect(content).toBeVisible();
+        await expect(header.locator("h1")).toBeVisible();
+        await expect(
+          header.locator(".article-detail__description"),
+        ).toBeVisible();
+        const geometry = await article.evaluate((element) => {
+          const header = element.querySelector(".article-detail__header")!;
+          const content = element.querySelector(".article-detail__content")!;
+          return {
+            outerBorder: getComputedStyle(element).borderTopWidth,
+            outerBackdrop: getComputedStyle(element).backdropFilter,
+            gap:
+              content.getBoundingClientRect().top -
+              header.getBoundingClientRect().bottom,
+            left: header.getBoundingClientRect().left,
+            right: innerWidth - header.getBoundingClientRect().right,
+            overflow: document.documentElement.scrollWidth > innerWidth,
+          };
+        });
+        expect(geometry.outerBorder).toBe("0px");
+        expect(geometry.outerBackdrop).toBe("none");
+        expect(geometry.gap).toBeGreaterThanOrEqual(24);
+        expect(geometry.left).toBeGreaterThanOrEqual(16);
+        expect(geometry.right).toBeGreaterThanOrEqual(16);
+        expect(geometry.overflow).toBe(false);
+      });
+    }
+  }
 }

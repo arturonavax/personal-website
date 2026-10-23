@@ -89,78 +89,62 @@ const jsonLd =
   availableLocales={availableLocales}
   jsonLd={jsonLd}
 >
-  <article
-    class={
-      collectionName === "posts"
-        ? "blog-article mx-auto max-w-5xl rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 sm:p-8 lg:p-10 shadow-sm"
-        : "mx-auto max-w-5xl px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8 sm:pb-12 matrix-readability-blur rounded-xl border border-[var(--color-surface-border-subtle)] shadow-sm"
-    }
-  >
-    <div class="mb-3 sm:mb-5 lg:mb-6">
+  <article class="article-detail mx-auto max-w-5xl px-4 sm:px-6 pt-6 sm:pt-8 pb-8 sm:pb-12 space-y-8">
+    <div>
       <a
         href={backHref}
         class="inline-flex items-center gap-1.5 font-mono text-xs text-[var(--color-accent-gold)] hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)]"
       >
         &larr; {backLabel}
       </a>
-
-      <header class="mt-2.5 sm:mt-4 border-b border-[var(--color-surface-border)] pb-6 sm:pb-8">
-        <h1 class="text-2xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-3xl lg:text-4xl">
-          {title}
-        </h1>
-
-        <div class="mt-4 flex flex-wrap items-center gap-4 text-xs font-mono text-[var(--color-text-muted)]">
-          {pubDate && (
-            <time
-              datetime={pubDate.toISOString()}
-              class="text-[var(--color-accent-gold)]"
-            >
-              {formatDate(pubDate, locale)}
-            </time>
-          )}
-          {tags && tags.length > 0 && (
-            <div class="flex flex-wrap gap-1.5">
-              {tags.map((tag) => (
-                <button
-                  type="button"
-                  data-tech-search={tag}
-                  title={
-                    locale === "es"
-                      ? `Buscar notas y proyectos sobre ${tag}`
-                      : `Search projects & posts mentioning ${tag}`
-                  }
-                  class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
-                >
-                  <TechIcon
-                    name={tag}
-                    class="h-3 w-3 text-[var(--color-accent-gold)]"
-                  />
-                  <span>{tag}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
     </div>
 
+    <header class="article-detail__header geometric-box rounded-lg bg-[var(--color-surface-card)] p-6 sm:p-8 space-y-4">
+      <h1 class="text-2xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-3xl lg:text-4xl">
+        {title}
+      </h1>
+
+      <p class="article-detail__description max-w-prose text-sm sm:text-base leading-relaxed text-[var(--color-text-secondary)]">
+        {description}
+      </p>
+
+      <div class="border-t border-[var(--color-surface-border-subtle)] pt-4 flex flex-wrap items-center gap-4 text-xs font-mono text-[var(--color-text-muted)]">
+        {pubDate && (
+          <time
+            datetime={pubDate.toISOString()}
+            class="text-[var(--color-accent-gold)]"
+          >
+            {formatDate(pubDate, locale)}
+          </time>
+        )}
+        {tags && tags.length > 0 && (
+          <div class="flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <button
+                type="button"
+                data-tech-search={tag}
+                title={
+                  locale === "es"
+                    ? `Buscar notas y proyectos sobre ${tag}`
+                    : `Search projects & posts mentioning ${tag}`
+                }
+                class="inline-flex items-center gap-1.5 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-2.5 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer"
+              >
+                <TechIcon
+                  name={tag}
+                  class="h-3 w-3 text-[var(--color-accent-gold)]"
+                />
+                <span>{tag}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </header>
+
     <!-- Article Content -->
-    <div class="space-y-6 text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed [&>h2]:mt-12 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:text-[var(--color-text-primary)] [&>h2]:border-b [&>h2]:border-[var(--color-surface-border-subtle)] [&>h2]:pb-3 [&>h3]:mt-10 [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:text-[var(--color-accent-gold)] [&>p]:leading-8 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:space-y-2.5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:space-y-2.5 [&>pre]:rounded-lg [&>pre]:border [&>pre]:border-[var(--color-surface-border)] [&>pre]:bg-[var(--color-surface-card)] [&>pre]:p-5 [&>pre]:overflow-x-auto [&>pre]:text-xs sm:[&>pre]:text-sm [&>code]:rounded [&>code]:bg-[var(--color-surface-card)] [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:font-mono [&>code]:text-xs sm:[&>code]:text-sm [&>code]:text-[var(--color-accent-gold)] [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--color-accent-gold)] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-[var(--color-text-muted)]">
+    <div class="article-detail__content rounded-xl border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)] p-5 sm:p-8 space-y-6 text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed [&>:first-child]:mt-0 [&>h2]:mt-12 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:text-[var(--color-text-primary)] [&>h2]:border-b [&>h2]:border-[var(--color-surface-border-subtle)] [&>h2]:pb-3 [&>h3]:mt-10 [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:text-[var(--color-accent-gold)] [&>p]:leading-8 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:space-y-2.5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:space-y-2.5 [&>pre]:rounded-lg [&>pre]:border [&>pre]:border-[var(--color-surface-border)] [&>pre]:bg-[var(--color-surface-card)] [&>pre]:p-5 [&>pre]:overflow-x-auto [&>pre]:text-xs sm:[&>pre]:text-sm [&>code]:rounded [&>code]:bg-[var(--color-surface-card)] [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:font-mono [&>code]:text-xs sm:[&>code]:text-sm [&>code]:text-[var(--color-accent-gold)] [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--color-accent-gold)] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-[var(--color-text-muted)]">
       <slot />
     </div>
   </article>
 </BaseLayout>
-
-<style>
-  .blog-article {
-    width: calc(100% - 2rem);
-    margin-block: 1.5rem;
-  }
-
-  @media (min-width: 640px) {
-    .blog-article {
-      width: calc(100% - 3rem);
-      margin-block: 2.5rem;
-    }
-  }
-</style>
