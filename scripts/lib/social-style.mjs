@@ -22,7 +22,7 @@ export const SOCIAL_THEME = {
 
 export const SOCIAL_PROFILE = {
   name: "Arturo Nava",
-  role: "Senior Software / AI Engineer",
+  role: "Senior Software & AI Engineer",
   badgeText: "AVAILABLE FOR SENIOR / STAFF ROLES",
   techPillars: "Distributed Systems • High Concurrency • AppSec",
   coreStack: "Distributed Systems • High Performance • Web3 • AppSec",

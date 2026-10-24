@@ -1671,7 +1671,7 @@ const description = isEs
 
     var pollDelay = 0;
     var pollIntervalId = null;
-    var lastSyncTimestamp = Date.now();
+    var lastSyncTimestamp = null;
 
     // Local timezone state
     var useLocalTimezone = false;
@@ -1706,6 +1706,12 @@ const description = isEs
     setInterval(function () {
       var badge = document.getElementById("badge-sync-time");
       if (!badge) return;
+      if (!lastSyncTimestamp) {
+        badge.textContent = isEs
+          ? "Sin sincronización confirmada"
+          : "No confirmed synchronization";
+        return;
+      }
       if (pollDelay === 0) {
         badge.textContent = isEs
           ? "Sincronizado: manual (Pausado)"
@@ -1963,7 +1969,10 @@ const description = isEs
         queryParams.set("page", String(currentPage));
         queryParams.set("limit", String(currentLimit));
         if (pageOnly) queryParams.set("page_only", "1");
-        if (isManual) queryParams.set("fresh", "true");
+        // Every poll reaches the protected server cache/cooldown policy.
+        queryParams.set("fresh", "true");
+        var fetchOptions = { cache: "no-store" };
+        var cacheBadge = document.getElementById("badge-cache-mode");
 
         if (currentRange === "custom") {
           if (customFrom) queryParams.set("from", customFrom);
@@ -1971,7 +1980,10 @@ const description = isEs
         }
 
         if (pageOnly) {
-          var pageRes = await fetch("/api/telemetry?" + queryParams.toString());
+          var pageRes = await fetch(
+            "/api/telemetry?" + queryParams.toString(),
+            fetchOptions,
+          );
           if (pageRes.ok) {
             var pData = await pageRes.json();
             rawPageviews = pData.pageviews || [];
@@ -1982,16 +1994,22 @@ const description = isEs
               totalFiltered = pData.pagination.total_filtered || 0;
             }
           }
-          lastSyncTimestamp = Date.now();
+          if (!pageRes.ok && cacheBadge) {
+            cacheBadge.textContent = isEs
+              ? "● Datos no disponibles; actualización fallida"
+              : "● Data unavailable; refresh failed";
+            cacheBadge.style.color = "#ef4444";
+          }
+          // Pagination alone does not refresh the dashboard snapshot.
           renderDashboard();
           return;
         }
 
         var results = await Promise.allSettled([
-          fetch("/api/telemetry?" + queryParams.toString()),
-          fetch("/api/metrics"),
-          fetch("/api/deployments"),
-          fetch("/api/leads"),
+          fetch("/api/telemetry?" + queryParams.toString(), fetchOptions),
+          fetch("/api/metrics?fresh=true", fetchOptions),
+          fetch("/api/deployments?fresh=true", fetchOptions),
+          fetch("/api/leads?fresh=true", fetchOptions),
         ]);
 
         var telemetryRes = results[0];
@@ -2047,9 +2065,39 @@ const description = isEs
           rawLeads = lData.leads || [];
         }
 
-        lastSyncTimestamp = Date.now();
+        var allSucceeded = results.every(function (result) {
+          return result.status === "fulfilled" && result.value.ok;
+        });
+        if (allSucceeded && tData && tData.status === "ok") {
+          var observedAt = Date.parse(tData.timestamp);
+          if (Number.isFinite(observedAt)) lastSyncTimestamp = observedAt;
+          if (cacheBadge) {
+            var source = telemetryRes.value.headers.get("X-Telemetry-Source");
+            cacheBadge.textContent =
+              source === "edge-memory-cache"
+                ? isEs
+                  ? "● Instantánea en caché (hasta 120s)"
+                  : "● Cached snapshot (up to 120s)"
+                : isEs
+                  ? "● D1 actualizado"
+                  : "● D1 refreshed";
+            cacheBadge.style.color = "var(--green)";
+          }
+        } else if (cacheBadge) {
+          cacheBadge.textContent = isEs
+            ? "● Datos no disponibles; actualización parcial o fallida"
+            : "● Data unavailable; refresh partial or failed";
+          cacheBadge.style.color = "#ef4444";
+        }
         renderDashboard();
       } catch (err) {
+        var failedBadge = document.getElementById("badge-cache-mode");
+        if (failedBadge) {
+          failedBadge.textContent = isEs
+            ? "● Actualización fallida"
+            : "● Refresh failed";
+          failedBadge.style.color = "#ef4444";
+        }
         console.warn("Error fetching dashboard telemetry:", err);
       } finally {
         if (refreshIcon) refreshIcon.classList.remove("animate-spin");

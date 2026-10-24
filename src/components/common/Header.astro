@@ -1046,14 +1046,32 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           if (window.__contactNavObserver) {
             window.__contactNavObserver.disconnect();
           }
+          var contactWasVisible = false;
           var contactObserver = new IntersectionObserver(
             function (entries) {
-              if (window.__isProgrammaticNav) return;
+              // Ignore notifications queued by an article that has been swapped out.
+              if (document.getElementById("contact") !== contactSection) return;
               var entry = entries[0];
               if (!entry) return;
               var isContactInView = entry.isIntersecting;
-              if (window.__isContactInView === isContactInView) return;
+              var leftContact = contactWasVisible && !isContactInView;
+              contactWasVisible = isContactInView;
               window.__isContactInView = isContactInView;
+
+              // A contact anchor describes the visible section, not a completed
+              // scroll animation. Do not clear a pending anchor before first entry.
+              if (leftContact) {
+                if (window.location.hash === "#contact") {
+                  history.replaceState(
+                    history.state,
+                    "",
+                    window.location.pathname + window.location.search,
+                  );
+                }
+                updateActiveNavState(true);
+                return;
+              }
+              if (window.__isProgrammaticNav) return;
 
               var rawPath = window.location.pathname;
               var path = rawPath.endsWith("/") ? rawPath : rawPath + "/";
@@ -1073,8 +1091,8 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
               });
             },
             {
-              threshold: 0.15,
-              rootMargin: "-70px 0px -15% 0px",
+              threshold: 0,
+              rootMargin: "-70px 0px 0px 0px",
             },
           );
           contactObserver.observe(contactSection);

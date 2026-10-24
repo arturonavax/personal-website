@@ -292,7 +292,7 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
   });
 
   it("1. 30m L1 Cache Dedupe & SPA Double-Count Prevention: 1 SSR visit + 5 SPA transitions within 30m produce 1 D1 write", async () => {
-    const { db, count } = createD1Shim();
+    const { db, sqlite, count } = createD1Shim();
     const adapter = new D1TelemetryAdapter(db);
     const t0 = 1_700_000_000_000;
 
@@ -371,6 +371,7 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
         headers: {
           "content-type": "application/json",
           "user-agent": CHROME_UA,
+          "accept-language": "en-US",
           "cf-connecting-ip": "203.0.113.77",
         },
         body: JSON.stringify({
@@ -384,6 +385,12 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     await Promise.all(waitPromises.splice(0));
     expect(spaBeaconRes.status).toBe(202);
     expect(count("telemetry_events")).toBe(2);
+    // A committed SPA visit must appear in the same ledger as document visits.
+    expect(count("pageviews")).toBe(1);
+    expect(count("pageview_events")).toBe(1);
+    expect(sqlite.prepare("SELECT path FROM pageviews").get()).toEqual({
+      path: "/en/blog/post-2/",
+    });
 
     // (b) Real SSR navigation (/en/projects/ with Sec-Fetch-Mode: navigate) sets X-Edge-Visit-Logged: 1
     //     and ev_init=1 cookie, and an immediate duplicate beacon from the same visitor is deduplicated at L1.
@@ -402,7 +409,7 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     expect(ssrNavRes.headers.get("Set-Cookie")).toContain("ev_init=1");
     const pageviewsAfterSsr = count("pageviews");
     const telemetryAfterSsr = count("telemetry_events");
-    expect(pageviewsAfterSsr).toBe(1);
+    expect(pageviewsAfterSsr).toBe(2);
 
     const dupBeaconReq = new Request(
       "https://arturonavax.dev/api/telemetry/collect",
@@ -432,6 +439,83 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     expect(dupJson.storageTier).toBe("L1_CACHE");
     expect(count("pageviews")).toBe(pageviewsAfterSsr);
     expect(count("telemetry_events")).toBe(telemetryAfterSsr);
+  });
+
+  it("timeline Leal -> Mercado Libre feeds the dashboard once and preserves quota shedding", async () => {
+    for (const writes of [0, 55_000, 75_000, 90_000]) {
+      clearRecentPageviewsCache();
+      edgeQuotaTracker.reset();
+      edgeQuotaTracker.setCountsForTesting(writes, 0);
+      const { db, sqlite, count } = createD1Shim();
+      const pending: Promise<unknown>[] = [];
+      const ctx = {
+        waitUntil: (promise: Promise<unknown>) => pending.push(promise),
+      } as unknown as ExecutionContext;
+      const env = {
+        DB: db,
+        STORAGE_BUCKET: createMockR2Bucket(),
+        ASSETS: {
+          fetch: async () =>
+            new Response("<html>job</html>", {
+              headers: { "Content-Type": "text/html" },
+            }),
+        } as Fetcher,
+      };
+      const initial = await worker.fetch(
+        humanRequest("/experience/leal/"),
+        env,
+        ctx,
+      );
+      await Promise.all(pending.splice(0));
+      expect(initial.status).toBe(200);
+      const target = "/experience/mercado-libre/";
+      const speculative = humanRequest(target);
+      speculative.headers.set("X-Astro-Prefetch", "true");
+      await worker.fetch(speculative, env, ctx);
+      await Promise.all(pending.splice(0));
+      expect(count("pageviews")).toBe(writes === 0 ? 1 : 0);
+      const beacon = () =>
+        new Request("https://arturonavax.dev/api/telemetry/collect", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "user-agent": CHROME_UA,
+            "accept-language": "en-US",
+            "sec-fetch-site": "same-origin",
+            "cf-connecting-ip": "198.51.100.7",
+          },
+          body: JSON.stringify({
+            path: target,
+            trigger: "spa_transition",
+            referrer: "https://example.org/start",
+          }),
+        });
+      const response = await worker.fetch(beacon(), env, ctx);
+      await Promise.all(pending.splice(0));
+      expect(response.status).toBe(202);
+      expect((await response.json()).recorded).toBe(true);
+      const duplicate = await worker.fetch(beacon(), env, ctx);
+      expect((await duplicate.json()).deduped).toBe(true);
+      // Retry without L1 suppression exercises authoritative SQL dedupe as well.
+      clearRecentPageviewsCache();
+      edgeQuotaTracker.setCountsForTesting(writes, 0);
+      await worker.fetch(beacon(), env, ctx);
+      await Promise.all(pending.splice(0));
+      expect(count("pageviews")).toBe(writes === 0 ? 2 : 0);
+      expect(count("pageview_events")).toBe(writes === 0 ? 2 : 0);
+      if (writes === 0) {
+        expect(
+          sqlite
+            .prepare("SELECT path, referrer, is_bot FROM pageviews ORDER BY id")
+            .all(),
+        ).toEqual([
+          { path: "/experience/leal/", referrer: "Direct", is_bot: 0 },
+          { path: target, referrer: "example.org", is_bot: 0 },
+        ]);
+      }
+      sqlite.close();
+    }
+    edgeQuotaTracker.reset();
   });
 
   it("2. 5-Tier Quota Degradation & Automatic D1 Error Failover to R2 WAL", async () => {

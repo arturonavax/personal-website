@@ -104,6 +104,19 @@ const isEs = locale === "es";
       btn.setAttribute("title", isEs ? "Volver arriba" : "Back to top");
     }
 
+    var cancelTopScroll = null;
+    function cancelPendingTopScroll() {
+      if (cancelTopScroll) cancelTopScroll();
+    }
+    document.addEventListener(
+      "astro:before-preparation",
+      cancelPendingTopScroll,
+    );
+    document.addEventListener("astro:before-swap", cancelPendingTopScroll);
+    window.addEventListener("popstate", cancelPendingTopScroll);
+    window.addEventListener("hashchange", cancelPendingTopScroll);
+    document.addEventListener("site:route-committed", cancelPendingTopScroll);
+
     function setupBackToTop() {
       var btn = document.getElementById("back-to-top-btn");
       if (!btn) return;
@@ -127,23 +140,69 @@ const isEs = locale === "es";
         btn.dataset.bttBound = "true";
         btn.addEventListener("click", function (e) {
           e.preventDefault();
+          cancelPendingTopScroll();
+          var startingUrl = window.location.href;
+          var startingRoute = window.location.pathname + window.location.search;
+          var startingHash = window.location.hash;
+          var finished = false;
+          var timeout;
+          var cleanup = function (releaseNav = true) {
+            if (finished) return;
+            finished = true;
+            clearTimeout(timeout);
+            window.removeEventListener("scrollend", complete);
+            cancelTopScroll = null;
+            if (releaseNav) window.__isProgrammaticNav = false;
+          };
+          var complete = function () {
+            if (finished) return;
+            var sameRoute =
+              window.location.href === startingUrl ||
+              (window.location.pathname + window.location.search ===
+                startingRoute &&
+                startingHash === "#contact" &&
+                window.location.hash === "");
+            var atTop =
+              (window.pageYOffset || document.documentElement.scrollTop || 0) <=
+              1;
+            cleanup(sameRoute);
+            if (!sameRoute || !atTop) return;
+
+            // Replace only the anchor, retaining the router's state and query.
+            if (window.location.hash === "#contact") {
+              history.replaceState(
+                history.state,
+                "",
+                window.location.pathname + window.location.search,
+              );
+            }
+            // Final reconciliation also covers an already-at-top fallback.
+            window.__isContactInView = false;
+            if (typeof window.__updateActiveNavState === "function") {
+              window.__updateActiveNavState(true);
+            }
+          };
+          cancelTopScroll = cleanup;
           window.__isProgrammaticNav = true;
+          var reduceMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+          var alreadyAtTop =
+            (window.pageYOffset || document.documentElement.scrollTop || 0) <=
+            1;
+          window.addEventListener("scrollend", complete, { once: true });
+          timeout = setTimeout(complete, 1500);
           if ("scrollTo" in window) {
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            window.scrollTo({
+              top: 0,
+              behavior: reduceMotion ? "instant" : "smooth",
+            });
           } else {
             document.documentElement.scrollTop = 0;
             document.body.scrollTop = 0;
           }
-          var clearNav = function () {
-            window.__isProgrammaticNav = false;
-            window.removeEventListener("scrollend", clearNav);
-          };
-          if ("onscrollend" in window) {
-            window.addEventListener("scrollend", clearNav, { once: true });
-          }
-          setTimeout(function () {
-            window.__isProgrammaticNav = false;
-          }, 900);
+          if (reduceMotion || alreadyAtTop || !("scrollTo" in window))
+            complete();
         });
       }
 

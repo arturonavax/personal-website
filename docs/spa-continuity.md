@@ -34,6 +34,7 @@ Matrix is decorative, hidden below `md`, hidden in print, and initially skipped 
 
 ## Interaction details that must not regress
 
+- Contact visibility owns the Contact → About transition: after Contact has entered the viewport, leaving the visible area below the pinned header removes only `#contact` via history replacement, including manual, interrupted, and programmatic scrolls, without waiting for the top. Preserve the query and router state; initial observation before reaching Contact must not cancel a pending contact anchor. Back-to-top also reconciles on completion. It uses the shared navigation-state hook, does not emit a committed visit, respects reduced motion, and cancels stale completion before navigation. Non-home routes keep their route-specific menu state. Coverage: `tests/back-to-top.test.ts` and `tests/back-to-top.spec.ts`.
 - The site header is currently pinned `sticky top-0`; it does not implement the historical scroll-hide helper. Services activates Services, not More.
 - Persisted modal identity does not mean dialogs remain open during navigation. Normal swaps close dialogs, unlock body scrolling, and hide ephemeral copy feedback.
 - Language suggestion dismissal and entrance-once state are session-scoped; incoming route targets/copy must update without a fresh toast animation.

@@ -420,9 +420,9 @@ export function renderSocialImageSvg(
     },
   );
   const role = metadata.locale.startsWith("es")
-    ? "Software / Sistemas / IA"
-    : "Software / Systems / AI";
-  const contact = `${SOCIAL_PROFILE.handle}  /  ${SOCIAL_PROFILE.email}`;
+    ? "Sistemas Distribuidos · Alto Rendimiento · IA"
+    : "Distributed Systems · High Performance · AI";
+  const contact = `${SOCIAL_PROFILE.handle}  ·  ${SOCIAL_PROFILE.email}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${SOCIAL_IMAGE_WIDTH}" height="${SOCIAL_IMAGE_HEIGHT}" viewBox="0 0 1200 630" shape-rendering="geometricPrecision">
     ${background}
     ${createTechnicalFrame(1200, 630, 28)}

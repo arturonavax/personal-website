@@ -60,6 +60,17 @@ export interface TelemetryVisitEvent {
   referrerHost?: string | undefined;
   statusCode?: number | undefined;
   nowMs?: number | undefined;
+  /** Optional dashboard ledger projection for committed browser visits. */
+  dashboard?: {
+    path: string;
+    dedupeKey: string;
+    previousDedupeKey: string;
+    source: string;
+    medium: string;
+    campaign: string;
+    content: string;
+    term: string;
+  };
 }
 
 export interface TelemetryWalEnv {
@@ -639,6 +650,57 @@ export class D1TelemetryAdapter implements TelemetryPort {
         ? [telemetryStmt, rollupStmt, quotaStmt]
         : [telemetryStmt, rollupStmt];
 
+      // Match document ingestion: raw dashboard detail is NOMINAL-only.
+      // Keep these immediately after telemetry so changes() gates the projection
+      // on the authoritative insert, including retries with an empty L1 cache.
+      if (event.dashboard && tier === QuotaDegradationTier.NOMINAL) {
+        const detail = event.dashboard;
+        const ledgerStmts = [
+          this.db
+            .prepare(
+              `INSERT INTO pageviews (
+              path, visitor_hash, referrer, country, utm_source, utm_medium,
+              utm_campaign, utm_content, utm_term, is_bot, created_at, dedupe_key
+            ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            WHERE changes() > 0
+              AND NOT EXISTS (SELECT 1 FROM pageviews WHERE dedupe_key = ?)
+            ON CONFLICT(dedupe_key) DO NOTHING`,
+            )
+            .bind(
+              detail.path.slice(0, 200),
+              visitorHash,
+              referrerHost.slice(0, 100),
+              country,
+              detail.source.slice(0, 50),
+              detail.medium.slice(0, 50),
+              detail.campaign.slice(0, 100),
+              detail.content.slice(0, 100),
+              detail.term.slice(0, 100),
+              isBotInt,
+              createdAtIso.replace("T", " ").slice(0, 19),
+              detail.dedupeKey,
+              detail.previousDedupeKey,
+            ),
+        ];
+        if (!event.isBot) {
+          ledgerStmts.push(
+            this.db
+              .prepare(
+                `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
+             SELECT ?, ?, ?, ?, ? WHERE changes() > 0`,
+              )
+              .bind(
+                detail.path.slice(0, 200),
+                /^\/es(?:\/|$)/.test(cleanPath) ? "es" : "en",
+                country,
+                referrerHost.slice(0, 100),
+                nowMs,
+              ),
+          );
+        }
+        batchStmts.splice(1, 0, ...ledgerStmts);
+      }
+
       let batchMeta: { rows_written?: number; rows_read?: number } | null =
         null;
       if (typeof this.db.batch === "function") {
@@ -659,11 +721,9 @@ export class D1TelemetryAdapter implements TelemetryPort {
         );
         batchMeta = { rows_written: totalWritten || 2, rows_read: totalRead };
       } else {
-        await telemetryStmt.run();
-        await rollupStmt.run();
-        if (quotaStmt) await quotaStmt.run();
+        for (const statement of batchStmts) await statement.run();
       }
-      edgeQuotaTracker.recordD1Meta(batchMeta, 2, 0, nowMs);
+      edgeQuotaTracker.recordD1Meta(batchMeta, batchStmts.length, 0, nowMs);
       await edgeQuotaTracker.tickAndMaybeSync(
         this.db,
         this.executionCtx as ExecutionContext | undefined,

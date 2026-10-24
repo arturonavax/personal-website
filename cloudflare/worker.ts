@@ -935,9 +935,8 @@ export default {
       ) {
         if (isPrefetch) {
           // Secondary Priority (P1): Prefetch telemetry protected by dynamic circuit breaker
-          // Speculative prefetch with ?astro-prefetch or explicit bypass omits heavy D1 writes
+          // Only an explicit operational bypass suppresses eligible speculative events.
           const shouldBypassTelemetry =
-            hasAstroPrefetchParam ||
             (env as unknown as Record<string, unknown>)
               ?.BYPASS_PREFETCH_TELEMETRY === true;
 
@@ -2402,6 +2401,12 @@ async function handleTelemetryCollectBeacon(
     );
 
     const adapter = new D1TelemetryAdapter(env.DB, env, ctx);
+    const nowMs = Date.now();
+    const bucket = Math.floor(nowMs / PAGEVIEW_DEDUPE_WINDOW_MS);
+    const [dashboardKey, previousDashboardKey] = await Promise.all([
+      computeDedupeKey(visitorHash, normalizedPath, bucket),
+      computeDedupeKey(visitorHash, normalizedPath, bucket - 1),
+    ]);
     const result = await adapter.ingestVisit({
       path: normalizedPath,
       visitorHash,
@@ -2416,6 +2421,17 @@ async function handleTelemetryCollectBeacon(
         : "desktop",
       referrerHost: attribution.referrer,
       statusCode: 200,
+      nowMs,
+      dashboard: {
+        path: rawPath,
+        dedupeKey: dashboardKey,
+        previousDedupeKey: previousDashboardKey,
+        source: attribution.source || "direct",
+        medium: attribution.medium || "none",
+        campaign: attribution.campaign || "",
+        content: attribution.content,
+        term: attribution.term,
+      },
     });
 
     if (result.recorded) {
@@ -3332,7 +3348,7 @@ export async function handleAdminDashboardRequest(
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "private, max-age=120",
+          "Cache-Control": "private, no-store",
           "X-Telemetry-Source": "edge-memory-cache",
           "X-Robots-Tag": "noindex, nofollow, noarchive",
         },
@@ -3360,7 +3376,7 @@ export async function handleAdminDashboardRequest(
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "private, max-age=120",
+        "Cache-Control": "private, no-store",
         "X-Robots-Tag": "noindex, nofollow, noarchive",
       },
     });
@@ -3513,7 +3529,7 @@ export async function handleAdminDashboardRequest(
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "private, max-age=120",
+          "Cache-Control": "private, no-store",
           "X-Telemetry-Source": "edge-memory-cache",
           "X-Robots-Tag": "noindex, nofollow, noarchive",
         },
@@ -3638,7 +3654,7 @@ export async function handleAdminDashboardRequest(
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "private, max-age=120",
+        "Cache-Control": "private, no-store",
         "X-Robots-Tag": "noindex, nofollow, noarchive",
       },
     });
@@ -3660,7 +3676,7 @@ export async function handleAdminDashboardRequest(
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "private, max-age=120",
+          "Cache-Control": "private, no-store",
           "X-Telemetry-Source": "edge-memory-cache",
         },
       });
@@ -3702,7 +3718,7 @@ export async function handleAdminDashboardRequest(
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "private, max-age=120",
+        "Cache-Control": "private, no-store",
       },
     });
   }
@@ -3756,7 +3772,7 @@ export async function handleAdminDashboardRequest(
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "private, max-age=120",
+          "Cache-Control": "private, no-store",
           "X-Telemetry-Source": "edge-memory-cache",
         },
       });
@@ -3782,7 +3798,7 @@ export async function handleAdminDashboardRequest(
             status: 200,
             headers: {
               "Content-Type": "application/json",
-              "Cache-Control": "private, max-age=120",
+              "Cache-Control": "private, no-store",
               "X-Telemetry-Source": "edge-memory-cache",
             },
           });
@@ -3800,6 +3816,11 @@ export async function handleAdminDashboardRequest(
     let topCountries: any[] = [];
     let utmAttributions: any[] = [];
     let topReferrers: any[] = [];
+    let dataStatus: "ok" | "unavailable" | "degraded" = env.DB
+      ? edgeQuotaTracker.getTier(now) >= QuotaDegradationTier.CRITICAL_SURVIVAL
+        ? "degraded"
+        : "ok"
+      : "unavailable";
     const stats = {
       total_pageviews: 0,
       human_views: 0,
@@ -3816,7 +3837,7 @@ export async function handleAdminDashboardRequest(
     ) {
       try {
         const whereClauses: string[] = [];
-        const bindValues: any[] = [];
+        const bindValues: (string | number)[] = [];
 
         if (range === "1d" || range === "24h") {
           whereClauses.push("created_at >= datetime('now', '-1 day')");
@@ -3848,6 +3869,10 @@ export async function handleAdminDashboardRequest(
           bindValues.push(countryParam);
         }
 
+        // Prefetch has no human/bot attribution; share only supported filters.
+        const prefetchWhereClauses = [...whereClauses];
+        const prefetchBindValues = [...bindValues];
+
         if (segmentParam === "human") {
           whereClauses.push("is_bot = 0");
         } else if (segmentParam === "bot") {
@@ -3870,7 +3895,10 @@ export async function handleAdminDashboardRequest(
         const whereSql =
           whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-        const runQuery = async (sql: string, params: any[] = []) => {
+        const runQuery = async (
+          sql: string,
+          params: (string | number)[] = [],
+        ) => {
           let stmt = env.DB.prepare(sql);
           if (params.length > 0) {
             stmt = stmt.bind(...params);
@@ -3883,6 +3911,26 @@ export async function handleAdminDashboardRequest(
           edgeQuotaTracker.recordD1Meta(q.meta, 0, rows.length || 1, now);
           return rows;
         };
+
+        if (pathFilter && pathFilter !== "all") {
+          prefetchWhereClauses.push("path LIKE ?");
+          prefetchBindValues.push(`${pathFilter}%`);
+        }
+        if (searchParam) {
+          prefetchWhereClauses.push(
+            "(path LIKE ? OR country LIKE ? OR referrer LIKE ? OR visitor_hash LIKE ? OR purpose LIKE ?)",
+          );
+          const search = `%${searchParam}%`;
+          prefetchBindValues.push(search, search, search, search, search);
+        }
+        const prefetchWhereSql = prefetchWhereClauses.length
+          ? `WHERE ${prefetchWhereClauses.join(" AND ")}`
+          : "";
+        const prefetchTotals = await runQuery(
+          `SELECT COUNT(*) AS count FROM prefetch_analytics_events ${prefetchWhereSql}`,
+          prefetchBindValues,
+        );
+        stats.prefetches_count = Number(prefetchTotals[0]?.count || 0);
 
         // 1. Exact Totals Aggregations (1:1 with D1)
         const aggSql = `SELECT COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) AS bot_views, COUNT(DISTINCT visitor_hash) AS unique_visitors, COUNT(DISTINCT CASE WHEN is_bot = 0 THEN visitor_hash END) AS unique_human_visitors FROM pageviews ${whereSql}`;
@@ -3976,7 +4024,8 @@ export async function handleAdminDashboardRequest(
         if (!pageOnly) {
           // 8. Prefetches
           prefetches = await runQuery(
-            "SELECT id, path, visitor_hash, referrer, country, purpose, created_at FROM prefetch_analytics_events ORDER BY id DESC LIMIT 15",
+            `SELECT id, path, visitor_hash, referrer, country, purpose, created_at FROM prefetch_analytics_events ${prefetchWhereSql} ORDER BY id DESC LIMIT 15`,
+            prefetchBindValues,
           );
 
           // 9. Daily Summaries (query analytics_rollups first, fallback to pageviews_daily_summary)
@@ -3997,225 +4046,15 @@ export async function handleAdminDashboardRequest(
         if (isD1QuotaException(err)) {
           edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
         }
+        dataStatus = "unavailable";
         // Fail-open resilience: If D1 row read quota was exceeded or temporarily blocked by Cloudflare
         console.warn("[D1 Telemetry Quota Safeguard - Fail-Open]:", err);
       }
     }
 
-    // Mock fallback when D1 is unavailable or empty (e.g. local development)
-    let isMockFallback = false;
-    if (pageviews.length === 0 && stats.total_pageviews === 0) {
-      isMockFallback = true;
-      const mockRoutes = [
-        "/",
-        "/blog/sub-50ms-fraud-engine-go/",
-        "/projects/fyld/",
-        "/projects/irg-app/",
-        "/services/high-performance-web-applications/",
-        "/services/autonomous-whatsapp-ai-agents/",
-        "/services/high-concurrency-distributed-architecture/",
-        "/experience/",
-        "/resume/",
-      ];
-      const mockCountries = ["ES", "US", "CO", "MX", "DE", "GB", "AR", "CL"];
-      const mockSources = [
-        "direct",
-        "twitter",
-        "linkedin",
-        "hackernews",
-        "github",
-        "google",
-      ];
-
-      const multiplier =
-        range === "1d"
-          ? 1
-          : range === "2d"
-            ? 2
-            : range === "3d"
-              ? 3
-              : range === "7d"
-                ? 7
-                : range === "30d"
-                  ? 28
-                  : 60;
-      const countToGen = Math.min(120, 18 * multiplier);
-      const generatedPageviews: any[] = [];
-
-      for (let i = 0; i < countToGen; i++) {
-        const isBot = i % 5 === 0 ? 1 : 0;
-        const country = mockCountries[i % mockCountries.length]!;
-        const path = mockRoutes[i % mockRoutes.length]!;
-        const source = mockSources[i % mockSources.length]!;
-        const dateOffset = (i * (multiplier * 86400000)) / countToGen;
-        const createdAt = new Date(Date.now() - dateOffset)
-          .toISOString()
-          .replace("T", " ")
-          .slice(0, 19);
-
-        // Apply filters to mock generator
-        if (countryParam !== "all" && country !== countryParam) continue;
-        if (segmentParam === "human" && isBot === 1) continue;
-        if (segmentParam === "bot" && isBot === 0) continue;
-        if (pathFilter !== "all" && !path.startsWith(pathFilter)) continue;
-        if (
-          searchParam &&
-          !path.includes(searchParam) &&
-          !country.includes(searchParam) &&
-          !source.includes(searchParam)
-        )
-          continue;
-
-        generatedPageviews.push({
-          id: i + 1,
-          path,
-          visitor_hash: `hash_${((i * 9973) % 47).toString(16).padStart(6, "0")}`,
-          referrer: source === "direct" ? "" : `https://${source}.com/`,
-          country,
-          utm_source: source,
-          utm_medium: source === "direct" ? "none" : "social",
-          utm_campaign:
-            source === "twitter" || source === "linkedin" ? "tech-launch" : "",
-          utm_content: "",
-          utm_term: "",
-          is_bot: isBot,
-          created_at: createdAt,
-        });
-      }
-
-      pageviews = generatedPageviews.slice(0, 80);
-      stats.total_pageviews = generatedPageviews.length;
-      stats.human_views = generatedPageviews.filter((p) => !p.is_bot).length;
-      stats.bot_views = generatedPageviews.filter((p) => p.is_bot).length;
-      stats.unique_visitors = new Set(
-        generatedPageviews.map((p) => p.visitor_hash),
-      ).size;
-      stats.unique_human_visitors = new Set(
-        generatedPageviews.filter((p) => !p.is_bot).map((p) => p.visitor_hash),
-      ).size;
-      stats.prefetches_count = Math.round(stats.human_views * 1.6);
-      stats.all_time_pageviews = stats.total_pageviews * 5 + 420;
-
-      // Top pages mock
-      const pCounts: Record<
-        string,
-        { total_views: number; human_views: number; unique: Set<string> }
-      > = {};
-      generatedPageviews.forEach((p) => {
-        if (!pCounts[p.path])
-          pCounts[p.path] = {
-            total_views: 0,
-            human_views: 0,
-            unique: new Set(),
-          };
-        pCounts[p.path]!.total_views++;
-        if (!p.is_bot) pCounts[p.path]!.human_views++;
-        pCounts[p.path]!.unique.add(p.visitor_hash);
-      });
-      topPages = Object.entries(pCounts)
-        .map(([pth, v]) => ({
-          path: pth,
-          total_views: v.total_views,
-          human_views: v.human_views,
-          unique_visitors: v.unique.size,
-        }))
-        .sort((a, b) => b.total_views - a.total_views);
-
-      // Top countries mock
-      const cCounts: Record<
-        string,
-        { views: number; human_views: number; unique: Set<string> }
-      > = {};
-      generatedPageviews.forEach((p) => {
-        if (!cCounts[p.country])
-          cCounts[p.country] = { views: 0, human_views: 0, unique: new Set() };
-        cCounts[p.country]!.views++;
-        if (!p.is_bot) cCounts[p.country]!.human_views++;
-        cCounts[p.country]!.unique.add(p.visitor_hash);
-      });
-      topCountries = Object.entries(cCounts)
-        .map(([c, v]) => ({
-          country: c,
-          views: v.views,
-          human_views: v.human_views,
-          unique_visitors: v.unique.size,
-        }))
-        .sort((a, b) => b.views - a.views);
-
-      // UTM mock
-      utmAttributions = [
-        {
-          utm_source: "twitter",
-          utm_medium: "social",
-          utm_campaign: "tech-launch",
-          count: Math.round(stats.human_views * 0.32),
-          unique_visitors: Math.round(stats.unique_visitors * 0.28),
-        },
-        {
-          utm_source: "linkedin",
-          utm_medium: "social",
-          utm_campaign: "tech-launch",
-          count: Math.round(stats.human_views * 0.24),
-          unique_visitors: Math.round(stats.unique_visitors * 0.22),
-        },
-        {
-          utm_source: "hackernews",
-          utm_medium: "referral",
-          utm_campaign: "show-hn",
-          count: Math.round(stats.human_views * 0.18),
-          unique_visitors: Math.round(stats.unique_visitors * 0.16),
-        },
-        {
-          utm_source: "github",
-          utm_medium: "profile",
-          utm_campaign: "readme",
-          count: Math.round(stats.human_views * 0.12),
-          unique_visitors: Math.round(stats.unique_visitors * 0.11),
-        },
-      ].filter((u) => u.count > 0);
-
-      topReferrers = [
-        {
-          referrer: "https://twitter.com/",
-          count: Math.round(stats.human_views * 0.32),
-          unique_visitors: Math.round(stats.unique_visitors * 0.28),
-        },
-        {
-          referrer: "https://linkedin.com/",
-          count: Math.round(stats.human_views * 0.24),
-          unique_visitors: Math.round(stats.unique_visitors * 0.22),
-        },
-        {
-          referrer: "https://news.ycombinator.com/",
-          count: Math.round(stats.human_views * 0.18),
-          unique_visitors: Math.round(stats.unique_visitors * 0.16),
-        },
-        {
-          referrer: "https://github.com/arturonavax",
-          count: Math.round(stats.human_views * 0.12),
-          unique_visitors: Math.round(stats.unique_visitors * 0.11),
-        },
-        {
-          referrer: "https://google.com/",
-          count: Math.round(stats.human_views * 0.14),
-          unique_visitors: Math.round(stats.unique_visitors * 0.12),
-        },
-      ];
-
-      prefetches = generatedPageviews.slice(0, 20).map((p, idx) => ({
-        id: idx + 1,
-        path: p.path,
-        visitor_hash: p.visitor_hash,
-        referrer: p.referrer,
-        country: p.country,
-        purpose: "prefetch",
-        created_at: p.created_at,
-      }));
-    }
-
     const totalFiltered = stats.total_pageviews;
     const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
-    const dailyUsedReq = stats.total_pageviews + prefetches.length;
+    const dailyUsedReq = stats.total_pageviews + stats.prefetches_count;
 
     let snap = edgeQuotaTracker.getSnapshot(now);
     try {
@@ -4227,7 +4066,7 @@ export async function handleAdminDashboardRequest(
     }
 
     const responsePayload = {
-      status: "ok",
+      status: dataStatus,
       surface: "admin-isolated",
       timestamp: new Date().toISOString(),
       page_only: pageOnly,
@@ -4271,8 +4110,8 @@ export async function handleAdminDashboardRequest(
       ),
     };
 
-    // Store in edge memory cache and Cache API for 120s to safeguard D1 limits (skip when mock data)
-    if (!isMockFallback) {
+    // Cache only observed data; an unavailable ledger must never masquerade as empty.
+    if (dataStatus === "ok") {
       telemetryCache.set(cacheKey, {
         timestamp: now,
         data: responsePayload,
@@ -4301,11 +4140,12 @@ export async function handleAdminDashboardRequest(
     }
 
     return new Response(JSON.stringify(responsePayload), {
-      status: 200,
+      status: dataStatus === "ok" ? 200 : 503,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "private, max-age=120",
-        "X-Telemetry-Source": "edge-d1-fresh",
+        "Cache-Control": "private, no-store",
+        "X-Telemetry-Source":
+          dataStatus === "ok" ? "edge-d1-fresh" : dataStatus,
         "X-Robots-Tag": "noindex, nofollow, noarchive",
       },
     });
@@ -5841,7 +5681,7 @@ export async function handleAdminDashboardRequest(
     let currentLimit = 50;
     let totalPages = 1;
     let totalFiltered = 0;
-    let lastSyncTimestamp = Date.now();
+    let lastSyncTimestamp = null;
     let searchDebounceTimer = null;
 
     // Staged filter state (controls do NOT auto-trigger query; only when clicking 'Aplicar Filtros')
@@ -5889,6 +5729,10 @@ export async function handleAdminDashboardRequest(
       const badge = document.getElementById('badge-sync-time');
       if (!badge) return;
       const dict = I18N[currentLang] || I18N.en;
+      if (!lastSyncTimestamp) {
+        badge.textContent = currentLang === 'es' ? 'Sin sincronización confirmada' : 'No confirmed synchronization';
+        return;
+      }
       if (pollDelay === 0) {
         badge.textContent = dict.badge_sync_manual;
         return;
@@ -7124,23 +6968,22 @@ export async function handleAdminDashboardRequest(
         if (pageOnly) {
           params.set('page_only', '1');
         }
-        if (isManual) {
-          params.set('fresh', 'true');
-        }
+        params.set('fresh', 'true');
 
-        const fetchOpts = isManual ? { cache: 'no-store' } : {};
+        const fetchOpts = { cache: 'no-store' };
         const promises = [
           fetch('/api/telemetry?' + params.toString(), fetchOpts),
         ];
         if (!pageOnly) {
-          promises.push(fetch('/api/leads' + (isManual ? '?fresh=true' : ''), fetchOpts));
-          promises.push(fetch('/api/metrics' + (isManual ? '?fresh=true' : ''), fetchOpts));
+          promises.push(fetch('/api/leads' + '?fresh=true', fetchOpts));
+          promises.push(fetch('/api/metrics' + '?fresh=true', fetchOpts));
         }
 
         const results = await Promise.allSettled(promises);
         const telRes = results[0];
         const leadsRes = results[1];
         const metRes = results[2];
+        let observedAt = null;
 
         if (telRes && telRes.status === 'fulfilled' && telRes.value.ok) {
           const cacheBadge = document.getElementById('badge-cache-mode');
@@ -7159,6 +7002,7 @@ export async function handleAdminDashboardRequest(
           }
 
           const data = await telRes.value.json();
+          if (data.status === 'ok') observedAt = Date.parse(data.timestamp);
           cachedPageviews = data.pageviews || [];
           if (!data.page_only) {
             cachedPrefetches = data.prefetches || [];
@@ -7196,9 +7040,20 @@ export async function handleAdminDashboardRequest(
           }
         }
 
-        lastSyncTimestamp = Date.now();
+        const allSucceeded = results.every(result => result.status === 'fulfilled' && result.value.ok);
+        if (allSucceeded && !pageOnly && Number.isFinite(observedAt)) {
+          lastSyncTimestamp = observedAt;
+        } else if (!allSucceeded) {
+          const badge = document.getElementById('badge-cache-mode');
+          if (badge) {
+            badge.textContent = currentLang === 'es' ? '● Datos no disponibles; actualización fallida' : '● Data unavailable; refresh failed';
+            badge.style.color = 'var(--red)';
+          }
+        }
         renderAll();
       } catch (err) {
+        const badge = document.getElementById('badge-cache-mode');
+        if (badge) badge.textContent = currentLang === 'es' ? '● Actualización fallida' : '● Refresh failed';
         console.warn('Telemetry poll error', err);
       }
     }
