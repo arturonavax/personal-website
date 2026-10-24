@@ -18,7 +18,7 @@ Branch: feat/discovery-content-upgrade; delivery: feature-branch-chain (forecast
 - T1 | S1–S2 | delegated: independent UI unit, disjoint edit surfaces | verified; committed locally | ca5d3e9 | RED route/locale input and small label; GREEN 2 browser + 51 unit tests.
 - T2 | S3–S4 | delegated: independent blog unit, owns blog detail/schema/series | verified; committed locally | bd92e00 | RED missing resolver; GREEN 33 focused tests.
 - T3 | S3 | inline: source audit plus shared SEO/configuration seams | verified; committed locally | 88637e6 | 30 focused tests; emitted sitemap/HTML metadata agreement passes.
-- T4 | S5–S6 | delegated then inline refinement: independent OG renderer/integration/SEOHead unit | verified locally; delivery pending | commit pending | 6 OG tests; corrected late imports; build emits 60 PNGs.
+- T4 | S5–S6 | delegated then inline refinement: independent OG renderer/integration/SEOHead unit | verified; committed locally | 5faa0d6 + 176f6e0 | 6 OG tests; corrected late imports; build emits 60 PNGs.
 
 ## Log
 
@@ -42,3 +42,6 @@ Branch: feat/discovery-content-upgrade; delivery: feature-branch-chain (forecast
 - L14: Feature-branch-chain delivery started locally: ca5d3e9 contains Search/Index only (204 authored changed lines), bd92e00 contains blog series/metadata only (414 lines; one coherent resolver/component/schema/test unit). Native assessment of their committed range is medium/under_budget, so no review transaction was started. Earlier telemetry/Top changes remain unstaged. No push or merge.
 
 - L15: Additional local slices: 5faa0d6 shares the principal asset style and tests it (601 changed lines, a mechanical extraction whose SVG is preserved); 88637e6 aligns sitemap/hiring metadata (257 lines). These exceed/approach the advisory budget only as coherent code/test units; no minification or test omissions were used. Native committed-range assessments remain medium/under_budget without starting a review transaction.
+
+- L16: 176f6e0 commits the complete OG renderer/build/metadata/font-source/test/documentation unit (1,271 authored changed lines; one coupled generation contract, with the disabled endpoint removed). No generated PNG is staged or tracked. All five implementation commits remain on feat/discovery-content-upgrade, local only. Running committed diff from original feature baseline: 2,747 changed lines; strategy remains feature-branch-chain and no PR is opened. Native assessment is medium/under_budget, review_due=false; independent verification is the executed outside check, not a fabricated native approval.
+- L17: Delivery is ready for local manual acceptance. The prior telemetry/Top work remains unstaged and its three tests remain untracked, exactly outside these feature commits. Keep those changes intact; do not mistake them for missing feature delivery or merge them implicitly. No merge, push or deployment is authorized.
