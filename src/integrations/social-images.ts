@@ -48,7 +48,7 @@ export async function generateSocialImages(
   return generated;
 }
 
-export default function socialImages(): AstroIntegration {
+export default function socialImages(imageOrigin?: string): AstroIntegration {
   let root = new URL("../../", import.meta.url);
   let siteUrl = "https://arturonavax.dev";
   return {
@@ -56,7 +56,7 @@ export default function socialImages(): AstroIntegration {
     hooks: {
       "astro:config:done": ({ config }) => {
         root = config.root;
-        siteUrl = config.site || siteUrl;
+        siteUrl = imageOrigin || config.site || siteUrl;
       },
       "astro:build:generated": async ({ dir, logger }) => {
         const count = await generateSocialImages(

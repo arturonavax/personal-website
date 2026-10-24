@@ -8,6 +8,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import socialImages from "./src/integrations/social-images.ts";
 import {
+  LOCAL_PREVIEW_ENV,
+  localPreviewSettings,
+} from "./scripts/lib/local-preview.mjs";
+import {
   serializeVerifiedSitemapItem,
   isIndexableSitemapPath,
 } from "./scripts/lib/sitemap-metadata.mjs";
@@ -132,13 +136,21 @@ function buildRouteLastmodMap() {
 }
 
 const routeLastmodMap = buildRouteLastmodMap();
+const localPreview = localPreviewSettings(process.env[LOCAL_PREVIEW_ENV]);
+const outputDirectory = new URL(
+  localPreview ? "./dist-local/" : "./dist/",
+  import.meta.url,
+);
 
 export default defineConfig({
   site: "https://arturonavax.dev",
   output: "static",
+  ...(localPreview ? { outDir: localPreview.outDir } : {}),
   trailingSlash: "always",
   // Expose dev/preview servers on the LAN (0.0.0.0) for multi-device testing.
-  server: { host: true },
+  server: localPreview
+    ? { host: localPreview.host, port: localPreview.port }
+    : { host: true },
   build: {
     inlineStylesheets: "auto",
     format: "directory",
@@ -157,6 +169,12 @@ export default defineConfig({
     },
   },
   vite: {
+    define: {
+      "import.meta.env.LOCAL_SOCIAL_PREVIEW_ORIGIN": JSON.stringify(
+        localPreview?.origin || "",
+      ),
+    },
+    ...(localPreview ? { preview: { strictPort: true } } : {}),
     plugins: [tailwindcss()],
     build: {
       cssCodeSplit: true,
@@ -179,7 +197,7 @@ export default defineConfig({
     },
   },
   integrations: [
-    socialImages(),
+    socialImages(localPreview?.origin),
     sitemap({
       filter: (page) => isIndexableSitemapPath(new URL(page).pathname),
 
@@ -195,9 +213,7 @@ export default defineConfig({
       // slugs need not match. Omit unknown lastmod instead of using build time.
       serialize(item) {
         const pathname = new URL(item.url).pathname;
-        const out = path.resolve(
-          fileURLToPath(new URL("./dist/", import.meta.url)),
-        );
+        const out = path.resolve(fileURLToPath(outputDirectory));
         const file = path.resolve(
           out,
           `.${decodeURIComponent(pathname)}`,

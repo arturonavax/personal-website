@@ -34,3 +34,7 @@ The default fallback remains available. Rebuilding does not publish files or inv
 Generated route PNGs are build artifacts under ignored `dist/og/`, never source files to commit. `/public/og/` is also ignored as defense against accidentally copying generated cards there. The existing tracked `public/og-default.png` remains the intentional fallback. Code, the local font outline source and its license are versioned, not generated route PNGs.
 
 Rendering uses the principal generator's shared Sharp PNG options: lossless compression level 9, effort 10, adaptive filtering, no palette quantization, 96dpi, and removal of the redundant alpha channel for opaque RGB output. No optimizer CLI is required. Source configuration contains an old unused supersampling setting; neither generator is certified as supersampled. File sizes vary with text; tests enforce a conservative representative-card budget rather than claiming identical byte sizes to the principal asset.
+
+## Testing images before deployment
+
+Use `pnpm preview:local --port 4332` to build into ignored `dist-local/` and serve absolute social-image URLs on that loopback origin. The command never overwrites production `dist/`, runs no content-pull hook, and removes private pages from its disposable output. Canonical/hreflang/schema generation keeps production identity; only image URLs are local. Ordinary development uses its local origin for the fallback image, not generated route cards. See [the local preview guide](local-preview.md) for strict-port behavior and Worker/security limitations.

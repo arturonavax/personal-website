@@ -19,6 +19,7 @@
     "cv:optimize": "node scripts/optimize-pdf.mjs",
     "cv:publish": "node scripts/optimize-pdf.mjs && node scripts/r2-push.mjs",
     "preview": "astro preview --host",
+    "preview:local": "node scripts/preview-local.mjs",
     "check": "astro check",
     "typecheck": "astro check",
     "types:worker": "wrangler types -c wrangler.jsonc",

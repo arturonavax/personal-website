@@ -1,5 +1,6 @@
 # build output
 dist/
+dist-local/
 # Generated route OG cards must never be checked in, even if copied to public.
 /public/og/
 

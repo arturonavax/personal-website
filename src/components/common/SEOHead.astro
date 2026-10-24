@@ -2,6 +2,7 @@
 import { ensureUnifiedGraphJsonLd } from "@/lib/seo/schema-builder";
 import { resolveVerifiedHreflang } from "@/utils/seo";
 import { resolveSocialImageUrl } from "@/lib/seo/og-image";
+import { socialImageOrigin } from "../../../scripts/lib/local-preview.mjs";
 
 interface Props {
   title: string;
@@ -86,7 +87,12 @@ const pageTitle = finalTitle.includes("Arturo Nava")
 const resolvedOgImage = resolveSocialImageUrl({
   explicitImage: ogImage,
   pathname: Astro.url.pathname,
-  siteUrl,
+  siteUrl: socialImageOrigin({
+    siteUrl,
+    development: import.meta.env.DEV,
+    requestOrigin: Astro.url.origin,
+    localOrigin: import.meta.env.LOCAL_SOCIAL_PREVIEW_ORIGIN,
+  }),
   production: import.meta.env.PROD,
   noindex,
 });

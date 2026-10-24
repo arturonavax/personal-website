@@ -101,3 +101,7 @@ For visit persistence, correlate a committed route with backend records while di
 A meaningful RED/GREEN cycle does not exist for passive descriptive prose. Instead, read back every modified document, resolve relative links/source/test references, compare contracts against source, inspect changed configuration structurally, and check formatting/diff hygiene. Agent instructions and active workflow configuration deserve an independent contract check because downstream work consumes them.
 
 Record the baseline and remaining gaps. Fixing an inaccurate description does not authorize changing the runtime behavior it describes.
+
+## Isolated local social-image preview
+
+`pnpm preview:local --port 4332` builds existing local content directly through Astro into ignored `dist-local/`, without package pull hooks, and serves only on loopback with a strict port. OG/Twitter image URLs use that local origin; production output and default SEO generation remain unchanged. Private admin/vault HTML is removed before serving. This is a static public-site preview, not proof of Worker routing, Access, quotas or telemetry persistence. See [local preview](local-preview.md). Preference-scroll regressions use actual visible-coordinate clicks; see [the scroll guide](preference-scroll.md).
