@@ -354,8 +354,7 @@ export function renderSocialImageSvg(
     .replace(/\s*[|—-]\s*Arturo Nava$/, "")
     .trim();
   const isBlog = /^\/(?:es\/)?blog(?:\/|$)/.test(metadata.pathname);
-  const titleText =
-    title === SOCIAL_PROFILE.name ? SOCIAL_PROFILE.role : title;
+  const titleText = title === SOCIAL_PROFILE.name ? SOCIAL_PROFILE.role : title;
   const titleFit = fitSocialText(titleText, heading, {
     maxWidth: 1040,
     maxHeight: 116,

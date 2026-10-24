@@ -4,6 +4,7 @@ import path from "node:path";
 
 /** Local dev consumes existing content; deployment retains its hydration steps. */
 export function wranglerBuildSteps(local) {
+  if (process.env.SKIP_BUILD === "1") return [];
   return local
     ? [
         [process.execPath, "node_modules/astro/bin/astro.mjs", "build"],

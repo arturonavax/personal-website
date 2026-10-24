@@ -290,7 +290,8 @@ describe("route-specific social images", () => {
     const glyphMap = JSON.parse(await readFile(font, "utf8"));
     const blogCard = {
       title: "Building Deterministic Distributed State Machines",
-      description: "An in-depth guide on first-principles distributed systems design, fault tolerance protocols, and low-latency replication in production Go environments with real-world architectural benchmarks.",
+      description:
+        "An in-depth guide on first-principles distributed systems design, fault tolerance protocols, and low-latency replication in production Go environments with real-world architectural benchmarks.",
       locale: "en",
       pathname: "/blog/deterministic-state-machines/",
     };

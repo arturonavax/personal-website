@@ -29,7 +29,7 @@
     "format:check": "prettier --check .",
     "cf:disable-jsd": "node scripts/disable-cf-jsd.mjs",
     "deploy": "wrangler deploy -c wrangler.jsonc",
-    "dev-prod": "pnpm check && SITE_LOCAL_BUILD=1 wrangler dev -c wrangler.jsonc --env local --local --port 8788 --ip 0.0.0.0",
+    "dev-prod": "pnpm check && SITE_LOCAL_BUILD=1 node scripts/dev-prod.mjs --env local --local --port 8788 --ip 0.0.0.0",
     "audit:mobile": "pnpm dlx lighthouse http://127.0.0.1:8788 --output=json --output-path=./lh-raw.json --chrome-flags=\"--headless\" --quiet && node scripts/filter-lh.mjs",
     "predeploy": "node scripts/r2-pull.mjs && pnpm run build",
     "db:reset:local": "wrangler d1 execute personal-website-analytics --local --file=./cloudflare/d1/reset.sql",
