@@ -810,18 +810,34 @@ const hasShortcuts = Boolean(shortcuts?.length);
       function hydrateSections() {
         document.documentElement.classList.add("hydrated-sections");
       }
-      if (window.location.hash) {
-        hydrateSections();
+      function setupSectionHydration() {
+        if (
+          window.location.hash ||
+          (typeof window !== "undefined" && window.scrollY > 0)
+        ) {
+          hydrateSections();
+          return;
+        }
+        window.addEventListener("scroll", hydrateSections, {
+          once: true,
+          passive: true,
+        });
+        window.addEventListener("pointerdown", hydrateSections, {
+          once: true,
+          passive: true,
+        });
+        window.addEventListener("pointerenter", hydrateSections, {
+          once: true,
+          passive: true,
+        });
+        window.addEventListener("touchstart", hydrateSections, {
+          once: true,
+          passive: true,
+        });
       }
+      setupSectionHydration();
       window.addEventListener("hashchange", hydrateSections, { passive: true });
-      window.addEventListener("scroll", hydrateSections, {
-        once: true,
-        passive: true,
-      });
-      window.addEventListener("pointerdown", hydrateSections, {
-        once: true,
-        passive: true,
-      });
+      document.addEventListener("astro:page-load", setupSectionHydration);
       document.addEventListener("astro:after-swap", () => {
         hideBeacon(true);
         try {
@@ -833,9 +849,7 @@ const hasShortcuts = Boolean(shortcuts?.length);
             window.scrollTo({ top: 0, left: 0, behavior: "instant" });
           }
         } catch (_) {}
-        if (window.location.hash) {
-          hydrateSections();
-        }
+        setupSectionHydration();
       });
 
       document.addEventListener(

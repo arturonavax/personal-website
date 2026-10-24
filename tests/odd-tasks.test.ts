@@ -354,7 +354,7 @@ describe("ODD Task 4: Removal of Top Loading Bar in Favor of Fetching Beacon", (
     expect(layoutContent).toContain("beaconSafetyTimeout");
   });
 
-  it("ensures CV download buttons in PageIndexNav and /resume/ index declare data-no-beacon", () => {
+  it("ensures floating CV download buttons in PageIndexNav declare data-no-beacon and /resume/ avoids redundant download button", () => {
     const pageIndexNavPath = path.join(
       ROOT_DIR,
       "src",
@@ -376,7 +376,8 @@ describe("ODD Task 4: Removal of Top Loading Bar in Favor of Fetching Beacon", (
       "index.astro",
     );
     const resumeIndexContent = fs.readFileSync(resumeIndexPath, "utf8");
-    expect(resumeIndexContent).toContain('data-no-beacon="true"');
+    expect(resumeIndexContent).not.toContain("Descargar CV (PDF)");
+    expect(resumeIndexContent).not.toContain("Download CV (PDF)");
   });
 });
 

@@ -46,7 +46,11 @@ html.hydrated-sections section#simulations,
 html.hydrated-sections section#blog,
 html.hydrated-sections section#contact,
 html.hydrated-sections main section,
-html.hydrated-sections footer {
+html.hydrated-sections footer,
+section:has([data-company-tooltip-root]:hover),
+section:has([data-tooltip-open="true"]),
+.content-auto:has([data-company-tooltip-root]:hover),
+.content-auto:has([data-tooltip-open="true"]) {
   content-visibility: visible !important;
 }
 

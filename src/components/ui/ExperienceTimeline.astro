@@ -402,6 +402,9 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
         function openTooltip() {
           clearTimeout(hideTimeout);
           closeAllTooltips(root);
+          try {
+            document.documentElement.classList.add("hydrated-sections");
+          } catch (_) {}
           updatePlacement();
           root.dataset.tooltipOpen = "true";
           trigger.setAttribute("aria-expanded", "true");
@@ -501,6 +504,9 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
     function lazyInitTooltips() {
       if (tooltipsInitialized) return;
       tooltipsInitialized = true;
+      try {
+        document.documentElement.classList.add("hydrated-sections");
+      } catch (_) {}
       initCompanyTooltips();
     }
 
@@ -553,6 +559,12 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
 </script>
 
 <style>
+  /* Ensure the geometric-box accent hover border and corner accents are drawn integrally above the sticky header */
+  :global([data-experience-item] .geometric-box::before),
+  :global([data-experience-item] .geometric-box::after) {
+    z-index: 25;
+  }
+
   /* Default: Opens upward */
   :global(
     [data-company-tooltip-root]:not([data-placement="bottom"])
