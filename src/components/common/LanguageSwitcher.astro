@@ -258,17 +258,8 @@ const effectiveTargetUrl =
               oldShortcuts.innerHTML = newShortcuts.innerHTML;
             }
 
-            // 9. Universal search & judges dialogs (preserve custom element wrappers, update inner localized copy)
-            var oldSearch =
-              document.getElementById("search-dialog") ||
-              document.getElementById("universal-search-dialog");
-            var newSearch =
-              newDoc.getElementById("search-dialog") ||
-              newDoc.getElementById("universal-search-dialog");
-            if (oldSearch && newSearch) {
-              oldSearch.innerHTML = newSearch.innerHTML;
-            }
-
+            // 9. Search owns its controls and localizes them on astro:page-load.
+            // Keep its input/result nodes so their lazy engine listeners survive.
             var oldJudges =
               document.getElementById("online-judges-dialog") ||
               document.getElementById("judges-dialog");

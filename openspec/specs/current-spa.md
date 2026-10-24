@@ -193,3 +193,7 @@ The two simulation presentations sequence steps using `step.durationMs × 25 + 1
 | SPA-09       | `global.css`, ArticleLayout, service/experience detail, blog index                                      | `blog-surfaces.spec.ts`, `experience-surfaces.spec.ts`, `geometric-corners.spec.ts`                             |
 
 Source paths in the table are under `src/components/{common,ui}/`, `src/layouts/`, `src/pages/[...lang]/`, `src/scripts/`, `src/stores/`, or `src/styles/` as named above; test paths are under `tests/`. A passing source-assertion unit test does not replace browser interaction, visual inspection, or field data. Worker drawing measurements do not by themselves prove presentation on a real display. Local browser continuity does not establish the production Worker retained the same HTML/script metadata; verify the actual serving path independently.
+
+## Discovery controls — subsequent navigation fix
+
+The actual `universal-search-modal` custom-element root persists across route swaps. Locale changes update localized labels through the existing owner rather than replacing its listener-owned input/results subtree. Search must continue typing, clearing, keyboard selection and closing after repeated page and language changes, retaining one cached search index owner (`tests/search-navigation.spec.ts`). The floating Page Index label is “Index” below 640px and “Page Index” from 640px; Spanish retains “Índice”. Existing desktop-left eligibility and gutter geometry remain unchanged (`tests/page-index-responsive.spec.ts`).

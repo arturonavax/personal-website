@@ -12,7 +12,7 @@ const searchIndexPath = "/search-index.json";
 ---
 
 <!-- Universal Search Dialog -->
-<universal-search-modal class="block">
+<universal-search-modal class="block" transition:persist="search-modal">
   <dialog
     id="search-dialog"
     data-search-index-path={searchIndexPath}

@@ -158,6 +158,7 @@ const indexItems: IndexItem[] = customItems ?? defaultIndexItems;
 
 const i18nEn = {
   indexTitle: "Page Index",
+  indexShortTitle: "Index",
   sectionsTitle: "Page Navigation",
   scroll: "Scroll",
   close: "Close index",
@@ -171,6 +172,7 @@ const i18nEn = {
 
 const i18nEs = {
   indexTitle: "Índice",
+  indexShortTitle: "Índice",
   sectionsTitle: "Índice de Secciones",
   scroll: "Desplazamiento",
   close: "Cerrar índice",
@@ -528,7 +530,12 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
           <line x1="3" y1="18" x2="3.01" y2="18"></line>
         </svg>
         <span id="mobile-index-label" class="shrink-0">
-          {isEs ? i18nEs.indexTitle : i18nEn.indexTitle}
+          <span data-index-label-short class="sm:hidden">
+            {isEs ? i18nEs.indexShortTitle : i18nEn.indexShortTitle}
+          </span>
+          <span data-index-label-full class="hidden sm:inline">
+            {isEs ? i18nEs.indexTitle : i18nEn.indexTitle}
+          </span>
         </span>
         <kbd class="hidden sm:inline-block rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] font-semibold shrink-0">
           i
@@ -1032,7 +1039,16 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       if (mobileScroll) mobileScroll.textContent = i18n.scroll;
 
       var mobileIndexLabel = document.getElementById("mobile-index-label");
-      if (mobileIndexLabel) mobileIndexLabel.textContent = i18n.indexTitle;
+      if (mobileIndexLabel) {
+        var shortLabel = mobileIndexLabel.querySelector(
+          "[data-index-label-short]",
+        );
+        var fullLabel = mobileIndexLabel.querySelector(
+          "[data-index-label-full]",
+        );
+        if (shortLabel) shortLabel.textContent = i18n.indexShortTitle;
+        if (fullLabel) fullLabel.textContent = i18n.indexTitle;
+      }
 
       var desktopPrintBtn = document.getElementById("desktop-cv-print-btn");
       if (desktopPrintBtn) {
