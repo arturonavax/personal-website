@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
+import { isIndexableSitemapPath } from "../scripts/lib/sitemap-metadata.mjs";
 import worker, {
   handleAdminDashboardRequest,
   classifyVisitor,
@@ -78,7 +79,11 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
       path.join(ROOT_DIR, "astro.config.mjs"),
       "utf8",
     );
-    expect(astroConfig).toContain('!page.includes("/admin/")');
+    expect(astroConfig).toContain(
+      "isIndexableSitemapPath(new URL(page).pathname)",
+    );
+    expect(isIndexableSitemapPath("/admin/")).toBe(false);
+    expect(isIndexableSitemapPath("/es/admin/")).toBe(false);
 
     const sitemapPath = path.join(ROOT_DIR, "dist", "sitemap-0.xml");
     if (fs.existsSync(sitemapPath)) {

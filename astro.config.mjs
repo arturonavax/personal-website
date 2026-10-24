@@ -6,6 +6,10 @@ import * as esbuild from "esbuild";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  serializeVerifiedSitemapItem,
+  isIndexableSitemapPath,
+} from "./scripts/lib/sitemap-metadata.mjs";
 
 function minifyInlineScripts() {
   return {
@@ -77,7 +81,7 @@ function buildRouteLastmodMap() {
       }
       return fs.statSync(filePath).mtime;
     } catch {
-      return new Date();
+      return undefined;
     }
   }
 
@@ -91,11 +95,15 @@ function buildRouteLastmodMap() {
       for (const entry of entries) {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
-          walkDir(full, entry.name);
+          walkDir(full, localePrefix || entry.name);
         } else if (entry.isFile() && /\.(?:md|mdx|json)$/i.test(entry.name)) {
           if (entry.name.startsWith(".")) continue;
           const date = parseDateFromFile(full);
-          const rawSlug = entry.name.replace(/\.(?:md|mdx|json)$/i, "");
+          const rawSlug = path
+            .relative(colDir, full)
+            .replaceAll(path.sep, "/")
+            .replace(/^(?:en|es)\//, "")
+            .replace(/\.(?:md|mdx|json)$/i, "");
 
           if (collection === "resume") {
             const isEs = rawSlug.toLowerCase().endsWith("-es");
@@ -171,11 +179,7 @@ export default defineConfig({
   },
   integrations: [
     sitemap({
-      filter: (page) =>
-        !page.includes("/admin/") &&
-        !page.includes("/admin") &&
-        !page.includes("/search") &&
-        !page.includes("/404"),
+      filter: (page) => isIndexableSitemapPath(new URL(page).pathname),
 
       i18n: {
         defaultLocale: "en",
@@ -185,37 +189,29 @@ export default defineConfig({
         },
       },
 
-      // 3. Serializador avanzado (x-default + lastmod dinámico)
+      // Reuse the emitted page's verified locale relationships; translated
+      // slugs need not match. Omit unknown lastmod instead of using build time.
       serialize(item) {
-        // Asignar fecha de última modificación determinista desde el mapa de contenido
-        try {
-          const parsed = new URL(item.url);
-          const p = parsed.pathname;
-          const matched =
-            routeLastmodMap.get(p) ||
-            routeLastmodMap.get(p.replace(/\/+$/, "")) ||
-            routeLastmodMap.get(`${p}/`);
-          item.lastmod = matched ? new Date(matched) : new Date();
-        } catch {
-          item.lastmod = new Date();
-        }
-
-        // Asegurar que exista la directiva x-default apuntando a la versión en inglés
-        if (item.links && item.links.length > 0) {
-          const hasXDefault = item.links.some((l) => l.lang === "x-default");
-          if (!hasXDefault) {
-            const defaultLink =
-              item.links.find((l) => l.lang === "en") || item.links[0];
-            if (defaultLink) {
-              item.links.push({
-                lang: "x-default",
-                url: defaultLink.url,
-              });
-            }
-          }
-        }
-
-        return item;
+        const pathname = new URL(item.url).pathname;
+        const out = path.resolve(
+          fileURLToPath(new URL("./dist/", import.meta.url)),
+        );
+        const file = path.resolve(
+          out,
+          `.${decodeURIComponent(pathname)}`,
+          "index.html",
+        );
+        if (
+          !file.startsWith(`${out}${path.sep}`) &&
+          file !== path.join(out, "index.html")
+        )
+          return undefined;
+        if (!fs.existsSync(file)) return undefined;
+        return serializeVerifiedSitemapItem(
+          item,
+          fs.readFileSync(file, "utf8"),
+          routeLastmodMap.get(pathname),
+        );
       },
     }),
     minifyInlineScripts(),

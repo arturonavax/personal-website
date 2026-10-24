@@ -5,6 +5,7 @@ import { Picture } from "astro:assets";
 import arturoPhoto from "@/assets/arturonava.jpg";
 import { hasResume } from "@/data/resume";
 import ScheduleButton from "@/components/ScheduleButton.astro";
+import { hiringPositioning } from "@/lib/seo/hiring";
 
 interface Props {
   locale: Locale;
@@ -65,6 +66,9 @@ const techStack = [
       </p>
 
       <!-- 4. CTAs: Single-line desktop action bar with Primary & Secondary -->
+      <p class="text-sm text-[var(--color-text-secondary)] leading-relaxed max-w-xl">
+        {hiringPositioning[locale].availability}
+      </p>
       <div class="pt-1.5 flex flex-wrap items-center justify-start sm:justify-center lg:justify-start gap-3 font-mono text-xs sm:text-sm w-full">
         <ScheduleButton
           calLink="arturonavax"

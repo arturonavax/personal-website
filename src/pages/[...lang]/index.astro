@@ -17,6 +17,7 @@ import type { SupportedLocale } from "@/i18n/config";
 import { getVisibleCollection } from "@/utils/visibility";
 import { getImage } from "astro:assets";
 import arturoPhoto from "@/assets/arturonava.jpg";
+import { hiringPositioning } from "@/lib/seo/hiring";
 
 export function getStaticPaths() {
   return [
@@ -85,16 +86,8 @@ const jsonLd = getHomepageJsonLd(locale, avatarWebp.src);
 ---
 
 <BaseLayout
-  title={
-    isEs
-      ? "Arturo Nava | Ingeniero de Software Senior / IA · Sistemas Distribuidos & AppSec"
-      : "Arturo Nava | Senior Software / AI Engineer · Distributed Systems & AppSec"
-  }
-  description={
-    isEs
-      ? "Ingeniero de Software Senior / IA con más de 8 años diseñando sistemas distribuidos en Go y Rust, motores antifraude en tiempo real, Web3 y flujos agénticos en producción."
-      : "Senior Software / AI Engineer with 8+ years architecting high-throughput distributed systems in Go and Rust, real-time anti-fraud engines, Web3, and production AI workflows."
-  }
+  title={hiringPositioning[locale].title}
+  description={hiringPositioning[locale].description}
   locale={locale}
   canonicalUrl={
     isEs ? "https://arturonavax.dev/es/" : "https://arturonavax.dev/"

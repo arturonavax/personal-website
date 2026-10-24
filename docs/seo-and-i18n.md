@@ -37,7 +37,7 @@ When rebranding, update all tracked identity literals and structured-data helper
 
 `@astrojs/sitemap` emits `sitemap-index.xml` and its sitemap files. Current filters exclude admin, search and 404; **case-studies is included**, contrary to older guides.
 
-Mapped content lastmod prefers updated frontmatter dates, then published/start dates, then file mtime. The serializer uses build time for unmapped/error cases. Consequently lastmod is **not universally deterministic** across builds. Validate generated alternates and lastmod, especially when translations or source files are missing; the sitemap integration is not the same validation path as HTML counterpart resolution.
+Mapped content lastmod prefers updated frontmatter dates, then published/start dates, then file mtime. Unknown or invalid dates are omitted instead of being replaced with build time. The serializer reads actual emitted HTML and copies its verified hreflang links, so translated slugs can differ without inventing alternates. Canonical mismatches and noindex documents are excluded; validate generated output before publication.
 
 `public/robots.txt` permits public search-engine and AI crawling while excluding admin/API and query-filter patterns. Search paths without queries remain crawlable so explicit noindex can be observed. Worker robots headers also mark protected, search and query-string responses nonindexable. Neither robots nor noindex replaces authentication.
 
