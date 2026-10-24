@@ -138,7 +138,7 @@ Evidence: [SEO head](../../src/components/common/SEOHead.astro), [counterpart re
 
 Public metadata MUST use the unified graph builder with stable owner `https://arturonavax.dev/#person`, website, webpage, breadcrumb, and applicable vertical entities: article/blog posting, software project/application, professional service, profile/resume, and collection listings. Locale descriptions and entity URLs MUST match rendered content rather than combine translations into duplicate identity nodes.
 
-The sitemap MUST omit admin, search, and 404 while including generated case-studies routes. Lastmod MUST use the implementation's updated-date, publication/start-date, then file-mtime lookup for mapped content. Current unmapped/error fallback is build time (`new Date()`); universal determinism is not implemented. Sitemap alternates MUST preserve the integration's available links and appended `x-default`; validate generated output rather than assuming every asymmetric content pair is automatically repaired.
+The sitemap MUST omit admin, search, and 404 while including generated case-studies routes. Lastmod MUST use the implementation's updated-date, publication/start-date, then file-mtime lookup for mapped content. Unknown or invalid dates MUST be omitted instead of replaced with build time. Sitemap alternates MUST match the verified links in actual emitted HTML, including different localized slugs and eligible `x-default`; validate the generated output.
 
 `robots.txt` MUST retain admin/API/query-pattern restrictions and the sitemap-index location. Search pages MUST remain crawlable without a query so their noindex directive can be observed. Worker robots headers MUST distinguish protected/search/query surfaces from public HTML; robots exclusions are not access controls.
 
@@ -152,11 +152,11 @@ Evidence: [graph builder](../../src/lib/seo/schema-builder.ts), [sitemap configu
 
 The Worker MUST support the implemented GET Markdown negotiation for eligible content routes through `Accept: text/markdown` or `.md` suffix. It extracts available static HTML content, emits canonical/author/locale/section/summary/full-context links, and caches the representation separately. Its fallback can generate a summary even when asset extraction fails; it is not an exact raw-source API or proof that every requested slug exists. Do not describe an automatic302 to the full catalog as the current implementation.
 
-The OG route source is present but `getStaticPaths()` currently returns an empty array. All regular pages use `/og-default.png` unless explicitly overridden; a dependency on Satori/resvg does not prove per-entry OG cards are currently generated. Favicons, manifest, and local font assets MUST remain discoverable through SEOHead.
+The route-social-images build integration generates localized 1200×630 PNG cards from actual emitted public HTML. Explicit authored images win; development and excluded/noindex routes retain `/og-default.png`. A renderer dependency or metadata URL alone does not prove emission. Favicons, manifest, and local font assets MUST remain discoverable through SEOHead.
 
-Given no visible posts, then RSS MUST still expose the project fallback when visible projects exist. Given a normal page without OG override, then its social image MUST resolve the default asset, not an ungenerated `/og/...png` path.
+Given no visible posts, then RSS MUST still expose the project fallback when visible projects exist. Given a normal page without OG override, then its production social image MUST resolve an emitted route card; development and excluded/noindex routes retain the default fallback.
 
-Evidence: [RSS](../../src/pages/rss.xml.ts), [full text catalog](../../src/pages/llms-full.txt.ts), [static search index](../../src/pages/search-index.json.ts), [OG route](../../src/pages/og/[...slug].png.ts), [Markdown negotiation](../../cloudflare/worker.ts), [SEO head](../../src/components/common/SEOHead.astro).
+Evidence: [RSS](../../src/pages/rss.xml.ts), [full text catalog](../../src/pages/llms-full.txt.ts), [static search index](../../src/pages/search-index.json.ts), [OG build integration](../../src/integrations/social-images.ts), [Markdown negotiation](../../cloudflare/worker.ts), [SEO head](../../src/components/common/SEOHead.astro).
 
 ## PLAT-13 — Fonts, assets, and measurable quality
 
@@ -178,3 +178,13 @@ These references identify existing checks; this documentation update did not rer
 | PLAT10–13      | `tests/spec-012/`, `tests/audit.spec.ts`                             | Generated head/sitemap/feed review and current field/lab measurements          |
 
 External editorial content, image/PDF assets, deployment credentials, search indexing state, and account-side service configuration are not recoverable from these public specifications. Keep those inputs in owner-controlled backups, never inline their secret values into docs.
+
+## Discovery upgrade — Search, article series and social cards
+
+The subsequent implementation recorded in `odd/tasks/discovery-content-upgrade.md` adds optional post `series: { id, title, part }` frontmatter. Published parts are grouped by locale and stable series ID, ordered by positive authored part number, and linked with subtle previous/next navigation at both ends of the article. Draft/hidden parts never leak into links; standalone posts are unchanged. Duplicate published part numbers within a locale/series fail validation. See `tests/post-series.test.ts` and `docs/content-sync.md`.
+
+Blog counterpart availability follows visible translation identity rather than slug equality. Authored update dates and cover images reach article metadata. Sitemap serialization uses the actual emitted canonical/hreflang metadata and omits unknown modification dates rather than substituting build time. Public Search discovery articles remain eligible; utility Search and protected routes remain excluded.
+
+`SEOHead` preserves explicit images, otherwise production builds reference route-specific localized 1200×630 PNGs generated from emitted public HTML by `src/integrations/social-images.ts`. Local Geist-derived glyph outlines avoid host-font variation or request-time rendering. Development and noindex/private routes retain the default fallback. The unused zero-path OG endpoint is replaced by the build integration. See `docs/social-images.md` and `tests/social-images.test.ts`; actual build/image existence is required evidence, not metadata URLs alone.
+
+Home metadata and visible availability describe senior software engineering, technology leadership opportunities and independent projects without claiming an unverified current director appointment. The dated audit records scope and remaining account/field evidence; no ranking or universal performance certification follows from these changes.

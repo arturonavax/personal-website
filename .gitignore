@@ -1,5 +1,7 @@
 # build output
 dist/
+# Generated route OG cards must never be checked in, even if copied to public.
+/public/og/
 
 # generated types & cache
 .astro/

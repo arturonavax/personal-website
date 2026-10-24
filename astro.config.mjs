@@ -6,6 +6,7 @@ import * as esbuild from "esbuild";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import socialImages from "./src/integrations/social-images.ts";
 import {
   serializeVerifiedSitemapItem,
   isIndexableSitemapPath,
@@ -178,6 +179,7 @@ export default defineConfig({
     },
   },
   integrations: [
+    socialImages(),
     sitemap({
       filter: (page) => isIndexableSitemapPath(new URL(page).pathname),
 

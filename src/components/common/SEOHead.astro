@@ -1,6 +1,7 @@
 ---
 import { ensureUnifiedGraphJsonLd } from "@/lib/seo/schema-builder";
 import { resolveVerifiedHreflang } from "@/utils/seo";
+import { resolveSocialImageUrl } from "@/lib/seo/og-image";
 
 interface Props {
   title: string;
@@ -22,7 +23,7 @@ const {
   locale,
   canonicalUrl,
   type = "website",
-  ogImage = "/og-default.png",
+  ogImage,
   jsonLd,
   alternateEnUrl,
   alternateEsUrl,
@@ -82,9 +83,14 @@ const finalDescription =
 const pageTitle = finalTitle.includes("Arturo Nava")
   ? finalTitle
   : `${finalTitle} | Arturo Nava`;
-const resolvedOgImage = ogImage.startsWith("http")
-  ? ogImage
-  : `${siteUrl}${ogImage}`;
+const resolvedOgImage = resolveSocialImageUrl({
+  explicitImage: ogImage,
+  pathname: Astro.url.pathname,
+  siteUrl,
+  production: import.meta.env.PROD,
+  noindex,
+});
+const socialImageAlt = `${finalTitle} — ${locale === "es" ? "Arturo Nava, ingeniería de software" : "Arturo Nava, software engineering"}`;
 
 const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
   locale,
@@ -207,19 +213,24 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
 <meta property="og:title" content={pageTitle} />
 <meta property="og:description" content={finalDescription} />
 <meta property="og:image" content={resolvedOgImage} />
-<meta property="og:image:secure_url" content={resolvedOgImage} />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta property="og:image:type" content="image/png" />
-<meta
-  property="og:image:alt"
-  content="Arturo Nava - Senior Software / AI Engineer"
-/>
+{resolvedOgImage.startsWith("https:") && (
+  <meta property="og:image:secure_url" content={resolvedOgImage} />
+)}
+{!ogImage && (
+  <>
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+  </>
+)}
+<meta property="og:image:alt" content={socialImageAlt} />
 <meta property="og:locale" content={locale === "es" ? "es_ES" : "en_US"} />
-<meta
-  property="og:locale:alternate"
-  content={locale === "es" ? "en_US" : "es_ES"}
-/>
+{(locale === "es" ? enUrl : esUrl) && (
+  <meta
+    property="og:locale:alternate"
+    content={locale === "es" ? "en_US" : "es_ES"}
+  />
+)}
 <meta
   property="og:site_name"
   content="Arturo Nava - Senior Software / AI Engineer"
@@ -233,10 +244,7 @@ const normalizedJsonLd = ensureUnifiedGraphJsonLd(jsonLd, {
 <meta name="twitter:title" content={pageTitle} />
 <meta name="twitter:description" content={finalDescription} />
 <meta name="twitter:image" content={resolvedOgImage} />
-<meta
-  name="twitter:image:alt"
-  content="Arturo Nava - Senior Software / AI Engineer"
-/>
+<meta name="twitter:image:alt" content={socialImageAlt} />
 
 <!-- llms.txt -->
 <link

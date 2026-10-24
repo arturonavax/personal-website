@@ -45,15 +45,15 @@ Permanent edge canonical redirects normalize document paths and supported vanity
 
 ## Feeds and machine-readable endpoints
 
-| Endpoint                                         | Actual current behavior                                                                                                |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| `/rss.xml`                                       | Visible bilingual posts with a Spanish title marker; if none, visible project fallback with stable order-derived dates |
-| `/search-index.json`                             | Prerendered EN/ES arrays for projects/posts/experience/services                                                        |
-| `/llms.txt`                                      | Tracked concise site/profile summary                                                                                   |
-| `/llms-full.txt`                                 | English visible catalog summaries and resolved English resume; not all bilingual raw source bodies                     |
-| Eligible content GET with Markdown accept/suffix | Worker-generated Markdown representation of available static HTML plus metadata/context links; separately cached       |
-| `/og-default.png`                                | Current default social image                                                                                           |
-| `/og/[...slug].png` source                       | Generator exists but `getStaticPaths()` currently returns `[]`; no per-entry cards are produced by it                  |
+| Endpoint                                         | Actual current behavior                                                                                                            |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `/rss.xml`                                       | Visible bilingual posts with a Spanish title marker; if none, visible project fallback with stable order-derived dates             |
+| `/search-index.json`                             | Prerendered EN/ES arrays for projects/posts/experience/services                                                                    |
+| `/llms.txt`                                      | Tracked concise site/profile summary                                                                                               |
+| `/llms-full.txt`                                 | English visible catalog summaries and resolved English resume; not all bilingual raw source bodies                                 |
+| Eligible content GET with Markdown accept/suffix | Worker-generated Markdown representation of available static HTML plus metadata/context links; separately cached                   |
+| `/og-default.png`                                | Current default social image                                                                                                       |
+| Route-derived `/og/<route>/index.png`            | Build-generated localized cards for emitted public documents; explicit authored images win. See [social images](social-images.md). |
 
 Markdown negotiation accepts `Accept: text/markdown` or eligible `.md` paths. It is a generated representation, not the original editorial Markdown API. If HTML extraction fails it can still return a fallback summary, so a Markdown 200 is not proof that a requested HTML slug exists. The current code returns generated Markdown rather than an unconditional 302 to the full catalog.
 
@@ -67,8 +67,12 @@ Public HTML responses expose machine-readable context links and indexing directi
 2. Inspect generated canonical/hreflang/robots/JSON-LD for both locales and a missing-translation case.
 3. Compare sitemap locations against actual generated public routes; inspect lastmod fallbacks and noindex exclusions.
 4. Check RSS both with posts and with project fallback; inspect search-index locale groups and URLs.
-5. Check actual social-image URLs; do not request disabled per-entry OG paths.
+5. Check actual social-image URLs and PNG bytes; verify localized generated cards and explicit authored-image overrides.
 6. Exercise Markdown negotiation and its missing-asset behavior separately from ordinary HTML status.
 7. Run the relevant `tests/spec-012/` and browser audit suites in a suitable local environment; source assertions alone do not verify Google indexing or field performance.
 
 This documentation update did not rerun those runtime suites or inspect Search Console. Current field measurements, indexing state, authenticated account settings and private content remain separate evidence.
+
+## Discovery upgrade
+
+See the [dated source audit and evidence scope](seo-audit-2026-10-23.md), [social-image guide](social-images.md), and [optional blog series authoring](content-sync.md). Hiring intent is stated as opportunities sought, not an invented current technology-director role.
