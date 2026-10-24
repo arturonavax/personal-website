@@ -28,7 +28,7 @@ describe("shared principal social style", () => {
     expect(SOCIAL_PNG_OPTIONS).toEqual({
       compressionLevel: 9,
       effort: 10,
-      adaptiveFiltering: true,
+      adaptiveFiltering: false,
       palette: false,
     });
   });

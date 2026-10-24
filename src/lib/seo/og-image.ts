@@ -353,17 +353,22 @@ export function renderSocialImageSvg(
     .replace(/^Arturo Nava\s*[|—-]\s*/, "")
     .replace(/\s*[|—-]\s*Arturo Nava$/, "")
     .trim();
-  const titleFit = fitSocialText(
-    title === SOCIAL_PROFILE.name ? SOCIAL_PROFILE.role : title,
-    heading,
-    { maxWidth: 1040, maxHeight: 116, maxLines: 2, maxSize: 48, minSize: 32 },
-  );
+  const isBlog = /^\/(?:es\/)?blog(?:\/|$)/.test(metadata.pathname);
+  const titleText =
+    title === SOCIAL_PROFILE.name ? SOCIAL_PROFILE.role : title;
+  const titleFit = fitSocialText(titleText, heading, {
+    maxWidth: 1040,
+    maxHeight: 116,
+    maxLines: 2,
+    maxSize: 48,
+    minSize: 32,
+  });
   const descriptionFit = fitSocialText(metadata.description, font, {
     maxWidth: 1040,
-    maxHeight: 56,
-    maxLines: 2,
-    maxSize: 22,
-    minSize: 19,
+    maxHeight: isBlog ? 140 : 54,
+    maxLines: isBlog ? 5 : 2,
+    maxSize: isBlog ? 22 : 20.5,
+    minSize: isBlog ? 19 : 18,
   });
   const outlines = (
     value: string,
@@ -403,12 +408,18 @@ export function renderSocialImageSvg(
   const background = createSocialBackground(
     1200,
     630,
-    [
-      { x: 70, y: 76, w: 1060, h: 105 },
-      { x: 70, y: 194, w: 1060, h: 205 },
-      { x: 70, y: 416, w: 1060, h: 100 },
-      { x: 70, y: 542, w: 1060, h: 48 },
-    ],
+    isBlog
+      ? [
+          { x: 70, y: 76, w: 1060, h: 105 },
+          { x: 70, y: 194, w: 1060, h: 320 },
+          { x: 70, y: 542, w: 1060, h: 48 },
+        ]
+      : [
+          { x: 70, y: 76, w: 1060, h: 105 },
+          { x: 70, y: 194, w: 1060, h: 222 },
+          { x: 70, y: 416, w: 1060, h: 100 },
+          { x: 70, y: 542, w: 1060, h: 48 },
+        ],
     28,
     (glyph) => {
       const char = detail.glyphs[glyph.char]
@@ -420,23 +431,57 @@ export function renderSocialImageSvg(
     },
   );
   const role = metadata.locale.startsWith("es")
-    ? "Sistemas Distribuidos · Alto Rendimiento · IA"
-    : "Distributed Systems · High Performance · AI";
+    ? "Senior Software / AI Engineer · Sistemas Distribuidos · Alto Rendimiento"
+    : "Senior Software / AI Engineer · Distributed Systems · High Performance";
   const contact = `${SOCIAL_PROFILE.handle}  ·  ${SOCIAL_PROFILE.email}`;
+
+  const companyMatch = titleText.match(/^(.*?)(\s+(?:at|en)\s+.+)$/i);
+  const splitIndex = companyMatch ? companyMatch[1]!.length : -1;
+
+  let titleOffset = 0;
+  const renderedTitleLines = titleFit.lines
+    .map((line, i) => {
+      const y = 242 + i * titleFit.lineHeight;
+      let cursor = 80;
+      let lineSvg = "";
+      for (const char of textGraphemes(line)) {
+        const isCompany = splitIndex !== -1 && titleOffset >= splitIndex;
+        const face = isCompany ? font : heading;
+        const color = isCompany ? colors.amberLead : colors.amberPrimary;
+        const glyph = (face.glyphs[char] || face.glyphs["?"])!;
+        const charWidth = (glyph.advance * titleFit.fontSize) / face.unitsPerEm;
+        if (glyph.path) {
+          const pathSvg = `<path d="${escapeXml(glyph.path)}" transform="translate(${cursor} ${y}) scale(${titleFit.fontSize / face.unitsPerEm} ${-titleFit.fontSize / face.unitsPerEm})" fill="${color}"/>`;
+          lineSvg += isCompany
+            ? `<g transform="translate(${cursor} ${y}) skewX(-11) translate(${-cursor} ${-y})">${pathSvg}</g>`
+            : pathSvg;
+        }
+        cursor += charWidth;
+        titleOffset += char.length;
+      }
+      titleOffset += 1;
+      return lineSvg;
+    })
+    .join("");
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${SOCIAL_IMAGE_WIDTH}" height="${SOCIAL_IMAGE_HEIGHT}" viewBox="0 0 1200 630" shape-rendering="geometricPrecision">
     ${background}
     ${createTechnicalFrame(1200, 630, 28)}
     <g data-og-identity="true" data-og-heading-font="Geist 700" aria-label="${SOCIAL_PROFILE.name}">${outlines(SOCIAL_PROFILE.name, 80, 140, 70, colors.textWhite, heading)}</g>
     <g data-og-detail-font="Geist Mono 600">${outlines(role, 82, 175, 16, colors.textDim, detail)}</g>
-    <g data-og-title="true" aria-label="${escapeXml(title)}">${lines(titleFit, 242, colors.amberPrimary, heading)}</g>
+    <g data-og-title="true" aria-label="${escapeXml(titleText)}">${renderedTitleLines}</g>
     <g data-og-description="true">${lines(descriptionFit, 360, colors.textMuted, font)}</g>
-    <g data-og-badge="true" data-og-available="${banner.available}" aria-label="${escapeXml(banner.lines.join(". "))}">
+    ${
+      !isBlog
+        ? `<g data-og-badge="true" data-og-available="${banner.available}" aria-label="${escapeXml(banner.lines.join(". "))}">
       <rect x="80" y="424" width="1040" height="88" rx="8" fill="${colors.bgLight}" stroke="${colors.amberPrimary}" stroke-opacity="0.55"/>
       <rect x="80" y="424" width="4" height="88" rx="2" fill="${colors.amberPrimary}"/>
       <circle cx="105" cy="450" r="5" fill="${banner.available ? colors.statusGreen : colors.amberPrimary}"/>
       ${outlines(banner.lines[0]!, 122, 456, 17, colors.textWhite, detail)}
       ${outlines(banner.lines[1]!, 102, 490, 17, colors.amberLead, detail)}
-    </g>
+    </g>`
+        : ""
+    }
     <g data-og-detail-font="Geist Mono 600">${outlines(SOCIAL_PROFILE.domain, 80, 566, 23, colors.amberPrimary, detail)}
     ${outlines(contact, 1120 - measureSocialText(contact, detail, 16), 566, 16, colors.textMuted, detail)}</g>
   </svg>`;

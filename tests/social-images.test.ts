@@ -286,6 +286,27 @@ describe("route-specific social images", () => {
       await renderSocialImage({ ...card, title: "Different title" }, font),
     ).not.toEqual(await renderSocialImage(card, font));
   });
+  it("omits the available badge on blog cards and styles at-company title suffixes", async () => {
+    const glyphMap = JSON.parse(await readFile(font, "utf8"));
+    const blogCard = {
+      title: "Building Deterministic Distributed State Machines",
+      description: "An in-depth guide on first-principles distributed systems design, fault tolerance protocols, and low-latency replication in production Go environments with real-world architectural benchmarks.",
+      locale: "en",
+      pathname: "/blog/deterministic-state-machines/",
+    };
+    const blogSvg = renderSocialImageSvg(blogCard, glyphMap);
+    expect(blogSvg).not.toContain("data-og-badge");
+
+    const experienceCard = {
+      title: "Former Senior Software Engineer at Mercado Libre",
+      description: "Production architecture and distributed systems impact.",
+      locale: "en",
+      pathname: "/experience/mercado-libre/",
+    };
+    const expSvg = renderSocialImageSvg(experienceCard, glyphMap);
+    expect(expSvg).toContain("data-og-badge");
+    expect(expSvg).toContain("skewX(-11)");
+  });
   it("generates only actual eligible HTML route cards, without replacing explicit images", async () => {
     const dir = await mkdtemp(join(tmpdir(), "social-images-"));
     for (const path of ["", "es", "blog/niño", "admin", "search"]) {

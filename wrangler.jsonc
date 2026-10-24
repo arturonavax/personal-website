@@ -37,6 +37,7 @@
       "!/apple-touch-icon*",
       "!/icon-*",
       "!/og-default.png",
+      "!/og/*",
       "!/site.webmanifest",
       "!/robots.txt",
       "!/sitemap*.xml",

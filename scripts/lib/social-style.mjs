@@ -72,7 +72,7 @@ export const SOCIAL_MATRIX = {
 export const SOCIAL_PNG_OPTIONS = {
   compressionLevel: 9,
   effort: 10,
-  adaptiveFiltering: true,
+  adaptiveFiltering: false,
   palette: false,
 };
 
@@ -170,7 +170,7 @@ export function generateMatrixGlyphs(
           } else if (distFromLead <= 2) {
             opacity = "0.14";
             fill = TONE_BODY;
-          } else if (distFromLead <= 5) {
+          } else if (distFromLead <= 4) {
             opacity = "0.07";
             fill = TONE_TAIL;
           } else {
