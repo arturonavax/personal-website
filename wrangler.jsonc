@@ -8,7 +8,7 @@
   "workers_dev": false,
   "preview_urls": false,
   "build": {
-    "command": "node scripts/r2-pull.mjs && pnpm run build",
+    "command": "node scripts/wrangler-build.mjs",
   },
   "routes": [
     {
@@ -96,5 +96,39 @@
     "REQUIRE_CF_ACCESS": "true",
     "REQUIRE_ADMIN_AUTH": "true",
     "ADMIN_AUTHORIZED_EMAILS": "arturonavax@gmail.com,contact@arturonava.com",
+  },
+  // Local-only bindings: AI/Vectorize cannot be emulated by this Wrangler version.
+  // Non-inheritable bindings/vars are explicit; deployment uses the top-level config.
+  "env": {
+    "local": {
+      "routes": [],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "personal-website-analytics",
+          "database_id": "8b881d48-f08b-4e77-9731-541eab349f16",
+          "migrations_dir": "./cloudflare/d1/migrations",
+          "remote": false,
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "STORAGE_BUCKET",
+          "bucket_name": "arturonavax-production-assets",
+          "remote": false,
+        },
+      ],
+      "vars": {
+        "CLOUDFLARE_PLAN_TIER": "free",
+        "D1_DAILY_WRITE_BUDGET": "100000",
+        "D1_DAILY_READ_BUDGET": "5000000",
+        "ENABLE_BOT_TELEMETRY": "false",
+        "CF_ACCESS_TEAM_DOMAIN": "orange-art-1302.cloudflareaccess.com",
+        "CF_ACCESS_AUD": "9b020275757d6aaf08b6f4a26febe94687d897aadfdf57895f9456f1708011cf",
+        "REQUIRE_CF_ACCESS": "true",
+        "REQUIRE_ADMIN_AUTH": "true",
+        "ADMIN_AUTHORIZED_EMAILS": "arturonavax@gmail.com,contact@arturonava.com",
+      },
+    },
   },
 }

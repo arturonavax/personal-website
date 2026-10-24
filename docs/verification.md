@@ -47,19 +47,18 @@ pnpm exec astro build
 node scripts/isolate-admin-build.mjs
 ```
 
-These commands bypass the package `prebuild` content-pull hook. They do not hydrate missing files or grant permission for any other network dependency referenced by project content. Do not infer that `pnpm dev-prod`, `pnpm deploy`, or Wrangler is equally no-pull: `wrangler.jsonc` also defines a custom build command that explicitly pulls R2. A no-pull Worker harness needs a separately reviewed local configuration without that custom build command; do not silently edit production configuration to obtain it.
+These commands bypass the package `prebuild` content-pull hook. They do not hydrate missing files or grant permission for any other network dependency referenced by project content. `pnpm dev-prod` explicitly selects the no-pull local custom-build branch and local bindings. Deployment and ordinary Wrangler invocations retain the hydration branch; they are not offline commands.
 
 ## Local browser/Worker harness
 
 The usual production-like entry point is:
 
 ```sh
-# May pull content through package hooks and Wrangler custom build.
-# Requires authorization for any remote content access.
+# Uses existing local content; no R2 pull. Missing content must be hydrated separately.
 pnpm run dev-prod
 ```
 
-This runs Astro diagnostics, static build and admin-vault isolation before Wrangler serves on port 8788. Configured servers bind to `0.0.0.0`; test on a trusted network. `pnpm dev:local` on port 4321 is useful for presentation but is not a substitute for Worker routing/auth/telemetry behavior. Local D1/R2 state must be prepared separately as documented by the [edge contract](../openspec/specs/current-edge-operations.md); do not use a remote database reset to prepare tests.
+This runs Astro diagnostics, then Wrangler owns one static build and admin-vault isolation before serving on port 8788. `SITE_LOCAL_BUILD=1` is command-scoped, and `--env local --local` selects explicitly local D1/R2 bindings. AI, Vectorize and email delivery are not emulated in this environment; production configuration is unchanged. `dev-prod` binds to `0.0.0.0` for LAN testing on port 8788; use a trusted network. `pnpm dev:local` on port 4321 is useful for presentation but is not a substitute for Worker routing/auth/telemetry behavior. Local D1/R2 state must be prepared separately as documented by the [edge contract](../openspec/specs/current-edge-operations.md); do not use a remote database reset to prepare tests.
 
 Browser suites commonly accept `PLAYWRIGHT_BASE_URL` (default localhost:8788) and `CHROMIUM_EXECUTABLE_PATH` for an existing compatible browser. Inspect each selected suite before relying on an override; no shared Playwright configuration is assumed.
 
@@ -102,6 +101,10 @@ A meaningful RED/GREEN cycle does not exist for passive descriptive prose. Inste
 
 Record the baseline and remaining gaps. Fixing an inaccurate description does not authorize changing the runtime behavior it describes.
 
-## Isolated local social-image preview
+## Inspecting social cards locally
 
-`pnpm preview:local --port 4332` builds existing local content directly through Astro into ignored `dist-local/`, without package pull hooks, and serves only on loopback with a strict port. OG/Twitter image URLs use that local origin; production output and default SEO generation remain unchanged. Private admin/vault HTML is removed before serving. This is a static public-site preview, not proof of Worker routing, Access, quotas or telemetry persistence. See [local preview](local-preview.md). Preference-scroll regressions use actual visible-coordinate clicks; see [the scroll guide](preference-scroll.md).
+Use `pnpm run dev-prod`, then open `http://localhost:8788/og/index.png`, `/og/es/index.png` or `/og/experience/<slug>/index.png`. This requests existing static PNGs directly; emitted production OG URLs intentionally retain the canonical production origin. No alternate output directory, preview-origin override or extra preview server is needed. Build output and generated PNGs stay ignored.
+
+The NOSENTRY/Cap’n Proto `incoming RPC message exceeds size limit` warning is a local runtime IPC error, not an OG image-size validation message. Do not hide it or increase arbitrary limits. Record startup/request/shutdown timing and correlated failed responses before attributing a cause; a related upstream report is [workerd#7401](https://github.com/cloudflare/workerd/issues/7401), not proof of identical cause in this application.
+
+The installed Wrangler 4.151.3 / workerd 1.20261019.1 reproduced that warning with a minimal Worker plus the full binding configuration. Minimal configs with locally supported assets, traces and storage started cleanly. The dedicated `local` environment omits remote-only AI/Vectorize initialization rather than suppressing the diagnostic. Their individual causal responsibility was not proven; no runtime limit or production observability setting was changed. Verify API fallbacks locally, and test actual AI/search/email services separately only with explicit remote authorization.

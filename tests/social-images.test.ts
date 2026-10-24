@@ -3,6 +3,10 @@ import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  SOCIAL_IMAGE_WIDTH,
+  SOCIAL_IMAGE_HEIGHT,
+  socialAvailabilityBanner,
+  defaultSocialImageMetadata,
   getSocialImagePath,
   resolveSocialImageUrl,
   extractSocialImageMetadata,
@@ -46,7 +50,7 @@ describe("route-specific social images", () => {
     expect(metadata.hasAlpha).toBe(false);
     expect(metadata.density).toBe(96);
     expect(metadata.isPalette).toBe(false);
-    expect(png.byteLength).toBeLessThan(256 * 1024);
+    expect(png.byteLength).toBeLessThan(650 * 1024);
   });
   it("fits long titles, words, URLs and graphemes within measured width and height", async () => {
     const glyphs = JSON.parse(await readFile(font, "utf8"));
@@ -64,6 +68,25 @@ describe("route-specific social images", () => {
         maxSize: 38,
         minSize: 26,
       });
+      const heading = JSON.parse(
+        await readFile("src/assets/fonts/Geist-Bold-OG.json", "utf8"),
+      );
+      const headingFit = fitSocialText(title, heading, {
+        maxWidth: 1040,
+        maxHeight: 116,
+        maxLines: 2,
+        maxSize: 48,
+        minSize: 32,
+      });
+      expect(
+        headingFit.lines.length * headingFit.lineHeight,
+      ).toBeLessThanOrEqual(116);
+      expect(
+        headingFit.lines.every(
+          (line) =>
+            measureSocialText(line, heading, headingFit.fontSize) <= 1040,
+        ),
+      ).toBe(true);
       expect(fit.lines.length).toBeLessThanOrEqual(2);
       expect(fit.lines.length * fit.lineHeight).toBeLessThanOrEqual(100);
       expect(fit.fontSize).toBeGreaterThanOrEqual(26);
@@ -86,6 +109,55 @@ describe("route-specific social images", () => {
         minSize: 26,
       }).truncated,
     ).toBe(false);
+  });
+  it("uses real branded weights and a full-scope visible availability banner", async () => {
+    expect([SOCIAL_IMAGE_WIDTH, SOCIAL_IMAGE_HEIGHT]).toEqual([2400, 1260]);
+    const regular = JSON.parse(await readFile(font, "utf8"));
+    const bold = JSON.parse(
+      await readFile("src/assets/fonts/Geist-Bold-OG.json", "utf8"),
+    );
+    const mono = JSON.parse(
+      await readFile("src/assets/fonts/GeistMono-OG.json", "utf8"),
+    );
+    expect(bold.family).toBe("Geist");
+    expect(bold.weight).toBe(700);
+    expect(mono.family).toBe("Geist Mono");
+    expect(mono.weight).toBe(600);
+    expect(mono.glyphs.W.advance).toBe(mono.glyphs.i.advance);
+    expect(mono.glyphs.M.advance).toBe(mono.glyphs.i.advance);
+    expect(bold.sourceSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(bold.decoder).toBe("fontkitten 1.0.3");
+    expect(bold.glyphs.A.path).not.toBe(regular.glyphs.A.path);
+    const svg = renderSocialImageSvg(card, regular, { openToWork: true });
+    expect(svg).toContain('data-og-heading-font="Geist 700"');
+    expect(svg).toContain('data-og-detail-font="Geist Mono 600"');
+    expect(svg).not.toContain('stroke-width="10"');
+    for (const locale of ["en", "es"]) {
+      const banner = socialAvailabilityBanner(locale, true);
+      expect(banner.available).toBe(true);
+      expect(banner.lines).toHaveLength(2);
+      expect(banner.lines.join(" ")).toMatch(/Senior/);
+      expect(banner.lines.join(" ")).toMatch(/Staff/);
+      expect(banner.lines.join(" ")).toMatch(/leadership|liderazgo/i);
+      expect(banner.lines.join(" ")).toMatch(/projects|proyectos/i);
+      for (const line of banner.lines)
+        expect(measureSocialText(line, mono, 17)).toBeLessThanOrEqual(980);
+      const closed = socialAvailabilityBanner(locale, false);
+      expect(closed.available).toBe(false);
+      expect(closed.lines.join(" ")).not.toMatch(
+        /available|disponible|open to/i,
+      );
+      expect(
+        renderSocialImageSvg({ ...card, locale }, regular, {
+          openToWork: false,
+        }),
+      ).toContain('data-og-available="false"');
+    }
+    expect(defaultSocialImageMetadata().pathname).toBe("/");
+    expect(defaultSocialImageMetadata("es").locale).toBe("es");
+    expect(
+      await renderSocialImage(card, font, { openToWork: true }),
+    ).not.toEqual(await renderSocialImage(card, font, { openToWork: false }));
   });
   it("maps document routes without collisions, preserving locale and Unicode", () => {
     expect(getSocialImagePath("/")).toBe("/og/index.png");
@@ -180,14 +252,14 @@ describe("route-specific social images", () => {
     expect(wrapSocialText("one two three", 8, 2)).toEqual(["one two", "three"]);
     expect(wrapSocialText("abcdefghij", 4, 3)).toEqual(["abcd", "efgh", "ij"]);
   });
-  it("renders deterministic 1200x630 PNGs with visible local-font glyphs and escaped content", async () => {
+  it("renders deterministic 2400x1260 PNGs with visible local-font glyphs and escaped content", async () => {
     const png = await renderSocialImage(
       { ...card, title: '<script>& "Ingeniería"' },
       font,
     );
     expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-    expect(png.readUInt32BE(16)).toBe(1200);
-    expect(png.readUInt32BE(20)).toBe(630);
+    expect(png.readUInt32BE(16)).toBe(2400);
+    expect(png.readUInt32BE(20)).toBe(1260);
     const glyphMap = JSON.parse(await readFile(font, "utf8"));
     for (const char of "Sénior Ingeniería Tecnología ÁÉÍÓÚÑñ¿¡—…")
       expect(glyphMap.glyphs[char]).toBeDefined();
@@ -229,10 +301,25 @@ describe("route-specific social images", () => {
         `${site}/custom.png`,
       ),
     );
-    const generated = await generateSocialImages(dir, site, font);
+    const reports: { pathname: string; bytes: number }[] = [];
+    const generated = await generateSocialImages(
+      dir,
+      site,
+      font,
+      (pathname, bytes) => reports.push({ pathname, bytes }),
+    );
     expect(generated).toBe(3);
+    expect(reports).toHaveLength(3);
+    for (const report of reports) {
+      const file = join(dir, decodeURI(report.pathname));
+      expect(report.bytes).toBe((await readFile(file)).byteLength);
+    }
+    // Existing callers without diagnostics retain the same count and PNG bytes.
+    const original = await readFile(join(dir, "og/index.png"));
+    expect(await generateSocialImages(dir, site, font)).toBe(3);
+    expect(await readFile(join(dir, "og/index.png"))).toEqual(original);
     expect(
       (await readFile(join(dir, "og/blog/niño/index.png"))).readUInt32BE(16),
-    ).toBe(1200);
+    ).toBe(2400);
   });
 });

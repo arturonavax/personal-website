@@ -10,6 +10,7 @@ import { getSimulationsForJob } from "@/data/simulations";
 import { formatDate, useTranslations } from "@/i18n/utils";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
 import { buildExperienceJsonLd } from "@/lib/seo/schema-builder";
+import { buildExperienceMetadata } from "@/lib/seo/experience-metadata";
 import { getVisibleCollection } from "@/utils/visibility";
 
 export async function getStaticPaths() {
@@ -120,14 +121,14 @@ const sameCompanyExperiences = allExperiences.filter(
 );
 const companyFilterUrl = `${basePath}/experience/?company=${encodeURIComponent(company.toLowerCase().trim())}`;
 
-const pageTitle = `${role} @ ${company} - Arturo Nava`;
-const pageDescription = isEs
-  ? simulations.length > 0
-    ? `Registro de carrera, hitos de arquitectura y simulaciones interactivas de Arturo Nava como ${role} en ${company}.`
-    : `Registro de carrera e hitos de arquitectura de producción de Arturo Nava como ${role} en ${company}.`
-  : simulations.length > 0
-    ? `Career milestone, architecture achievements, and interactive system simulations for Arturo Nava as ${role} at ${company}.`
-    : `Career milestone and production architecture achievements for Arturo Nava as ${role} at ${company}.`;
+const { title: pageTitle, description: pageDescription } =
+  buildExperienceMetadata({
+    role,
+    company,
+    locale: currentLocale,
+    endDate,
+    hasSimulations: simulations.length > 0,
+  });
 
 const canonicalUrl = isEs
   ? `https://arturonavax.dev/es/experience/${slug}/`

@@ -1,4 +1,5 @@
 import type { AstroIntegration } from "astro";
+import { assessSocialImageSize } from "../lib/seo/social-image-size";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -6,6 +7,7 @@ import {
   extractSocialImageMetadata,
   getSocialImagePath,
   renderSocialImage,
+  defaultSocialImageMetadata,
 } from "../lib/seo/og-image";
 
 /** Sequential rendering bounds native renderer memory to one card at a time. */
@@ -13,6 +15,7 @@ export async function generateSocialImages(
   directory: string,
   siteUrl: string,
   fontFile: string,
+  onGenerated?: (pathname: string, bytes: number) => void,
 ): Promise<number> {
   let generated = 0;
   const outputUrl = pathToFileURL(
@@ -36,10 +39,9 @@ export async function generateSocialImages(
         if (!metadata || !imagePath) continue;
         const outputFile = fileURLToPath(new URL("." + imagePath, outputUrl));
         await mkdir(dirname(outputFile), { recursive: true });
-        await writeFile(
-          outputFile,
-          await renderSocialImage(metadata, fontFile),
-        );
+        const png = await renderSocialImage(metadata, fontFile);
+        await writeFile(outputFile, png);
+        onGenerated?.(imagePath, png.byteLength);
         generated++;
       }
     }
@@ -48,7 +50,7 @@ export async function generateSocialImages(
   return generated;
 }
 
-export default function socialImages(imageOrigin?: string): AstroIntegration {
+export default function socialImages(): AstroIntegration {
   let root = new URL("../../", import.meta.url);
   let siteUrl = "https://arturonavax.dev";
   return {
@@ -56,16 +58,39 @@ export default function socialImages(imageOrigin?: string): AstroIntegration {
     hooks: {
       "astro:config:done": ({ config }) => {
         root = config.root;
-        siteUrl = imageOrigin || config.site || siteUrl;
+        siteUrl = config.site || siteUrl;
       },
       "astro:build:generated": async ({ dir, logger }) => {
+        const fontFile = fileURLToPath(
+          new URL("src/assets/fonts/Geist-OG.json", root),
+        );
+        let checked = 0;
+        let withinBudget = 0;
+        const report = (pathname: string, bytes: number) => {
+          const result = assessSocialImageSize(pathname, bytes);
+          checked++;
+          if (result.ok) withinBudget++;
+          if (result.ok) logger.info(result.line);
+          else logger.warn(result.line);
+        };
         const count = await generateSocialImages(
           fileURLToPath(dir),
           siteUrl,
-          fileURLToPath(new URL("src/assets/fonts/Geist-OG.json", root)),
+          fontFile,
+          report,
+        );
+        // The shipped fallback shares the same branding and availability owner.
+        const fallback = await renderSocialImage(
+          defaultSocialImageMetadata(),
+          fontFile,
+        );
+        await writeFile(new URL("og-default.png", dir), fallback);
+        report("/og-default.png", fallback.byteLength);
+        logger.info(
+          `Generated ${count} localized social cards + fallback. Size checks: ${withinBudget}/${checked} ✓, ${checked - withinBudget} ✗.`,
         );
         logger.info(
-          `Generated ${count} localized social cards from public HTML.`,
+          "Size checks use a conservative site budget, not a guarantee of previews on every platform (crawler access, metadata, caches and timeouts also matter).",
         );
       },
     },

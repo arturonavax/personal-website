@@ -9,6 +9,52 @@ import {
   createTechnicalFrame,
 } from "../../../scripts/lib/social-style.mjs";
 
+import boldGlyphs from "../../assets/fonts/Geist-Bold-OG.json";
+import monoGlyphs from "../../assets/fonts/GeistMono-OG.json";
+import { availability } from "../../config/availability.mjs";
+
+export const SOCIAL_IMAGE_WIDTH = 2400;
+export const SOCIAL_IMAGE_HEIGHT = 1260;
+
+export function defaultSocialImageMetadata(locale = "en"): SocialImageMetadata {
+  return {
+    title: locale.startsWith("es")
+      ? "Ingeniería de software y liderazgo tecnológico"
+      : "Software engineering & technology leadership",
+    description: locale.startsWith("es")
+      ? "Go, Rust, sistemas distribuidos e inteligencia artificial. Experiencia, arquitectura y proyectos de Arturo Nava."
+      : "Go, Rust, distributed systems & artificial intelligence. Experience, architecture and selected projects by Arturo Nava.",
+    locale,
+    pathname: locale.startsWith("es") ? "/es/" : "/",
+  };
+}
+
+export function socialAvailabilityBanner(locale: string, openToWork: boolean) {
+  const es = locale.startsWith("es");
+  return {
+    available: openToWork,
+    lines: openToWork
+      ? es
+        ? [
+            "Disponible: ingeniería Senior / Staff",
+            "Liderazgo tecnológico y proyectos independientes",
+          ]
+        : [
+            "Available for Senior / Staff engineering",
+            "Technology leadership & independent projects",
+          ]
+      : es
+        ? [
+            "Ingeniería, arquitectura y tecnología",
+            "Experiencia, proyectos y artículos técnicos",
+          ]
+        : [
+            "Engineering, architecture & technology",
+            "Experience, selected work & technical writing",
+          ],
+  };
+}
+
 const graphemeSegmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
 function textGraphemes(value: string): string[] {
   return [...graphemeSegmenter.segment(value.normalize("NFC"))].map(
@@ -294,11 +340,14 @@ export function fitSocialText(
   };
 }
 
-/** Outlines avoid system-font differences and unsupported native WOFF2 loading. */
+/** Font outlines keep the site's real weights portable across build hosts. */
 export function renderSocialImageSvg(
   metadata: SocialImageMetadata,
   font: SocialImageFont,
+  options: { openToWork?: boolean } = {},
 ): string {
+  const heading: SocialImageFont = boldGlyphs;
+  const detail: SocialImageFont = monoGlyphs;
   const { colors } = SOCIAL_THEME;
   const title = metadata.title
     .replace(/^Arturo Nava\s*[|—-]\s*/, "")
@@ -306,21 +355,15 @@ export function renderSocialImageSvg(
     .trim();
   const titleFit = fitSocialText(
     title === SOCIAL_PROFILE.name ? SOCIAL_PROFILE.role : title,
-    font,
-    {
-      maxWidth: 1040,
-      maxHeight: 100,
-      maxLines: 2,
-      maxSize: 38,
-      minSize: 26,
-    },
+    heading,
+    { maxWidth: 1040, maxHeight: 116, maxLines: 2, maxSize: 48, minSize: 32 },
   );
   const descriptionFit = fitSocialText(metadata.description, font, {
     maxWidth: 1040,
-    maxHeight: 60,
+    maxHeight: 56,
     maxLines: 2,
-    maxSize: 20.5,
-    minSize: 18.5,
+    maxSize: 22,
+    minSize: 19,
   });
   const outlines = (
     value: string,
@@ -328,16 +371,16 @@ export function renderSocialImageSvg(
     y: number,
     size: number,
     color: string,
-    emphasis = false,
+    face: SocialImageFont = font,
   ): string => {
     let cursor = x;
     return textGraphemes(value)
       .map((char) => {
-        const glyph = (font.glyphs[char] || font.glyphs["?"])!;
+        const glyph = (face.glyphs[char] || face.glyphs["?"])!;
         const path = glyph.path
-          ? `<path d="${escapeXml(glyph.path)}" transform="translate(${cursor} ${y}) scale(${size / font.unitsPerEm} ${-size / font.unitsPerEm})" fill="${color}" ${emphasis ? `stroke="${color}" stroke-width="10" stroke-linejoin="round"` : ""}/>`
+          ? `<path d="${escapeXml(glyph.path)}" transform="translate(${cursor} ${y}) scale(${size / face.unitsPerEm} ${-size / face.unitsPerEm})" fill="${color}"/>`
           : "";
-        cursor += (glyph.advance * size) / font.unitsPerEm;
+        cursor += (glyph.advance * size) / face.unitsPerEm;
         return path;
       })
       .join("");
@@ -346,94 +389,56 @@ export function renderSocialImageSvg(
     fit: ReturnType<typeof fitSocialText>,
     y: number,
     color: string,
+    face: SocialImageFont,
   ) =>
     fit.lines
       .map((line, i) =>
-        outlines(line, 80, y + i * fit.lineHeight, fit.fontSize, color),
+        outlines(line, 80, y + i * fit.lineHeight, fit.fontSize, color, face),
       )
       .join("");
-  const badge = metadata.locale.startsWith("es")
-    ? "DISPONIBLE PARA ROLES Y PROYECTOS"
-    : SOCIAL_PROFILE.badgeText;
-  const badgeWidth = Math.max(320, measureSocialText(badge, font, 11.5) + 64);
-  const titleWidth = Math.max(
-    0,
-    ...titleFit.lines.map((line) =>
-      measureSocialText(line, font, titleFit.fontSize),
-    ),
+  const banner = socialAvailabilityBanner(
+    metadata.locale,
+    options.openToWork ?? availability.openToWork,
   );
-  const descWidth = Math.max(
-    0,
-    ...descriptionFit.lines.map((line) =>
-      measureSocialText(line, font, descriptionFit.fontSize),
-    ),
-  );
-  const textZones = [
-    { x: 74, y: 72, w: badgeWidth + 12, h: 48 },
-    {
-      x: 74,
-      y: 120,
-      w:
-        Math.max(titleWidth, measureSocialText(SOCIAL_PROFILE.name, font, 80)) +
-        12,
-      h: 100 + titleFit.lines.length * titleFit.lineHeight,
-    },
-    {
-      x: 74,
-      y: 320,
-      w: descWidth + 12,
-      h: descriptionFit.lines.length * descriptionFit.lineHeight + 20,
-    },
-    { x: 74, y: 486, w: 1052, h: 54 },
-  ];
   const background = createSocialBackground(
     1200,
     630,
-    textZones,
+    [
+      { x: 70, y: 76, w: 1060, h: 105 },
+      { x: 70, y: 194, w: 1060, h: 205 },
+      { x: 70, y: 416, w: 1060, h: 100 },
+      { x: 70, y: 542, w: 1060, h: 48 },
+    ],
     28,
     (glyph) => {
-      // Decorative heads stay in the available Matrix alphabet, rather than
-      // rendering unsupported characters as visible question-mark trails.
-      const char = font.glyphs[glyph.char]
+      const char = detail.glyphs[glyph.char]
         ? glyph.char
-        : font.glyphs["λ"]
+        : detail.glyphs["λ"]
           ? "λ"
           : "A";
-      return `<g opacity="${glyph.opacity}" ${glyph.filterAttr}>${outlines(char, glyph.x - measureSocialText(char, font, glyph.size) / 2, glyph.y, glyph.size, glyph.fill)}</g>`;
+      return `<g opacity="${glyph.opacity}" ${glyph.filterAttr}>${outlines(char, glyph.x - measureSocialText(char, detail, glyph.size) / 2, glyph.y, glyph.size, glyph.fill, detail)}</g>`;
     },
   );
-  const contact = [
-    { text: SOCIAL_PROFILE.handle, color: colors.textWhite },
-    { text: "   •   ", color: colors.amberPrimary },
-    { text: SOCIAL_PROFILE.email, color: colors.textMuted },
-  ];
-  let contactX =
-    1120 -
-    contact.reduce(
-      (width, part) => width + measureSocialText(part.text, font, 21),
-      0,
-    );
-  const footerContact = contact
-    .map((part) => {
-      const svg = outlines(part.text, contactX, 520, 21, part.color);
-      contactX += measureSocialText(part.text, font, 21);
-      return svg;
-    })
-    .join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" shape-rendering="geometricPrecision">
+  const role = metadata.locale.startsWith("es")
+    ? "Software / Sistemas / IA"
+    : "Software / Systems / AI";
+  const contact = `${SOCIAL_PROFILE.handle}  /  ${SOCIAL_PROFILE.email}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${SOCIAL_IMAGE_WIDTH}" height="${SOCIAL_IMAGE_HEIGHT}" viewBox="0 0 1200 630" shape-rendering="geometricPrecision">
     ${background}
     ${createTechnicalFrame(1200, 630, 28)}
-    <g data-og-badge="true" transform="translate(80 78)">
-      <rect width="${badgeWidth}" height="36" rx="18" fill="${colors.badgeBg}" stroke="${colors.badgeBorder}" stroke-width="1.2"/>
-      <circle cx="18" cy="18" r="5" fill="${colors.statusGreen}" filter="url(#glowGreen)"/>
-      ${outlines(badge, 34, 22.5, 11.5, colors.textWhite, true)}
+    <g data-og-identity="true" data-og-heading-font="Geist 700" aria-label="${SOCIAL_PROFILE.name}">${outlines(SOCIAL_PROFILE.name, 80, 140, 70, colors.textWhite, heading)}</g>
+    <g data-og-detail-font="Geist Mono 600">${outlines(role, 82, 175, 16, colors.textDim, detail)}</g>
+    <g data-og-title="true" aria-label="${escapeXml(title)}">${lines(titleFit, 242, colors.amberPrimary, heading)}</g>
+    <g data-og-description="true">${lines(descriptionFit, 360, colors.textMuted, font)}</g>
+    <g data-og-badge="true" data-og-available="${banner.available}" aria-label="${escapeXml(banner.lines.join(". "))}">
+      <rect x="80" y="424" width="1040" height="88" rx="8" fill="${colors.bgLight}" stroke="${colors.amberPrimary}" stroke-opacity="0.55"/>
+      <rect x="80" y="424" width="4" height="88" rx="2" fill="${colors.amberPrimary}"/>
+      <circle cx="105" cy="450" r="5" fill="${banner.available ? colors.statusGreen : colors.amberPrimary}"/>
+      ${outlines(banner.lines[0]!, 122, 456, 17, colors.textWhite, detail)}
+      ${outlines(banner.lines[1]!, 102, 490, 17, colors.amberLead, detail)}
     </g>
-    <g data-og-identity="true">${outlines(SOCIAL_PROFILE.name, 80, 200, 80, colors.textWhite, true)}</g>
-    <g data-og-title="true">${lines(titleFit, 258, colors.amberPrimary)}</g>
-    <g data-og-description="true">${lines(descriptionFit, 346, colors.textMuted)}</g>
-    <line x1="80" y1="440" x2="1120" y2="440" stroke="${colors.amberPrimary}" stroke-width="1" stroke-opacity="0.22"/>
-    ${outlines(SOCIAL_PROFILE.domain, 80, 520, 25, colors.amberPrimary, true)}
-    ${footerContact}
+    <g data-og-detail-font="Geist Mono 600">${outlines(SOCIAL_PROFILE.domain, 80, 566, 23, colors.amberPrimary, detail)}
+    ${outlines(contact, 1120 - measureSocialText(contact, detail, 16), 566, 16, colors.textMuted, detail)}</g>
   </svg>`;
 }
 
@@ -441,6 +446,7 @@ let loadedFont: { path: string; data: SocialImageFont } | undefined;
 export async function renderSocialImage(
   metadata: SocialImageMetadata,
   fontFile: string,
+  options: { openToWork?: boolean } = {},
 ): Promise<Buffer> {
   if (loadedFont?.path !== fontFile) {
     const data = JSON.parse(
@@ -450,12 +456,15 @@ export async function renderSocialImage(
       throw new Error("Invalid local social-image glyph map");
     loadedFont = { path: fontFile, data };
   }
-  const renderer = new Resvg(renderSocialImageSvg(metadata, loadedFont.data), {
-    dpi: 96,
-    shapeRendering: 2,
-    textRendering: 2,
-    font: { loadSystemFonts: false },
-  });
+  const renderer = new Resvg(
+    renderSocialImageSvg(metadata, loadedFont.data, options),
+    {
+      dpi: 96,
+      shapeRendering: 2,
+      textRendering: 2,
+      font: { loadSystemFonts: false },
+    },
+  );
   return sharp(renderer.render().asPng())
     .removeAlpha()
     .withMetadata({ density: 96 })
