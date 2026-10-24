@@ -1,3 +1,11 @@
+import {
+  SOCIAL_PROFILE,
+  SOCIAL_THEME,
+  SOCIAL_MATRIX,
+  SOCIAL_PNG_OPTIONS,
+  createSocialBackground as getDefsAndStyles,
+  createTechnicalFrame,
+} from "./lib/social-style.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -32,13 +40,6 @@ function escapeXml(unsafe) {
 // ============================================================================
 // HIGH-ENTROPY INTEGER HASH (NON-LINEAR PSEUDORANDOM SEEDING)
 // ============================================================================
-function hashGlyph(col, stream, step) {
-  let h =
-    (col * 374761393 + stream * 668265263 + step * 3628273133) ^ 0x5bf03635;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return (h ^ (h >>> 16)) >>> 0;
-}
-
 // ============================================================================
 // CENTRALIZED CONFIGURATION (METADATA, PALETTE, FONTS, AND ENGINE SPECS)
 // ============================================================================
@@ -47,264 +48,17 @@ const CONFIG = {
     outputDir: path.resolve("public"),
     faviconSvg: path.resolve("public", "favicon.svg"),
   },
-  profile: {
-    name: "Arturo Nava",
-    role: "Senior Software / AI Engineer",
-    badgeText: "AVAILABLE FOR SENIOR / STAFF ROLES",
-    techPillars: "Distributed Systems • High Concurrency • AppSec",
-    coreStack: "Distributed Systems • High Performance • Web3 • AppSec",
-    secondaryStack: "Specializing in Go, Rust & AI-Integrated Backend Systems",
-    bannerSummary:
-      "Distributed Systems • High Performance • AI • Web3 • AppSec",
-    domain: "arturonavax.dev",
-    handle: "@arturonavax",
-    email: "arturo@arturonavax.dev",
-  },
-  theme: {
-    colors: {
-      bgDark: "#0A0203",
-      bgMid: "#120305",
-      bgLight: "#180406",
-      amberPrimary: "#D48B38",
-      amberLead: "#E5A352",
-      amberTail: "#8E5E1C",
-      textWhite: "#FFFFFF",
-      textMuted: "#E2D5D5",
-      textDim: "#A39292",
-      statusGreen: "#10B981",
-      badgeBg: "#180406",
-      badgeBorder: "#521317",
-    },
-    fonts: {
-      sans: '"DejaVu Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Geist Sans", sans-serif',
-      mono: '"DejaVu Sans Mono", "BlexMono Nerd Font", "FiraCode Nerd Font", "JetBrains Mono", "Geist Mono", monospace',
-    },
-  },
-  matrix: {
-    // Exotic characters strictly reserved for the stream heads
-    headChars: ["λ", "μ", "σ", "π", "θ", "§", "ø", "Δ", "Ψ", "Ω", "Ξ", "ζ"],
-    // Monospace hex and alphanumeric set for descending trails
-    bodyChars: [
-      "0",
-      "1",
-      "2",
-      "3",
-      "4",
-      "5",
-      "6",
-      "7",
-      "8",
-      "9",
-      "A",
-      "B",
-      "C",
-      "D",
-      "E",
-      "F",
-      "X",
-      "Y",
-      "Z",
-      "V",
-      "R",
-      "K",
-      "T",
-      "n",
-      "t",
-      "s",
-      "p",
-    ],
-    columnWidth: 22, // High column density (~54 columns across 1200px)
-    verticalStep: 18, // Snapped vertical step for clean rasterization
-    glyphSize: 14.5, // Scaled glyph size for crisp high-contrast definition
-  },
+  profile: SOCIAL_PROFILE,
+  theme: SOCIAL_THEME,
+  matrix: SOCIAL_MATRIX,
   rendering: {
     supersampleFactor: 2, // 2x density supersampling for pin-sharp anti-aliasing
-    sharpPngOptions: {
-      compressionLevel: 9,
-      effort: 10,
-      adaptiveFiltering: true,
-      palette: false, // Pure RGB lossless without quantization banding
-    },
+    sharpPngOptions: SOCIAL_PNG_OPTIONS,
   },
 };
 
 // ============================================================================
 // SPATIAL DETECTION UTILITIES
-// ============================================================================
-function isPointInZones(x, y, zones, padding = 16) {
-  for (let i = 0; i < zones.length; i++) {
-    const z = zones[i];
-    if (
-      x >= z.x - padding &&
-      x <= z.x + z.w + padding &&
-      y >= z.y - padding &&
-      y <= z.y + z.h + padding
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-// ============================================================================
-// MATRIX BACKGROUND GENERATOR (ZERO COLOR SHIFT + GLYPH-ONLY BOKEH BLUR)
-// ============================================================================
-function generateMatrixGlyphs(width, height, textZones = [], frameInset = 28) {
-  const { headChars, bodyChars, columnWidth, verticalStep, glyphSize } =
-    CONFIG.matrix;
-
-  const TONE_HEAD = "#D48B38";
-  const TONE_BODY = "#9E471E";
-  const TONE_TAIL = "#521317";
-
-  // RIGID MARGIN BOUNDS: Matrix never touches or crosses the outer frame
-  const safeMinX = frameInset + 20;
-  const safeMaxX = width - frameInset - 20;
-  const safeMinY = frameInset + 24;
-  const safeMaxY = height - frameInset - 20;
-
-  let svg = `<g class="font-mono">`;
-  const numCols = Math.floor(width / columnWidth);
-
-  for (let col = 0; col < numCols; col++) {
-    const x = Math.round(col * columnWidth + columnWidth / 2);
-
-    // Hard boundary clip against outer technical frames
-    if (x < safeMinX || x > safeMaxX) continue;
-
-    const colSeed = (col * 1973 + 41) % 100;
-    // High sustained density (~84% activation across all areas)
-    if (colSeed < 16) continue;
-
-    const streamCount = colSeed % 3 === 0 ? 2 : 1;
-
-    for (let s = 0; s < streamCount; s++) {
-      const streamLength = 8 + ((col * 11 + s * 37) % 9);
-      const startY =
-        safeMinY +
-        ((col * 47 + s * 311) %
-          Math.max(20, safeMaxY - safeMinY - streamLength * verticalStep));
-
-      const depthTier = (colSeed + s * 17) % 3;
-
-      for (let j = 0; j < streamLength; j++) {
-        const y = Math.round(startY + j * verticalStep);
-        if (y < safeMinY || y > safeMaxY) continue;
-
-        // Detect if this specific glyph is positioned in the text area
-        const insideTextZone = isPointInZones(x, y, textZones, 16);
-
-        // Distance from lead head (0 is head, increasing upward)
-        const distFromLead = streamLength - 1 - j;
-
-        let opacity;
-        let fill;
-        let filterAttr = "";
-
-        if (insideTextZone) {
-          // BOKEH BLUR: ONLY the glyph itself is blurred; zero backdrop tinting
-          filterAttr = 'filter="url(#glyphBlur)"';
-
-          if (distFromLead === 0) {
-            opacity = "0.22";
-            fill = TONE_HEAD;
-          } else if (distFromLead <= 2) {
-            opacity = "0.14";
-            fill = TONE_BODY;
-          } else if (distFromLead <= 5) {
-            opacity = "0.07";
-            fill = TONE_TAIL;
-          } else {
-            continue;
-          }
-        } else {
-          // FOREGROUND: Razor-sharp glyphs
-          if (distFromLead === 0) {
-            opacity =
-              depthTier === 2 ? "0.50" : depthTier === 1 ? "0.36" : "0.24";
-            fill = TONE_HEAD;
-          } else if (distFromLead === 1) {
-            opacity =
-              depthTier === 2 ? "0.34" : depthTier === 1 ? "0.24" : "0.16";
-            fill = TONE_BODY;
-          } else if (distFromLead <= 3) {
-            opacity =
-              depthTier === 2 ? "0.20" : depthTier === 1 ? "0.14" : "0.09";
-            fill = TONE_BODY;
-          } else if (distFromLead <= 5) {
-            opacity = depthTier === 2 ? "0.11" : "0.06";
-            fill = TONE_TAIL;
-          } else if (distFromLead <= 7 && depthTier === 2) {
-            opacity = "0.05";
-            fill = TONE_TAIL;
-          } else {
-            continue;
-          }
-        }
-
-        const char =
-          distFromLead === 0
-            ? headChars[hashGlyph(col, s, 0) % headChars.length]
-            : bodyChars[hashGlyph(col, s, j) % bodyChars.length];
-
-        svg += `<text x="${x}" y="${y}" opacity="${opacity}" fill="${fill}" font-size="${glyphSize}" font-weight="500" text-anchor="middle" ${filterAttr}>${char}</text>`;
-      }
-    }
-  }
-
-  svg += `</g>`;
-  return svg;
-}
-
-// ============================================================================
-// SVG STYLE DEFINITIONS AND FILTERS
-// ============================================================================
-function getDefsAndStyles(width, height, textZones = [], frameInset = 28) {
-  const { colors, fonts } = CONFIG.theme;
-
-  return `
-  <style>
-    .font-sans { font-family: ${fonts.sans}; text-rendering: geometricPrecision; }
-    .font-mono { font-family: ${fonts.mono}; text-rendering: geometricPrecision; }
-  </style>
-  <defs>
-    <!-- Seamless background gradient -->
-    <linearGradient id="bgLinear" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="${colors.bgLight}" />
-      <stop offset="45%" stop-color="${colors.bgMid}" />
-      <stop offset="100%" stop-color="${colors.bgDark}" />
-    </linearGradient>
-
-    <!-- Radial vignette focused on top-left quadrant -->
-    <radialGradient id="vignette" cx="28%" cy="38%" r="80%">
-      <stop offset="0%" stop-color="#3A0D10" stop-opacity="0.30" />
-      <stop offset="55%" stop-color="${colors.bgMid}" stop-opacity="0.10" />
-      <stop offset="100%" stop-color="${colors.bgDark}" stop-opacity="0.90" />
-    </radialGradient>
-
-    <!-- Status indicator green glow -->
-    <filter id="glowGreen" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
-      <feMerge>
-        <feMergeNode in="blur" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-
-    <!-- Optical bokeh blur applied exclusively to text glyphs behind typography -->
-    <filter id="glyphBlur" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" />
-    </filter>
-  </defs>
-
-  <rect width="${width}" height="${height}" fill="url(#bgLinear)" />
-  <rect width="${width}" height="${height}" fill="url(#vignette)" />
-  ${generateMatrixGlyphs(width, height, textZones, frameInset)}
-  `;
-}
-
-// ============================================================================
-// TEMPLATE 1: OPEN GRAPH CARD DEFAULT (1200 x 630 px)
 // ============================================================================
 function createOgDefaultSvg() {
   const width = 1200;
@@ -325,11 +79,7 @@ function createOgDefaultSvg() {
     ${getDefsAndStyles(width, height, textZones, frameInset)}
 
     <!-- Single outer technical frame with corner brackets -->
-    <rect x="28" y="28" width="1144" height="574" stroke="${colors.amberPrimary}" stroke-width="1" stroke-opacity="0.22" fill="none" />
-    <path d="M 24 54 L 24 24 L 54 24" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
-    <path d="M 1176 54 L 1176 24 L 1146 24" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
-    <path d="M 24 576 L 24 606 L 54 606" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
-    <path d="M 1176 576 L 1176 606 L 1146 606" stroke="${colors.amberPrimary}" stroke-width="2.5" fill="none" />
+    ${createTechnicalFrame(width, height, frameInset)}
 
     <!-- Availability badge -->
     <g transform="translate(80, 78)">
