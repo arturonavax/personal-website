@@ -19,12 +19,12 @@ export function buildExperienceMetadata({
   const former = Boolean(endDate);
   if (locale === "es") {
     return {
-      title: `${former ? "Cargo anterior" : "Cargo actual"}: ${role} en ${company} | Arturo Nava`,
+      title: `${former ? `Ex-${role}` : role} en ${company} | Arturo Nava`,
       description: `Arturo Nava ${former ? "trabajó" : "trabaja"} como ${role} en ${company}. Hitos de carrera y arquitectura de producción${hasSimulations ? ", con simulaciones interactivas de sistemas" : ""}.`,
     };
   }
   return {
-    title: `${former ? "Former" : "Current"} ${role} at ${company} | Arturo Nava`,
+    title: `${former ? `Ex-${role}` : role} at ${company} | Arturo Nava`,
     description: `Arturo Nava ${former ? "previously worked" : "currently works"} as ${role} at ${company}. Career milestones and production architecture achievements${hasSimulations ? ", with interactive system simulations" : ""}.`,
   };
 }

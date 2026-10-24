@@ -19,10 +19,10 @@ export function createHiringPositioning(
       isAvailable: openToWork,
     },
     es: {
-      title: "Arturo Nava | Ingeniería de Software Senior y Liderazgo Técnico",
+      title: "Arturo Nava | Ingeniero de Software Senior y Liderazgo Técnico",
       description: openToWork
-        ? "Ingeniería de software senior en Go, Rust, sistemas distribuidos e IA. Experiencia y proyectos para oportunidades de liderazgo tecnológico o consultoría."
-        : "Ingeniería de software senior en Go, Rust, sistemas distribuidos e IA. Proyectos de software, arquitectura y experiencia de liderazgo tecnológico.",
+        ? "Ingeniero de software senior especializado en Go, Rust, sistemas distribuidos e IA. Experiencia y proyectos para oportunidades de liderazgo tecnológico o consultoría."
+        : "Ingeniero de software senior especializado en Go, Rust, sistemas distribuidos e IA. Proyectos de software, arquitectura y experiencia de liderazgo tecnológico.",
       availability: openToWork
         ? "Disponible para posiciones de ingeniería de software Senior / Staff y dirección de tecnología, además de proyectos independientes de arquitectura de software."
         : "Una selección de proyectos de ingeniería de software, arquitectura y experiencia de liderazgo tecnológico.",

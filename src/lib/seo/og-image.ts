@@ -19,8 +19,8 @@ export const SOCIAL_IMAGE_HEIGHT = 1260;
 export function defaultSocialImageMetadata(locale = "en"): SocialImageMetadata {
   return {
     title: locale.startsWith("es")
-      ? "Ingeniería de software y liderazgo tecnológico"
-      : "Software engineering & technology leadership",
+      ? "Ingeniero de Software Senior y Liderazgo Técnico"
+      : "Senior Software Engineer & Technology Leadership",
     description: locale.startsWith("es")
       ? "Go, Rust, sistemas distribuidos e inteligencia artificial. Experiencia, arquitectura y proyectos de Arturo Nava."
       : "Go, Rust, distributed systems & artificial intelligence. Experience, architecture and selected projects by Arturo Nava.",

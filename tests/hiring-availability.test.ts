@@ -15,7 +15,7 @@ describe("build-time hiring availability", () => {
     );
     expect(hiringPositioning.en.title).toContain("Senior Software Engineer");
     expect(hiringPositioning.es.title).toContain(
-      "Ingeniería de Software Senior",
+      "Ingeniero de Software Senior",
     );
   });
 

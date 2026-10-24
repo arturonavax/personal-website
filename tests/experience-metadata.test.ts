@@ -19,24 +19,22 @@ describe("experience current/former metadata", () => {
       locale: "es",
       endDate: new Date("2024-06-01"),
     });
-    expect(en.title).toBe(`Former ${role} at ${company} | Arturo Nava`);
+    expect(en.title).toBe(`Ex-${role} at ${company} | Arturo Nava`);
     expect(en.description).toContain(
       `previously worked as ${role} at ${company}`,
     );
-    expect(es.title).toBe(
-      `Cargo anterior: ${role} en ${company} | Arturo Nava`,
-    );
+    expect(es.title).toBe(`Ex-${role} en ${company} | Arturo Nava`);
     expect(es.description).toContain(`trabajó como ${role} en ${company}`);
   });
 
   it("keeps roles without an endDate current without implying availability", () => {
     const en = buildExperienceMetadata({ role, company, locale: "en" });
     const es = buildExperienceMetadata({ role, company, locale: "es" });
-    expect(en.title).toBe(`Current ${role} at ${company} | Arturo Nava`);
+    expect(en.title).toBe(`${role} at ${company} | Arturo Nava`);
     expect(en.description).toContain(
       `currently works as ${role} at ${company}`,
     );
-    expect(es.title).toBe(`Cargo actual: ${role} en ${company} | Arturo Nava`);
+    expect(es.title).toBe(`${role} en ${company} | Arturo Nava`);
     expect(es.description).toContain(`trabaja como ${role} en ${company}`);
     expect(en.description).not.toMatch(/available|open to/i);
     expect(es.description).not.toMatch(/disponible/i);
