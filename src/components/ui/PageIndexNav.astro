@@ -433,6 +433,12 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
 
         <div class="relative flex-1 min-h-0 flex flex-col">
           <div
+            id="index-scroll-top-fade"
+            class="scroll-shadow-top"
+            aria-hidden="true"
+          ></div>
+
+          <div
             id="index-scroll-body"
             class="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2 custom-index-scrollbar"
             data-scrollable
@@ -478,7 +484,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
 
           <div
             id="index-scroll-bottom-fade"
-            class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/80 to-transparent opacity-0 transition-opacity duration-200 z-10 index-bottom-inner-shadow"
+            class="scroll-shadow-bottom"
             aria-hidden="true"
           ></div>
         </div>
@@ -711,10 +717,6 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
   }
   .custom-index-scrollbar::-webkit-scrollbar-thumb:hover {
     filter: brightness(1.2);
-  }
-
-  .index-bottom-inner-shadow {
-    box-shadow: inset 0 -12px 10px -6px rgba(0, 0, 0, 0.55);
   }
 </style>
 
@@ -957,8 +959,23 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
 
     function updateScrollBottomIndicator() {
       var scrollBody = document.getElementById("index-scroll-body");
-      var scrollFade = document.getElementById("index-scroll-bottom-fade");
-      if (!scrollBody || !scrollFade) return;
+      var topFade = document.getElementById("index-scroll-top-fade");
+      var bottomFade = document.getElementById("index-scroll-bottom-fade");
+      if (!scrollBody) return;
+
+      var isScrolledDown = scrollBody.scrollTop > 2;
+      if (topFade) {
+        if (isScrolledDown) {
+          topFade.classList.remove("opacity-0");
+          topFade.classList.add("opacity-100", "is-active");
+          topFade.setAttribute("data-visible", "true");
+        } else {
+          topFade.classList.remove("opacity-100", "is-active");
+          topFade.classList.add("opacity-0");
+          topFade.setAttribute("data-visible", "false");
+        }
+      }
+
       var hasOverflow = scrollBody.scrollHeight > scrollBody.clientHeight + 2;
       var isAtBottom =
         scrollBody.scrollHeight -
@@ -966,12 +983,16 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
           scrollBody.clientHeight <=
         6;
 
-      if (hasOverflow && !isAtBottom) {
-        scrollFade.classList.remove("opacity-0");
-        scrollFade.classList.add("opacity-100");
-      } else {
-        scrollFade.classList.remove("opacity-100");
-        scrollFade.classList.add("opacity-0");
+      if (bottomFade) {
+        if (hasOverflow && !isAtBottom) {
+          bottomFade.classList.remove("opacity-0");
+          bottomFade.classList.add("opacity-100", "is-active");
+          bottomFade.setAttribute("data-visible", "true");
+        } else {
+          bottomFade.classList.remove("opacity-100", "is-active");
+          bottomFade.classList.add("opacity-0");
+          bottomFade.setAttribute("data-visible", "false");
+        }
       }
     }
 
@@ -988,6 +1009,8 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
         if (currentBtn) currentBtn.setAttribute("aria-expanded", "true");
         window.__isPageIndexOpen = true;
         requestAnimationFrame(updateScrollBottomIndicator);
+        setTimeout(updateScrollBottomIndicator, 50);
+        setTimeout(updateScrollBottomIndicator, 150);
       } else {
         currentPanel.classList.add("hidden");
         if (currentBtn) currentBtn.setAttribute("aria-expanded", "false");
@@ -1347,6 +1370,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
             });
           });
       }
+      requestAnimationFrame(updateScrollBottomIndicator);
     }
 
     function checkIsResumePage() {
@@ -1584,6 +1608,12 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
         scrollBody.addEventListener("scroll", updateScrollBottomIndicator, {
           passive: true,
         });
+        if ("ResizeObserver" in window) {
+          var indexRo = new ResizeObserver(function () {
+            updateScrollBottomIndicator();
+          });
+          indexRo.observe(scrollBody);
+        }
       }
 
       if (floatingBtn && !boundElements.has(floatingBtn)) {

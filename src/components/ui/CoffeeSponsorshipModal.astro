@@ -230,6 +230,12 @@ const hasSponsorships =
         <!-- Scrollable Dialog Body Wrapper (REQ-UXE-31) -->
         <div class="relative flex-1 min-h-0">
           <div
+            id="coffee-scroll-top-fade"
+            class="scroll-shadow-top"
+            aria-hidden="true"
+          ></div>
+
+          <div
             id="coffee-dialog-scroll"
             class="overflow-y-auto p-5 sm:p-6 space-y-6 text-sm max-h-[calc(90vh-8.5rem)]"
             data-scrollable
@@ -448,29 +454,12 @@ const hasSponsorships =
             </div>
           </div>
 
-          <!-- Bottom subtle gradient indicator (REQ-UXE-31) -->
+          <!-- Bottom subtle shadow indicator (REQ-UXE-31) -->
           <div
             id="coffee-scroll-hint"
-            class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/90 to-transparent flex items-end justify-center pb-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] tracking-wide opacity-0 transition-opacity duration-200 select-none z-10"
+            class="scroll-shadow-bottom"
             aria-hidden="true"
-          >
-            <span class="flex items-center gap-1.5 opacity-90 drop-shadow-sm font-medium">
-              <svg
-                class="h-3 w-3 animate-bounce shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-              <span>
-                {isEs ? "Más opciones abajo" : "Scroll for more channels"}
-              </span>
-            </span>
-          </div>
+          ></div>
         </div>
 
         <!-- Footer with Esc Keycap (REQ-UXE-31) -->
@@ -510,14 +499,33 @@ const hasSponsorships =
           function updateCoffeeScrollHint() {
             var sb = document.getElementById("coffee-dialog-scroll");
             var sh = document.getElementById("coffee-scroll-hint");
-            if (!sb || !sh) return;
-            var hasMore = sb.scrollHeight > sb.clientHeight + sb.scrollTop + 14;
-            if (hasMore) {
-              sh.classList.remove("opacity-0");
-              sh.classList.add("opacity-100");
-            } else {
-              sh.classList.remove("opacity-100");
-              sh.classList.add("opacity-0");
+            var topFade = document.getElementById("coffee-scroll-top-fade");
+            if (!sb) return;
+
+            var isScrolledDown = sb.scrollTop > 2;
+            if (topFade) {
+              if (isScrolledDown) {
+                topFade.classList.remove("opacity-0");
+                topFade.classList.add("opacity-100", "is-active");
+                topFade.setAttribute("data-visible", "true");
+              } else {
+                topFade.classList.remove("opacity-100", "is-active");
+                topFade.classList.add("opacity-0");
+                topFade.setAttribute("data-visible", "false");
+              }
+            }
+
+            var hasMore = sb.scrollHeight > sb.clientHeight + sb.scrollTop + 8;
+            if (sh) {
+              if (hasMore) {
+                sh.classList.remove("opacity-0");
+                sh.classList.add("opacity-100", "is-active");
+                sh.setAttribute("data-visible", "true");
+              } else {
+                sh.classList.remove("opacity-100", "is-active");
+                sh.classList.add("opacity-0");
+                sh.setAttribute("data-visible", "false");
+              }
             }
           }
 

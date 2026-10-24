@@ -114,8 +114,14 @@ const hasShortcuts = Boolean(shortcuts && shortcuts.length > 0);
           </button>
         </div>
 
-        <!-- Shortcuts Grid (Task 2: Permanent Scroll & Bottom Overflow Hint) -->
+        <!-- Shortcuts Grid (Task 2: Permanent Scroll & Overflow Shadows) -->
         <div class="relative flex-1 min-h-0">
+          <div
+            id="shortcuts-scroll-top-fade"
+            class="scroll-shadow-top"
+            aria-hidden="true"
+          ></div>
+
           <div
             id="shortcuts-grid-scroll"
             class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-5 max-h-[60vh] overflow-y-auto"
@@ -169,10 +175,10 @@ const hasShortcuts = Boolean(shortcuts && shortcuts.length > 0);
               );
             })}
           </div>
-          <!-- Bottom subtle gradient indicator -->
+          <!-- Bottom subtle shadow indicator -->
           <div
             id="shortcuts-scroll-hint"
-            class="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/80 to-transparent opacity-0 transition-opacity duration-200"
+            class="scroll-shadow-bottom"
             aria-hidden="true"
           ></div>
         </div>
@@ -236,14 +242,33 @@ const hasShortcuts = Boolean(shortcuts && shortcuts.length > 0);
       const gridHint = this.querySelector<HTMLElement>(
         "#shortcuts-scroll-hint",
       );
+      const gridTopFade = this.querySelector<HTMLElement>(
+        "#shortcuts-scroll-top-fade",
+      );
 
       const updateScrollHint = () => {
-        if (!gridScroll || !gridHint) return;
+        if (!gridScroll) return;
+
+        const isScrolledDown = gridScroll.scrollTop > 2;
+        if (gridTopFade) {
+          gridTopFade.classList.toggle("opacity-0", !isScrolledDown);
+          gridTopFade.classList.toggle("opacity-100", isScrolledDown);
+          gridTopFade.classList.toggle("is-active", isScrolledDown);
+          gridTopFade.setAttribute(
+            "data-visible",
+            isScrolledDown ? "true" : "false",
+          );
+        }
+
         const hasMore =
           gridScroll.scrollHeight >
-          gridScroll.clientHeight + gridScroll.scrollTop + 14;
-        gridHint.classList.toggle("opacity-0", !hasMore);
-        gridHint.classList.toggle("opacity-100", hasMore);
+          gridScroll.clientHeight + gridScroll.scrollTop + 8;
+        if (gridHint) {
+          gridHint.classList.toggle("opacity-0", !hasMore);
+          gridHint.classList.toggle("opacity-100", hasMore);
+          gridHint.classList.toggle("is-active", hasMore);
+          gridHint.setAttribute("data-visible", hasMore ? "true" : "false");
+        }
       };
 
       if (gridScroll) {

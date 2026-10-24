@@ -123,11 +123,17 @@ const searchIndexPath = "/search-index.json";
         ))}
       </div>
 
-      <!-- Dynamic Live Search Results List (Task 2: Permanent Scroll & Bottom Overflow Hint) -->
-      <div class="relative flex-1 min-h-0">
+      <!-- Dynamic Live Search Results List (Task 2: Permanent Scroll & Overflow Shadows) -->
+      <div class="relative flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div
+          id="search-scroll-top-fade"
+          class="scroll-shadow-top"
+          role="presentation"
+        ></div>
+
         <div
           id="search-results-list"
-          class="overflow-y-auto p-4 sm:p-5 space-y-3 max-h-[50vh]"
+          class="flex-1 overflow-y-auto px-4 py-2.5 sm:px-5 sm:py-3 space-y-3 custom-index-scrollbar"
           data-scrollable
         >
           <!-- Populated via JavaScript dynamically on every keystroke -->
@@ -142,27 +148,13 @@ const searchIndexPath = "/search-index.json";
             </p>
           </div>
         </div>
-        <!-- Subtle bottom gradient indicator showing more content can be scrolled down -->
+
+        <!-- Subtle bottom shadow indicator showing more content can be scrolled down -->
         <div
           id="search-scroll-hint"
-          class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/90 to-transparent flex items-end justify-center pb-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] tracking-wide opacity-0 transition-opacity duration-200 select-none"
-          aria-hidden="true"
-        >
-          <span class="flex items-center gap-1.5 opacity-90 drop-shadow-sm font-medium">
-            <svg
-              class="h-3 w-3 animate-bounce shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-            <span>{isEs ? "Más resultados abajo" : "More results below"}</span>
-          </span>
-        </div>
+          class="scroll-shadow-bottom"
+          role="presentation"
+        ></div>
       </div>
 
       <!-- Dialog Footer -->
@@ -616,6 +608,9 @@ const searchIndexPath = "/search-index.json";
           if (!currentDialog.open) {
             currentDialog.showModal();
           }
+          requestAnimationFrame(updateSearchScrollHint);
+          setTimeout(updateSearchScrollHint, 50);
+          setTimeout(updateSearchScrollHint, 150);
           if (currentInput) {
             if (initialQuery !== undefined) {
               currentInput.value = initialQuery;
@@ -689,17 +684,38 @@ const searchIndexPath = "/search-index.json";
       }
 
       function updateSearchScrollHint() {
+        var topFade = document.getElementById("search-scroll-top-fade");
         var hint = document.getElementById("search-scroll-hint");
         var list = document.getElementById("search-results-list");
-        if (!hint || !list) return;
-        var hasMore =
-          list.scrollHeight > list.clientHeight + list.scrollTop + 14;
-        if (hasMore) {
-          hint.classList.remove("opacity-0");
-          hint.classList.add("opacity-100");
-        } else {
-          hint.classList.remove("opacity-100");
-          hint.classList.add("opacity-0");
+        if (!list) return;
+
+        var isScrolledDown = list.scrollTop > 2;
+        if (topFade) {
+          if (isScrolledDown) {
+            topFade.classList.remove("opacity-0");
+            topFade.classList.add("opacity-100", "is-active");
+            topFade.setAttribute("data-visible", "true");
+          } else {
+            topFade.classList.remove("opacity-100", "is-active");
+            topFade.classList.add("opacity-0");
+            topFade.setAttribute("data-visible", "false");
+          }
+        }
+
+        var hasOverflow = list.scrollHeight > list.clientHeight + 2;
+        var isAtBottom =
+          list.scrollHeight - list.scrollTop - list.clientHeight <= 6;
+
+        if (hint) {
+          if (hasOverflow && !isAtBottom) {
+            hint.classList.remove("opacity-0");
+            hint.classList.add("opacity-100", "is-active");
+            hint.setAttribute("data-visible", "true");
+          } else {
+            hint.classList.remove("opacity-100", "is-active");
+            hint.classList.add("opacity-0");
+            hint.setAttribute("data-visible", "false");
+          }
         }
       }
 
@@ -707,6 +723,33 @@ const searchIndexPath = "/search-index.json";
         boundElements.add(resultsContainer);
         resultsContainer.addEventListener("scroll", updateSearchScrollHint, {
           passive: true,
+        });
+        if ("ResizeObserver" in window) {
+          var searchRo = new ResizeObserver(function () {
+            updateSearchScrollHint();
+          });
+          searchRo.observe(resultsContainer);
+        }
+        if ("MutationObserver" in window) {
+          var searchMo = new MutationObserver(function () {
+            updateSearchScrollHint();
+            requestAnimationFrame(updateSearchScrollHint);
+          });
+          searchMo.observe(resultsContainer, {
+            childList: true,
+            subtree: true,
+          });
+        }
+        resultsContainer.addEventListener("click", function (e) {
+          var link = e.target.closest("a[data-search-item]");
+          if (
+            link &&
+            link.href &&
+            typeof window.executeSearchNavigation === "function"
+          ) {
+            e.preventDefault();
+            window.executeSearchNavigation(link.href);
+          }
         });
       }
 
@@ -970,23 +1013,6 @@ const searchIndexPath = "/search-index.json";
                 window.location.href = targetUrl;
               }
             }
-          }
-        });
-      }
-
-      // Interceptar clics en resultados para SPA navigation
-      var resultsContainer = document.getElementById("search-results-list");
-      if (resultsContainer && !boundElements.has(resultsContainer)) {
-        boundElements.add(resultsContainer);
-        resultsContainer.addEventListener("click", function (e) {
-          var link = e.target.closest("a[data-search-item]");
-          if (
-            link &&
-            link.href &&
-            typeof window.executeSearchNavigation === "function"
-          ) {
-            e.preventDefault();
-            window.executeSearchNavigation(link.href);
           }
         });
       }
@@ -1549,7 +1575,13 @@ const searchIndexPath = "/search-index.json";
         });
 
         resultsContainer.innerHTML = html;
-        requestAnimationFrame(updateSearchScrollHint);
+        updateSearchScrollHint();
+        requestAnimationFrame(function () {
+          updateSearchScrollHint();
+          requestAnimationFrame(updateSearchScrollHint);
+          setTimeout(updateSearchScrollHint, 50);
+          setTimeout(updateSearchScrollHint, 150);
+        });
       }
     }
 

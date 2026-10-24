@@ -70,8 +70,14 @@ const hasJudges = judgeProfiles && judgeProfiles.length > 0;
         </button>
       </div>
 
-      {/* Judges List Body (Task 2: Permanent Custom Scrollbar & Bottom Overflow Hint) */}
+      {/* Judges List Body (Task 2: Permanent Custom Scrollbar & Overflow Shadows) */}
       <div class="relative flex-1 min-h-0">
+        <div
+          id="judges-scroll-top-fade"
+          class="scroll-shadow-top"
+          aria-hidden="true"
+        ></div>
+
         <div
           id="judges-list-scroll"
           class="overflow-y-auto p-4 sm:p-6 space-y-3.5 max-h-[60vh]"
@@ -161,28 +167,13 @@ const hasJudges = judgeProfiles && judgeProfiles.length > 0;
               <span>&rarr;</span>
             </a>
           </div>
-          {/* Bottom subtle gradient indicator */}
-          <div
-            id="judges-scroll-hint"
-            class="pointer-events-none absolute bottom-0 inset-x-0 h-9 bg-gradient-to-t from-[var(--color-surface-card)] via-[var(--color-surface-card)]/90 to-transparent flex items-end justify-center pb-1.5 text-[11px] font-mono text-[var(--color-accent-gold)] tracking-wide opacity-0 transition-opacity duration-200 select-none"
-            aria-hidden="true"
-          >
-            <span class="flex items-center gap-1.5 opacity-90 drop-shadow-sm font-medium">
-              <svg
-                class="h-3 w-3 animate-bounce shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-              <span>{isEs ? "Más perfiles abajo" : "More profiles below"}</span>
-            </span>
-          </div>
         </div>
+        {/* Bottom subtle shadow indicator */}
+        <div
+          id="judges-scroll-hint"
+          class="scroll-shadow-bottom"
+          aria-hidden="true"
+        ></div>
       </div>
 
       {/* Footer */}
@@ -219,16 +210,35 @@ const hasJudges = judgeProfiles && judgeProfiles.length > 0;
       if (!dialog) return;
 
       function updateJudgesScrollHint() {
-        if (!listScroll || !listHint) return;
+        if (!listScroll) return;
+        var topFade = document.getElementById("judges-scroll-top-fade");
+
+        var isScrolledDown = listScroll.scrollTop > 2;
+        if (topFade) {
+          if (isScrolledDown) {
+            topFade.classList.remove("opacity-0");
+            topFade.classList.add("opacity-100", "is-active");
+            topFade.setAttribute("data-visible", "true");
+          } else {
+            topFade.classList.remove("opacity-100", "is-active");
+            topFade.classList.add("opacity-0");
+            topFade.setAttribute("data-visible", "false");
+          }
+        }
+
         var hasMore =
           listScroll.scrollHeight >
-          listScroll.clientHeight + listScroll.scrollTop + 14;
-        if (hasMore) {
-          listHint.classList.remove("opacity-0");
-          listHint.classList.add("opacity-100");
-        } else {
-          listHint.classList.remove("opacity-100");
-          listHint.classList.add("opacity-0");
+          listScroll.clientHeight + listScroll.scrollTop + 8;
+        if (listHint) {
+          if (hasMore) {
+            listHint.classList.remove("opacity-0");
+            listHint.classList.add("opacity-100", "is-active");
+            listHint.setAttribute("data-visible", "true");
+          } else {
+            listHint.classList.remove("opacity-100", "is-active");
+            listHint.classList.add("opacity-0");
+            listHint.setAttribute("data-visible", "false");
+          }
         }
       }
 
@@ -237,6 +247,12 @@ const hasJudges = judgeProfiles && judgeProfiles.length > 0;
         listScroll.addEventListener("scroll", updateJudgesScrollHint, {
           passive: true,
         });
+        if ("ResizeObserver" in window) {
+          var ro = new ResizeObserver(function () {
+            updateJudgesScrollHint();
+          });
+          ro.observe(listScroll);
+        }
       }
 
       function openJudgesModal() {
@@ -248,6 +264,8 @@ const hasJudges = judgeProfiles && judgeProfiles.length > 0;
         ) {
           curDialog.showModal();
           requestAnimationFrame(updateJudgesScrollHint);
+          setTimeout(updateJudgesScrollHint, 50);
+          setTimeout(updateJudgesScrollHint, 150);
         }
       }
 
@@ -283,18 +301,9 @@ const hasJudges = judgeProfiles && judgeProfiles.length > 0;
             var d = document.getElementById("online-judges-dialog");
             if (d && typeof d.showModal === "function") {
               d.showModal();
-              var ls = document.getElementById("judges-list-scroll");
-              var lh = document.getElementById("judges-scroll-hint");
-              if (ls && lh) {
-                var hm = ls.scrollHeight > ls.clientHeight + ls.scrollTop + 14;
-                if (hm) {
-                  lh.classList.remove("opacity-0");
-                  lh.classList.add("opacity-100");
-                } else {
-                  lh.classList.remove("opacity-100");
-                  lh.classList.add("opacity-0");
-                }
-              }
+              requestAnimationFrame(updateJudgesScrollHint);
+              setTimeout(updateJudgesScrollHint, 50);
+              setTimeout(updateJudgesScrollHint, 150);
             }
             return;
           }
