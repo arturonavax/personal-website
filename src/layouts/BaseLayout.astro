@@ -651,9 +651,11 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <!-- Script de runtime: expone APIs a window, mantiene polyfills y gestiona eventos -->
     <script>
       import { handleEscapeKey } from "@/lib/navigation/escape-router";
+      import { setupHistoryScrollRouter } from "@/lib/navigation/history-scroll-router";
       import { navigate } from "astro:transitions/client";
 
       (window as any).__astroNavigate = (url: string) => void navigate(url);
+      setupHistoryScrollRouter();
 
       // 1. Resiliencia contra extensiones externas mal implementadas
       if (typeof Document !== "undefined") {

@@ -899,7 +899,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       });
     }
 
-    function scrollToTarget(targetId, explicitIdx) {
+    function scrollToTarget(targetId, explicitIdx, skipPushState) {
       if (
         targetId === "contact" &&
         typeof window.__smoothScrollToContact === "function"
@@ -918,6 +918,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       // Ensure offscreen sections are fully measured during anchor navigation
       document.documentElement.classList.add("is-anchor-scrolling");
 
+      window.__isProgrammaticNav = true;
       highlightActive(targetId);
       isProgrammaticScroll = true;
       if (typeof explicitIdx === "number") {
@@ -931,6 +932,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       function onScrollFinish() {
         document.documentElement.classList.remove("is-anchor-scrolling");
         isProgrammaticScroll = false;
+        window.__isProgrammaticNav = false;
         window.removeEventListener("scrollend", onScrollFinish);
         if (navTargetIdx >= 0 && navTargetIdx < sectionIds.length) {
           highlightActive(sectionIds[navTargetIdx]);
@@ -950,10 +952,12 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
         behavior: "smooth",
       });
 
-      if (history.pushState) {
-        history.pushState(null, "", "#" + targetId);
-      } else {
-        window.location.hash = targetId;
+      if (!skipPushState) {
+        if (history.pushState) {
+          history.pushState(null, "", "#" + targetId);
+        } else {
+          window.location.hash = targetId;
+        }
       }
     }
 
@@ -1856,6 +1860,32 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
         }
         return true;
       };
+
+      window.__pageIndexScrollToTarget = function (targetId, skipPushState) {
+        scrollToTarget(targetId, undefined, skipPushState);
+      };
+      window.__pageIndexScrollToTop = function () {
+        isProgrammaticScroll = true;
+        window.__isProgrammaticNav = true;
+        clearTimeout(scrollLockTimeout);
+        function onScrollFinish() {
+          isProgrammaticScroll = false;
+          window.__isProgrammaticNav = false;
+          window.removeEventListener("scrollend", onScrollFinish);
+          if (sectionIds && sectionIds.length > 0) {
+            highlightActive(sectionIds[0]);
+          }
+        }
+        if ("onscrollend" in window) {
+          window.addEventListener("scrollend", onScrollFinish, { once: true });
+        }
+        scrollLockTimeout = setTimeout(onScrollFinish, 800);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        if (sectionIds && sectionIds.length > 0) {
+          highlightActive(sectionIds[0]);
+        }
+      };
+      window.__highlightPageIndexActive = highlightActive;
 
       // Run two-phase lifecycle pre-paint synchronization
       var desktopRoot = document.getElementById("desktop-page-index-root");

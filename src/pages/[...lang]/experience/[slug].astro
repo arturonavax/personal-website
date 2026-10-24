@@ -694,6 +694,7 @@ const jobIndexItems: IndexItem[] = [
     (function () {
       var isTransitioning = false;
       var cache = {};
+      var currentJobPath = location.pathname.replace(/\/+$/, "");
 
       function routerNavigate(url) {
         if (typeof window.__astroNavigate === "function") {
@@ -792,6 +793,14 @@ const jobIndexItems: IndexItem[] = [
                 "",
                 url,
               );
+            }
+            try {
+              currentJobPath = new URL(url, location.origin).pathname.replace(
+                /\/+$/,
+                "",
+              );
+            } catch (_) {
+              currentJobPath = location.pathname.replace(/\/+$/, "");
             }
 
             var oldLangLinks = document.querySelectorAll("a[hreflang]");
@@ -976,9 +985,18 @@ const jobIndexItems: IndexItem[] = [
           });
 
           window.addEventListener("popstate", function () {
-            if (location.pathname.includes("/experience/")) {
+            var newPath = location.pathname.replace(/\/+$/, "");
+            if (
+              newPath !== currentJobPath &&
+              newPath.includes("/experience/")
+            ) {
+              currentJobPath = newPath;
               navigateTo(location.href, "past", true);
             }
+          });
+
+          document.addEventListener("astro:after-swap", function () {
+            currentJobPath = location.pathname.replace(/\/+$/, "");
           });
         }
 
