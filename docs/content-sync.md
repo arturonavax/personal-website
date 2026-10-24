@@ -16,6 +16,27 @@ The build-time bucket defaults to `personal-website-content`, overridable by `R2
 
 Resume's current Content Layer loader expects flat `ArturoNava-Resume-{en,es}.md` files, not structured JSON resumes. Other collections use locale directories and their declared Markdown/MDX extensions. The separate resume resolver retains compatibility paths; see [PLAT02/06](../openspec/specs/current-platform.md).
 
+## Blog series
+
+Add optional series metadata to each participating post's frontmatter:
+
+```yaml
+series:
+  id: distributed-systems
+  title: Distributed systems
+  part: 2
+```
+
+Use the same stable `series.id` for related posts and a positive integer `part` for their authored order. The title can be localized; `translationKey` still identifies translations of the **same post**, not membership in a series. Posts without `series` keep their existing standalone presentation.
+
+- The article shows a compact series label and previous/next navigation before and after its content. Links are ordinary server-rendered anchors, with no extra client JavaScript.
+- Navigation groups by locale and series ID, then orders published parts numerically. English and Spanish never link across languages implicitly.
+- Draft or hidden parts are excluded. Gaps link the nearest published part without renumbering authored parts or exposing unpublished titles. Duplicate published part numbers within the same locale/series fail the build instead of producing ambiguous pagination.
+- Translating a post may change its slug: keep its stable `translationKey` so locale availability and the existing language switcher identify the correct visible counterpart.
+- `updatedDate` (or legacy `updatedAt`) is forwarded to article metadata. A post cover image supplies the explicit social image when present; otherwise the site's default social-image strategy applies. Article canonicals remain route-based.
+
+Do not add example posts to ignored editorial directories merely to test this feature. Use synthetic entries in `tests/post-series.test.ts`; owner-authorized content publication remains a separate operation.
+
 ## Local commands and side effects
 
 | Command                            | Behavior                                                                                                     |

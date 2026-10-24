@@ -1,0 +1,62 @@
+---
+import type { SeriesNavigation } from "@/lib/content/post-series";
+import type { Locale } from "@/i18n/locales";
+
+interface Props {
+  navigation: SeriesNavigation;
+  locale: Locale;
+  position: "start" | "end";
+}
+const { navigation, locale, position } = Astro.props;
+const isEs = locale === "es";
+const partLabel = isEs ? "Parte" : "Part";
+const locationLabel =
+  position === "start"
+    ? isEs
+      ? "Inicio del artículo"
+      : "Start of article"
+    : isEs
+      ? "Final del artículo"
+      : "End of article";
+---
+
+<nav
+  aria-label={`${navigation.title} — ${partLabel} ${navigation.part} — ${locationLabel}`}
+  data-series-navigation={position}
+  class="not-prose border-y border-[var(--color-surface-border-subtle)] py-4 space-y-3 text-sm"
+>
+  <p class="text-[var(--color-text-muted)]">
+    <span class="font-medium text-[var(--color-text-secondary)]">
+      {navigation.title}
+    </span>
+    <span aria-hidden="true"> · </span>
+    {partLabel} {navigation.part}
+  </p>
+  <div class="grid grid-cols-2 gap-4">
+    {navigation.previous && (
+      <a
+        href={navigation.previous.href}
+        rel="prev"
+        class="min-w-0 rounded-sm text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+      >
+        <span class="block text-xs text-[var(--color-text-muted)]">
+          {isEs ? "Anterior" : "Previous"} · {partLabel}{" "}
+          {navigation.previous.part}
+        </span>
+        <span class="block break-words">{navigation.previous.title}</span>
+      </a>
+    )}
+    {navigation.next && (
+      <a
+        href={navigation.next.href}
+        rel="next"
+        class="col-start-2 min-w-0 rounded-sm text-right text-[var(--color-text-secondary)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+      >
+        <span class="block text-xs text-[var(--color-text-muted)]">
+          {isEs ? "Siguiente" : "Next"} · {partLabel} {navigation.next.part}
+        </span>
+        <span class="block break-words">{navigation.next.title}</span>
+      </a>
+    )}
+  </div>
+</nav>

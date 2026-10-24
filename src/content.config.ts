@@ -2,6 +2,7 @@ import { defineCollection } from "astro:content";
 import { z } from "astro/zod";
 import { glob } from "astro/loaders";
 import { SUPPORTED_LOCALES } from "./i18n/locales";
+import { postSeriesSchema } from "./lib/content/post-series";
 
 export const localizedBaseSchema = z.object({
   canonicalId: z
@@ -51,6 +52,7 @@ const posts = defineCollection({
       searchKeywords: z.array(z.string()).optional(),
       author: z.string().default("Arturo Nava"),
       readingTimeMinutes: z.number().int().positive().optional(),
+      series: postSeriesSchema.optional(),
       searchPriority: z.number().int().default(50),
       postType: z
         .enum(["essay", "note", "article", "opinion"])

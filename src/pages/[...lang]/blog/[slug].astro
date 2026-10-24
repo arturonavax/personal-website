@@ -1,19 +1,15 @@
 ---
 import { render } from "astro:content";
 import ArticleLayout from "@/layouts/ArticleLayout.astro";
+import SeriesPagination from "@/components/blog/SeriesPagination.astro";
+import { buildPostNavigation } from "@/lib/content/post-series";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config";
-import { getVisibleCollection } from "@/utils/visibility";
+import { getVisibleCollection, isItemVisible } from "@/utils/visibility";
 
 export async function getStaticPaths() {
   const posts = await getVisibleCollection("posts");
 
-  const slugToLocales = new Map<string, Set<SupportedLocale>>();
-  for (const p of posts) {
-    const [l, ...sp] = p.id.replace(/\.(md|mdx)$/, "").split("/");
-    const s = sp.join("/");
-    if (!slugToLocales.has(s)) slugToLocales.set(s, new Set());
-    slugToLocales.get(s)!.add(l as SupportedLocale);
-  }
+  const navigation = buildPostNavigation(posts, isItemVisible);
 
   return posts.map((post) => {
     const [localePart, ...slugParts] = post.id
@@ -21,9 +17,7 @@ export async function getStaticPaths() {
       .split("/");
     const slugPart = slugParts.join("/");
     const lang = localePart === DEFAULT_LOCALE ? undefined : localePart;
-    const availableLocales = Array.from(
-      slugToLocales.get(slugPart) || [localePart as SupportedLocale],
-    );
+    const postNavigation = navigation.get(post.id)!;
 
     return {
       params: {
@@ -33,13 +27,14 @@ export async function getStaticPaths() {
       props: {
         post,
         currentLocale: localePart as SupportedLocale,
-        availableLocales,
+        availableLocales: postNavigation.availableLocales,
+        series: postNavigation.series,
       },
     };
   });
 }
 
-const { post, currentLocale, availableLocales } = Astro.props;
+const { post, currentLocale, availableLocales, series } = Astro.props;
 const { Content } = await render(post);
 const isEs = currentLocale === "es";
 
@@ -55,6 +50,8 @@ const canonicalUrl = `${siteUrl}${normalizedPath}`;
   canonicalUrl={canonicalUrl}
   locale={currentLocale}
   pubDate={post.data.pubDate}
+  updatedDate={post.data.updatedDate ?? post.data.updatedAt}
+  ogImage={post.data.coverImage?.src}
   tags={post.data.tags}
   translationKey={post.data.translationKey}
   collectionName="posts"
@@ -62,5 +59,19 @@ const canonicalUrl = `${siteUrl}${normalizedPath}`;
   backHref={isEs ? "/es/blog/" : "/blog/"}
   backLabel={isEs ? "Volver al blog" : "Back to blog"}
 >
+  {series && (
+    <SeriesPagination
+      navigation={series}
+      locale={currentLocale}
+      position="start"
+    />
+  )}
   <Content />
+  {series && (
+    <SeriesPagination
+      navigation={series}
+      locale={currentLocale}
+      position="end"
+    />
+  )}
 </ArticleLayout>
