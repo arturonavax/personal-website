@@ -197,3 +197,7 @@ Source paths in the table are under `src/components/{common,ui}/`, `src/layouts/
 ## Discovery controls — subsequent navigation fix
 
 The actual `universal-search-modal` custom-element root persists across route swaps. Locale changes update localized labels through the existing owner rather than replacing its listener-owned input/results subtree. Search must continue typing, clearing, keyboard selection and closing after repeated page and language changes, retaining one cached search index owner (`tests/search-navigation.spec.ts`). The floating Page Index label is “Index” below 640px and “Page Index” from 640px; Spanish retains “Índice”. Existing desktop-left eligibility and gutter geometry remain unchanged (`tests/page-index-responsive.spec.ts`).
+
+## Preference-change scroll preservation
+
+Language controls MUST bypass ordinary Header navigation reset handling: their existing owner captures/restores the current pixel offset. Theme changes preserve the viewport through the existing native reveal or reduced-motion fallback without a second restoration owner. Ordinary page navigation still resets intentionally. Browser regression coverage uses visible raw-coordinate controls across both locales, desktop/mobile and both motion modes, preserving Matrix canvas identity (`tests/preference-scroll.spec.ts`). See `docs/preference-scroll.md`.

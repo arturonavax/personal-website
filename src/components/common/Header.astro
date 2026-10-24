@@ -849,6 +849,8 @@ const { isServicesActive, isMoreActive } = resolveHeaderNavState(pathWithSlash);
           if (!boundElements.has(link)) {
             boundElements.add(link);
             link.addEventListener("click", function (e) {
+              // Locale swaps own scroll preservation and their navigation lifecycle.
+              if (link.hasAttribute("data-lang-switch")) return;
               var currentPath =
                 window.location.pathname.replace(/\/+$/, "") || "/";
               var rawHref = link.getAttribute("href") || "";
