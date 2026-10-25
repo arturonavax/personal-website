@@ -75,6 +75,12 @@ Run commands only after understanding their inputs and side effects:
 
 For an existing database, inspect migration history before applying a migration. `db:reset:local` and `db:reset:remote` are **destructive**; never use them as ordinary setup/upgrade instructions. `content:push`, pruning, `cv:publish`, deployment, secret changes and remote DB operations mutate external state and require scoped authorization. This guide does not authorize any of them.
 
+### Remote D1 change gate
+
+The configured production `DB` binding is `personal-website-analytics` in `wrangler.jsonc`; `env.local` reuses its ID but is not an independent remote database. A local migration run does not migrate production. Before any remote operation, verify the authenticated account, exact database ID and migration history; request scoped authorization for the named destination and operation. Prefer applying the additive `0011_aggregate_device_os.sql` migration to resetting existing data: the latter discards visits, leads and other stored records and incurs avoidable writes.
+
+If a remote reset is still desired, first arrange a low-traffic window and export **the full remote database, schema and data** to a protected, untracked location outside this public repository. [Cloudflare's D1 export guide](https://developers.cloudflare.com/d1/best-practices/import-export-data/) warns that an export blocks other database requests while it runs. Verify that the export completed, retain its integrity digest and test a restore into an isolated local database, including the expected tables and representative row counts. The optional `content:backup` archive backs up editorial files, **not D1**. Stop on a missing/incomplete export, restore failure, target mismatch or uncertain live traffic impact. Obtain separate confirmation naming the exact account/database **after** backup verification and before any destructive remote command; never infer that confirmation from this guide, the local config or a successful local test.
+
 Wrangler remains the runtime/deployment configuration here. `cf` can be used for separately authorized account/content operations, but `cf dev/build/deploy` is not a drop-in replacement for this Wrangler project.
 
 ## Verification and known gaps
