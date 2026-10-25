@@ -189,19 +189,25 @@ const isJobPage =
   containerMaxWidth === "4xl" ||
   /^\/(es\/)?experience\/.+/.test(normalizedPath);
 const isHomePage = normalizedPath === "/" || normalizedPath === "/es/";
+const isArticleDetailPage = /^\/(es\/)?(blog|projects|services)\/.+/.test(
+  normalizedPath,
+);
 
 // Determine whether this page has sections on initial SSR render
 const hasInitialSections =
   Boolean(customItems && customItems.length > 0) ||
   isHomePage ||
   isCvPage ||
-  isJobPage;
+  isJobPage ||
+  isArticleDetailPage;
 
 const topValue = isCvPage
   ? "calc(5rem + 1px)"
   : isJobPage
     ? "calc(var(--header-height, 3.5rem) + 3.25rem)"
-    : "calc(5rem + 1px)";
+    : isArticleDetailPage
+      ? "calc(var(--header-height, 3.5rem) + 5.5rem)"
+      : "calc(5rem + 1px)";
 const containerMaxClass = isCvPage ? "max-w-[210mm]" : "max-w-5xl";
 const asideGapClass = isJobPage ? "mr-16" : "mr-6";
 const asideWidthClass = isJobPage ? "w-52" : "w-64";
@@ -375,7 +381,10 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
   </div>
 
   <!-- MODE B: FLOATING ACCORDION BUTTON (<1600px Viewport) -->
-  <div id="mobile-page-index-root" class="contents pointer-events-none no-print print:hidden">
+  <div
+    id="mobile-page-index-root"
+    class="contents pointer-events-none no-print print:hidden"
+  >
     <div
       id="mobile-page-index-container"
       data-has-sections={hasInitialSections ? "true" : "false"}
@@ -784,7 +793,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       var targetEl = targetId ? document.getElementById(targetId) : null;
       if (!targetEl) {
         targetEl = document.querySelector(
-          "#role-header, #cv-document-sheet, #about, main article, article, main > div",
+          "#role-header, #cv-document-sheet, #article-header, #service-header, .article-detail__header, #about, main article > header, main > div > header, main > div > div > header, main header, main article, article, main > div",
         );
       }
       if (!targetEl) return;
@@ -826,7 +835,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
 
       var spaceLeft = 0;
       var contentContainer = document.querySelector(
-        "#role-header, #cv-document-sheet, #about, main > div, #main-content > div, main article, article",
+        "#role-header, #cv-document-sheet, #article-header, #service-header, .article-detail__header, #about, main article > header, main > div > header, main > div > div > header, main > div, #main-content > div, main article, article",
       );
       if (contentContainer) {
         var rect = contentContainer.getBoundingClientRect();
@@ -1476,6 +1485,17 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
           "data-align-target",
           isJob ? "role-header" : isCv ? "cv-document-sheet" : "about",
         );
+        if (!isJob && !isCv) {
+          var customHeaderTarget =
+            document.getElementById("article-header") ||
+            document.getElementById("service-header");
+          if (customHeaderTarget && customHeaderTarget.id) {
+            desktopAside.setAttribute(
+              "data-align-target",
+              customHeaderTarget.id,
+            );
+          }
+        }
       }
 
       alignDesktopIndex();
@@ -2059,26 +2079,18 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       updateCvButtons(checkIsResumePage(), initialLang);
     } catch (_) {}
 
-    // Initial Mount: Defer TOC scanning and layout queries after window load & idle (Zero LCP/INP impact)
+    // Initial Mount: Run immediately once DOM is ready so PageIndex aligns without delay
     function onInitialLoad() {
-      if (typeof window.requestIdleCallback === "function") {
-        window.requestIdleCallback(
-          function () {
-            setupPageIndex(false);
-          },
-          { timeout: 3000 },
-        );
-      } else {
-        setTimeout(function () {
-          setupPageIndex(false);
-        }, 300);
-      }
+      setupPageIndex(false);
+      window.requestAnimationFrame(alignDesktopIndex);
     }
 
-    if (document.readyState === "complete") {
-      onInitialLoad();
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", onInitialLoad, {
+        once: true,
+      });
     } else {
-      window.addEventListener("load", onInitialLoad, { once: true });
+      onInitialLoad();
     }
 
     // Pre-Paint Route Shield: suppress PageIndex in incoming document before swap if incoming page lacks sections

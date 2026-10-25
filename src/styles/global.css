@@ -618,6 +618,45 @@ html[data-theme="light"] body {
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* Editorial & Markdown Prose Links (Blog, Projects, Experience, Services) */
+:where(.article-detail__content, .article-prose)
+  :where(p, li, blockquote, td, th)
+  a:not([data-series-navigation] a):not(.btn-gold):not(.btn-secondary) {
+  color: var(--color-accent-gold);
+  font-weight: 500;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--color-accent-gold) 65%,
+    transparent
+  );
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.22em;
+  transition:
+    color 160ms ease,
+    text-decoration-color 160ms ease;
+}
+
+:where(.article-detail__content, .article-prose)
+  :where(p, li, blockquote, td, th)
+  a:not([data-series-navigation] a):not(.btn-gold):not(.btn-secondary):hover {
+  color: var(--color-accent-gold-hover);
+  text-decoration-color: var(--color-accent-gold-hover);
+  text-decoration-thickness: 2px;
+}
+
+:where(.article-detail__content, .article-prose)
+  :where(p, li, blockquote, td, th)
+  a:not([data-series-navigation] a):not(.btn-gold):not(
+    .btn-secondary
+  ):focus-visible {
+  color: var(--color-accent-gold-hover);
+  text-decoration-color: var(--color-accent-gold-hover);
+  outline: 1px solid var(--color-accent-gold);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* Botones CTA de alta accesibilidad, forma compacta de 4px y micro-interacciones hápticas */
 .btn-gold {
   position: relative;

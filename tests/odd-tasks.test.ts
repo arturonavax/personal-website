@@ -1768,6 +1768,7 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     expect(navContent).toContain(
       'isJob ? "role-header" : isCv ? "cv-document-sheet" : "about"',
     );
+    expect(navContent).toContain("article-header");
     expect(navContent).toContain("alignDesktopIndex()");
   });
 });
@@ -2261,16 +2262,28 @@ describe("ODD Task 7: SEO Canonical Indexing, Trailing Slashes & Robots Directiv
       );
 
       // Verify print suppression in global.css
-      expect(globalCss).toMatch(/@media print\s*\{[\s\S]*?#floating-actions-stack/);
-      expect(globalCss).toMatch(/@media print\s*\{[\s\S]*?#open-index-floating-btn/);
-      expect(globalCss).toMatch(/@media print\s*\{[\s\S]*?#mobile-cv-print-btn/);
+      expect(globalCss).toMatch(
+        /@media print\s*\{[\s\S]*?#floating-actions-stack/,
+      );
+      expect(globalCss).toMatch(
+        /@media print\s*\{[\s\S]*?#open-index-floating-btn/,
+      );
+      expect(globalCss).toMatch(
+        /@media print\s*\{[\s\S]*?#mobile-cv-print-btn/,
+      );
 
       // Verify print suppression in resume.css
-      expect(resumeCss).toMatch(/@media print\s*\{[\s\S]*?#floating-actions-stack/);
-      expect(resumeCss).toMatch(/@media print\s*\{[\s\S]*?#open-index-floating-btn/);
+      expect(resumeCss).toMatch(
+        /@media print\s*\{[\s\S]*?#floating-actions-stack/,
+      );
+      expect(resumeCss).toMatch(
+        /@media print\s*\{[\s\S]*?#open-index-floating-btn/,
+      );
 
       // Verify print suppression in PageIndexNav.astro
-      expect(pageIndexNav).toMatch(/@media print\s*\{[\s\S]*?#open-index-floating-btn/);
+      expect(pageIndexNav).toMatch(
+        /@media print\s*\{[\s\S]*?#open-index-floating-btn/,
+      );
       expect(pageIndexNav).toContain('id="open-index-floating-btn"');
       expect(pageIndexNav).toContain('id="mobile-cv-print-btn"');
 

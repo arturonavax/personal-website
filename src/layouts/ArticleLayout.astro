@@ -103,7 +103,12 @@ const jsonLd =
       </a>
     </div>
 
-    <header class="article-detail__header geometric-box rounded-lg bg-[var(--color-surface-card)] p-6 sm:p-8 space-y-4">
+    <header
+      id="article-header"
+      data-index-section="article-header"
+      data-index-title={title}
+      class="article-detail__header geometric-box rounded-lg bg-[var(--color-surface-card)] p-6 sm:p-8 space-y-4"
+    >
       <h1 class="text-2xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-3xl lg:text-4xl">
         {title}
       </h1>
@@ -147,7 +152,7 @@ const jsonLd =
     </header>
 
     <!-- Article Content -->
-    <div class="article-detail__content rounded-xl border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)] p-5 sm:p-8 space-y-6 text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed [&>:first-child]:mt-0 [&>h2]:mt-12 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:text-[var(--color-text-primary)] [&>h2]:border-b [&>h2]:border-[var(--color-surface-border-subtle)] [&>h2]:pb-3 [&>h3]:mt-10 [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:text-[var(--color-accent-gold)] [&>p]:leading-8 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:space-y-2.5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:space-y-2.5 [&>pre]:rounded-lg [&>pre]:border [&>pre]:border-[var(--color-surface-border)] [&>pre]:bg-[var(--color-surface-card)] [&>pre]:p-5 [&>pre]:overflow-x-auto [&>pre]:text-xs sm:[&>pre]:text-sm [&>code]:rounded [&>code]:bg-[var(--color-surface-card)] [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:font-mono [&>code]:text-xs sm:[&>code]:text-sm [&>code]:text-[var(--color-accent-gold)] [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--color-accent-gold)] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-[var(--color-text-muted)]">
+    <div class="article-detail__content article-prose rounded-xl border border-[var(--color-surface-border-subtle)] bg-[var(--color-surface-card)] p-5 sm:p-8 space-y-6 text-base sm:text-lg text-[var(--color-text-secondary)] leading-relaxed [&>:first-child]:mt-0 [&>h2]:mt-12 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:text-[var(--color-text-primary)] [&>h2]:border-b [&>h2]:border-[var(--color-surface-border-subtle)] [&>h2]:pb-3 [&>h3]:mt-10 [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:text-[var(--color-accent-gold)] [&>p]:leading-8 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:space-y-2.5 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:space-y-2.5 [&>pre]:rounded-lg [&>pre]:border [&>pre]:border-[var(--color-surface-border)] [&>pre]:bg-[var(--color-surface-card)] [&>pre]:p-5 [&>pre]:overflow-x-auto [&>pre]:text-xs sm:[&>pre]:text-sm [&>code]:rounded [&>code]:bg-[var(--color-surface-card)] [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:font-mono [&>code]:text-xs sm:[&>code]:text-sm [&>code]:text-[var(--color-accent-gold)] [&>blockquote]:border-l-2 [&>blockquote]:border-[var(--color-accent-gold)] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-[var(--color-text-muted)] [&_:where(p,li,blockquote,td,th)_a]:font-medium [&_:where(p,li,blockquote,td,th)_a]:text-[var(--color-accent-gold)] [&_:where(p,li,blockquote,td,th)_a]:underline [&_:where(p,li,blockquote,td,th)_a]:decoration-[var(--color-accent-gold)]/65 [&_:where(p,li,blockquote,td,th)_a]:underline-offset-4 [&_:where(p,li,blockquote,td,th)_a]:transition-colors [&_:where(p,li,blockquote,td,th)_a:hover]:text-[var(--color-accent-gold-hover)] [&_:where(p,li,blockquote,td,th)_a:hover]:decoration-[var(--color-accent-gold-hover)]">
       <slot />
     </div>
   </article>
