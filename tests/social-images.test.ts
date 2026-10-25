@@ -15,6 +15,7 @@ import {
   measureSocialText,
   renderSocialImageSvg,
   wrapMeasuredText,
+  stripEmojis,
 } from "../src/lib/seo/og-image";
 import { generateSocialImages } from "../src/integrations/social-images";
 import sharp from "sharp";
@@ -343,5 +344,45 @@ describe("route-specific social images", () => {
     expect(
       (await readFile(join(dir, "og/blog/niño/index.png"))).readUInt32BE(16),
     ).toBe(2400);
+  });
+  it("strips emojis from titles and descriptions to prevent missing glyphs and question marks", async () => {
+    const glyphMap = JSON.parse(await readFile(font, "utf8"));
+    const emojiTitle =
+      "🚀 Incorporación a LATAM Airlines: ⚡ Plataformas Cloud y Sistemas Distribuidos";
+    const emojiDesc =
+      "Me uní a LATAM Airlines ✍️ para modernizar plataformas core 🔬 y streaming de eventos.";
+
+    expect(stripEmojis(emojiTitle)).toBe(
+      "Incorporación a LATAM Airlines: Plataformas Cloud y Sistemas Distribuidos",
+    );
+    expect(stripEmojis(emojiDesc)).toBe(
+      "Me uní a LATAM Airlines para modernizar plataformas core y streaming de eventos.",
+    );
+
+    const cardWithEmoji = {
+      title: emojiTitle,
+      description: emojiDesc,
+      locale: "es",
+      pathname: "/es/blog/joining-latam-airlines/",
+    };
+    const svg = renderSocialImageSvg(cardWithEmoji, glyphMap);
+    // aria-label for title should contain the stripped title, not emojis
+    expect(svg).toContain(
+      'aria-label="Incorporación a LATAM Airlines: Plataformas Cloud y Sistemas Distribuidos"',
+    );
+  });
+  it("dynamically positions blog descriptions below title to maximize card space and fit multi-line content", async () => {
+    const glyphMap = JSON.parse(await readFile(font, "utf8"));
+    const shortTitleBlogCard = {
+      title: "Dataverse Agent1: Multi-Agent DrawingML",
+      description:
+        "Detailed architecture overview of Agent1 for Dataverse Solutions: vision agents, deterministic geometry, and a zero-dependency DrawingML compiler that generates native editable PPTX slides from hand-drawn blueprints and systems sketches.",
+      locale: "en",
+      pathname: "/blog/dataverse-agent1-multi-agent-drawingml/",
+    };
+    const svg = renderSocialImageSvg(shortTitleBlogCard, glyphMap);
+    // Description should start higher than fixed 360 when title is 1 line, expanding readable space
+    expect(svg).toMatch(/data-og-description="true"><path/);
+    expect(svg).not.toContain("data-og-badge");
   });
 });

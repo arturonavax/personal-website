@@ -162,6 +162,17 @@ function attributes(tag: string): Record<string, string> {
   );
 }
 
+/** Strips all Unicode emojis, variation selectors, zero-width joiners and skin tones for clean, high-fidelity vector typography. */
+export function stripEmojis(value: string): string {
+  return value
+    .replace(
+      /[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0E\uFE0F\u200D\u200B\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}]/gu,
+      "",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function extractSocialImageMetadata(
   html: string,
   pathname: string,
@@ -188,15 +199,22 @@ export function extractSocialImageMetadata(
     decodeHtml(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "");
   const description =
     metadata.get("og:description") || metadata.get("description") || "";
+  const isBlog = /^\/(?:es\/)?blog(?:\/|$)/.test(pathname);
   const clean = (value: string, limit: number) => {
     const parts = textGraphemes(value.replace(/\s+/g, " ").trim());
     return parts.length > limit
       ? parts.slice(0, limit - 1).join("") + "…"
       : parts.join("");
   };
+  const cleanTitle = stripEmojis(title);
+  const cleanDescription = stripEmojis(description);
   return {
-    title: clean(title, 240) || "Arturo Nava",
-    description: clean(description, 320),
+    title:
+      clean(cleanTitle.length > 0 ? cleanTitle : title, 240) || "Arturo Nava",
+    description: clean(
+      cleanDescription.length > 0 ? cleanDescription : description,
+      isBlog ? 480 : 320,
+    ),
     locale: attributes(html.match(/<html\b[^>]*>/i)?.[0] || "").lang || "en",
     pathname,
   };
@@ -349,11 +367,16 @@ export function renderSocialImageSvg(
   const heading: SocialImageFont = boldGlyphs;
   const detail: SocialImageFont = monoGlyphs;
   const { colors } = SOCIAL_THEME;
-  const title = metadata.title
+  const isBlog = /^\/(?:es\/)?blog(?:\/|$)/.test(metadata.pathname);
+  const rawTitle = stripEmojis(metadata.title)
     .replace(/^Arturo Nava\s*[|—-]\s*/, "")
     .replace(/\s*[|—-]\s*Arturo Nava$/, "")
     .trim();
-  const isBlog = /^\/(?:es\/)?blog(?:\/|$)/.test(metadata.pathname);
+  const fallbackTitle = metadata.title
+    .replace(/^Arturo Nava\s*[|—-]\s*/, "")
+    .replace(/\s*[|—-]\s*Arturo Nava$/, "")
+    .trim();
+  const title = rawTitle.length > 0 ? rawTitle : fallbackTitle;
   const titleText = title === SOCIAL_PROFILE.name ? SOCIAL_PROFILE.role : title;
   const titleFit = fitSocialText(titleText, heading, {
     maxWidth: 1040,
@@ -362,12 +385,22 @@ export function renderSocialImageSvg(
     maxSize: 48,
     minSize: 32,
   });
-  const descriptionFit = fitSocialText(metadata.description, font, {
+
+  const rawDesc = stripEmojis(metadata.description);
+  const descriptionText = rawDesc.length > 0 ? rawDesc : metadata.description;
+
+  const descStartY = isBlog
+    ? 242 +
+      (titleFit.lines.length - 1) * titleFit.lineHeight +
+      (titleFit.lines.length > 1 ? 50 : 56)
+    : 360;
+  const descMaxHeight = isBlog ? Math.max(140, 514 - descStartY) : 54;
+  const descriptionFit = fitSocialText(descriptionText, font, {
     maxWidth: 1040,
-    maxHeight: isBlog ? 140 : 54,
-    maxLines: isBlog ? 5 : 2,
-    maxSize: isBlog ? 22 : 20.5,
-    minSize: isBlog ? 19 : 18,
+    maxHeight: descMaxHeight,
+    maxLines: isBlog ? 6 : 2,
+    maxSize: isBlog ? 21.5 : 20.5,
+    minSize: isBlog ? 18 : 18,
   });
   const outlines = (
     value: string,
@@ -469,7 +502,7 @@ export function renderSocialImageSvg(
     <g data-og-identity="true" data-og-heading-font="Geist 700" aria-label="${SOCIAL_PROFILE.name}">${outlines(SOCIAL_PROFILE.name, 80, 140, 70, colors.textWhite, heading)}</g>
     <g data-og-detail-font="Geist Mono 600">${outlines(role, 82, 175, 16, colors.textDim, detail)}</g>
     <g data-og-title="true" aria-label="${escapeXml(titleText)}">${renderedTitleLines}</g>
-    <g data-og-description="true">${lines(descriptionFit, 360, colors.textMuted, font)}</g>
+    <g data-og-description="true">${lines(descriptionFit, descStartY, colors.textMuted, font)}</g>
     ${
       !isBlog
         ? `<g data-og-badge="true" data-og-available="${banner.available}" aria-label="${escapeXml(banner.lines.join(". "))}">
