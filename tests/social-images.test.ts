@@ -345,7 +345,7 @@ describe("route-specific social images", () => {
       (await readFile(join(dir, "og/blog/niño/index.png"))).readUInt32BE(16),
     ).toBe(2400);
   });
-  it("strips emojis from titles and descriptions to prevent missing glyphs and question marks", async () => {
+  it("renders vector twemoji in titles and descriptions for rich social branding", async () => {
     const glyphMap = JSON.parse(await readFile(font, "utf8"));
     const emojiTitle =
       "🚀 Incorporación a LATAM Airlines: ⚡ Plataformas Cloud y Sistemas Distribuidos";
@@ -366,10 +366,12 @@ describe("route-specific social images", () => {
       pathname: "/es/blog/joining-latam-airlines/",
     };
     const svg = renderSocialImageSvg(cardWithEmoji, glyphMap);
-    // aria-label for title should contain the stripped title, not emojis
     expect(svg).toContain(
-      'aria-label="Incorporación a LATAM Airlines: Plataformas Cloud y Sistemas Distribuidos"',
+      'aria-label="🚀 Incorporación a LATAM Airlines: ⚡ Plataformas Cloud y Sistemas Distribuidos"',
     );
+    expect(svg).toContain("#A0041E");
+    expect(svg).toContain("#FFAC33");
+    expect(svg).not.toContain("<text");
   });
   it("dynamically positions blog descriptions below title to maximize card space and fit multi-line content", async () => {
     const glyphMap = JSON.parse(await readFile(font, "utf8"));

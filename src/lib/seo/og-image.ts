@@ -11,6 +11,7 @@ import {
 
 import boldGlyphs from "../../assets/fonts/Geist-Bold-OG.json";
 import monoGlyphs from "../../assets/fonts/GeistMono-OG.json";
+import twemojiGlyphs from "../../assets/emojis/twemoji.json";
 import { availability } from "../../config/availability.mjs";
 
 export const SOCIAL_IMAGE_WIDTH = 2400;
@@ -162,6 +163,25 @@ function attributes(tag: string): Record<string, string> {
   );
 }
 
+/** Converts an emoji grapheme to Twemoji hex code point format (stripping variation selectors). */
+export function toEmojiCode(char: string): string {
+  const normalized = char.replace(/[\uFE0E\uFE0F]/gu, "");
+  return [...normalized].map((c) => c.codePointAt(0)!.toString(16)).join("-");
+}
+
+/** Looks up pre-compiled vector SVG paths for an emoji. */
+export function getEmojiSvg(char: string): string | undefined {
+  const code = toEmojiCode(char);
+  return (twemojiGlyphs as Record<string, string>)[code];
+}
+
+/** Detects if a grapheme represents a Unicode emoji. */
+export function isEmojiChar(char: string): boolean {
+  return /[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u.test(
+    char,
+  );
+}
+
 /** Strips all Unicode emojis, variation selectors, zero-width joiners and skin tones for clean, high-fidelity vector typography. */
 export function stripEmojis(value: string): string {
   return value
@@ -206,15 +226,9 @@ export function extractSocialImageMetadata(
       ? parts.slice(0, limit - 1).join("") + "…"
       : parts.join("");
   };
-  const cleanTitle = stripEmojis(title);
-  const cleanDescription = stripEmojis(description);
   return {
-    title:
-      clean(cleanTitle.length > 0 ? cleanTitle : title, 240) || "Arturo Nava",
-    description: clean(
-      cleanDescription.length > 0 ? cleanDescription : description,
-      isBlog ? 480 : 320,
-    ),
+    title: clean(title, 240) || "Arturo Nava",
+    description: clean(description, isBlog ? 480 : 320),
     locale: attributes(html.match(/<html\b[^>]*>/i)?.[0] || "").lang || "en",
     pathname,
   };
@@ -304,10 +318,13 @@ export function measureSocialText(
   size: number,
 ): number {
   return (
-    (textGraphemes(text).reduce(
-      (width, char) => width + (font.glyphs[char] || font.glyphs["?"])!.advance,
-      0,
-    ) *
+    (textGraphemes(text).reduce((width, char) => {
+      const emojiSvg = getEmojiSvg(char);
+      if (emojiSvg) {
+        return width + font.unitsPerEm * 1.15;
+      }
+      return width + (font.glyphs[char] || font.glyphs["?"])!.advance;
+    }, 0) *
       size) /
     font.unitsPerEm
   );
@@ -368,16 +385,12 @@ export function renderSocialImageSvg(
   const detail: SocialImageFont = monoGlyphs;
   const { colors } = SOCIAL_THEME;
   const isBlog = /^\/(?:es\/)?blog(?:\/|$)/.test(metadata.pathname);
-  const rawTitle = stripEmojis(metadata.title)
+  const rawTitle = metadata.title
     .replace(/^Arturo Nava\s*[|—-]\s*/, "")
     .replace(/\s*[|—-]\s*Arturo Nava$/, "")
     .trim();
-  const fallbackTitle = metadata.title
-    .replace(/^Arturo Nava\s*[|—-]\s*/, "")
-    .replace(/\s*[|—-]\s*Arturo Nava$/, "")
-    .trim();
-  const title = rawTitle.length > 0 ? rawTitle : fallbackTitle;
-  const titleText = title === SOCIAL_PROFILE.name ? SOCIAL_PROFILE.role : title;
+  const titleText =
+    rawTitle === SOCIAL_PROFILE.name ? SOCIAL_PROFILE.role : rawTitle;
   const titleFit = fitSocialText(titleText, heading, {
     maxWidth: 1040,
     maxHeight: 116,
@@ -386,8 +399,7 @@ export function renderSocialImageSvg(
     minSize: 32,
   });
 
-  const rawDesc = stripEmojis(metadata.description);
-  const descriptionText = rawDesc.length > 0 ? rawDesc : metadata.description;
+  const descriptionText = metadata.description.trim();
 
   const descStartY = isBlog
     ? 242 +
@@ -413,6 +425,17 @@ export function renderSocialImageSvg(
     let cursor = x;
     return textGraphemes(value)
       .map((char) => {
+        const emojiSvg = getEmojiSvg(char);
+        if (emojiSvg) {
+          const emojiScale = size / 36;
+          const emojiY = y - size * 0.88;
+          const svg = `<g transform="translate(${cursor.toFixed(2)} ${emojiY.toFixed(2)}) scale(${emojiScale.toFixed(4)})">${emojiSvg}</g>`;
+          cursor += size * 1.15;
+          return svg;
+        }
+        if (isEmojiChar(char)) {
+          return "";
+        }
         const glyph = (face.glyphs[char] || face.glyphs["?"])!;
         const path = glyph.path
           ? `<path d="${escapeXml(glyph.path)}" transform="translate(${cursor} ${y}) scale(${size / face.unitsPerEm} ${-size / face.unitsPerEm})" fill="${color}"/>`
@@ -477,6 +500,19 @@ export function renderSocialImageSvg(
       let cursor = 80;
       let lineSvg = "";
       for (const char of textGraphemes(line)) {
+        const emojiSvg = getEmojiSvg(char);
+        if (emojiSvg) {
+          const emojiScale = titleFit.fontSize / 36;
+          const emojiY = y - titleFit.fontSize * 0.88;
+          lineSvg += `<g transform="translate(${cursor.toFixed(2)} ${emojiY.toFixed(2)}) scale(${emojiScale.toFixed(4)})">${emojiSvg}</g>`;
+          cursor += titleFit.fontSize * 1.15;
+          titleOffset += char.length;
+          continue;
+        }
+        if (isEmojiChar(char)) {
+          titleOffset += char.length;
+          continue;
+        }
         const isCompany = splitIndex !== -1 && titleOffset >= splitIndex;
         const face = isCompany ? font : heading;
         const color = isCompany ? colors.amberLead : colors.amberPrimary;

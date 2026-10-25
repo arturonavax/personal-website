@@ -25,6 +25,7 @@
     "test": "bun test",
     "audit": "bun scripts/audit-codebase.ts",
     "build:assets": "node scripts/generate-assets.mjs",
+    "sync:emojis": "node scripts/sync-og-emojis.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "cf:disable-jsd": "node scripts/disable-cf-jsd.mjs",
