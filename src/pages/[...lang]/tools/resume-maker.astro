@@ -212,6 +212,18 @@ const isEs = locale === "es";
 <style>
   @media print {
     header,
+    footer,
+    nav,
+    aside,
+    dialog,
+    #floating-actions-stack,
+    #floating-actions-stack *,
+    #desktop-page-index-root,
+    #mobile-page-index-root,
+    #open-index-floating-btn,
+    #back-to-top-btn,
+    #open-shortcuts-btn,
+    .floating-hud-btn,
     .no-print {
       display: none !important;
     }
@@ -532,6 +544,20 @@ const isEs = locale === "es";
     }
     prepareMakerPrintLinks();
 
+    const floatingSelectors = [
+      "#floating-actions-stack",
+      "#desktop-page-index-root",
+      "#mobile-page-index-root",
+      "#mobile-page-index-container",
+      "#open-index-floating-btn",
+      "#back-to-top-btn",
+      "#open-shortcuts-btn",
+    ];
+    floatingSelectors.forEach((sel) => {
+      const el = document.querySelector<HTMLElement>(sel);
+      if (el) el.style.setProperty("display", "none", "important");
+    });
+
     // Temporarily expand preview to full height and disable overflow to ensure full-resolution print
     let savedHeight = "";
     let savedOverflow = "";
@@ -549,6 +575,10 @@ const isEs = locale === "es";
           document.title = (window as any).__priorDocTitle;
         }
         restoreMakerPrintLinks();
+        floatingSelectors.forEach((sel) => {
+          const el = document.querySelector<HTMLElement>(sel);
+          if (el) el.style.removeProperty("display");
+        });
         // Restore progressive reveal after print
         const restoredPreview = document.getElementById("resume-live-preview");
         if (restoredPreview) {

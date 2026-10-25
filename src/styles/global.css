@@ -770,11 +770,29 @@ html[data-theme-transition-direction="to-light"]::view-transition-new(root),
   dialog,
   .print-hidden,
   .no-print,
+  #desktop-page-index-root,
   #desktop-page-index,
+  #desktop-page-index-maxw,
   #mobile-page-index-root,
   #mobile-page-index-container,
   #floating-actions-stack,
+  #floating-actions-stack *,
+  #open-index-floating-btn,
+  #mobile-cv-actions,
+  #mobile-cv-print-btn,
+  #mobile-cv-download-btn,
+  #desktop-cv-actions,
+  #desktop-cv-print-btn,
+  #desktop-cv-download-btn,
+  #index-expanded-panel,
   #back-to-top-btn,
+  #open-shortcuts-btn,
+  #shortcuts-modal,
+  shortcuts-modal-element,
+  .floating-hud-btn,
+  .page-index-fixed,
+  #lang-suggestion-banner,
+  #experience-pinned-header,
   #matrix-background,
   #matrix-container,
   #matrix-canvas,
@@ -1518,4 +1536,33 @@ html:not(.theme-transitioning):not([data-theme-transitioning]) *,
 html:not(.theme-transitioning):not([data-theme-transitioning])
   #matrix-container {
   view-transition-name: none !important;
+}
+
+/* Global print guarantee: suppress all floating buttons, stacks and HUD elements */
+@media print {
+  #floating-actions-stack,
+  #floating-actions-stack *,
+  #mobile-page-index-root,
+  #mobile-page-index-container,
+  #floating-actions-stack #mobile-page-index-container,
+  #desktop-page-index-root,
+  #desktop-page-index,
+  #open-index-floating-btn,
+  #mobile-cv-actions,
+  #mobile-cv-print-btn,
+  #mobile-cv-download-btn,
+  #desktop-cv-actions,
+  #desktop-cv-print-btn,
+  #desktop-cv-download-btn,
+  #back-to-top-btn,
+  #open-shortcuts-btn,
+  .floating-hud-btn,
+  .page-index-fixed,
+  [data-floating-action],
+  [data-floating-btn] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
 }

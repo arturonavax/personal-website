@@ -118,7 +118,7 @@ const jsonLd =
             datetime={pubDate.toISOString()}
             class="text-[var(--color-accent-gold)]"
           >
-            {formatDate(pubDate, locale)}
+            {formatDate(pubDate, locale, { includeDay: true, month: "long" })}
           </time>
         )}
         {tags && tags.length > 0 && (

@@ -156,6 +156,50 @@ const jsonLd = buildResumeJsonLd({
       origTagTitle = "";
     }
 
+    function hideFloatingActions() {
+      var selectors = [
+        "#floating-actions-stack",
+        "#desktop-page-index-root",
+        "#mobile-page-index-root",
+        "#mobile-page-index-container",
+        "#open-index-floating-btn",
+        "#mobile-cv-actions",
+        "#mobile-cv-print-btn",
+        "#mobile-cv-download-btn",
+        "#desktop-cv-actions",
+        "#desktop-cv-print-btn",
+        "#desktop-cv-download-btn",
+        "#back-to-top-btn",
+        "#open-shortcuts-btn",
+      ];
+      selectors.forEach(function (sel) {
+        var el = document.querySelector(sel);
+        if (el) el.style.setProperty("display", "none", "important");
+      });
+    }
+
+    function restoreFloatingActions() {
+      var selectors = [
+        "#floating-actions-stack",
+        "#desktop-page-index-root",
+        "#mobile-page-index-root",
+        "#mobile-page-index-container",
+        "#open-index-floating-btn",
+        "#mobile-cv-actions",
+        "#mobile-cv-print-btn",
+        "#mobile-cv-download-btn",
+        "#desktop-cv-actions",
+        "#desktop-cv-print-btn",
+        "#desktop-cv-download-btn",
+        "#back-to-top-btn",
+        "#open-shortcuts-btn",
+      ];
+      selectors.forEach(function (sel) {
+        var el = document.querySelector(sel);
+        if (el) el.style.removeProperty("display");
+      });
+    }
+
     function preparePrintLinks() {
       if (isPrintPrepared) return;
       var cvSheet = document.getElementById("cv-document-sheet");
@@ -249,12 +293,14 @@ const jsonLd = buildResumeJsonLd({
     window.printCleanCV = function () {
       applyPrintTitle();
       preparePrintLinks();
+      hideFloatingActions();
 
       window.addEventListener(
         "afterprint",
         function () {
           restoreOriginalTitle();
           restorePrintLinks();
+          restoreFloatingActions();
         },
         { once: true },
       );
@@ -267,6 +313,7 @@ const jsonLd = buildResumeJsonLd({
     window.addEventListener("beforeprint", function () {
       applyPrintTitle();
       preparePrintLinks();
+      hideFloatingActions();
       // Force inline reset for Firefox print engine (no underline, selectable text)
       var cvSheet = document.getElementById("cv-document-sheet");
       if (cvSheet) {
@@ -297,6 +344,7 @@ const jsonLd = buildResumeJsonLd({
     window.addEventListener("afterprint", function () {
       restoreOriginalTitle();
       restorePrintLinks();
+      restoreFloatingActions();
     });
   })();
 </script>

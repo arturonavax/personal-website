@@ -64,10 +64,15 @@ export async function getCounterpartUrl(
   return cleanPath;
 }
 
-export function formatDate(date: Date, locale: Locale): string {
+export function formatDate(
+  date: Date,
+  locale: Locale,
+  options?: { includeDay?: boolean; month?: "short" | "long" },
+): string {
   return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
     year: "numeric",
-    month: "short",
+    month: options?.month ?? "short",
+    ...(options?.includeDay ? { day: "numeric" } : {}),
     timeZone: "UTC",
   }).format(date);
 }

@@ -18,7 +18,7 @@ const hasShortcuts = Boolean(shortcuts && shortcuts.length > 0);
 {hasShortcuts && (
   <shortcuts-modal
     data-shortcuts-root
-    class={`pointer-events-auto order-1 block ${!isHomePage ? "hidden" : ""}`}
+    class={`pointer-events-auto order-1 block no-print print:hidden ${!isHomePage ? "hidden" : ""}`}
   >
     <button
       type="button"
@@ -26,7 +26,7 @@ const hasShortcuts = Boolean(shortcuts && shortcuts.length > 0);
       aria-haspopup="dialog"
       aria-expanded="false"
       aria-controls="shortcuts-dialog"
-      class="flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-4 py-2.5 font-mono text-xs font-semibold text-[var(--color-text-secondary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
+      class="no-print print:hidden flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-4 py-2.5 font-mono text-xs font-semibold text-[var(--color-text-secondary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
     >
       <span
         class="flex h-2 w-2 rounded-full bg-[var(--color-accent-gold)] animate-pulse shrink-0"
@@ -68,6 +68,15 @@ const hasShortcuts = Boolean(shortcuts && shortcuts.length > 0);
       #open-shortcuts-btn.footer-tucked:hover,
       #open-shortcuts-btn.footer-tucked:focus-visible {
         transform: translateX(0);
+      }
+      @media print {
+        #open-shortcuts-btn,
+        #shortcuts-dialog,
+        shortcuts-modal {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+        }
       }
     </style>
 

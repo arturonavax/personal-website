@@ -873,7 +873,8 @@ describe("ODD Task: LATAM Airlines Timeline Entry & Writing-History Animations",
     expect(enContent).toContain("order: 1");
     expect(enContent).toContain("startDate: 2026-10-01");
     expect(enContent).not.toContain("endDate:");
-    expect(enContent).toContain("keyAchievements: []");
+    expect(enContent).toContain("keyAchievements:");
+    expect(enContent).toContain("Google Cloud Spanner");
 
     const esContent = fs.readFileSync(latamEsPath, "utf8");
     expect(esContent).toContain('company: "LATAM Airlines"');
@@ -881,7 +882,8 @@ describe("ODD Task: LATAM Airlines Timeline Entry & Writing-History Animations",
     expect(esContent).toContain("order: 1");
     expect(esContent).toContain("startDate: 2026-10-01");
     expect(esContent).not.toContain("endDate:");
-    expect(esContent).toContain("keyAchievements: []");
+    expect(esContent).toContain("keyAchievements:");
+    expect(esContent).toContain("Google Cloud Spanner");
   });
 
   it("re-sequences existing experience orders cleanly after LATAM", () => {
@@ -2238,6 +2240,44 @@ describe("ODD Task 7: SEO Canonical Indexing, Trailing Slashes & Robots Directiv
       expect(worker).toContain(
         'headers.set(\n      "Strict-Transport-Security",\n      "max-age=63072000; includeSubDomains; preload",\n    );',
       );
+    });
+
+    it("verifies all floating action buttons and HUD controls are suppressed in Print CV", () => {
+      const globalCss = fs.readFileSync(
+        path.join(ROOT_DIR, "src/styles/global.css"),
+        "utf8",
+      );
+      const resumeCss = fs.readFileSync(
+        path.join(ROOT_DIR, "src/styles/resume.css"),
+        "utf8",
+      );
+      const pageIndexNav = fs.readFileSync(
+        path.join(ROOT_DIR, "src/components/ui/PageIndexNav.astro"),
+        "utf8",
+      );
+      const resumePage = fs.readFileSync(
+        path.join(ROOT_DIR, "src/pages/[...lang]/resume/index.astro"),
+        "utf8",
+      );
+
+      // Verify print suppression in global.css
+      expect(globalCss).toMatch(/@media print\s*\{[\s\S]*?#floating-actions-stack/);
+      expect(globalCss).toMatch(/@media print\s*\{[\s\S]*?#open-index-floating-btn/);
+      expect(globalCss).toMatch(/@media print\s*\{[\s\S]*?#mobile-cv-print-btn/);
+
+      // Verify print suppression in resume.css
+      expect(resumeCss).toMatch(/@media print\s*\{[\s\S]*?#floating-actions-stack/);
+      expect(resumeCss).toMatch(/@media print\s*\{[\s\S]*?#open-index-floating-btn/);
+
+      // Verify print suppression in PageIndexNav.astro
+      expect(pageIndexNav).toMatch(/@media print\s*\{[\s\S]*?#open-index-floating-btn/);
+      expect(pageIndexNav).toContain('id="open-index-floating-btn"');
+      expect(pageIndexNav).toContain('id="mobile-cv-print-btn"');
+
+      // Verify runtime hideFloatingActions in resume/index.astro
+      expect(resumePage).toContain("function hideFloatingActions");
+      expect(resumePage).toContain("function restoreFloatingActions");
+      expect(resumePage).toContain("hideFloatingActions();");
     });
   });
 });

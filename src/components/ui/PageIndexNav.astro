@@ -221,7 +221,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
   <div
     id="desktop-page-index-root"
     data-has-sections={hasInitialSections ? "true" : "false"}
-    class={`page-index-fixed fixed inset-x-0 pointer-events-none z-30 select-none transition-[opacity,transform] duration-200 ${!hasInitialSections ? "is-empty force-hide-desktop opacity-0 pointer-events-none" : ""}`}
+    class={`page-index-fixed fixed inset-x-0 pointer-events-none z-30 select-none transition-[opacity,transform] duration-200 no-print print:hidden ${!hasInitialSections ? "is-empty force-hide-desktop opacity-0 pointer-events-none" : ""}`}
     style={`top: ${topValue}; ${!hasInitialSections ? "display: none !important;" : ""}`}
   >
     <div
@@ -325,7 +325,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
             download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
             aria-label={isEs ? i18nEs.downloadTitle : i18nEn.downloadTitle}
             title={isEs ? i18nEs.downloadTitle : i18nEn.downloadTitle}
-            class={`w-full flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] ${showPdfDownload ? "" : "hidden"}`}
+            class={`no-print print:hidden w-full flex items-center justify-center gap-2 rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-text-primary)] hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] ${showPdfDownload ? "" : "hidden"}`}
           >
             <svg
               class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
@@ -350,7 +350,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
             onclick="typeof window.printCleanCV === 'function' ? window.printCleanCV() : window.print()"
             aria-label={isEs ? i18nEs.printTitle : i18nEn.printTitle}
             title={isEs ? i18nEs.printTitle : i18nEn.printTitle}
-            class="w-full flex items-center justify-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
+            class="no-print print:hidden w-full flex items-center justify-center gap-2 rounded border border-[var(--color-accent-gold)]/60 bg-[var(--color-accent-gold-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--color-accent-gold)] hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)]"
           >
             <svg
               class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
@@ -375,11 +375,11 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
   </div>
 
   <!-- MODE B: FLOATING ACCORDION BUTTON (<1600px Viewport) -->
-  <div id="mobile-page-index-root" class="contents pointer-events-none">
+  <div id="mobile-page-index-root" class="contents pointer-events-none no-print print:hidden">
     <div
       id="mobile-page-index-container"
       data-has-sections={hasInitialSections ? "true" : "false"}
-      class={`relative pointer-events-auto flex flex-col-reverse items-end gap-2.5 order-2 transition-[opacity,transform] duration-200 ${!hasInitialSections ? "is-empty force-hide-mobile opacity-0 pointer-events-none" : ""}`}
+      class={`relative pointer-events-auto flex flex-col-reverse items-end gap-2.5 order-2 transition-[opacity,transform] duration-200 no-print print:hidden ${!hasInitialSections ? "is-empty force-hide-mobile opacity-0 pointer-events-none" : ""}`}
       style={!hasInitialSections ? "display: none !important;" : ""}
     >
       <!-- Upward Expanding Index Panel -->
@@ -516,7 +516,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
         id="open-index-floating-btn"
         aria-expanded="false"
         aria-controls="index-expanded-panel"
-        class="flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-3.5 py-2 font-mono text-xs font-semibold text-[var(--color-text-secondary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shadow-card hover:shadow-card-hover self-end"
+        class="no-print print:hidden flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-3.5 py-2 font-mono text-xs font-semibold text-[var(--color-text-secondary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer shadow-card hover:shadow-card-hover self-end"
       >
         <svg
           class="h-3.5 w-3.5 text-[var(--color-accent-gold)] shrink-0"
@@ -551,7 +551,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       <!-- Mobile CV Action Buttons: Download & Print (Stacked vertically, Download immediately above Index button by size hierarchy) -->
       <div
         id="mobile-cv-actions"
-        class={`flex flex-col items-end gap-2.5 self-end ${showPdfPrint ? "" : "hidden"}`}
+        class={`flex flex-col items-end gap-2.5 self-end no-print print:hidden ${showPdfPrint ? "" : "hidden"}`}
         style={showPdfPrint ? undefined : "display: none;"}
       >
         <button
@@ -560,7 +560,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
           onclick="typeof window.printCleanCV === 'function' ? window.printCleanCV() : window.print()"
           aria-label={isEs ? i18nEs.printTitle : i18nEn.printTitle}
           title={isEs ? i18nEs.printTitle : i18nEn.printTitle}
-          class="flex min-h-[44px] min-w-[48px] w-auto items-center justify-center gap-1.5 rounded-full border border-[var(--color-accent-gold)] bg-[var(--color-surface-card)]/95 px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-accent-gold)] backdrop-blur-md hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] self-end"
+          class="no-print print:hidden flex min-h-[44px] min-w-[48px] w-auto items-center justify-center gap-1.5 rounded-full border border-[var(--color-accent-gold)] bg-[var(--color-surface-card)]/95 px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-accent-gold)] backdrop-blur-md hover:bg-[var(--color-accent-gold)] hover:text-[var(--color-btn-gold-text)] transition-colors cursor-pointer shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] self-end"
         >
           <svg
             class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
@@ -592,7 +592,7 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
           download={isEs ? "ArturoNava-CV-es.pdf" : "ArturoNava-CV-en.pdf"}
           aria-label={isEs ? i18nEs.downloadTitle : i18nEn.downloadTitle}
           title={isEs ? i18nEs.downloadTitle : i18nEn.downloadTitle}
-          class={`flex min-h-[44px] min-w-[48px] w-auto items-center justify-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-text-primary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] self-end ${showPdfDownload ? "" : "hidden"}`}
+          class={`no-print print:hidden flex min-h-[44px] min-w-[48px] w-auto items-center justify-center gap-1.5 rounded-full border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/95 px-3.5 py-1.5 font-mono text-xs font-semibold text-[var(--color-text-primary)] backdrop-blur-md hover:border-[var(--color-accent-gold)] hover:text-[var(--color-accent-gold)] transition-colors cursor-pointer shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-gold)] self-end ${showPdfDownload ? "" : "hidden"}`}
         >
           <svg
             class="h-3.5 w-3.5 stroke-current fill-none shrink-0"
@@ -656,6 +656,28 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
   #mobile-page-index-container.is-empty,
   #mobile-page-index-container.force-hide-mobile {
     display: none !important;
+  }
+
+  @media print {
+    #desktop-page-index-root,
+    #desktop-page-index,
+    #desktop-page-index-maxw,
+    #mobile-page-index-root,
+    #mobile-page-index-container,
+    #open-index-floating-btn,
+    #mobile-cv-actions,
+    #mobile-cv-print-btn,
+    #mobile-cv-download-btn,
+    #desktop-cv-actions,
+    #desktop-cv-print-btn,
+    #desktop-cv-download-btn,
+    #index-expanded-panel,
+    .page-index-fixed {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
   }
 
   #mobile-page-index-container {

@@ -16,7 +16,7 @@ const slug = post.id
   .replace(new RegExp(`^${locale}/`), "")
   .replace(/\.(md|mdx)$/, "");
 const postUrl = locale === "es" ? `/es/blog/${slug}/` : `/blog/${slug}/`;
-const dateStr = formatDate(pubDate, locale);
+const dateStr = formatDate(pubDate, locale, { includeDay: true });
 
 const categoryLabels: Record<string, { en: string; es: string }> = {
   systems: { en: "Distributed Systems", es: "Sistemas Distribuidos" },

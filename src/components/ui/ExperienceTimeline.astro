@@ -278,13 +278,15 @@ const hasActiveJob = sortedItems.some((item) => !item.data.endDate);
                 phrases={
                   locale === "es"
                     ? [
+                        `Escribiendo la historia en ${company}...`,
                         "Construyendo la historia...",
-                        "Obteniendo experiencias...",
+                        "Consolidando nuevos hitos de ingeniería...",
                         "Creando impacto...",
                       ]
                     : [
-                        "Writing history...",
-                        "Gaining experiences...",
+                        `Writing history at ${company}...`,
+                        "Building history...",
+                        "Establishing new engineering milestones...",
                         "Creating impact...",
                       ]
                 }

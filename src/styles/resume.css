@@ -353,4 +353,30 @@
     display: inline !important;
     text-decoration: none !important;
   }
+
+  /* Suppress all floating controls, index navigators, and HUD action buttons in printed CV */
+  #floating-actions-stack,
+  #floating-actions-stack *,
+  #mobile-page-index-root,
+  #mobile-page-index-container,
+  #desktop-page-index-root,
+  #desktop-page-index,
+  #open-index-floating-btn,
+  #mobile-cv-actions,
+  #mobile-cv-print-btn,
+  #mobile-cv-download-btn,
+  #desktop-cv-actions,
+  #desktop-cv-print-btn,
+  #desktop-cv-download-btn,
+  #back-to-top-btn,
+  #open-shortcuts-btn,
+  .floating-hud-btn,
+  .page-index-fixed,
+  .no-print,
+  .print-hidden {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
 }
