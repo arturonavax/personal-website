@@ -23,6 +23,7 @@ function fixture(schema = "schema.sql", oldRollup = false) {
       : source,
   );
   const sql: string[] = [];
+  const execSql: string[] = [];
   const db = {
     prepare(query: string) {
       return {
@@ -44,6 +45,7 @@ function fixture(schema = "schema.sql", oldRollup = false) {
       return stmts.map(() => ({ success: true }));
     },
     async exec(query: string) {
+      execSql.push(query);
       sqlite.exec(query);
     },
   } as unknown as D1Database;
@@ -51,7 +53,7 @@ function fixture(schema = "schema.sql", oldRollup = false) {
     sqlite
       .prepare("SELECT * FROM analytics_rollups ORDER BY date, path")
       .all() as Record<string, number | string>[];
-  return { sqlite, db, rows, sql };
+  return { sqlite, db, rows, sql, execSql };
 }
 const timestamp = Date.UTC(2026, 9, 25, 12);
 const visit = (key: string, ua: string, deviceType?: string) => ({
@@ -185,29 +187,55 @@ describe("minimized device/OS rollups", () => {
     });
   });
 
-  it("late historical WAL does not restore expired device or OS dimensions", async () => {
-    const { db, rows } = fixture();
+  it("late WAL preserves old views without reviving dimensions or adding cleanup writes", async () => {
+    const { db, sqlite, rows, sql, execSql } = fixture();
+    sqlite.exec(
+      "INSERT INTO analytics_rollups (date,path,views,uniques,device_mobile,os_ios) VALUES ('2020-01-01','/old',3,3,2,2)",
+    );
+    const records = [
+      {
+        dedupe_key: "late",
+        path: "/old",
+        created_at: "2020-01-01T00:00:00Z",
+        device_type: "mobile",
+        os_type: "ios",
+      },
+      {
+        dedupe_key: "current",
+        path: "/now",
+        created_at: new Date().toISOString(),
+        device_type: "mobile",
+        os_type: "android",
+      },
+    ];
     const bucket = {
       list: async ({ prefix }: { prefix: string }) => ({
         objects:
           prefix === "wal/telemetry/"
-            ? [{ key: "wal/telemetry/late.ndjson" }]
+            ? [{ key: "wal/telemetry/mixed.ndjson" }]
             : [],
         truncated: false,
       }),
       get: async () => ({
         text: async () =>
-          JSON.stringify({
-            dedupe_key: "late",
-            path: "/old",
-            created_at: "2020-01-01T00:00:00Z",
-            device_type: "mobile",
-            os_type: "ios",
-          }),
+          records.map((record) => JSON.stringify(record)).join("\n"),
       }),
       delete: async () => {},
     };
     await handleAnalyticsRollup({ DB: db, R2_BUCKET: bucket as never });
-    expect(rows()[0]).toMatchObject({ views: 1, device_mobile: 0, os_ios: 0 });
+    expect(rows().find((row) => row.path === "/old")).toMatchObject({
+      views: 4,
+      device_mobile: 0,
+      os_ios: 0,
+    });
+    expect(rows().find((row) => row.path === "/now")).toMatchObject({
+      views: 1,
+      device_mobile: 1,
+      os_android: 1,
+    });
+    expect(
+      sql.filter((query) => query.includes("INSERT INTO analytics_rollups")),
+    ).toHaveLength(2);
+    expect(execSql).toHaveLength(2);
   });
 });
