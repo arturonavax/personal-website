@@ -15,6 +15,7 @@
     "build": "astro build && node scripts/isolate-admin-build.mjs",
     "content:pull": "node scripts/r2-pull.mjs",
     "content:stage": "node scripts/obsidian-content.mjs",
+    "content:backup": "node scripts/content-backup.mjs",
     "content:push": "node scripts/r2-push.mjs",
     "content:push:dry": "node scripts/r2-push.mjs --dry-run",
     "cv:optimize": "node scripts/optimize-pdf.mjs",
