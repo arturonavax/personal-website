@@ -1,5 +1,6 @@
 import { Resvg } from "@resvg/resvg-js";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import {
   SOCIAL_PROFILE,
@@ -163,23 +164,133 @@ function attributes(tag: string): Record<string, string> {
   );
 }
 
-/** Converts an emoji grapheme to Twemoji hex code point format (stripping variation selectors). */
+const emojiStore: Record<string, string> = {
+  ...(twemojiGlyphs as Record<string, string>),
+};
+
+const EMOJI_PIECE = String.raw`\p{Emoji}(?:\p{EMod}|[\u{E0020}-\u{E007E}]+\u{E007F}|\uFE0F?\u20E3?)`;
+const EMOJI_GRAPHEME_REGEX = new RegExp(
+  String.raw`^(?:\p{RI}{2}|(?![#*\d](?!\uFE0F?\u20E3))${EMOJI_PIECE}(?:\u200D${EMOJI_PIECE})*)$`,
+  "u",
+);
+
+/**
+ * Converts an emoji grapheme to the canonical Twemoji hex code point sequence.
+ * Follows the official Twemoji U+200D rule: strips U+FE0F only when no ZWJ is present.
+ */
 export function toEmojiCode(char: string): string {
-  const normalized = char.replace(/[\uFE0E\uFE0F]/gu, "");
+  const normalized = char.includes("\u200D")
+    ? char.replace(/\uFE0E/gu, "")
+    : char.replace(/[\uFE0E\uFE0F]/gu, "");
   return [...normalized].map((c) => c.codePointAt(0)!.toString(16)).join("-");
 }
 
-/** Looks up pre-compiled vector SVG paths for an emoji. */
+/** Looks up pre-compiled vector SVG paths for an emoji (checking both ZWJ-exact and FE0F-stripped keys). */
 export function getEmojiSvg(char: string): string | undefined {
-  const code = toEmojiCode(char);
-  return (twemojiGlyphs as Record<string, string>)[code];
+  const primary = toEmojiCode(char);
+  if (emojiStore[primary]) return emojiStore[primary];
+  const stripped = [...char.replace(/[\uFE0E\uFE0F]/gu, "")]
+    .map((c) => c.codePointAt(0)!.toString(16))
+    .join("-");
+  return emojiStore[stripped];
 }
 
-/** Detects if a grapheme represents a Unicode emoji. */
+/** Detects if a grapheme represents a Unicode emoji (following Satori's Unicode segmentation rules). */
 export function isEmojiChar(char: string): boolean {
-  return /[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u.test(
-    char,
+  return (
+    EMOJI_GRAPHEME_REGEX.test(char) ||
+    /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/u.test(char)
   );
+}
+
+/**
+ * Disambiguates UTS #51 emoji vs text presentation: characters that exist in the
+ * local text font without an explicit U+FE0F selector render as crisp font outlines.
+ */
+function shouldRenderEmoji(char: string, face?: SocialImageFont): boolean {
+  if (!isEmojiChar(char)) return false;
+  if (char.includes("\uFE0E")) return false;
+  if (char.includes("\uFE0F")) return true;
+  if (face?.glyphs[char]) return false;
+  return true;
+}
+
+function scopeEmojiSvgIds(svg: string, scopeId: string): string {
+  if (!svg.includes("id=")) return svg;
+  return svg
+    .replace(/\bid="([^"]+)"/g, `id="${scopeId}-$1"`)
+    .replace(/url\(#([^)]+)\)/g, `url(#${scopeId}-$1)`)
+    .replace(/\b(?:xlink:)?href="#([^"]+)"/g, `href="#${scopeId}-$1"`);
+}
+
+/**
+ * Ensures any new emoji introduced in content (e.g. via R2 pull) is resolved at build time
+ * and persisted into the local Twemoji asset store without breaking offline determinism.
+ */
+export async function ensureEmojiGlyphsLoaded(
+  text: string,
+  face?: SocialImageFont,
+): Promise<void> {
+  const missing = new Set<string>();
+  for (const char of textGraphemes(text)) {
+    if (shouldRenderEmoji(char, face) && !getEmojiSvg(char)) {
+      missing.add(char);
+    }
+  }
+  if (missing.size === 0) return;
+
+  let updated = false;
+  for (const char of missing) {
+    const primary = toEmojiCode(char);
+    const stripped = [...char.replace(/[\uFE0E\uFE0F]/gu, "")]
+      .map((c) => c.codePointAt(0)!.toString(16))
+      .join("-");
+    const candidates = [...new Set([primary, stripped])];
+
+    for (const code of candidates) {
+      const urls = [
+        `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${code}.svg`,
+        `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${code}.svg`,
+      ];
+      let resolved = false;
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, {
+            signal: AbortSignal.timeout(2500),
+          });
+          if (!res.ok) continue;
+          const rawSvg = await res.text();
+          const match = rawSvg.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
+          if (match?.[1]) {
+            emojiStore[code] = match[1].replace(/\s+/g, " ").trim();
+            updated = true;
+            resolved = true;
+            break;
+          }
+        } catch {
+          /* Offline or unreachable CDN falls back gracefully without failing build. */
+        }
+      }
+      if (resolved) break;
+    }
+  }
+
+  if (updated) {
+    try {
+      const storePath = fileURLToPath(
+        new URL("../../assets/emojis/twemoji.json", import.meta.url),
+      );
+      const sorted = Object.keys(emojiStore)
+        .sort()
+        .reduce<Record<string, string>>((acc, key) => {
+          acc[key] = emojiStore[key]!;
+          return acc;
+        }, {});
+      await writeFile(storePath, JSON.stringify(sorted, null, 2) + "\n");
+    } catch {
+      /* Read-only build environments retain in-memory glyphs. */
+    }
+  }
 }
 
 /** Strips all Unicode emojis, variation selectors, zero-width joiners and skin tones for clean, high-fidelity vector typography. */
@@ -191,6 +302,73 @@ export function stripEmojis(value: string): string {
     )
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Enriches blog social card descriptions using opening article paragraphs from emitted HTML
+ * so cards utilize their full vertical space with non-redundant, complete sentences.
+ */
+function extractBlogExtendedDescription(
+  html: string,
+  baseDescription: string,
+  maxChars = 430,
+): string {
+  const articleMatch = html.match(
+    /<div\b[^>]*class="[^"]*article-detail__content[^"]*"[^>]*>([\s\S]*?)<\/div>\s*(?:<nav\b[\s\S]*?<\/nav>\s*)?<\/article>/i,
+  );
+  const mainHeaderMatch = !articleMatch
+    ? html.match(/<main\b[^>]*>[\s\S]*?<header\b[^>]*>([\s\S]*?)<\/header>/i)
+    : null;
+  const container = (articleMatch?.[1] || mainHeaderMatch?.[1] || "")
+    .replace(/<blockquote\b[^>]*>[\s\S]*?<\/blockquote>/gi, " ")
+    .replace(
+      /<(?:pre|code|table|ul|ol|h[1-6]|nav)\b[^>]*>[\s\S]*?<\/(?:pre|code|table|ul|ol|h[1-6]|nav)>/gi,
+      " ",
+    );
+
+  const paragraphs = [...container.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((m) =>
+      decodeHtml(m[1]!.replace(/<[^>]+>/g, " "))
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+
+  if (paragraphs.length === 0) return baseDescription;
+
+  const significantWords = (str: string) =>
+    str
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .split(/\s+/)
+      .filter((w) => w.length >= 4);
+  const seenWords = new Set(significantWords(baseDescription));
+
+  let result = baseDescription.trim();
+  if (result && !/[.!?…]$/.test(result)) result += ".";
+
+  const sentences = paragraphs.join(" ").split(/(?<=[.!?])\s+/);
+  for (const sentence of sentences) {
+    const cleanSentence = sentence.trim();
+    if (!cleanSentence) continue;
+    const words = significantWords(cleanSentence);
+    if (words.length > 0) {
+      const overlapRatio =
+        words.filter((w) => seenWords.has(w)).length / words.length;
+      if (overlapRatio >= 0.6) continue;
+    }
+    const candidate = result ? `${result} ${cleanSentence}` : cleanSentence;
+    if (textGraphemes(candidate).length <= maxChars) {
+      result = candidate;
+      for (const w of words) seenWords.add(w);
+    } else if (textGraphemes(result).length < 220) {
+      result = candidate;
+      break;
+    } else {
+      break;
+    }
+  }
+  return result;
 }
 
 export function extractSocialImageMetadata(
@@ -214,12 +392,34 @@ export function extractSocialImageMetadata(
     new URL(image, siteUrl).href !== new URL(imagePath, siteUrl).href
   )
     return;
-  const title =
+  let title =
     metadata.get("og:title") ||
     decodeHtml(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "");
-  const description =
+
+  // Preserve leading branding emoji from page H1 when the head title omitted it
+  const titleFirstChar = textGraphemes(title.trim())[0] || "";
+  if (!isEmojiChar(titleFirstChar)) {
+    const h1Text = decodeHtml(
+      (html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || "").replace(
+        /<[^>]+>/g,
+        " ",
+      ),
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+    const h1FirstChar = textGraphemes(h1Text)[0] || "";
+    if (isEmojiChar(h1FirstChar) && getEmojiSvg(h1FirstChar)) {
+      title = `${h1FirstChar} ${title.trim()}`;
+    }
+  }
+
+  const baseDescription =
     metadata.get("og:description") || metadata.get("description") || "";
   const isBlog = /^\/(?:es\/)?blog(?:\/|$)/.test(pathname);
+  const description = isBlog
+    ? extractBlogExtendedDescription(html, baseDescription, 430)
+    : baseDescription;
+
   const clean = (value: string, limit: number) => {
     const parts = textGraphemes(value.replace(/\s+/g, " ").trim());
     return parts.length > limit
@@ -319,9 +519,8 @@ export function measureSocialText(
 ): number {
   return (
     (textGraphemes(text).reduce((width, char) => {
-      const emojiSvg = getEmojiSvg(char);
-      if (emojiSvg) {
-        return width + font.unitsPerEm * 1.15;
+      if (shouldRenderEmoji(char, font) && getEmojiSvg(char)) {
+        return width + font.unitsPerEm;
       }
       return width + (font.glyphs[char] || font.glyphs["?"])!.advance;
     }, 0) *
@@ -347,7 +546,7 @@ export function fitSocialText(
   truncated: boolean;
 } {
   const { maxWidth, maxHeight, maxLines, maxSize, minSize } = options;
-  for (let size = maxSize; size >= minSize; size--) {
+  for (let size = maxSize; size >= minSize; size -= 0.5) {
     const lineHeight = Math.ceil(size * 1.2);
     const count = Math.min(maxLines, Math.floor(maxHeight / lineHeight));
     const measure = (value: string) => measureSocialText(value, font, size);
@@ -404,16 +603,18 @@ export function renderSocialImageSvg(
   const descStartY = isBlog
     ? 242 +
       (titleFit.lines.length - 1) * titleFit.lineHeight +
-      (titleFit.lines.length > 1 ? 50 : 56)
+      (titleFit.lines.length > 1 ? 48 : 54)
     : 360;
-  const descMaxHeight = isBlog ? Math.max(140, 514 - descStartY) : 54;
+  const descMaxHeight = isBlog ? Math.max(150, 522 - descStartY) : 54;
   const descriptionFit = fitSocialText(descriptionText, font, {
     maxWidth: 1040,
     maxHeight: descMaxHeight,
     maxLines: isBlog ? 6 : 2,
-    maxSize: isBlog ? 21.5 : 20.5,
-    minSize: isBlog ? 18 : 18,
+    maxSize: isBlog ? 28.5 : 20.5,
+    minSize: isBlog ? 22 : 18,
   });
+
+  let emojiCounter = 0;
   const outlines = (
     value: string,
     x: number,
@@ -425,15 +626,20 @@ export function renderSocialImageSvg(
     let cursor = x;
     return textGraphemes(value)
       .map((char) => {
-        const emojiSvg = getEmojiSvg(char);
-        if (emojiSvg) {
-          const emojiScale = size / 36;
-          const emojiY = y - size * 0.88;
-          const svg = `<g transform="translate(${cursor.toFixed(2)} ${emojiY.toFixed(2)}) scale(${emojiScale.toFixed(4)})">${emojiSvg}</g>`;
-          cursor += size * 1.15;
-          return svg;
-        }
-        if (isEmojiChar(char)) {
+        if (shouldRenderEmoji(char, face)) {
+          const emojiSvg = getEmojiSvg(char);
+          if (emojiSvg) {
+            const emojiScale = size / 36;
+            const emojiY = y - size * 0.855;
+            const scopedSvg = scopeEmojiSvgIds(
+              emojiSvg,
+              `og-e${++emojiCounter}`,
+            );
+            const svg = `<g transform="translate(${cursor.toFixed(2)} ${emojiY.toFixed(2)}) scale(${emojiScale.toFixed(4)})">${scopedSvg}</g>`;
+            cursor += size;
+            return svg;
+          }
+          cursor += (face.glyphs["?"]!.advance * size) / face.unitsPerEm;
           return "";
         }
         const glyph = (face.glyphs[char] || face.glyphs["?"])!;
@@ -466,7 +672,7 @@ export function renderSocialImageSvg(
     isBlog
       ? [
           { x: 70, y: 76, w: 1060, h: 105 },
-          { x: 70, y: 194, w: 1060, h: 320 },
+          { x: 70, y: 194, w: 1060, h: 328 },
           { x: 70, y: 542, w: 1060, h: 48 },
         ]
       : [
@@ -477,6 +683,9 @@ export function renderSocialImageSvg(
         ],
     28,
     (glyph) => {
+      if (isBlog && glyph.filterAttr && glyph.y >= descStartY - 28) {
+        return "";
+      }
       const char = detail.glyphs[glyph.char]
         ? glyph.char
         : detail.glyphs["λ"]
@@ -490,7 +699,9 @@ export function renderSocialImageSvg(
     : "Senior Software / AI Engineer · Distributed Systems · High Performance";
   const contact = `${SOCIAL_PROFILE.handle}  ·  ${SOCIAL_PROFILE.email}`;
 
-  const companyMatch = titleText.match(/^(.*?)(\s+(?:at|en)\s+.+)$/i);
+  const companyMatch = !isBlog
+    ? titleText.match(/^(.*?)(\s+(?:at|en)\s+.+)$/i)
+    : null;
   const splitIndex = companyMatch ? companyMatch[1]!.length : -1;
 
   let titleOffset = 0;
@@ -500,21 +711,26 @@ export function renderSocialImageSvg(
       let cursor = 80;
       let lineSvg = "";
       for (const char of textGraphemes(line)) {
-        const emojiSvg = getEmojiSvg(char);
-        if (emojiSvg) {
-          const emojiScale = titleFit.fontSize / 36;
-          const emojiY = y - titleFit.fontSize * 0.88;
-          lineSvg += `<g transform="translate(${cursor.toFixed(2)} ${emojiY.toFixed(2)}) scale(${emojiScale.toFixed(4)})">${emojiSvg}</g>`;
-          cursor += titleFit.fontSize * 1.15;
-          titleOffset += char.length;
-          continue;
-        }
-        if (isEmojiChar(char)) {
-          titleOffset += char.length;
-          continue;
-        }
         const isCompany = splitIndex !== -1 && titleOffset >= splitIndex;
         const face = isCompany ? font : heading;
+        if (shouldRenderEmoji(char, face)) {
+          const emojiSvg = getEmojiSvg(char);
+          if (emojiSvg) {
+            const emojiScale = titleFit.fontSize / 36;
+            const emojiY = y - titleFit.fontSize * 0.855;
+            const scopedSvg = scopeEmojiSvgIds(
+              emojiSvg,
+              `og-e${++emojiCounter}`,
+            );
+            lineSvg += `<g transform="translate(${cursor.toFixed(2)} ${emojiY.toFixed(2)}) scale(${emojiScale.toFixed(4)})">${scopedSvg}</g>`;
+            cursor += titleFit.fontSize;
+          } else {
+            cursor +=
+              (face.glyphs["?"]!.advance * titleFit.fontSize) / face.unitsPerEm;
+          }
+          titleOffset += char.length;
+          continue;
+        }
         const color = isCompany ? colors.amberLead : colors.amberPrimary;
         const glyph = (face.glyphs[char] || face.glyphs["?"])!;
         const charWidth = (glyph.advance * titleFit.fontSize) / face.unitsPerEm;
@@ -569,6 +785,10 @@ export async function renderSocialImage(
       throw new Error("Invalid local social-image glyph map");
     loadedFont = { path: fontFile, data };
   }
+  await ensureEmojiGlyphsLoaded(
+    `${metadata.title} ${metadata.description}`,
+    loadedFont.data,
+  );
   const renderer = new Resvg(
     renderSocialImageSvg(metadata, loadedFont.data, options),
     {

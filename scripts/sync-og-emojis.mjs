@@ -7,10 +7,25 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const destination = join(root, "src/assets/emojis/twemoji.json");
 
-const emojiRegex =
-  /[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+const graphemeSegmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
+const EMOJI_PIECE = String.raw`\p{Emoji}(?:\p{EMod}|[\u{E0020}-\u{E007E}]+\u{E007F}|\uFE0F?\u20E3?)`;
+const emojiGraphemeRegex = new RegExp(
+  String.raw`^(?:\p{RI}{2}|(?![#*\d](?!\uFE0F?\u20E3))${EMOJI_PIECE}(?:\u200D${EMOJI_PIECE})*)$`,
+  "u",
+);
 
 const foundEmojis = new Set();
+
+function extractEmojisFromText(text) {
+  for (const { segment } of graphemeSegmenter.segment(text.normalize("NFC"))) {
+    if (
+      emojiGraphemeRegex.test(segment) ||
+      /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/u.test(segment)
+    ) {
+      foundEmojis.add(segment);
+    }
+  }
+}
 
 function walk(dir) {
   for (const entry of readdirSync(dir)) {
@@ -30,10 +45,7 @@ function walk(dir) {
       !full.includes("twemoji.json")
     ) {
       const content = readFileSync(full, "utf8");
-      const matches = content.match(emojiRegex);
-      if (matches) {
-        for (const m of matches) foundEmojis.add(m);
-      }
+      extractEmojisFromText(content);
     }
   }
 }
@@ -86,14 +98,22 @@ const commonEmojis = [
   "📝",
   "📞",
   "☁️",
+  "🦀",
+  "🧪",
+  "🧵",
+  "🛰️",
+  "👨‍💻",
 ];
 
 for (const emoji of commonEmojis) {
   foundEmojis.add(emoji);
 }
 
+// Official Twemoji U+200D canonicalization rule
 function toCode(char) {
-  const normalized = char.replace(/[\uFE0E\uFE0F]/gu, "");
+  const normalized = char.includes("\u200D")
+    ? char.replace(/\uFE0E/gu, "")
+    : char.replace(/[\uFE0E\uFE0F]/gu, "");
   return [...normalized].map((c) => c.codePointAt(0).toString(16)).join("-");
 }
 

@@ -16,6 +16,7 @@ import {
   renderSocialImageSvg,
   wrapMeasuredText,
   stripEmojis,
+  toEmojiCode,
 } from "../src/lib/seo/og-image";
 import { generateSocialImages } from "../src/integrations/social-images";
 import sharp from "sharp";
@@ -358,6 +359,13 @@ describe("route-specific social images", () => {
     expect(stripEmojis(emojiDesc)).toBe(
       "Me uní a LATAM Airlines para modernizar plataformas core y streaming de eventos.",
     );
+    expect(toEmojiCode("✍️")).toBe("270d");
+    expect(toEmojiCode("🏳️‍🌈")).toBe("1f3f3-fe0f-200d-1f308");
+    expect(toEmojiCode("🇨🇴")).toBe("1f1e8-1f1f4");
+    expect(measureSocialText("🚀", glyphMap, 30)).toBe(30);
+    expect(measureSocialText("©", glyphMap, 30)).toBe(
+      (glyphMap.glyphs["©"].advance * 30) / glyphMap.unitsPerEm,
+    );
 
     const cardWithEmoji = {
       title: emojiTitle,
@@ -386,5 +394,43 @@ describe("route-specific social images", () => {
     // Description should start higher than fixed 360 when title is 1 line, expanding readable space
     expect(svg).toMatch(/data-og-description="true"><path/);
     expect(svg).not.toContain("data-og-badge");
+
+    const blogArticleHtml = `<html lang="en"><head>
+      <title>🚀 Joining LATAM Airlines | Arturo Nava</title>
+      <meta property="og:title" content="🚀 Joining LATAM Airlines" />
+      <meta property="og:description" content="New chapter as Senior Software Engineer at LATAM Airlines." />
+      <meta property="og:image" content="${site}/og/blog/joining-latam-airlines/index.png" />
+    </head><body><main><article class="article-detail"><div class="article-detail__content">
+      <p>New chapter as Senior Software Engineer at LATAM Airlines. I am joining the engineering organization to help modernize core operational systems and real-time event streaming across Latin America.</p>
+      <p>High-availability aviation software requires strict deterministic boundaries and resilient cloud-native services.</p>
+    </div></article></main></body></html>`;
+    const extracted = extractSocialImageMetadata(
+      blogArticleHtml,
+      "/blog/joining-latam-airlines/",
+      site,
+    );
+    expect(extracted?.description).toContain(
+      "New chapter as Senior Software Engineer at LATAM Airlines.",
+    );
+    expect(extracted?.description).toContain(
+      "I am joining the engineering organization to help modernize core operational systems",
+    );
+    expect(extracted?.description.length).toBeGreaterThan(180);
+
+    const blogIndexHtml = `<html lang="en"><head>
+      <title>Engineering Articles | Arturo Nava</title>
+      <meta property="og:title" content="Engineering Articles | Arturo Nava" />
+      <meta property="og:description" content="Technical articles on software architecture." />
+      <meta property="og:image" content="${site}/og/blog/index.png" />
+    </head><body><main><header><h1>✍️ Engineering Articles</h1><p>Technical articles on software architecture. Deep dives into distributed systems, edge runtimes, and performance engineering.</p></header></main></body></html>`;
+    const extractedIndex = extractSocialImageMetadata(
+      blogIndexHtml,
+      "/blog/",
+      site,
+    );
+    expect(extractedIndex?.title).toBe("✍️ Engineering Articles | Arturo Nava");
+    expect(extractedIndex?.description).toContain(
+      "Deep dives into distributed systems, edge runtimes, and performance engineering.",
+    );
   });
 });
