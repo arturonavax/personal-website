@@ -30,6 +30,7 @@ import {
   writeTelemetryWalToR2,
   resolveR2Bucket,
 } from "../src/lib/adapters";
+import { coarseDeviceOs } from "../src/lib/adapters/cloudflare/d1-telemetry.adapter";
 import type { SearchResultItem } from "../src/lib/ports/search.port";
 
 export interface Env {
@@ -2416,9 +2417,7 @@ async function handleTelemetryCollectBeacon(
       isBot: visitorInfo.isBot,
       botName: visitorInfo.isBot ? visitorInfo.reason : null,
       country,
-      deviceType: /mobile|android|iphone|ipad/i.test(userAgent)
-        ? "mobile"
-        : "desktop",
+      deviceType: coarseDeviceOs(userAgent).device,
       referrerHost: attribution.referrer,
       statusCode: 200,
       nowMs,
@@ -7917,9 +7916,8 @@ export async function recordAnalyticsNonBlocking(
       is_bot: isBot,
       bot_name: isBot ? visitorInfo.reason : null,
       country: country.slice(0, 10),
-      device_type: /mobile|android|iphone|ipad/i.test(userAgent)
-        ? "mobile"
-        : "desktop",
+      device_type: coarseDeviceOs(userAgent).device,
+      os_type: coarseDeviceOs(userAgent).os,
       referrer_host: referrer.slice(0, 100),
       status_code: 200,
       created_at: new Date(now).toISOString(),

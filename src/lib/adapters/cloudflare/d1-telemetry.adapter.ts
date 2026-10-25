@@ -39,6 +39,113 @@ export interface CompactRollupEntry {
   uniques: number;
   botViews: number;
   humanViews: number;
+  deviceDesktop?: number;
+  deviceMobile?: number;
+  osWindows?: number;
+  osMacos?: number;
+  osIos?: number;
+  osAndroid?: number;
+  osLinux?: number;
+  osOther?: number;
+}
+
+/** Fixed buckets only: no UA, version, or free-form header becomes a rollup key. */
+export function coarseDeviceOs(
+  userAgent: string,
+  deviceType?: string,
+): {
+  device: "desktop" | "mobile";
+  os: "windows" | "macos" | "ios" | "android" | "linux" | "other";
+} {
+  const ua = userAgent.slice(0, 256);
+  const device =
+    deviceType === "mobile" ||
+    (deviceType !== "desktop" && /mobile|android|iphone|ipad/i.test(ua))
+      ? "mobile"
+      : "desktop";
+  const os = /iphone|ipad|ipod/i.test(ua)
+    ? "ios"
+    : /android/i.test(ua)
+      ? "android"
+      : /windows/i.test(ua)
+        ? "windows"
+        : /macintosh|mac os x/i.test(ua)
+          ? "macos"
+          : /linux/i.test(ua)
+            ? "linux"
+            : "other";
+  return { device, os };
+}
+
+export function rollupDimensions(
+  device: string,
+  os: string,
+): Pick<
+  CompactRollupEntry,
+  | "deviceDesktop"
+  | "deviceMobile"
+  | "osWindows"
+  | "osMacos"
+  | "osIos"
+  | "osAndroid"
+  | "osLinux"
+  | "osOther"
+> {
+  return {
+    deviceDesktop: device === "desktop" ? 1 : 0,
+    deviceMobile: device === "mobile" ? 1 : 0,
+    osWindows: os === "windows" ? 1 : 0,
+    osMacos: os === "macos" ? 1 : 0,
+    osIos: os === "ios" ? 1 : 0,
+    osAndroid: os === "android" ? 1 : 0,
+    osLinux: os === "linux" ? 1 : 0,
+    osOther: !["windows", "macos", "ios", "android", "linux"].includes(os)
+      ? 1
+      : 0,
+  };
+}
+
+/** The sole rollup writer, shared by direct ingestion, compact flush and WAL replay. */
+export function buildAnalyticsRollupUpsert(
+  db: D1Database,
+  entry: CompactRollupEntry,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO analytics_rollups (
+    date, path, views, uniques, bot_views, human_views,
+    device_desktop, device_mobile, os_windows, os_macos, os_ios, os_android, os_linux, os_other
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(date, path) DO UPDATE SET
+    views = views + excluded.views,
+    uniques = uniques + excluded.uniques,
+    bot_views = bot_views + excluded.bot_views,
+    human_views = human_views + excluded.human_views,
+    device_desktop = device_desktop + excluded.device_desktop,
+    device_mobile = device_mobile + excluded.device_mobile,
+    os_windows = os_windows + excluded.os_windows,
+    os_macos = os_macos + excluded.os_macos,
+    os_ios = os_ios + excluded.os_ios,
+    os_android = os_android + excluded.os_android,
+    os_linux = os_linux + excluded.os_linux,
+    os_other = os_other + excluded.os_other`,
+    )
+    .bind(
+      entry.date,
+      entry.path,
+      entry.views,
+      entry.uniques,
+      entry.botViews,
+      entry.humanViews,
+      entry.deviceDesktop ?? 0,
+      entry.deviceMobile ?? 0,
+      entry.osWindows ?? 0,
+      entry.osMacos ?? 0,
+      entry.osIos ?? 0,
+      entry.osAndroid ?? 0,
+      entry.osLinux ?? 0,
+      entry.osOther ?? 0,
+    );
 }
 
 const compactRollupBuffer = new Map<string, CompactRollupEntry>();
@@ -297,24 +404,7 @@ export async function flushCompactRollupBuffer(
   compactRollupBuffer.clear();
 
   const statements = entries.map((entry) =>
-    db
-      .prepare(
-        `INSERT INTO analytics_rollups (date, path, views, uniques, bot_views, human_views)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(date, path) DO UPDATE SET
-           views = views + excluded.views,
-           uniques = uniques + excluded.uniques,
-           bot_views = bot_views + excluded.bot_views,
-           human_views = human_views + excluded.human_views`,
-      )
-      .bind(
-        entry.date,
-        entry.path,
-        entry.views,
-        entry.uniques,
-        entry.botViews,
-        entry.humanViews,
-      ),
+    buildAnalyticsRollupUpsert(db, entry),
   );
 
   const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(db);
@@ -374,6 +464,7 @@ export async function writeTelemetryWalToR2(
     bot_name: string | null;
     country: string;
     device_type: string;
+    os_type?: string;
     referrer_host: string;
     status_code: number;
     created_at: string;
@@ -482,7 +573,11 @@ export class D1TelemetryAdapter implements TelemetryPort {
     const eventType = event.eventType ?? "pageview";
     const botName = event.botName ? event.botName.slice(0, 64) : null;
     const country = (event.country || "XX").slice(0, 10);
-    const deviceType = (event.deviceType || "desktop").slice(0, 32);
+    const { device: deviceType, os: osType } = coarseDeviceOs(
+      event.userAgent ?? "",
+      event.deviceType,
+    );
+    const dimensions = rollupDimensions(deviceType, osType);
     const referrerHost = (event.referrerHost || "").slice(0, 255);
     const statusCode = event.statusCode ?? 200;
 
@@ -495,6 +590,7 @@ export class D1TelemetryAdapter implements TelemetryPort {
       bot_name: botName,
       country,
       device_type: deviceType,
+      os_type: osType,
       referrer_host: referrerHost,
       status_code: statusCode,
       created_at: createdAtIso,
@@ -523,17 +619,15 @@ export class D1TelemetryAdapter implements TelemetryPort {
     // Tier 2 (COMPACT_ROLLUP): Skip raw telemetry_events, write directly to analytics_rollups (1 row written)
     if (tier === QuotaDegradationTier.COMPACT_ROLLUP) {
       try {
-        const rollupStmt = this.db
-          .prepare(
-            `INSERT INTO analytics_rollups (date, path, views, uniques, bot_views, human_views)
-             VALUES (?, ?, 1, 1, ?, ?)
-             ON CONFLICT(date, path) DO UPDATE SET
-               views = views + 1,
-               uniques = uniques + 1,
-               bot_views = bot_views + excluded.bot_views,
-               human_views = human_views + excluded.human_views`,
-          )
-          .bind(dateUtc, cleanPath, isBotInt, humanViewsInc);
+        const rollupStmt = buildAnalyticsRollupUpsert(this.db, {
+          date: dateUtc,
+          path: cleanPath,
+          views: 1,
+          uniques: 1,
+          botViews: isBotInt,
+          humanViews: humanViewsInc,
+          ...dimensions,
+        });
 
         const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(
           this.db,
@@ -630,17 +724,15 @@ export class D1TelemetryAdapter implements TelemetryPort {
           createdAtIso,
         );
 
-      const rollupStmt = this.db
-        .prepare(
-          `INSERT INTO analytics_rollups (date, path, views, uniques, bot_views, human_views)
-           VALUES (?, ?, 1, 1, ?, ?)
-           ON CONFLICT(date, path) DO UPDATE SET
-             views = views + 1,
-             uniques = uniques + 1,
-             bot_views = bot_views + excluded.bot_views,
-             human_views = human_views + excluded.human_views`,
-        )
-        .bind(dateUtc, cleanPath, isBotInt, humanViewsInc);
+      const rollupStmt = buildAnalyticsRollupUpsert(this.db, {
+        date: dateUtc,
+        path: cleanPath,
+        views: 1,
+        uniques: 1,
+        botViews: isBotInt,
+        humanViews: humanViewsInc,
+        ...dimensions,
+      });
 
       const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(
         this.db,

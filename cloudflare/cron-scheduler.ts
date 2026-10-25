@@ -1,4 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
+import {
+  buildAnalyticsRollupUpsert,
+  rollupDimensions,
+  type CompactRollupEntry,
+} from "../src/lib/adapters/cloudflare/d1-telemetry.adapter";
 
 export interface CronEnv {
   DB: D1Database;
@@ -105,17 +110,7 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
   const processedKeys: string[] = [];
 
   if (telemetryKeys.length > 0) {
-    const rollupMap = new Map<
-      string,
-      {
-        date: string;
-        path: string;
-        views: number;
-        uniques: number;
-        botViews: number;
-        humanViews: number;
-      }
-    >();
+    const rollupMap = new Map<string, CompactRollupEntry>();
     const rawEvents: Array<{
       dedupe_key: string;
       path: string;
@@ -154,6 +149,23 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
               `wal:${parsed.visitor_hash || "anon"}:${path}:${date}`,
           );
 
+          const device = parsed.device_type === "mobile" ? "mobile" : "desktop";
+          const dimensions = rollupDimensions(
+            device,
+            String(parsed.os_type || "other"),
+          );
+          // Old WAL can arrive after the cron retention pass. Keep its views but
+          // do not restore expired dimensions or spend another D1 cleanup write.
+          const dimensionCutoff = new Date(Date.now() - 30 * 86_400_000)
+            .toISOString()
+            .slice(0, 10);
+          if (date < dimensionCutoff) {
+            for (const field of Object.keys(
+              dimensions,
+            ) as (keyof typeof dimensions)[]) {
+              dimensions[field] = 0;
+            }
+          }
           const rollupKey = `${date}:${path}`;
           const existing = rollupMap.get(rollupKey);
           if (existing) {
@@ -161,6 +173,12 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
             existing.uniques += 1;
             existing.botViews += isBot;
             existing.humanViews += humanInc;
+            for (const field of Object.keys(
+              dimensions,
+            ) as (keyof typeof dimensions)[]) {
+              existing[field] =
+                (existing[field] ?? 0) + (dimensions[field] ?? 0);
+            }
           } else {
             rollupMap.set(rollupKey, {
               date,
@@ -169,6 +187,7 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
               uniques: 1,
               botViews: isBot,
               humanViews: humanInc,
+              ...dimensions,
             });
           }
 
@@ -218,24 +237,7 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
     }
 
     for (const rollup of rollupMap.values()) {
-      allStatements.push(
-        env.DB.prepare(
-          `INSERT INTO analytics_rollups (date, path, views, uniques, bot_views, human_views)
-           VALUES (?, ?, ?, ?, ?, ?)
-           ON CONFLICT(date, path) DO UPDATE SET
-             views = views + excluded.views,
-             uniques = uniques + excluded.uniques,
-             bot_views = bot_views + excluded.bot_views,
-             human_views = human_views + excluded.human_views`,
-        ).bind(
-          rollup.date,
-          rollup.path,
-          rollup.views,
-          rollup.uniques,
-          rollup.botViews,
-          rollup.humanViews,
-        ),
-      );
+      allStatements.push(buildAnalyticsRollupUpsert(env.DB, rollup));
     }
   }
 
@@ -345,6 +347,15 @@ export async function handleAnalyticsRollup(env: CronEnv): Promise<void> {
 
     DELETE FROM edge_telemetry_events
     WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
+
+    UPDATE analytics_rollups SET
+      device_desktop = 0, device_mobile = 0,
+      os_windows = 0, os_macos = 0, os_ios = 0,
+      os_android = 0, os_linux = 0, os_other = 0
+    WHERE date < date('now', '-30 days')
+      AND (device_desktop != 0 OR device_mobile != 0 OR os_windows != 0
+        OR os_macos != 0 OR os_ios != 0 OR os_android != 0
+        OR os_linux != 0 OR os_other != 0);
   `;
 
   await env.DB.exec(pruneQuery);

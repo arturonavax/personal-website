@@ -396,7 +396,7 @@ ON CONFLICT(date, path) DO UPDATE SET
 
 ## 7. Compacted Single-Baseline Schema & Deterministic Reset Workflow
 
-All historical migrations (`0001` through `0010`) have been compacted into the unified authoritative schema in `cloudflare/d1/schema.sql` and `cloudflare/d1/reset.sql`.
+Migrations `0001` through `0010` are represented in the authoritative bootstrap `cloudflare/d1/schema.sql` and destructive `reset.sql`. Additive `0011_aggregate_device_os.sql` adds eight default-zero coarse counters to the existing `(date,path)` `analytics_rollups` row, with no historical backfill. Apply `0011` only to existing pre-0011 databases; fresh bootstrap and reset already include its columns. The adapter and WAL replay increment these counters in the existing upsert, with one rollup statement per accepted visit/group; older WAL OS is `other`. The scheduled handler zeros only device/OS counters older than 30 days, preserving historical views and existing retention for other tables. These counters exclude NOMINAL document-only visits until an adapter/collector visit occurs, and cannot establish distinct devices or legal compliance. No remote D1 command is implied.
 
 ### 7.1. Key SQLite/D1 Compaction Optimizations
 

@@ -102,19 +102,75 @@ describe("SPEC-012: D1 Database Compaction & Deterministic Reset Architecture", 
     db.close();
   });
 
-  it("verifies compacted initial migration 0001_initial_schema.sql matches schema.sql exactly", () => {
+  it("keeps 0001 immutable while 0001+0011 matches fresh and reset aggregate columns", () => {
     const initialMigration = fs.readFileSync(
       path.join(ROOT_DIR, "cloudflare/d1/migrations/0001_initial_schema.sql"),
+      "utf8",
+    );
+    const aggregateMigration = fs.readFileSync(
+      path.join(
+        ROOT_DIR,
+        "cloudflare/d1/migrations/0011_aggregate_device_os.sql",
+      ),
       "utf8",
     );
     const schemaSql = fs.readFileSync(
       path.join(ROOT_DIR, "cloudflare/d1/schema.sql"),
       "utf8",
     );
+    const resetSql = fs.readFileSync(
+      path.join(ROOT_DIR, "cloudflare/d1/reset.sql"),
+      "utf8",
+    );
 
     expect(initialMigration.length).toBeGreaterThan(1000);
     expect(schemaSql.length).toBeGreaterThan(1000);
-    expect(initialMigration.trim()).toBe(schemaSql.trim());
+
+    const aggregateNames = [
+      "device_desktop",
+      "device_mobile",
+      "os_windows",
+      "os_macos",
+      "os_ios",
+      "os_android",
+      "os_linux",
+      "os_other",
+    ];
+    const columns = (sql: string) => {
+      const db = new Database(":memory:");
+      try {
+        db.exec(sql);
+        const info = db.query("PRAGMA table_info(analytics_rollups)").all() as {
+          name: string;
+          type: string;
+          notnull: number;
+          dflt_value: string | null;
+        }[];
+        return aggregateNames.map((name) => {
+          const column = info.find((entry) => entry.name === name);
+          expect(column).toBeDefined();
+          return {
+            name: column?.name,
+            type: column?.type,
+            notnull: column?.notnull,
+            dflt_value: column?.dflt_value,
+          };
+        });
+      } finally {
+        db.close();
+      }
+    };
+    const expected = aggregateNames.map((name) => ({
+      name,
+      type: "INTEGER",
+      notnull: 1,
+      dflt_value: "0",
+    }));
+    expect(columns(initialMigration + "\n" + aggregateMigration)).toEqual(
+      expected,
+    );
+    expect(columns(schemaSql)).toEqual(expected);
+    expect(columns(resetSql)).toEqual(expected);
   });
 });
 

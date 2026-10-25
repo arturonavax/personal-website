@@ -23,7 +23,8 @@ const MIGRATIONS_DIR = path.join(
   "d1",
   "migrations",
 );
-const MIGRATIONS = ["0001_initial_schema.sql"];
+// Keep the historical baseline intact; bring the fixture forward to the aggregate rollup schema.
+const MIGRATIONS = ["0001_initial_schema.sql", "0011_aggregate_device_os.sql"];
 
 function createD1Shim() {
   const sqlite = new Database(":memory:");
