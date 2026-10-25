@@ -106,11 +106,13 @@ Private editorial files and remote assets MUST remain outside Git. R2 synchroniz
 
 The v2 manifest MUST contain version 2, deterministic sorted key/hash root, entries/files with hash/size/content type/immutable-key metadata, and a content-addressed bundle key. Normal unchanged pulls SHOULD avoid list operations and individual downloads through ETag/root-hash fast paths. Default concurrency is 6; bundle download is attempted above 5 stale files. Bad/unavailable bundles MUST fall back to individual downloads, and downloaded files MUST be checked against SHA-256. Mapping and archive extraction MUST retain traversal rejection.
 
+Optional `OBSIDIAN_VAULT_PATH` staging MUST remain local-only: `content:stage` and `dev-prod` copy changed supported mapped files from a configured vault without remote operations, skip draft/hidden files (including YAML trailing comments), and preserve local-only files. An unset vault path MUST retain the offline `dev-prod` behavior. Staging MUST reject symlinks and unsafe mapped destinations. Previously staged copies absent or unpublished in the vault MUST be retired only when their local hash matches the ignored ownership journal, with a local backup before retirement; conflicts MUST fail closed and remote-only files MUST remain. This does not delete remote objects or replace schema validation. Publication remains an explicit separate push, with editorial review before it.
+
 Push MUST preserve remote-only objects unless `--prune` is explicitly requested. Dry-run MUST report the local plan without remote state queries or writes; it is not proof of the actual remote diff. Push also manages old bundles while preserving current/previous compatibility keys, and may notify IndexNow; publication requires separate owner authorization.
 
 Given a changed manifest, when pull succeeds, then mapped local files and manifest cache MUST reflect verified transferred content. Given no usable remote manifest, pull MUST fail with the content-push prerequisite rather than silently produce an empty website. `--prune` is destructive on its respective local/remote side and MUST NOT be part of ordinary onboarding.
 
-Evidence: [pull](../../scripts/r2-pull.mjs), [push](../../scripts/r2-push.mjs), [sync helpers](../../scripts/lib/r2-content.mjs), [content tests](../../tests/spec-012/seo-aeo-and-db-compaction.test.ts), [content guide](../../docs/content-sync.md).
+Evidence: [pull](../../scripts/r2-pull.mjs), [push](../../scripts/r2-push.mjs), [sync helpers](../../scripts/lib/r2-content.mjs), [local staging](../../scripts/lib/obsidian-content.mjs), [staging tests](../../tests/obsidian-content.test.ts), [content tests](../../tests/spec-012/seo-aeo-and-db-compaction.test.ts), [content guide](../../docs/content-sync.md).
 
 ## PLAT-09 — Build integrity and PDF publication
 

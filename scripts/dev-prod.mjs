@@ -1,4 +1,18 @@
 import { spawn } from "node:child_process";
+import { stageObsidianContent } from "./lib/obsidian-content.mjs";
+
+// Stage only when explicitly configured; do not pull or publish R2 content.
+if (process.env.OBSIDIAN_VAULT_PATH) {
+  try {
+    const result = await stageObsidianContent();
+    console.log(
+      `[obsidian] Staged ${result.changed} changed file(s), ${result.unchanged} unchanged, ${result.unpublished} unpublished${result.retired ? `, ${result.retired} retired` : ""}; no remote operations.`,
+    );
+  } catch (error) {
+    console.error(`[obsidian] Error: ${error.message}`);
+    process.exit(1);
+  }
+}
 
 const wranglerArgs = [
   "exec",

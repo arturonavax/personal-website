@@ -45,11 +45,19 @@ Do not add example posts to ignored editorial directories merely to test this fe
 | `pnpm dev:local`                   | Starts Astro without content synchronization                                                                 |
 | `pnpm dev:r2`                      | Checks remote content before Astro dev                                                                       |
 | `pnpm content:pull`                | Reads the remote manifest and downloads changed/missing mapped files                                         |
+| `pnpm content:stage`               | With `OBSIDIAN_VAULT_PATH`, stages changed mapped vault files locally; no remote access                      |
+| `pnpm dev-prod`                    | Offline local Worker build; optionally stages vault content first; never publishes or pulls R2               |
 | `pnpm content:push:dry`            | Local plan only; does not query remote state or show an authoritative remote diff                            |
 | `pnpm content:push`                | Publishes local content/manifest/bundle and can notify IndexNow; requires explicit publication authorization |
 | `node scripts/r2-pull.mjs --force` | Redownloads files instead of trusting equal local hashes                                                     |
 
 Dev scripts use `--host`; they expose the server to the local network. Use a trusted network or explicitly bind loopback when appropriate.
+
+### Optional Obsidian staging
+
+Set `OBSIDIAN_VAULT_PATH` to a local vault directory only after authorizing that directory for reading. Without it, `content:stage` is a no-op and `dev-prod` retains its offline local-content path. The vault must contain paths under `content/`, `assets/`, or `downloads/` matching the R2 key layout above. For example, `content/posts/en/post.md` stages to `src/content/posts/en/post.md`; `assets/cover.png` stages to `public/remote-assets/cover.png`. Supported editorial collections are posts, projects, experience, services, and resume. Posts/services accept `.md`/`.mdx`, projects/experience/resume `.md`; mapped assets accept common image formats and downloads PDF. This does not convert Obsidian wikilinks, attachments or arbitrary vault notes into website content.
+
+Staging checks SHA-256 and copies only changed files; ignored `_`/`.` names and `draft: true` or `visible: false` Markdown frontmatter (including trailing YAML comments) are not copied. It rejects vault symlinks and unsafe mapped destinations. An ignored or removed vault file previously staged by this workflow is retired **only if its local hash still matches** the ignored `.cache/obsidian-stage.json` ownership journal. Before retirement its bytes are saved to a unique file under ignored `.cache/obsidian-stage-backups/`. Local edits or conflicting unowned destinations fail closed before copying or retiring; inspect the reported key and resolve it manually. Keep the journal and backups with your private content backup; losing the journal prevents safe automatic retirement. Staging never retires remote-only/local-only files, reads R2, uploads, deletes R2 objects, or refreshes the remote manifest. Backups are local safety copies, not a versioned remote backup. Review visibility, links and generated routes on real content and run `pnpm check` before an explicitly authorized `pnpm content:push`; do not use `--prune` as a routine staging step. `content:push:dry` is local-only and not an authoritative remote diff.
 
 Do **not** put prune commands into normal setup. Pull `--prune` deletes local-only synced files. Push `--prune` deletes remote-only objects. Back up the authoritative content and review the intended deletion set before either operation; a partial checkout is not a safe prune source. Ordinary push preserves remote-only files.
 
