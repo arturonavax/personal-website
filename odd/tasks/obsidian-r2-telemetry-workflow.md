@@ -15,7 +15,7 @@ S7. "No alteres el frontend ni dañes caracteristicas que ya funcionan." Preserv
 T1 [S1-S3,S7] route delegated (context backstop), done; commit 2b93a8fc3962af0b722542e5d20594267f1af59c — optional safe Obsidian import and incremental local content workflow with tests/docs.
 T2 [S4,S7] route delegated (context backstop), done; commit 9bc2b7322a4f8b5d0f51d2b0191952179cac77ed — optional portable local backup with tests/docs.
 T3 [S5,S7] route delegated plus inline scoped correction (high-risk data shape), blocked awaiting independent recheck of late WAL fix; commit 43f31510016846e8a2beef00d54f98cfa18c89f3 (implementation only, not verified closure) — minimal aggregate telemetry counters and local migration with tests/docs.
-T4 [S6,S7] route inline, done for authorized scope; commit b1a837c0a778c9bf2202d9f9dd461fa6b9124dc0 (local gate plan), remote-inventory evidence commit pending — 0011 tested locally; exact authorized metadata inventory confirmed target and revealed pending migration ledger; no export/reset.
+T4 [S6,S7] route inline, done for authorized scope; commit b1a837c0a778c9bf2202d9f9dd461fa6b9124dc0 (local gate plan), remote-inventory evidence commit 81b2d740d1bbb1cb4146377fc6c96036b79417fd — 0011 tested locally; exact authorized metadata inventory confirmed target and revealed pending migration ledger; no export/reset.
 T5 [S1-S7] route inline/independent verifier for named high-risk change, blocked pending T3 proof and separate authorization for remote schema reconciliation/backup/reset; commit pending — final evidence and delivery state; no production claim.
 
 ## Log
