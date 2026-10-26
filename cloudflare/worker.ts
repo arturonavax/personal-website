@@ -61,6 +61,7 @@ export interface Env {
   APP_CAPTCHA_DRIVER?: string;
   ENABLE_PREFETCH_TELEMETRY?: string | boolean;
   ENABLE_BOT_TELEMETRY?: string | boolean;
+  BOT_TELEMETRY_SAMPLE_RATE?: string | number;
   SIMULATE_LOW_DB_QUOTA?: string | boolean;
   CLOUDFLARE_PLAN_TIER?: string;
   D1_DAILY_WRITE_BUDGET?: string | number;
@@ -4108,6 +4109,7 @@ export async function handleAdminDashboardRequest(
               env.ENABLE_BOT_TELEMETRY !== false &&
               env.ENABLE_BOT_TELEMETRY !== "false" &&
               env.ENABLE_BOT_TELEMETRY !== "0",
+            sample_rate: resolveBotTelemetrySampleRate(env),
             observed: null as number | null,
             ai: null as number | null,
             other: null as number | null,
@@ -7895,6 +7897,17 @@ export async function computeDedupeKey(
  *   2. INSERT INTO pageview_events ... SELECT ... WHERE changes() > 0   (humans only)
  * so the rollup row is written if and only if the pageview row was actually inserted.
  */
+function resolveBotTelemetrySampleRate(env?: Env): number {
+  // Unconfigured legacy integrations retain their original behavior; explicitly
+  // configured bot collection defaults to a Free-plan 1% sample.
+  const value =
+    env?.BOT_TELEMETRY_SAMPLE_RATE ??
+    (env?.ENABLE_BOT_TELEMETRY === undefined ? 1 : 0.01);
+  if (typeof value === "string" && value.trim() === "") return 0.01;
+  const rate = Number(value);
+  return Number.isFinite(rate) && rate >= 0 && rate <= 1 ? rate : 0.01;
+}
+
 export async function recordAnalyticsNonBlocking(
   request: Request,
   path: string,
@@ -7944,6 +7957,18 @@ export async function recordAnalyticsNonBlocking(
     const currentTier = edgeQuotaTracker.getTier(now);
 
     if (isBot) {
+      // Sample only explicitly enabled bot collection. The deterministic bucket
+      // hash avoids an extra identity, D1 read or per-isolate sampling counter.
+      // Disabled collection still reaches the existing kill-switch behavior.
+      if (
+        env?.ENABLE_BOT_TELEMETRY !== false &&
+        env?.ENABLE_BOT_TELEMETRY !== "false" &&
+        env?.ENABLE_BOT_TELEMETRY !== "0" &&
+        parseInt(l1Key30m.slice(0, 8), 16) / 0x1_0000_0000 >=
+          resolveBotTelemetrySampleRate(env)
+      ) {
+        return;
+      }
       // Bot Telemetry Circuit Breaker (REQ-PCD-04, SPEC-008):
       // Bots are secondary priority compared to human visits (P0).
       const reqPurpose = (request.headers.get("purpose") || "").toLowerCase();

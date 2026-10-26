@@ -288,6 +288,7 @@ describe("bounded admin telemetry coverage", () => {
         source: "pageviews",
         window_days: 7,
         collection_enabled: false,
+        sample_rate: 0.01,
         observed: 3,
         ai: 1,
         other: 1,
@@ -296,6 +297,17 @@ describe("bounded admin telemetry coverage", () => {
     });
     const page = await (await f.admin("path=/unrelated/&page_only=1")).json();
     expect(page.coverage).toBeNull();
+    f.sqlite.close();
+  });
+
+  it("falls back to a 1% bot sample when the configured rate is empty", async () => {
+    const f = fixture();
+    f.env.ENABLE_BOT_TELEMETRY = "true";
+    f.env.BOT_TELEMETRY_SAMPLE_RATE = "";
+    const response = await f.admin("path=/empty-rate/");
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.coverage.bots.sample_rate).toBe(0.01);
     f.sqlite.close();
   });
 
@@ -334,6 +346,7 @@ describe("bounded admin telemetry coverage", () => {
       source: "pageviews",
       window_days: 7,
       collection_enabled: true,
+      sample_rate: 1,
       observed: null,
       ai: null,
       other: null,

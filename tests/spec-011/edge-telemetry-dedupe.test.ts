@@ -110,7 +110,11 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
       "198.51.100.42",
       "GPTBot/1.0",
     );
-    const env = { DB: db, ENABLE_BOT_TELEMETRY: "true" } as never;
+    const env = {
+      DB: db,
+      ENABLE_BOT_TELEMETRY: "true",
+      BOT_TELEMETRY_SAMPLE_RATE: "1",
+    } as never;
     await recordAnalyticsNonBlocking(request, "/en/blog/bot/", db, env);
     await recordAnalyticsNonBlocking(request, "/en/blog/bot/", db, env);
     expect(count("pageviews")).toBe(1);
@@ -121,6 +125,46 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
       is_bot: 1,
       bot_category: "ai_scraper",
     });
+    sqlite.close();
+  });
+
+  it("samples bots before the quota breaker without shedding unrelated human visits", async () => {
+    const { db, sqlite, count } = createD1Shim();
+    botCircuitBreaker.reset();
+    const bot = humanRequest("/en/blog/sample/", "198.51.100.43", "GPTBot/1.0");
+    await recordAnalyticsNonBlocking(bot, "/en/blog/sample/", db, {
+      ENABLE_BOT_TELEMETRY: "true",
+      BOT_TELEMETRY_SAMPLE_RATE: "0",
+    } as never);
+    expect(count("pageviews")).toBe(0);
+    expect(count("telemetry_events")).toBe(0);
+    expect(botCircuitBreaker.getStatus({}).dailyBotCount).toBe(0);
+    await recordAnalyticsNonBlocking(
+      humanRequest("/en/blog/sample/", "198.51.100.44"),
+      "/en/blog/sample/",
+      db,
+    );
+    expect(count("pageviews")).toBe(1);
+    expect(sqlite.prepare("SELECT is_bot FROM pageviews").get()).toEqual({
+      is_bot: 0,
+    });
+    sqlite.close();
+  });
+
+  it("keeps the disabled bot switch effective even at a full sample rate", async () => {
+    const { db, sqlite, count } = createD1Shim();
+    botCircuitBreaker.reset();
+    const bot = humanRequest(
+      "/en/blog/disabled/",
+      "198.51.100.45",
+      "GPTBot/1.0",
+    );
+    await recordAnalyticsNonBlocking(bot, "/en/blog/disabled/", db, {
+      ENABLE_BOT_TELEMETRY: "false",
+      BOT_TELEMETRY_SAMPLE_RATE: "1",
+    } as never);
+    expect(count("pageviews")).toBe(0);
+    expect(count("telemetry_events")).toBe(0);
     sqlite.close();
   });
 
