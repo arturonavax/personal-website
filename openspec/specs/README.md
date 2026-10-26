@@ -65,7 +65,7 @@ The public source does not include the private editorial corpus, synchronized do
 
 Provider limits and eligibility change. Current edge contracts separate application budget defaults from provider quotas and link official documentation. Free-tier guards are bounded protections, not a guarantee that every bound service is free or that aggregate global usage is exact.
 
-The contracts explicitly retain known gaps such as approximate quota counters, synthetic admin fallback data, and partial runtime/production coverage. Documenting a gap does not silently authorize its repair.
+The contracts explicitly retain known gaps such as approximate quota counters, unavailable telemetry reads, estimated dashboard usage panels, and partial runtime/production coverage. Documenting a gap does not silently authorize its repair.
 
 ## Historical specifications
 

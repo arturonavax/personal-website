@@ -17,7 +17,7 @@ Start with the [current specification index](openspec/specs/README.md). It descr
 | Checks and evidence                      | [Verification](docs/verification.md)            | [Coverage index](openspec/specs/README.md#coverage-and-evidence) |
 | Adapting the site                        | [Customization](docs/template-customization.md) | [Agent instructions](AGENTS.md)                                  |
 
-For a future visual redesign, start with the [preservation contract](docs/frontend-redesign.md): visual freedom, functional invariants, capability checklist and required evidence.
+For a future visual redesign, start with the [preservation contract](docs/frontend-redesign.md): visual freedom, functional invariants, capability checklist and required evidence. The [bounded Search Console audit](odd/tasks/search-console-indexation.md) records dated, read-only URL inspections, not a guarantee of Google indexing or a complete issue inventory.
 
 ## Local development
 
@@ -33,18 +33,18 @@ Astro development runs on port 4321. The configured development/preview commands
 
 ### Useful commands
 
-| Command                 | Effect / prerequisite                                                              |
-| ----------------------- | ---------------------------------------------------------------------------------- |
-| `pnpm dev`              | Smart content check/pull, then Astro dev; may access R2                            |
-| `pnpm dev:r2`           | Explicit content pull, then Astro dev                                              |
-| `pnpm dev:local`        | Astro dev using existing disk content                                              |
-| `pnpm run dev-prod`     | Check/build, isolate admin vault, then local Worker on port 8788; may access R2    |
-| `pnpm dev:worker`       | Local Worker using an existing build and local resource state                      |
-| `pnpm check`            | Astro/TypeScript diagnostics                                                       |
-| `pnpm test`             | Bun unit/integration tests; not the Playwright browser suite                       |
-| `pnpm run audit`        | Project static architecture/hydration checks, not a dependency vulnerability audit |
-| `pnpm content:pull`     | Download private editorial content/assets/CVs; requires authorized transport       |
-| `pnpm content:push:dry` | Inspect planned upload without changing R2                                         |
+| Command                 | Effect / prerequisite                                                               |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| `pnpm dev`              | Smart content check/pull, then Astro dev; may access R2                             |
+| `pnpm dev:r2`           | Explicit content pull, then Astro dev                                               |
+| `pnpm dev:local`        | Astro dev using existing disk content                                               |
+| `pnpm run dev-prod`     | Local check/build and Worker on port 8788; no R2 pull; optional local vault staging |
+| `pnpm dev:worker`       | Local Worker using an existing build and local resource state                       |
+| `pnpm check`            | Astro/TypeScript diagnostics                                                        |
+| `pnpm test`             | Bun unit/integration tests; not the Playwright browser suite                        |
+| `pnpm run audit`        | Project static architecture/hydration checks, not a dependency vulnerability audit  |
+| `pnpm content:pull`     | Download private editorial content/assets/CVs; requires authorized transport        |
+| `pnpm content:push:dry` | Inspect planned upload without changing R2                                          |
 
 `CONTENT_SOURCE=local` is not an offline switch: missing content or truthy CI environment flags can still trigger a pull. For a static build that bypasses the content-pull hook, use the direct Astro commands in [verification](docs/verification.md#local-content-build-without-the-pull-hook). Wrangler also has a custom build command that can pull content.
 
@@ -54,7 +54,7 @@ Builds, content uploads, deploys, and database commands have different side effe
 
 The source, tests, schemas, migrations, public configuration shape, and documentation are tracked. Editorial Markdown/MDX, synchronized remote assets, and CV downloads are ignored and come from private R2 or an authorized local copy. The website also depends on account-side resources, DNS, Access policy, and secret bindings that must be managed separately.
 
-The configured deployment uses public HTML Worker interception plus explicit asset bypasses to support server-side visits. The admin HTML is moved into an internal build vault and served only through the authorization boundary. Metrics degrade under quota pressure; the dashboard's fallback data is not proof of persisted production events.
+The configured deployment uses public HTML Worker interception plus explicit asset bypasses to support server-side visits. The admin HTML is moved into an internal build vault and served only through the authorization boundary. `/api/telemetry` returns observed empty data or explicit 503 unavailable/degraded results, not synthetic visits; bounded device/OS and sampled bot/AI coverage is not a site-wide total. The checked-in bot collection switch remains off until migration `0012` and deliberate activation. A populated dashboard or queued collector response is not proof of persisted production events.
 
 ## Performance and security expectations
 

@@ -39,7 +39,7 @@ Before implementation, the redesign MUST record its source revision, content/vis
 
 At each coherent change, run relevant unit/integration assertions and browser scenarios. At integration, review the complete capability table, run the applicable broader checks, and record pass/fail/skip/unavailable with exact commands. A skipped post route, absent content, unavailable browser or unverified production resource MUST remain visible in the evidence, not become a claimed PASS. Do not enable hidden posts or contact production services merely to obtain coverage.
 
-Minimum navigation exercise: ordinary pages → experience detail → adjacent job arrows → back/forward → locale change, in both themes; repeat with relevant mobile/desktop sizes, reduced motion, zoom changes and software rendering. Observe both persistence identity/clock behavior and what the user sees. Check modal/input isolation and print/export flows separately. For telemetry distinguish a client request from a persisted backend event; synthetic dashboard data is not ingestion proof.
+Minimum navigation exercise: ordinary pages → experience detail → adjacent job arrows → back/forward → locale change, in both themes; repeat with relevant mobile/desktop sizes, reduced motion, zoom changes and software rendering. Observe both persistence identity/clock behavior and what the user sees. Check modal/input isolation and print/export flows separately. For telemetry distinguish a client request from a persisted backend event; cached or estimated dashboard data is not ingestion proof.
 
 Given an intentional visual change, when an old visual assertion fails, then update that assertion only after verifying the functional invariant it protected. Do not remove continuity, layering, geometry or accessibility checks as mere screenshot churn.
 
@@ -49,7 +49,7 @@ Performance acceptance MUST use comparable before/after measurements in a stated
 
 A redesign MUST NOT implicitly migrate data, change persisted formats, remove public routes/API fields, replace the telemetry backend, alter authentication, enable hidden content, reset production D1, upload/prune R2, purge caches or modify DNS/Access/WAF. Those are separate decisions with their own authorization, verification and rollback.
 
-The current contracts list limitations, including partial cached-route head synchronization, synthetic telemetry fallback, approximate quota accounting, cron behavior and content-hydration gaps. Preserve intended invariants, **not bugs as immutable requirements**. If the redesign touches a known gap, report it and agree the behavioral fix separately; never silently regress to a worse historical implementation.
+The current contracts list limitations, including partial cached-route head synchronization, best-effort telemetry delivery, approximate quota accounting, cron behavior and content-hydration gaps. Preserve intended invariants, **not bugs as immutable requirements**. If the redesign touches a known gap, report it and agree the behavioral fix separately; never silently regress to a worse historical implementation.
 
 Given a purely presentational change, when it is reviewed, then its runtime/service changes are either absent or explicitly justified and authorized. Keep coherent reversible commits and document rollback by behavior. Do not merge/deploy because a documentation checklist was checked.
 

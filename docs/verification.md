@@ -19,7 +19,7 @@ Use checks appropriate to the changed behavior. This guide documents available c
 | Browser                | Observable behavior in the selected browser/device/content fixture | Universal FPS, hardware-independent timing, or field CWV    |
 | Production persistence | An authorized deployed request has a correlated persisted effect   | Every region, traffic condition, or account policy          |
 
-A missing test is a coverage gap, not evidence that the implementation is absent. A historical PASS is dated evidence, not a current certification. Dashboard charts may use fallback data, so visible values cannot alone establish ingestion.
+A missing test is a coverage gap, not evidence that the implementation is absent. A historical PASS is dated evidence, not a current certification. `/api/telemetry` does not synthesize visits: an empty result is observed zero data, while missing/failed D1 and quota-protected reads return 503 unavailable/degraded. Cached UI data, estimated quota panels and a queued collector response still cannot establish production persistence. The [integration record](../odd/tasks/integrated-feature-test.md) keeps the unauthenticated Worker-admin 401 browser failure distinct from its passing isolated Astro admin UI check; the owner subsequently accepted the local integration without further agent tests.
 
 ## Check catalog
 

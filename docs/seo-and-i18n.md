@@ -71,7 +71,7 @@ Public HTML responses expose machine-readable context links and indexing directi
 6. Exercise Markdown negotiation and its missing-asset behavior separately from ordinary HTML status.
 7. Run the relevant `tests/spec-012/` and browser audit suites in a suitable local environment; source assertions alone do not verify Google indexing or field performance.
 
-This documentation update did not rerun those runtime suites or inspect Search Console. Current field measurements, indexing state, authenticated account settings and private content remain separate evidence.
+The 2026-10-23 source documentation pass did not rerun runtime suites or inspect Search Console. A later [bounded, read-only Search Console audit](../odd/tasks/search-console-indexation.md) inspected 100 known URLs on 2026-10-26: 55 of 68 current sitemap URLs were reported as submitted and indexed at batch time; the other 13 were then live HTTP 200 pages with indexable responses and matching self-canonicals. The four owner-reported 404 URLs and the full issue-specific examples remain unidentified. Search Console's URL Inspection API requires known URLs and cannot enumerate Page Indexing issue examples; historic crawl classifications can change. No source defect was reproduced, and no indexing notification, remote setting change or deployment followed. Current indexing, field measurements, authenticated account settings and private content require separate evidence.
 
 ## Discovery upgrade
 

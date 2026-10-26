@@ -48,7 +48,7 @@ Visits use server-derived daily visitor hashes and dedupe; these are pseudonymou
 
 Public collection validates method/path/body and uses available fetch metadata; it is not an authenticated write API. The current collector rejects a supplied non-same-origin fetch-site header, but missing metadata is not itself rejected. The separate compatibility endpoint has its own origin validation. Never generalize one endpoint's boundary to all others.
 
-Protected caches are accessed only after authentication. Private HTTP caching rules and internal Cache API copies serve different purposes. Dashboard synthetic fallback, daily hash rotation, tier-dependent datasets and estimated quota panels mean populated UI or 202 status alone cannot prove real user counts or durable production writes.
+Protected caches are accessed only after authentication. Private HTTP caching rules and internal Cache API copies serve different purposes. `/api/telemetry` does not synthesize visits: unavailable/degraded reads return 503 rather than fabricated zeros. Cached UI results, daily hash rotation, tier-dependent datasets and estimated quota panels mean populated UI or 202 status alone cannot prove real user counts or durable production writes.
 
 ## Response headers and browser policy
 

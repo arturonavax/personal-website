@@ -4,7 +4,7 @@ Maintain a fast, accessible, bilingual personal website built with Astro SSG and
 
 ## Read first
 
-The current-state documentation starts at [the specification index](openspec/specs/README.md). Its baseline is source commit `418703353838524a963362b081869510022a53ae` (2026-10-23). The index explains precedence, evidence levels, and known limitations.
+The current-state documentation starts at [the specification index](openspec/specs/README.md). Its baseline is source commit `418703353838524a963362b081869510022a53ae` (2026-10-23). The index explains precedence, evidence levels, and known limitations. Later Obsidian/R2, telemetry and bounded Search Console changes have their own dated evidence; the baseline date is not a claim that the integrated branch was deployed.
 
 | Work                                              | Current contract                                                 | Practical guide                                                                                    |
 | ------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -29,6 +29,7 @@ Read [the redesign preservation contract](docs/frontend-redesign.md) before chan
 - Public pages intentionally ship client JavaScript for the router, Matrix, theme, accessibility, tools, and telemetry. The constraint is minimal justified JavaScript and no unnecessary framework islands, NOT a literal zero-byte payload.
 - Editorial collections, downloaded CVs, and remote assets are ignored by Git and hydrated from private R2 or existing local files. Never commit personal content or overwrite it with fixtures. The public repository is not a content backup.
 - Configuration and provider resources are not interchangeable: the content-sync bucket and deployed storage binding have distinct roles. Do not silently merge them.
+- `pnpm dev-prod` builds against existing local content without R2 reads; optional `OBSIDIAN_VAULT_PATH` staging remains local and must be separately authorized. `pnpm content:backup` creates a private local snapshot; only an explicitly authorized push publishes content. See [content sync](docs/content-sync.md).
 
 ## Non-regression invariants
 
@@ -57,7 +58,7 @@ Read [the redesign preservation contract](docs/frontend-redesign.md) before chan
 - Deny external vault URLs regardless of caller-supplied internal headers. Authorized vault retrieval uses the ASSETS binding; private responses must not become public cache entries.
 - Never commit secrets or copy production credential values into examples, fixtures, generated types, or memory. Secret names are documentation; secret values are not.
 - Preserve quota degradation and fallback semantics. Isolate-local counters/caches are not globally exact account usage, and free-tier configuration is not a zero-cost guarantee.
-- Do not treat populated admin charts as proof of persisted visits: the current telemetry API can synthesize fallback data. Production Access and D1 persistence require separate owner-authorized evidence.
+- Do not treat populated admin charts or a queued collector response as proof of persisted visits. `/api/telemetry` returns observed empty results or explicit 503 unavailable/degraded responses, not synthetic visits. Device/OS and sampled bot/AI coverage are bounded subsets, never site-wide totals; migration `0012` must precede explicit bot collection activation. D1 Free storage is 500 MB per database and 5 GB per account; the dashboard does not measure usage. Production Access and D1 persistence require separate owner-authorized evidence.
 
 ## Skills and codebase knowledge
 
@@ -81,8 +82,8 @@ Use the active Engram protocol for project resolution, recall, proactive discove
 ## Checks and delivery
 
 - Follow [the verification guide](docs/verification.md). Observe RED before behavior fixes when a relevant deterministic test exists. For descriptive documentation, validate references and factual claims instead of inventing runtime RED/GREEN.
-- Use `pnpm check`, `pnpm test`, and relevant Playwright cases. A build may pull remote content; when remote access is not authorized, bypass the pull hook using the direct Astro commands in the verification guide. `CONTENT_SOURCE=local` does not prevent pulls when content is missing or CI flags are truthy; Wrangler custom builds can also pull.
-- Normalize only the intended files before final checks/review. Do not run a repository-wide formatter over unrelated work.
+- Use `pnpm check`, `pnpm test`, and relevant Playwright cases when applicable. Respect an owner's explicit decision to rely on their own verification; preserve earlier failures as failures. A build may pull remote content; when remote access is not authorized, bypass the pull hook using the direct Astro commands in the verification guide. `CONTENT_SOURCE=local` does not prevent pulls when content is missing or CI flags are truthy; Wrangler custom builds can also pull.
+- Normalize only the intended files before final checks/review. Do not run a repository-wide formatter over unrelated work. Treat `package.json` scripts as the command inventory; preserve build hooks and explicit remote side-effect boundaries when simplifying it.
 - Report commands actually run, skips, unavailable inputs, and failures. Targets such as LCP, CLS, INP, Lighthouse scores, or FPS are not certified by architecture alone or by a historical test count.
 - Keep runtime fixes separate from documentation corrections unless explicitly authorized. Updating these specifications does not authorize deployment, account changes, destructive database resets, cache purges, or remote content uploads.
 - Preserve human edits. Use Conventional Commits; never add `Co-Authored-By` or AI attribution. Push/merge/deploy only within explicit authorization.
