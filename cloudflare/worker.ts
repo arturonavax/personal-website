@@ -1872,12 +1872,12 @@ export interface VisitorClassification {
  * Standard HTTP & Cloudflare Edge Visitor Classifier (Human vs Bot)
  *
  * Deterministically classifies ingress traffic into Human (P0) or Automated/Bot.
- * Guarantees zero false positives on legitimate human browser configurations (including
- * regional browsers like YaBrowser and mobile devices with build tokens like CUBOT) while
- * identifying automated CLI clients, headless test runners, scrapers, search crawlers,
- * and AI indexing bots.
+ * Uses available request signals and user-agent heuristics to distinguish likely humans,
+ * crawlers, and automated clients. False positives and unknown bots remain possible;
+ * classification is not a verified visitor identity or exhaustive bot census.
  *
- * Execution invariant: 0 ms user latency impact, 0 KB client JavaScript.
+ * Classification runs at the edge; the document path schedules analytics with waitUntil.
+ * It adds no classification-specific client JavaScript.
  */
 export function classifyVisitor(
   request: Request,
@@ -4102,7 +4102,7 @@ export async function handleAdminDashboardRequest(
 
           const bots = {
             status: "unavailable" as "subset" | "unavailable",
-            source: "telemetry_events",
+            source: "pageviews",
             window_days: 7,
             collection_enabled:
               env.ENABLE_BOT_TELEMETRY !== false &&
@@ -4111,20 +4111,28 @@ export async function handleAdminDashboardRequest(
             observed: null as number | null,
             ai: null as number | null,
             other: null as number | null,
+            unknown: null as number | null,
           };
           try {
             const rows = await runQuery(
               `SELECT COUNT(*) AS observed,
-                COALESCE(SUM(CASE WHEN bot_name = 'ai_training_crawler' THEN 1 ELSE 0 END), 0) AS ai
-               FROM telemetry_events
+                COALESCE(SUM(CASE WHEN bot_category = 'ai_scraper' THEN 1 ELSE 0 END), 0) AS ai,
+                COALESCE(SUM(CASE WHEN bot_category IS NULL THEN 1 ELSE 0 END), 0) AS unknown
+               FROM pageviews
                WHERE is_bot = 1 AND created_at >= ?`,
-              [new Date(now - 7 * 86_400_000).toISOString()],
+              [
+                new Date(now - 7 * 86_400_000)
+                  .toISOString()
+                  .replace("T", " ")
+                  .slice(0, 19),
+              ],
             );
             if (rows[0]) {
               bots.status = "subset";
               bots.observed = Number(rows[0].observed || 0);
               bots.ai = Number(rows[0].ai || 0);
-              bots.other = bots.observed - bots.ai;
+              bots.unknown = Number(rows[0].unknown || 0);
+              bots.other = bots.observed - bots.ai - bots.unknown;
             }
           } catch (err) {
             if (isD1QuotaException(err)) {
@@ -8055,13 +8063,17 @@ export async function recordAnalyticsNonBlocking(
       computeDedupeKey(visitorHash, normalizedPath, bucket - 1),
     ]);
 
+    // Only classified bot rows need the additive 0012 column; human ingestion
+    // remains compatible during a staged migration rollout.
+    const botCategoryColumn = isBot ? ", bot_category" : "";
+    const botCategoryValue = isBot ? ", ?" : "";
     const pageviewsInsert = db
       .prepare(
         `INSERT INTO pageviews (
            path, visitor_hash, referrer, country,
            utm_source, utm_medium, utm_campaign, utm_content, utm_term,
-           is_bot, created_at, dedupe_key
-         ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?
+           is_bot${botCategoryColumn}, created_at, dedupe_key
+         ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${botCategoryValue}, datetime('now'), ?
          WHERE NOT EXISTS (SELECT 1 FROM pageviews WHERE dedupe_key = ?)
          ON CONFLICT(dedupe_key) DO NOTHING`,
       )
@@ -8076,6 +8088,7 @@ export async function recordAnalyticsNonBlocking(
         utmContent.slice(0, 100),
         utmTerm.slice(0, 100),
         isBot,
+        ...(isBot ? [visitorInfo.classification] : []),
         dedupeKey,
         prevDedupeKey,
       );

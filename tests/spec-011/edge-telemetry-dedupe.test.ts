@@ -8,6 +8,7 @@ import {
   computeVisitorHash,
   normalizeIpForDedupe,
   recordAnalyticsNonBlocking,
+  botCircuitBreaker,
   PAGEVIEW_DEDUPE_WINDOW_MS,
 } from "../../cloudflare/worker";
 
@@ -24,7 +25,11 @@ const MIGRATIONS_DIR = path.join(
   "migrations",
 );
 // Keep the historical baseline intact; bring the fixture forward to the aggregate rollup schema.
-const MIGRATIONS = ["0001_initial_schema.sql", "0011_aggregate_device_os.sql"];
+const MIGRATIONS = [
+  "0001_initial_schema.sql",
+  "0011_aggregate_device_os.sql",
+  "0012_bot_category.sql",
+];
 
 function createD1Shim() {
   const sqlite = new Database(":memory:");
@@ -96,6 +101,28 @@ async function recordAt(
 
 describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
   beforeEach(() => clearRecentPageviewsCache());
+
+  it("retains the nominal AI bot category on the deduped public pageview without extra raw writes", async () => {
+    const { db, sqlite, count } = createD1Shim();
+    botCircuitBreaker.reset();
+    const request = humanRequest(
+      "/en/blog/bot/",
+      "198.51.100.42",
+      "GPTBot/1.0",
+    );
+    const env = { DB: db, ENABLE_BOT_TELEMETRY: "true" } as never;
+    await recordAnalyticsNonBlocking(request, "/en/blog/bot/", db, env);
+    await recordAnalyticsNonBlocking(request, "/en/blog/bot/", db, env);
+    expect(count("pageviews")).toBe(1);
+    expect(count("telemetry_events")).toBe(0);
+    expect(
+      sqlite.prepare("SELECT is_bot, bot_category FROM pageviews").get(),
+    ).toEqual({
+      is_bot: 1,
+      bot_category: "ai_scraper",
+    });
+    sqlite.close();
+  });
 
   it("schema: UNIQUE dedupe_key exists and redundant indexes are pruned", () => {
     const { sqlite } = createD1Shim();

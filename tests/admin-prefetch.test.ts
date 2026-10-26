@@ -249,6 +249,9 @@ describe("bounded admin telemetry coverage", () => {
         "utf8",
       ),
     );
+    f.sqlite.exec(
+      readFileSync("cloudflare/d1/migrations/0012_bot_category.sql", "utf8"),
+    );
     const today = new Date().toISOString().slice(0, 10);
     f.sqlite
       .prepare(
@@ -258,12 +261,14 @@ describe("bounded admin telemetry coverage", () => {
       )
       .run(today);
     const event = f.sqlite.prepare(
-      `INSERT INTO telemetry_events (dedupe_key, path, event_type, visitor_hash, is_bot, bot_name, created_at)
-       VALUES (?, '/experience/latam', 'pageview', 'hash', 1, ?, ?)`,
+      `INSERT INTO pageviews (dedupe_key, path, visitor_hash, is_bot, bot_category, created_at)
+       VALUES (?, '/experience/latam', 'hash', 1, ?, ?)`,
     );
-    event.run("ai", "ai_training_crawler", new Date().toISOString());
-    event.run("crawler", "search_engine_crawler", new Date().toISOString());
-    event.run("old", "ai_training_crawler", "2020-01-01T00:00:00Z");
+    const recent = new Date().toISOString().replace("T", " ").slice(0, 19);
+    event.run("ai", "ai_scraper", recent);
+    event.run("crawler", "search_crawler", recent);
+    event.run("unknown", null, recent);
+    event.run("old", "ai_scraper", "2020-01-01 00:00:00");
     f.env.ENABLE_BOT_TELEMETRY = "false";
     const response = await f.admin("path=/unrelated/&segment=human");
     const data = await response.json();
@@ -280,16 +285,34 @@ describe("bounded admin telemetry coverage", () => {
       },
       bots: {
         status: "subset",
-        source: "telemetry_events",
+        source: "pageviews",
         window_days: 7,
         collection_enabled: false,
-        observed: 2,
+        observed: 3,
         ai: 1,
         other: 1,
+        unknown: 1,
       },
     });
     const page = await (await f.admin("path=/unrelated/&page_only=1")).json();
     expect(page.coverage).toBeNull();
+    f.sqlite.close();
+  });
+
+  it("keeps only bot classification unavailable between migrations 0011 and 0012", async () => {
+    const f = fixture();
+    f.sqlite.exec(
+      readFileSync(
+        "cloudflare/d1/migrations/0011_aggregate_device_os.sql",
+        "utf8",
+      ),
+    );
+    const response = await f.admin("path=/migration-boundary/");
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.coverage.device_os.status).toBe("subset");
+    expect(data.coverage.bots.status).toBe("unavailable");
+    expect(data.coverage.bots.observed).toBeNull();
     f.sqlite.close();
   });
 
@@ -305,6 +328,16 @@ describe("bounded admin telemetry coverage", () => {
       classified_views: null,
       device: null,
       os: null,
+    });
+    expect(data.coverage.bots).toEqual({
+      status: "unavailable",
+      source: "pageviews",
+      window_days: 7,
+      collection_enabled: true,
+      observed: null,
+      ai: null,
+      other: null,
+      unknown: null,
     });
     f.sqlite.close();
   });

@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS pageviews (
   utm_content TEXT DEFAULT '',
   utm_term TEXT DEFAULT '',
   is_bot INTEGER DEFAULT 0,
+  bot_category TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
