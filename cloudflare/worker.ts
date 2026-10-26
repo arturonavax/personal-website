@@ -3449,8 +3449,8 @@ export async function handleAdminDashboardRequest(
         writes_daily_limit: d1WritesDailyLimit,
         is_exceeded: isWritesExceeded,
         exceeded_by: Math.max(0, effectiveWrites - d1WritesDailyLimit),
-        storage_mb: 12.4,
-        storage_limit_mb: 5120,
+        storage_mb: null,
+        storage_limit_mb: 500,
         unit: "rows",
       },
       r2_storage: {
@@ -3503,7 +3503,12 @@ export async function handleAdminDashboardRequest(
         limit: d1WritesDailyLimit,
         is_exceeded: isWritesExceeded,
       },
-      d1_storage: { used_mb: 12.4, limit_gb: 5 },
+      d1_storage: {
+        used_mb: null,
+        limit_mb: 500,
+        limit_gb: 0.5,
+        scope: "per_database",
+      },
       r2_class_a_monthly: { used: 240, limit: 1000000 },
       r2_class_b_monthly: { used: 3420, limit: 10000000 },
       zero_trust_seats: { used: 1, limit: 50 },
@@ -6677,7 +6682,7 @@ export async function handleAdminDashboardRequest(
             globalBadge.style.color = 'var(--red)';
             globalBadge.classList.add('pulse-alert');
           } else {
-            globalBadge.textContent = '100% Free Tier Compliant';
+            globalBadge.textContent = isEs ? 'Estimaciones locales · verificar cuenta' : 'Local estimates · check account';
             globalBadge.style.color = 'var(--green)';
             globalBadge.classList.remove('pulse-alert');
           }
@@ -6688,8 +6693,8 @@ export async function handleAdminDashboardRequest(
         const q = cachedQuotas.d1_storage;
         const el = document.getElementById('quota-d1-storage');
         const bar = document.getElementById('quota-d1-storage-bar');
-        if (el) el.textContent = (q.used_mb || 12.4) + ' MB / ' + (q.limit_gb || 5) + ' GB';
-        if (bar) bar.style.width = Math.min(100, Math.max(1, Math.round(((q.used_mb || 12.4) / ((q.limit_gb || 5) * 1024)) * 100))) + '%';
+        if (el) el.textContent = isEs ? 'Uso sin medir / 500 MB por BD' : 'Usage unmeasured / 500 MB per DB';
+        if (bar) bar.style.width = '0%';
       }
 
       if (cachedQuotas.r2_class_a_monthly) {

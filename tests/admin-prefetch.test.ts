@@ -180,6 +180,12 @@ describe("truthful admin prefetch data", () => {
     expect(data.prefetches).toHaveLength(2);
     expect(data.stats.total_pageviews).toBe(0);
     expect(data.pageviews).toEqual([]);
+    expect(data.quotas.d1_storage).toEqual({
+      used_mb: null,
+      limit_mb: 500,
+      limit_gb: 0.5,
+      scope: "per_database",
+    });
     const empty = await (await f.admin("path=/missing/")).json();
     expect(empty.stats.prefetches_count).toBe(0);
     expect(empty.pageviews).toEqual([]);
@@ -353,6 +359,122 @@ describe("bounded admin telemetry coverage", () => {
       unknown: null,
     });
     f.sqlite.close();
+  });
+});
+
+function coverageFixture(isEs: boolean, coverage: unknown) {
+  const source = readFileSync("src/pages/[...lang]/admin/index.astro", "utf8");
+  const fn = source.slice(
+    source.indexOf("    function renderCoverage()"),
+    source.indexOf("    function renderDashboard()"),
+  );
+  const nodes = new Map<string, { textContent: string }>();
+  const state = {
+    isEs,
+    cachedTelemetryData: { coverage },
+    document: {
+      getElementById: (id: string) => {
+        if (!nodes.has(id)) nodes.set(id, { textContent: "" });
+        return nodes.get(id);
+      },
+    },
+  };
+  runInNewContext(fn + "; renderCoverage()", state);
+  return nodes;
+}
+
+describe("truthful bilingual coverage rendering", () => {
+  it("does not present fabricated D1 storage usage or the account cap as a per-database limit", () => {
+    const source = readFileSync(
+      "src/pages/[...lang]/admin/index.astro",
+      "utf8",
+    );
+    const fn = source.slice(
+      source.indexOf("    function renderQuotas()"),
+      source.indexOf("    function renderCoverage()"),
+    );
+    for (const isEs of [false, true]) {
+      for (const d1Storage of [
+        { used_mb: null, limit_mb: 500, scope: "per_database" },
+        { used_mb: 12.4, limit_gb: 5 }, // old synthetic API payload
+      ]) {
+        const nodes = new Map<
+          string,
+          { textContent: string; style: { width: string } }
+        >();
+        runInNewContext(fn + "; renderQuotas()", {
+          isEs,
+          cachedQuotas: { d1_storage: d1Storage },
+          document: {
+            getElementById: (id: string) => {
+              if (!nodes.has(id))
+                nodes.set(id, { textContent: "", style: { width: "" } });
+              return nodes.get(id);
+            },
+          },
+        });
+        expect(nodes.get("quota-d1-storage")?.textContent).toMatch(/500 MB/);
+        expect(nodes.get("quota-d1-storage")?.textContent).not.toMatch(
+          /12\.4|5 GB/,
+        );
+        expect(nodes.get("quota-d1-storage-bar")?.style.width).toBe("0%");
+      }
+    }
+  });
+  it("shows source, independent window and observed subsets without extrapolating bots", () => {
+    const coverage = {
+      device_os: {
+        status: "subset",
+        window_days: 30,
+        classified_views: 3,
+        device: { desktop: 2, mobile: 1 },
+        os: { windows: 2, macos: 0, ios: 1, android: 0, linux: 0, other: 0 },
+      },
+      bots: {
+        status: "subset",
+        window_days: 7,
+        collection_enabled: false,
+        sample_rate: 0.01,
+        observed: 3,
+        ai: 1,
+        other: 1,
+        unknown: 1,
+      },
+    };
+    const en = coverageFixture(false, coverage);
+    expect(en.get("coverage-device-status")?.textContent).toMatch(
+      /30.*analytics_rollups.*subset/i,
+    );
+    expect(en.get("coverage-bot-status")?.textContent).toMatch(
+      /off.*1%.*7.*pageviews/i,
+    );
+    expect(en.get("coverage-desktop")?.textContent).toBe("2");
+    expect(en.get("coverage-ai")?.textContent).toBe("1");
+    expect(en.get("coverage-unknown")?.textContent).toBe("1");
+    const es = coverageFixture(true, coverage);
+    expect(es.get("coverage-device-status")?.textContent).toMatch(
+      /30.*analytics_rollups.*subconjunto/i,
+    );
+    expect(es.get("coverage-bot-status")?.textContent).toMatch(
+      /desactivada.*1%.*7.*pageviews/i,
+    );
+  });
+
+  it("marks missing coverage as unavailable, not zero events", () => {
+    for (const isEs of [false, true]) {
+      const nodes = coverageFixture(isEs, {
+        device_os: { status: "unavailable", device: null, os: null },
+        bots: { status: "unavailable", observed: null },
+      });
+      expect(nodes.get("coverage-desktop")?.textContent).toBe("—");
+      expect(nodes.get("coverage-ai")?.textContent).toBe("—");
+      expect(nodes.get("coverage-device-status")?.textContent).toMatch(
+        /unavailable|no disponible/i,
+      );
+      expect(nodes.get("coverage-bot-status")?.textContent).toMatch(
+        /unavailable|no disponible/i,
+      );
+    }
   });
 });
 

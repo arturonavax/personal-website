@@ -425,7 +425,7 @@ const description = isEs
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
       <div class="geometric-box rounded-sm p-3.5 shadow-sm">
         <span class="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)]">
-          {isEs ? "Total Eventos (D1)" : "Total Events (D1)"}
+          {isEs ? "Visitas registradas (D1)" : "Recorded visits (D1)"}
         </span>
         <div
           class="mt-1 text-2xl font-bold font-mono text-[var(--color-text-primary)]"
@@ -455,7 +455,7 @@ const description = isEs
           class="mt-0.5 text-[10px] font-mono text-[var(--color-text-muted)]"
           id="kpi-human-sub"
         >
-          {isEs ? "Tráfico real validado" : "Verified human"}
+          {isEs ? "Clasificación probable" : "Likely human classification"}
         </p>
       </div>
 
@@ -473,7 +473,7 @@ const description = isEs
           class="mt-0.5 text-[10px] font-mono text-[var(--color-text-muted)]"
           id="kpi-bot-sub"
         >
-          {isEs ? "Rastreadores & SEO" : "Indexers & AI bots"}
+          {isEs ? "Solo bots registrados" : "Recorded bots only"}
         </p>
       </div>
 
@@ -532,6 +532,81 @@ const description = isEs
       </div>
     </div>
 
+    <section
+      class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-3"
+      aria-labelledby="coverage-heading"
+    >
+      <h2
+        id="coverage-heading"
+        class="text-xs sm:text-sm font-bold font-mono uppercase tracking-wider text-[var(--color-accent-gold)]"
+      >
+        {isEs
+          ? "Cobertura observada · subconjuntos"
+          : "Observed coverage · subsets"}
+      </h2>
+      <p class="text-xs text-[var(--color-text-muted)]">
+        {isEs
+          ? "Ventanas independientes de los filtros de arriba. No son totales del sitio: hay deduplicación, muestreo, cuotas y fallas posibles. Los bots y la IA se clasifican por señales, no por identidad verificada."
+          : "Windows independent of the filters above. Not site-wide totals: dedupe, sampling, quotas and failures can omit visits. Bot and AI classification is heuristic, not verified identity."}
+      </p>
+      <div class="grid gap-3 md:grid-cols-2">
+        <article class="rounded-sm border border-[var(--color-surface-border)] p-3">
+          <h3 class="text-xs font-bold font-mono uppercase text-[var(--color-text-primary)]">
+            {isEs ? "Dispositivo y sistema" : "Device and OS"}
+          </h3>
+          <p
+            id="coverage-device-status"
+            role="status"
+            class="mt-1 text-xs text-[var(--color-text-muted)]"
+          >
+            {isEs ? "Sin datos disponibles" : "Data unavailable"}
+          </p>
+          <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono text-[var(--color-text-muted)] [&_dd]:text-right [&_dd]:text-[var(--color-text-primary)]">
+            <dt>{isEs ? "Clasificadas" : "Classified"}</dt>
+            <dd id="coverage-classified">—</dd>
+            <dt>Desktop</dt>
+            <dd id="coverage-desktop">—</dd>
+            <dt>{isEs ? "Móvil" : "Mobile"}</dt>
+            <dd id="coverage-mobile">—</dd>
+            <dt>Windows</dt>
+            <dd id="coverage-windows">—</dd>
+            <dt>macOS</dt>
+            <dd id="coverage-macos">—</dd>
+            <dt>iOS</dt>
+            <dd id="coverage-ios">—</dd>
+            <dt>Android</dt>
+            <dd id="coverage-android">—</dd>
+            <dt>Linux</dt>
+            <dd id="coverage-linux">—</dd>
+            <dt>{isEs ? "Otro SO" : "Other OS"}</dt>
+            <dd id="coverage-other-os">—</dd>
+          </dl>
+        </article>
+        <article class="rounded-sm border border-[var(--color-surface-border)] p-3">
+          <h3 class="text-xs font-bold font-mono uppercase text-[var(--color-text-primary)]">
+            {isEs ? "Bots e IA registrados" : "Recorded bots and AI"}
+          </h3>
+          <p
+            id="coverage-bot-status"
+            role="status"
+            class="mt-1 text-xs text-[var(--color-text-muted)]"
+          >
+            {isEs ? "Sin datos disponibles" : "Data unavailable"}
+          </p>
+          <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono text-[var(--color-text-muted)] [&_dd]:text-right [&_dd]:text-[var(--color-text-primary)]">
+            <dt>{isEs ? "Observados" : "Observed"}</dt>
+            <dd id="coverage-observed">—</dd>
+            <dt>{isEs ? "IA probable" : "Likely AI"}</dt>
+            <dd id="coverage-ai">—</dd>
+            <dt>{isEs ? "Otros bots" : "Other bots"}</dt>
+            <dd id="coverage-other-bot">—</dd>
+            <dt>{isEs ? "Sin clasificar" : "Unknown"}</dt>
+            <dd id="coverage-unknown">—</dd>
+          </dl>
+        </article>
+      </div>
+    </section>
+
     <!-- Comprehensive Cloudflare Free Tier Quotas Monitor -->
     <div class="geometric-box rounded-sm p-4 sm:p-5 shadow-sm space-y-4">
       <div class="border-b border-[var(--color-surface-border)] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -543,15 +618,17 @@ const description = isEs
           </h2>
           <p class="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">
             {isEs
-              ? "Límites diarios y mensuales garantizados para Workers, D1, R2, Zero Trust y AI"
-              : "Daily and monthly usage tracking for Workers, D1, R2, Zero Trust, and Workers AI"}
+              ? "Límites de referencia; parte del uso es estimado o no medido. Consultá Cloudflare para el consumo real."
+              : "Reference limits; some usage is estimated or unmeasured. Check Cloudflare for actual consumption."}
           </p>
         </div>
         <span
           id="quotas-global-badge"
           class="font-mono text-[11px] text-emerald-400 font-semibold"
         >
-          100% Free Tier Compliant
+          {isEs
+            ? "Estimaciones locales · verificar cuenta"
+            : "Local estimates · check account"}
         </span>
       </div>
 
@@ -1481,7 +1558,7 @@ const description = isEs
           <button
             type="button"
             id="btn-page-prev"
-            onclick="goToPage(currentPage - 1)"
+            onclick="goToPageRelative(-1)"
             class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]"
           >
             &lsaquo; Anterior
@@ -1495,7 +1572,7 @@ const description = isEs
           <button
             type="button"
             id="btn-page-next"
-            onclick="goToPage(currentPage + 1)"
+            onclick="goToPageRelative(1)"
             class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]"
           >
             Siguiente &rsaquo;
@@ -1503,7 +1580,7 @@ const description = isEs
           <button
             type="button"
             id="btn-page-last"
-            onclick="goToPage(totalPages)"
+            onclick="goToLastPage()"
             class="rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-2 py-0.5 text-[var(--color-text-secondary)] hover:border-[var(--color-accent-gold)]"
           >
             Último &raquo;
@@ -2234,7 +2311,9 @@ const description = isEs
             globalBadge.className =
               "font-mono text-[11px] text-red-400 font-bold animate-pulse";
           } else {
-            globalBadge.textContent = "100% Free Tier Compliant";
+            globalBadge.textContent = isEs
+              ? "Estimaciones locales · verificar cuenta"
+              : "Local estimates · check account";
             globalBadge.className =
               "font-mono text-[11px] text-emerald-400 font-semibold";
           }
@@ -2247,18 +2326,19 @@ const description = isEs
         var bar4 = document.getElementById("quota-d1-storage-bar");
         if (el4)
           el4.textContent =
-            (q4.used_mb || 12.4) + " MB / " + (q4.limit_gb || 5) + " GB";
+            q4.scope === "per_database" && typeof q4.used_mb === "number"
+              ? q4.used_mb + " / " + q4.limit_mb + " MB"
+              : isEs
+                ? "Uso sin medir / 500 MB por BD"
+                : "Usage unmeasured / 500 MB per DB";
         if (bar4)
           bar4.style.width =
-            Math.min(
-              100,
-              Math.max(
-                1,
-                Math.round(
-                  ((q4.used_mb || 12.4) / ((q4.limit_gb || 5) * 1024)) * 100,
-                ),
-              ),
-            ) + "%";
+            q4.scope === "per_database" &&
+            typeof q4.used_mb === "number" &&
+            q4.limit_mb > 0
+              ? Math.min(100, Math.round((q4.used_mb / q4.limit_mb) * 100)) +
+                "%"
+              : "0%";
       }
 
       if (cachedQuotas.r2_class_a_monthly) {
@@ -2345,6 +2425,78 @@ const description = isEs
       }
     }
 
+    function renderCoverage() {
+      var coverage = cachedTelemetryData && cachedTelemetryData.coverage;
+      var device = coverage && coverage.device_os;
+      var bots = coverage && coverage.bots;
+      function put(id, value) {
+        var node = document.getElementById(id);
+        if (node)
+          node.textContent =
+            typeof value === "number" && Number.isFinite(value)
+              ? value.toLocaleString()
+              : "—";
+      }
+      var deviceAvailable = device && device.status === "subset";
+      var botAvailable = bots && bots.status === "subset";
+      var deviceStatus = document.getElementById("coverage-device-status");
+      if (deviceStatus)
+        deviceStatus.textContent = deviceAvailable
+          ? isEs
+            ? "30 días UTC · analytics_rollups · subconjunto observado"
+            : "30 UTC days · analytics_rollups · observed subset"
+          : isEs
+            ? "No disponible · migración 0011 o lectura D1 fallida"
+            : "Unavailable · migration 0011 or D1 read failed";
+      var botStatus = document.getElementById("coverage-bot-status");
+      if (botStatus) {
+        if (!botAvailable) {
+          botStatus.textContent = isEs
+            ? "No disponible · migración 0012 o lectura D1 fallida"
+            : "Unavailable · migration 0012 or D1 read failed";
+        } else {
+          var rate =
+            typeof bots.sample_rate === "number" &&
+            Number.isFinite(bots.sample_rate)
+              ? String(Number((bots.sample_rate * 100).toFixed(2))) + "%"
+              : "?%";
+          botStatus.textContent = isEs
+            ? (bots.collection_enabled
+                ? "Muestra parcial"
+                : "Recolección desactivada") +
+              " · " +
+              rate +
+              " configurado · 7 días · pageviews · subconjunto"
+            : (bots.collection_enabled ? "Partial sample" : "Collection off") +
+              " · " +
+              rate +
+              " configured · 7 days · pageviews · subset";
+        }
+      }
+      put(
+        "coverage-classified",
+        deviceAvailable ? device.classified_views : null,
+      );
+      put(
+        "coverage-desktop",
+        deviceAvailable && device.device ? device.device.desktop : null,
+      );
+      put(
+        "coverage-mobile",
+        deviceAvailable && device.device ? device.device.mobile : null,
+      );
+      for (var os of ["windows", "macos", "ios", "android", "linux", "other"]) {
+        put(
+          os === "other" ? "coverage-other-os" : "coverage-" + os,
+          deviceAvailable && device.os ? device.os[os] : null,
+        );
+      }
+      put("coverage-observed", botAvailable ? bots.observed : null);
+      put("coverage-ai", botAvailable ? bots.ai : null);
+      put("coverage-other-bot", botAvailable ? bots.other : null);
+      put("coverage-unknown", botAvailable ? bots.unknown : null);
+    }
+
     function renderDashboard() {
       if (!cachedTelemetryData) return;
 
@@ -2379,13 +2531,20 @@ const description = isEs
       var kpiHumanSub = document.getElementById("kpi-human-sub");
       if (kpiHumanSub)
         kpiHumanSub.textContent =
-          humanPct + (isEs ? "% del total" : "% of total");
+          humanPct +
+          (isEs ? "% de visitas registradas" : "% of recorded visits");
 
       var kpiBot = document.getElementById("kpi-bot");
       if (kpiBot) kpiBot.textContent = botViews.toLocaleString();
       var kpiBotSub = document.getElementById("kpi-bot-sub");
       if (kpiBotSub)
-        kpiBotSub.textContent = botPct + (isEs ? "% del total" : "% of total");
+        kpiBotSub.textContent =
+          cachedTelemetryData.coverage?.bots?.collection_enabled === false
+            ? isEs
+              ? "Recolección desactivada; solo historial"
+              : "Collection off; historical only"
+            : botPct +
+              (isEs ? "% de visitas registradas" : "% of recorded visits");
 
       var kpiUnique = document.getElementById("kpi-unique");
       if (kpiUnique) kpiUnique.textContent = uniqueVisitors.toLocaleString();
@@ -2438,6 +2597,7 @@ const description = isEs
       if (btnLast) btnLast.disabled = currentPage >= totalPages;
 
       // Dropdowns & Renderers
+      renderCoverage();
       updateCountryDropdown();
       renderQuotas();
       renderTopPages(rawTopPages, totalViews);
@@ -3129,6 +3289,14 @@ const description = isEs
     win["changeReferrersPage"] = changeReferrersPage;
     win["changeLeadsPage"] = changeLeadsPage;
     win["goToPage"] = goToPage;
+    // Inline handlers can call window functions, but cannot read this module's
+    // private pagination state directly.
+    win["goToPageRelative"] = function (delta) {
+      goToPage(currentPage + delta);
+    };
+    win["goToLastPage"] = function () {
+      goToPage(totalPages);
+    };
     win["setLimit"] = setLimit;
 
     win["switchSubtab"] = function (tab, btnEl) {
