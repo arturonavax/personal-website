@@ -54,3 +54,4 @@ public/downloads/**
 !public/downloads/.gitkeep
 public/remote-assets/**
 !public/remote-assets/.gitkeep
+.gsccli.json

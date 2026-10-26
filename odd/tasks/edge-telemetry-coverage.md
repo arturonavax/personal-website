@@ -1,8 +1,10 @@
 # Edge telemetry coverage and admin reporting
+
 Branch: `feat/edge-telemetry-coverage` from `207d435`; no remote deployment, push, PR or merge without a separate delivery decision.
 Runner: Bun integration tests, `pnpm check`, local loopback Worker and browser cases; bounded Free-plan workload and reviewable commits.
 
 ## Specs
+
 S1. "Usa las skills de cloudflare, workers y wrangler para asegurarte de haber dejado las mejores integraciones posibles, maximo rendimiento y escalables." Use the pinned project/runtime, existing Worker/D1/R2 stack and current Cloudflare limits; do not add infrastructure without an evidenced requirement.
 S2. "Y que sea telemetria server-side edge SSG esta perfectamente integrada y todas las visitas seran registradas (separando bots, humanos, IAs, dispositivos, sistemas operativos) sin duplicar registros, sin ignorar visitas,". Preserve server-side initial documents, browser-only committed route reporting, authoritative dedupe and clear classification boundaries; do not claim impossible absolute delivery or perfect identity.
 S3. "teniendo en cuenta todos los comportamientos de navegacion de la pagina como los de el timeline con las fechas y atajos." Keep speculative requests distinct from committed arrows, H/L, Back/Forward and locale transitions.
@@ -10,12 +12,14 @@ S4. "Que las integraciones sean estandar y optimas con las quotas gratuitas de c
 S5. "Priorizar Free y precisión honesta (recomendado)"; "Una visita por persona/ruta/ventana; distinguir subconjuntos y faltantes, agregar métricas agregadas de bots/IA y dispositivo/SO sin prometer exhaustividad." This selected tradeoff supersedes any reading of S2 as an absolute guarantee. Counters must disclose source, window and unavailable/partial state; do not mislabel estimates or subset counts as totals.
 
 ## Tasks
+
 T1 [S1-S2,S4-S5] route inline, done; commits e7918a2b4f8fe0bcb82879ab83ce12238092094c and ab7f9c964c5bf45a1fd5e789776b15eafff70ae9 — bounded authenticated API breakdown, nominal bot source corrected by additive migration and independently verified.
 T2 [S2,S4-S5] route inline with high-risk verification, done; commit 259c9e147b61d030f87227e9c139ea1a43e59412 — deterministic 1% opt-in bot sample under existing quota protection, rate reported, checked-in bot collection remains disabled pending migration/owner action.
 T3 [S3-S5] route inline, done; commit 9598b89cb5922a2317b67e892d8bada79b2ea139 — bilingual observed-subset UI, honest D1 quota reporting, repaired paginated admin controls, browser evidence.
 T4 [S1-S5] route inline, done; commit adb52a30cf81fd891eb4fe1dd6b3b2069ecfe823 — local navigation/auth/API/quota evidence and production/delivery limits recorded.
 
 ## Log
+
 L1 (user request): Usa las skills de cloudflare, workers y wrangler para asegurarte de haber dejado las mejores integraciones posibles, maximo rendimiento y escalables. Y que sea telemetria server-side edge SSG esta perfectamente integrada y todas las visitas seran registradas (separando bots, humanos, IAs, dispositivos, sistemas operativos) sin duplicar registros, sin ignorar visitas, teniendo en cuenta todos los comportamientos de navegacion de la pagina como los de el timeline con las fechas y atajos. Que las integraciones sean estandar y optimas con las quotas gratuitas de cloudflare, y que le dashboard /admin este actualizado con sus APIs para consultar de forma perfecta y eficiente toda la informacion interesante de la telemetria.
 L2 (user decision): Priorizar Free y precisión honesta (recomendado). One accepted visitor/path/window event, display bounded subsets and missing data, aggregate bot/AI/device/OS where supported; no exhaustive-delivery promise.
 L3: Initial read-only map: top-level Wrangler routes most public HTML through Worker-first, which counts against Free Worker limits and can return 429 at the platform cap. D1 Free includes 5m rows read and 100k rows written/day; indexes add writes. Existing first-document telemetry uses `waitUntil`, browser-only SPA routes use beacons, bot collection is disabled in checked-in config, `analytics_rollups` holds device/OS subsets, raw bot reason is kept for seven days, and `/admin` exposes human/bot but not AI/device/OS breakdown. No remote resources or production visits were read. Source base `207d435` has a clean tree before this feature.
