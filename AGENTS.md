@@ -58,7 +58,7 @@ Read [the redesign preservation contract](docs/frontend-redesign.md) before chan
 - Deny external vault URLs regardless of caller-supplied internal headers. Authorized vault retrieval uses the ASSETS binding; private responses must not become public cache entries.
 - Never commit secrets or copy production credential values into examples, fixtures, generated types, or memory. Secret names are documentation; secret values are not.
 - Preserve quota degradation and fallback semantics. Isolate-local counters/caches are not globally exact account usage, and free-tier configuration is not a zero-cost guarantee.
-- Do not treat populated admin charts or a queued collector response as proof of persisted visits. `/api/telemetry` returns observed empty results or explicit 503 unavailable/degraded responses, not synthetic visits. Device/OS and sampled bot/AI coverage are bounded subsets, never site-wide totals; migration `0012` must precede explicit bot collection activation. D1 Free storage is 500 MB per database and 5 GB per account; the dashboard does not measure usage. Production Access and D1 persistence require separate owner-authorized evidence.
+- Do not treat populated admin charts or a queued collector response as proof of persisted visits. `/api/telemetry` returns observed empty results or explicit 503 unavailable/degraded responses, not synthetic visits. Device/OS and sampled bot/AI coverage are bounded subsets, never site-wide totals; the production `bot_category` schema must be verified before explicit bot collection activation. D1 Free storage is 500 MB per database and 5 GB per account; the dashboard does not measure usage. Production Access and D1 persistence require separate owner-authorized evidence.
 
 ## Skills and codebase knowledge
 

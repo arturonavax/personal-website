@@ -10,11 +10,20 @@ import worker, {
 import { edgeQuotaTracker } from "../src/lib/adapters";
 
 const TOKEN = "local-test-only-admin-token-32-characters";
-function fixture(status = 200) {
+function fixture(status = 200, legacy?: "pre-bot" | "pre-rollup") {
   const sqlite = new Database(":memory:");
-  sqlite.exec(
-    readFileSync("cloudflare/d1/migrations/0001_initial_schema.sql", "utf8"),
+  let baseline = readFileSync(
+    "cloudflare/d1/migrations/0001_initial_schema.sql",
+    "utf8",
   );
+  if (legacy) baseline = baseline.replace("  bot_category TEXT,\n", "");
+  if (legacy === "pre-rollup") {
+    baseline = baseline.replace(
+      /^  (?:device_(?:desktop|mobile)|os_(?:windows|macos|ios|android|linux|other)) INTEGER NOT NULL DEFAULT 0,\n/gm,
+      "",
+    );
+  }
+  sqlite.exec(baseline);
   function statement(sql: string, params: unknown[] = []) {
     return {
       sql,
@@ -249,15 +258,6 @@ describe("truthful admin prefetch data", () => {
 describe("bounded admin telemetry coverage", () => {
   it("reports recent device/OS and AI/bot subsets separately from raw visit totals", async () => {
     const f = fixture();
-    f.sqlite.exec(
-      readFileSync(
-        "cloudflare/d1/migrations/0011_aggregate_device_os.sql",
-        "utf8",
-      ),
-    );
-    f.sqlite.exec(
-      readFileSync("cloudflare/d1/migrations/0012_bot_category.sql", "utf8"),
-    );
     const today = new Date().toISOString().slice(0, 10);
     f.sqlite
       .prepare(
@@ -317,14 +317,8 @@ describe("bounded admin telemetry coverage", () => {
     f.sqlite.close();
   });
 
-  it("keeps only bot classification unavailable between migrations 0011 and 0012", async () => {
-    const f = fixture();
-    f.sqlite.exec(
-      readFileSync(
-        "cloudflare/d1/migrations/0011_aggregate_device_os.sql",
-        "utf8",
-      ),
-    );
+  it("keeps only bot classification unavailable on the pre-bot legacy schema", async () => {
+    const f = fixture(200, "pre-bot");
     const response = await f.admin("path=/migration-boundary/");
     const data = await response.json();
     expect(response.status).toBe(200);
@@ -334,8 +328,8 @@ describe("bounded admin telemetry coverage", () => {
     f.sqlite.close();
   });
 
-  it("keeps the admin response available and marks aggregate data unavailable without migration 0011", async () => {
-    const f = fixture();
+  it("keeps the admin response available on the pre-rollup legacy schema", async () => {
+    const f = fixture(200, "pre-rollup");
     const response = await f.admin("path=/legacy-schema/");
     const data = await response.json();
     expect(response.status).toBe(200);

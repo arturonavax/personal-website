@@ -6,9 +6,9 @@ El esquema completo ha sido compactado en la línea base unificada `0001_initial
 ### Comandos de Gestión y Reset de Base de Datos
 
 - **Reset Total (Local)**: `pnpm run db:reset:local` (aplica `cloudflare/d1/reset.sql`)
-- **Reset Total (Producción Remote)**: `pnpm run db:reset:remote` (aplica `cloudflare/d1/reset.sql`)
+- **Reset remoto (no hay atajo)**: requiere inventario exacto, export protegido, restauración aislada y confirmación posterior del destino; ver [`docs/cloudflare-edge.md`](../../../docs/cloudflare-edge.md).
 - **Aplicar Esquema Base (Local)**: `pnpm run db:schema:local` (aplica `cloudflare/d1/schema.sql`)
-- **Aplicar Esquema Base (Remote)**: `pnpm run db:schema:remote` (aplica `cloudflare/d1/schema.sql`)
+- **Producción**: no aplicar `schema.sql` ni la nueva migración `0001` sobre la D1 existente con ledger histórico.
 
 ---
 
@@ -396,7 +396,7 @@ ON CONFLICT(date, path) DO UPDATE SET
 
 ## 7. Compacted Single-Baseline Schema & Deterministic Reset Workflow
 
-Migrations `0001` through `0010` are represented in the authoritative bootstrap `cloudflare/d1/schema.sql` and destructive `reset.sql`. Additive `0011_aggregate_device_os.sql` adds eight default-zero coarse counters to the existing `(date,path)` `analytics_rollups` row, with no historical backfill. Apply `0011` only to existing pre-0011 databases; fresh bootstrap and reset already include its columns. The adapter and WAL replay increment these counters in the existing upsert, with one rollup statement per accepted visit/group; older WAL OS is `other`. The scheduled handler zeros only device/OS counters older than 30 days, preserving historical views and existing retention for other tables. These counters exclude NOMINAL document-only visits until an adapter/collector visit occurs, and cannot establish distinct devices or legal compliance. No remote D1 command is implied.
+La migración única `0001_initial_schema.sql`, el bootstrap `schema.sql` y el reset destructivo `reset.sql` incluyen las ocho columnas de dispositivo/SO y `bot_category`. Los archivos históricos `0002`–`0010` eran placeholders; las columnas antes agregadas por `0011`/`0012` ya están en la base inicial. Producción conserva el ledger viejo `0001`–`0011` hasta su reset autorizado: **no** ejecutes `migrations apply` ni busques aplicar las migraciones retiradas sobre esa D1. The adapter and WAL replay increment these counters in the existing upsert, with one rollup statement per accepted visit/group; older WAL OS is `other`. The scheduled handler zeros only device/OS counters older than 30 days, preserving historical views and existing retention for other tables. These counters exclude NOMINAL document-only visits until an adapter/collector visit occurs, and cannot establish distinct devices or legal compliance. No remote D1 command is implied.
 
 ### 7.1. Key SQLite/D1 Compaction Optimizations
 
@@ -410,11 +410,12 @@ Migrations `0001` through `0010` are represented in the authoritative bootstrap 
 ### 7.2. CLI Reset & Schema Commands (`package.json`)
 
 ```bash
-# Deterministic full reset (drops all tables/views + d1_migrations and rebuilds compacted schema)
+# Solo local: elimina los objetos conocidos y reconstruye esquema y ledger 0001
 pnpm run db:reset:local
-pnpm run db:reset:remote
 
-# Idempotent schema apply (IF NOT EXISTS)
+# Solo local: aplica el esquema (IF NOT EXISTS); no inicializa el ledger
 pnpm run db:schema:local
-pnpm run db:schema:remote
+
+# Producción: sin atajo. Verificar identidad e inventario; respaldar/restaurar;
+# pedir confirmación posterior y recién entonces aplicar el reset al destino exacto.
 ```

@@ -1,7 +1,9 @@
 -- =============================================================================
 -- Cloudflare D1 Deterministic Reset & Re-Initialization Script
--- Drops all existing tables, views, and migration tracking, then rebuilds the
--- compacted baseline schema cleanly.
+-- Drops only the known application tables/view and migration tracking, then
+-- rebuilds the compacted baseline and records it in Wrangler's ledger.
+-- Check sqlite_master against the expected object inventory before remote use;
+-- unexpected objects survive and must stop the reset before it begins.
 -- =============================================================================
 
 DROP VIEW IF EXISTS v_prefetch_daily_summary;
@@ -223,5 +225,14 @@ INSERT OR IGNORE INTO system_deployments (
   '2026-03-17',
   '{"architecture":"hexagonal-edge-ssg","schema":"compacted-v1"}'
 );
+
+-- Match Wrangler's D1 migration ledger after resetting the full schema.
+-- 0001 is already materialized above; replaying it would be inconsistent.
+CREATE TABLE d1_migrations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE,
+  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+INSERT INTO d1_migrations (name) VALUES ('0001_initial_schema.sql');
 
 PRAGMA optimize;

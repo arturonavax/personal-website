@@ -102,16 +102,9 @@ describe("SPEC-012: D1 Database Compaction & Deterministic Reset Architecture", 
     db.close();
   });
 
-  it("keeps 0001 immutable while 0001+0011 matches fresh and reset aggregate columns", () => {
+  it("keeps the compacted 0001 aggregate columns aligned with fresh and reset schemas", () => {
     const initialMigration = fs.readFileSync(
       path.join(ROOT_DIR, "cloudflare/d1/migrations/0001_initial_schema.sql"),
-      "utf8",
-    );
-    const aggregateMigration = fs.readFileSync(
-      path.join(
-        ROOT_DIR,
-        "cloudflare/d1/migrations/0011_aggregate_device_os.sql",
-      ),
       "utf8",
     );
     const schemaSql = fs.readFileSync(
@@ -166,9 +159,7 @@ describe("SPEC-012: D1 Database Compaction & Deterministic Reset Architecture", 
       notnull: 1,
       dflt_value: "0",
     }));
-    expect(columns(initialMigration + "\n" + aggregateMigration)).toEqual(
-      expected,
-    );
+    expect(columns(initialMigration)).toEqual(expected);
     expect(columns(schemaSql)).toEqual(expected);
     expect(columns(resetSql)).toEqual(expected);
   });

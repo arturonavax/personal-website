@@ -13,7 +13,7 @@ import {
 } from "../../cloudflare/worker";
 
 /**
- * Real-SQLite verification of the authoritative L2 dedupe (migration 0010) and the atomic
+ * Real-SQLite verification of the authoritative L2 dedupe (compacted baseline) and the atomic
  * pageview + rollup batch. A thin D1 shim over bun:sqlite executes the *exact* SQL the Worker emits,
  * so SQL semantics (ON CONFLICT, NOT EXISTS, changes()) are proven, not mocked.
  */
@@ -24,12 +24,7 @@ const MIGRATIONS_DIR = path.join(
   "d1",
   "migrations",
 );
-// Keep the historical baseline intact; bring the fixture forward to the aggregate rollup schema.
-const MIGRATIONS = [
-  "0001_initial_schema.sql",
-  "0011_aggregate_device_os.sql",
-  "0012_bot_category.sql",
-];
+const MIGRATIONS = ["0001_initial_schema.sql"];
 
 function createD1Shim() {
   const sqlite = new Database(":memory:");

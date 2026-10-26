@@ -1,1 +1,0 @@
--- Compacted into 0001_initial_schema.sql for authoritative D1 reset baseline.

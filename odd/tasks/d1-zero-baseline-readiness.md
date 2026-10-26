@@ -1,0 +1,24 @@
+# D1 zero-baseline readiness
+Branch: `feat/d1-zero-baseline-readiness` from local `main` at `e0c0cd9`.
+Scope: compact local schema history and prepare the configured production D1 for a separately confirmed, quota-aware reset; no deployment or content publication.
+
+## Specs
+
+S1. "Por ultimo, usa `cf` y `wrangler` para comprobar que el cloudflare esta preparado para recibir esta version, que las bases de datos esten reseteadas, etc etc (los datos en produccion no importan, no son valiosos, puedes resetear todo siempre y cuando no apliques operaciones que agoten la quota de escrituras gratuitas por deletes individuales)"
+S2. "Incluso puedes compactar todas las migraciones en un archivo inicial base con todo, ya que planeo iniciar desde 0."
+S3. "Sí: reset completo y migraciones compactadas" — the owner's selected replacement for the earlier additive-0012-only choice; protected export/restore and a separate exact post-backup confirmation precede any destructive remote operation.
+
+## Tasks
+
+T1 [S1-S3] route inline + independent high-risk verification, in progress; commit pending — test-first compact the D1 migration baseline and reconcile deterministic reset, current schema, local checks and operation docs without touching production.
+T2 [S1,S3] route inline, pending; commit pending — verify target and quota, export a protected complete D1 backup after permission for its absolute off-repository path, record digest and prove isolated restore without exposing private rows.
+T3 [S1,S3] route inline + independent high-risk verification, pending; commit pending — obtain a new exact production-reset confirmation after successful backup, execute only the bounded DDL reset, and validate migration ledger and schema; never row-by-row DELETE.
+T4 [S1-S3] route inline, pending; commit pending — record observed remote readiness, quota use, limitations and unperformed deployment/Access checks in current guides and Engram.
+
+## Log
+
+L1 (user original request verbatim): Por ultimo, usa `cf` y `wrangler` para comprobar que el cloudflare esta preparado para recibir esta version, que las bases de datos esten reseteadas, etc etc (los datos en produccion no importan, no son valiosos, puedes resetear todo siempre y cuando no apliques operaciones que agoten la quota de escrituras gratuitas por deletes individuales)
+L2 (user change verbatim): Incluso puedes compactar todas las migraciones en un archivo inicial base con todo, ya que planeo iniciar desde 0.
+L3: User first chose the offered additive `0012` operation for the configured production D1, then selected the offered `Sí: reset completo y migraciones compactadas` alternative before any remote write. This supersedes the additive-only choice; the reset alternative specified protected export, isolated restore and separate exact confirmation after backup, not immediate deletion. No D1 mutation, deployment, R2 publish, bot activation or remote secret change has occurred.
+L4: Read-only `cf` 1.0.0-beta.13 and Wrangler 4.151.3 matched account `d4986ed43391f516630760f10ada092f` and D1 `personal-website-analytics` ID `8b881d48-f08b-4e77-9731-541eab349f16`. Its 12-table ledger contains 0001–0011; only 0012 is pending and `bot_category` is absent. D1 info returned 667648 bytes, 1451 written/2355 read rows in trailing 24 hours (not exact current UTC-day headroom). Existing `reset.sql` drops `d1_migrations` then rebuilds the latest schema without restoring that ledger; replaying migrations would duplicate columns. 0002–0010 are already-compacted no-op placeholders, while 0011/0012 change columns. `cf` found the configured Worker, both R2 buckets and Vectorize; `SKIP_BUILD=1 wrangler deploy --dry-run` passed against existing `dist`, not a fresh build or deployed behavior. External protected backup path permission and a post-backup target-specific confirmation are still missing.
+L5: Local T1 RED: `bun test tests/d1-zero-baseline.test.ts` failed 2/2 for multiple migration files and missing reset ledger. After compaction and reset repair, the focused test passed 2/2 and the single affected-suites run passed 82/82 across five files (554 assertions); `pnpm check` returned 0 errors, 0 warnings, 0 hints; `git diff --check` passed. Independent high-risk verifier found no schema mismatch, but identified stale remote shortcuts in `migrations/QUERIES.md` and unexpected objects surviving `reset.sql`; both playbook and guide now require an exact preflight sqlite_master inventory and stop on unknown objects, and reset comments name its limited drop scope. No remote writes or backup occurred. Native assessment failed with `package-local-binary-missing` and supplied no native review verdict; it does not certify the candidate. Live D1 export/restore, exact quota impact, transactional D1 semantics and actual object inventory remain unverified.

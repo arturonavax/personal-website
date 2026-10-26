@@ -11,17 +11,9 @@ import {
 } from "../cloudflare/cron-scheduler";
 
 const load = (name: string) => readFileSync(`cloudflare/d1/${name}`, "utf8");
-function fixture(schema = "schema.sql", oldRollup = false) {
+function fixture(schema = "schema.sql") {
   const sqlite = new Database(":memory:");
-  const source = load(schema);
-  sqlite.exec(
-    oldRollup
-      ? source.replace(
-          /^  (?:device_(?:desktop|mobile)|os_(?:windows|macos|ios|android|linux|other)) INTEGER NOT NULL DEFAULT 0,\n/gm,
-          "",
-        )
-      : source,
-  );
+  sqlite.exec(load(schema));
   const sql: string[] = [];
   const execSql: string[] = [];
   const db = {
@@ -69,14 +61,9 @@ const windows = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
 const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)";
 
 describe("minimized device/OS rollups", () => {
-  it("bootstrap/reset and non-destructive 0011 agree; migration preserves old counts", () => {
+  it("bootstrap and reset agree on the coarse rollup columns", () => {
     const fresh = fixture();
     const reset = fixture("reset.sql");
-    const upgraded = fixture("schema.sql", true);
-    upgraded.sqlite.exec(
-      "INSERT INTO analytics_rollups (date,path,views,uniques) VALUES ('2026-10-24','/old',2,2)",
-    );
-    upgraded.sqlite.exec(load("migrations/0011_aggregate_device_os.sql"));
     for (const column of [
       "device_desktop",
       "device_mobile",
@@ -87,7 +74,7 @@ describe("minimized device/OS rollups", () => {
       "os_linux",
       "os_other",
     ]) {
-      for (const f of [fresh, reset, upgraded])
+      for (const f of [fresh, reset])
         expect(
           f.sqlite
             .prepare("PRAGMA table_info(analytics_rollups)")
@@ -95,8 +82,6 @@ describe("minimized device/OS rollups", () => {
             .some((c: any) => c.name === column),
         ).toBe(true);
     }
-    expect(upgraded.rows()[0]?.views).toBe(2);
-    expect(upgraded.rows()[0]?.os_other).toBe(0);
   });
 
   it("counts only coarse buckets in the existing rollup upsert and preserves views", async () => {

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS pageviews (
   utm_content TEXT DEFAULT '',
   utm_term TEXT DEFAULT '',
   is_bot INTEGER DEFAULT 0,
+  bot_category TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -91,6 +92,14 @@ CREATE TABLE IF NOT EXISTS analytics_rollups (
   uniques INTEGER NOT NULL DEFAULT 0,
   bot_views INTEGER NOT NULL DEFAULT 0,
   human_views INTEGER NOT NULL DEFAULT 0,
+  device_desktop INTEGER NOT NULL DEFAULT 0,
+  device_mobile INTEGER NOT NULL DEFAULT 0,
+  os_windows INTEGER NOT NULL DEFAULT 0,
+  os_macos INTEGER NOT NULL DEFAULT 0,
+  os_ios INTEGER NOT NULL DEFAULT 0,
+  os_android INTEGER NOT NULL DEFAULT 0,
+  os_linux INTEGER NOT NULL DEFAULT 0,
+  os_other INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (date, path)
 ) WITHOUT ROWID;
 
