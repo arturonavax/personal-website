@@ -16,7 +16,7 @@ S5. "Analiza los motivos por los cuales no pueden diagnosticar todo el contexto 
 T1 [S1-S5] route inline/read-only with bounded exploration fallback, blocked on Page Indexing issue examples for historical/non-sitemap URLs; commit pending — the known sitemap and landing candidates have been inspected, but Google does not provide a complete per-issue URL inventory through the API.
 T2 [S1-S3] route inline or context-backstop bounded writer if several steps, pending on T1; commit pending — add regressions and fix only reproduced, owner-intended indexation defects with current contract/guide updated alongside.
 T3 [S2-S4] route inline, local audit done; commit `34dd596` — compare generated pages/sitemap, relevant tests and safe live inspection; record unverified GSC categories and no-deployment evidence. Repeat focused checks if T2 changes output.
-T4 [S5] route inline/read-only, done; commit `docs(seo): document GSC inspection limits and findings` — identify documented API limits and actual `gsccli` response shape, then inspect the known sitemap and Search Analytics candidate sets without mutating the remote property.
+T4 [S5] route inline/read-only, done; commit `47e964c` — identify documented API limits and actual `gsccli` response shape, then inspect the known sitemap and Search Analytics candidate sets without mutating the remote property.
 
 ## Log
 
