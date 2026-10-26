@@ -3811,6 +3811,7 @@ export async function handleAdminDashboardRequest(
     let edgeEvents: any[] = [];
     let prefetches: any[] = [];
     let dailySummaries: any[] = [];
+    let coverage: Record<string, unknown> | null = null;
     let topPages: any[] = [];
     let topCountries: any[] = [];
     let utmAttributions: any[] = [];
@@ -4040,6 +4041,98 @@ export async function handleAdminDashboardRequest(
               "SELECT summary_date, path, country, total_views FROM pageviews_daily_summary ORDER BY summary_date DESC LIMIT 30",
             );
           }
+
+          // Fixed recent windows, independent of the raw-ledger filters above.
+          // Do not imply these subset counts equal document or unique-visitor totals.
+          let deviceOs: {
+            status: "subset" | "unavailable";
+            source: string;
+            window_days: number;
+            classified_views: number | null;
+            device: Record<string, number> | null;
+            os: Record<string, number> | null;
+          } = {
+            status: "unavailable",
+            source: "analytics_rollups",
+            window_days: 30,
+            classified_views: null,
+            device: null,
+            os: null,
+          };
+          try {
+            const rows = await runQuery(
+              `SELECT COALESCE(SUM(device_desktop), 0) AS desktop,
+                COALESCE(SUM(device_mobile), 0) AS mobile,
+                COALESCE(SUM(os_windows), 0) AS windows,
+                COALESCE(SUM(os_macos), 0) AS macos,
+                COALESCE(SUM(os_ios), 0) AS ios,
+                COALESCE(SUM(os_android), 0) AS android,
+                COALESCE(SUM(os_linux), 0) AS linux,
+                COALESCE(SUM(os_other), 0) AS other
+               FROM analytics_rollups WHERE date >= date('now', '-29 days')`,
+            );
+            const row = rows[0];
+            if (row) {
+              const device = {
+                desktop: Number(row.desktop || 0),
+                mobile: Number(row.mobile || 0),
+              };
+              deviceOs = {
+                status: "subset",
+                source: "analytics_rollups",
+                window_days: 30,
+                classified_views: device.desktop + device.mobile,
+                device,
+                os: {
+                  windows: Number(row.windows || 0),
+                  macos: Number(row.macos || 0),
+                  ios: Number(row.ios || 0),
+                  android: Number(row.android || 0),
+                  linux: Number(row.linux || 0),
+                  other: Number(row.other || 0),
+                },
+              };
+            }
+          } catch (err) {
+            if (isD1QuotaException(err)) {
+              edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
+              dataStatus = "degraded";
+            }
+          }
+
+          const bots = {
+            status: "unavailable" as "subset" | "unavailable",
+            source: "telemetry_events",
+            window_days: 7,
+            collection_enabled:
+              env.ENABLE_BOT_TELEMETRY !== false &&
+              env.ENABLE_BOT_TELEMETRY !== "false" &&
+              env.ENABLE_BOT_TELEMETRY !== "0",
+            observed: null as number | null,
+            ai: null as number | null,
+            other: null as number | null,
+          };
+          try {
+            const rows = await runQuery(
+              `SELECT COUNT(*) AS observed,
+                COALESCE(SUM(CASE WHEN bot_name = 'ai_training_crawler' THEN 1 ELSE 0 END), 0) AS ai
+               FROM telemetry_events
+               WHERE is_bot = 1 AND created_at >= ?`,
+              [new Date(now - 7 * 86_400_000).toISOString()],
+            );
+            if (rows[0]) {
+              bots.status = "subset";
+              bots.observed = Number(rows[0].observed || 0);
+              bots.ai = Number(rows[0].ai || 0);
+              bots.other = bots.observed - bots.ai;
+            }
+          } catch (err) {
+            if (isD1QuotaException(err)) {
+              edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
+              dataStatus = "degraded";
+            }
+          }
+          coverage = { device_os: deviceOs, bots };
         }
       } catch (err) {
         if (isD1QuotaException(err)) {
@@ -4093,6 +4186,7 @@ export async function handleAdminDashboardRequest(
       edge_events: edgeEvents,
       prefetches,
       daily_summaries: dailySummaries,
+      coverage,
       circuit_breakers: {
         prefetch: prefetchCircuitBreaker.getStatus(
           env as unknown as Record<string, unknown>,

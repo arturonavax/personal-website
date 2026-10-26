@@ -240,6 +240,76 @@ describe("truthful admin prefetch data", () => {
   });
 });
 
+describe("bounded admin telemetry coverage", () => {
+  it("reports recent device/OS and AI/bot subsets separately from raw visit totals", async () => {
+    const f = fixture();
+    f.sqlite.exec(
+      readFileSync(
+        "cloudflare/d1/migrations/0011_aggregate_device_os.sql",
+        "utf8",
+      ),
+    );
+    const today = new Date().toISOString().slice(0, 10);
+    f.sqlite
+      .prepare(
+        `INSERT INTO analytics_rollups (date, path, views, human_views, bot_views,
+       device_desktop, device_mobile, os_windows, os_ios)
+       VALUES (?, '/experience/latam', 3, 2, 1, 2, 1, 2, 1)`,
+      )
+      .run(today);
+    const event = f.sqlite.prepare(
+      `INSERT INTO telemetry_events (dedupe_key, path, event_type, visitor_hash, is_bot, bot_name, created_at)
+       VALUES (?, '/experience/latam', 'pageview', 'hash', 1, ?, ?)`,
+    );
+    event.run("ai", "ai_training_crawler", new Date().toISOString());
+    event.run("crawler", "search_engine_crawler", new Date().toISOString());
+    event.run("old", "ai_training_crawler", "2020-01-01T00:00:00Z");
+    f.env.ENABLE_BOT_TELEMETRY = "false";
+    const response = await f.admin("path=/unrelated/&segment=human");
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.stats.total_pageviews).toBe(0);
+    expect(data.coverage).toEqual({
+      device_os: {
+        status: "subset",
+        source: "analytics_rollups",
+        window_days: 30,
+        classified_views: 3,
+        device: { desktop: 2, mobile: 1 },
+        os: { windows: 2, macos: 0, ios: 1, android: 0, linux: 0, other: 0 },
+      },
+      bots: {
+        status: "subset",
+        source: "telemetry_events",
+        window_days: 7,
+        collection_enabled: false,
+        observed: 2,
+        ai: 1,
+        other: 1,
+      },
+    });
+    const page = await (await f.admin("path=/unrelated/&page_only=1")).json();
+    expect(page.coverage).toBeNull();
+    f.sqlite.close();
+  });
+
+  it("keeps the admin response available and marks aggregate data unavailable without migration 0011", async () => {
+    const f = fixture();
+    const response = await f.admin("path=/legacy-schema/");
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.coverage.device_os).toEqual({
+      status: "unavailable",
+      source: "analytics_rollups",
+      window_days: 30,
+      classified_views: null,
+      device: null,
+      os: null,
+    });
+    f.sqlite.close();
+  });
+});
+
 function dashboardFixture(fail = false, pageOnly = false) {
   const source = readFileSync("src/pages/[...lang]/admin/index.astro", "utf8");
   const fn = source.slice(
