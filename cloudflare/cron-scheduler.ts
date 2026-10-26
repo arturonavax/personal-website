@@ -110,8 +110,8 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
   const processedKeys: string[] = [];
 
   if (telemetryKeys.length > 0) {
-    const rollupMap = new Map<string, CompactRollupEntry>();
     const rawEvents: Array<{
+      rollup: CompactRollupEntry;
       dedupe_key: string;
       path: string;
       event_type: string;
@@ -166,21 +166,8 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
               dimensions[field] = 0;
             }
           }
-          const rollupKey = `${date}:${path}`;
-          const existing = rollupMap.get(rollupKey);
-          if (existing) {
-            existing.views += 1;
-            existing.uniques += 1;
-            existing.botViews += isBot;
-            existing.humanViews += humanInc;
-            for (const field of Object.keys(
-              dimensions,
-            ) as (keyof typeof dimensions)[]) {
-              existing[field] =
-                (existing[field] ?? 0) + (dimensions[field] ?? 0);
-            }
-          } else {
-            rollupMap.set(rollupKey, {
+          rawEvents.push({
+            rollup: {
               date,
               path,
               views: 1,
@@ -188,10 +175,7 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
               botViews: isBot,
               humanViews: humanInc,
               ...dimensions,
-            });
-          }
-
-          rawEvents.push({
+            },
             dedupe_key: dedupeKey,
             path,
             event_type: String(parsed.event_type || "pageview"),
@@ -233,11 +217,10 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
           ev.status_code,
           ev.created_at,
         ),
+        // Adjacent statements in the same D1 batch preserve exactly-once
+        // rollups even when an object is retried or repeats a dedupe key.
+        buildAnalyticsRollupUpsert(env.DB, ev.rollup, true),
       );
-    }
-
-    for (const rollup of rollupMap.values()) {
-      allStatements.push(buildAnalyticsRollupUpsert(env.DB, rollup));
     }
   }
 
@@ -316,7 +299,7 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
 }
 
 export async function handleAnalyticsRollup(env: CronEnv): Promise<void> {
-  // Aggregate pageviews from the preceding 24h
+  // Rebuild both complete UTC calendar days touched by the daily cron.
   const rollupQuery = `
     INSERT INTO pageviews_daily_summary (summary_date, path, locale, country, total_views)
     SELECT
@@ -326,18 +309,21 @@ export async function handleAnalyticsRollup(env: CronEnv): Promise<void> {
       country,
       COUNT(id) as total_views
     FROM pageview_events
-    WHERE timestamp >= (strftime('%s', 'now') - 86400) * 1000
+    WHERE timestamp >= strftime('%s', 'now', '-1 day', 'start of day') * 1000
     GROUP BY summary_date, path, locale, country
     ON CONFLICT(summary_date, path, locale, country)
-    DO UPDATE SET total_views = total_views + excluded.total_views;
+    DO UPDATE SET total_views = excluded.total_views;
   `;
 
   await env.DB.exec(rollupQuery);
 
-  // Prune events to preserve D1 storage limit (5 GB free tier, keeps DB < 2 MB indefinitely)
+  // Prune raw event detail to limit storage (Free: 500 MB per D1 database).
   const pruneQuery = `
     DELETE FROM pageview_events
     WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
+
+    DELETE FROM telemetry_events
+    WHERE datetime(created_at) < datetime('now', '-7 days');
 
     DELETE FROM pageviews
     WHERE created_at < datetime('now', '-30 days');

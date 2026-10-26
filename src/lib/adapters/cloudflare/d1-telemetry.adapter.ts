@@ -109,13 +109,15 @@ export function rollupDimensions(
 export function buildAnalyticsRollupUpsert(
   db: D1Database,
   entry: CompactRollupEntry,
+  onlyIfPreviousInsert = false,
 ): D1PreparedStatement {
   return db
     .prepare(
       `INSERT INTO analytics_rollups (
     date, path, views, uniques, bot_views, human_views,
     device_desktop, device_mobile, os_windows, os_macos, os_ios, os_android, os_linux, os_other
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    ${onlyIfPreviousInsert ? "WHERE changes() > 0" : ""}
   ON CONFLICT(date, path) DO UPDATE SET
     views = views + excluded.views,
     uniques = uniques + excluded.uniques,
@@ -724,15 +726,19 @@ export class D1TelemetryAdapter implements TelemetryPort {
           createdAtIso,
         );
 
-      const rollupStmt = buildAnalyticsRollupUpsert(this.db, {
-        date: dateUtc,
-        path: cleanPath,
-        views: 1,
-        uniques: 1,
-        botViews: isBotInt,
-        humanViews: humanViewsInc,
-        ...dimensions,
-      });
+      const rollupStmt = buildAnalyticsRollupUpsert(
+        this.db,
+        {
+          date: dateUtc,
+          path: cleanPath,
+          views: 1,
+          uniques: 1,
+          botViews: isBotInt,
+          humanViews: humanViewsInc,
+          ...dimensions,
+        },
+        true,
+      );
 
       const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(
         this.db,
@@ -743,8 +749,8 @@ export class D1TelemetryAdapter implements TelemetryPort {
         : [telemetryStmt, rollupStmt];
 
       // Match document ingestion: raw dashboard detail is NOMINAL-only.
-      // Keep these immediately after telemetry so changes() gates the projection
-      // on the authoritative insert, including retries with an empty L1 cache.
+      // Keep these immediately after the conditional rollup: it changes one row
+      // only when the authoritative telemetry insert succeeded.
       if (event.dashboard && tier === QuotaDegradationTier.NOMINAL) {
         const detail = event.dashboard;
         const ledgerStmts = [
@@ -790,7 +796,7 @@ export class D1TelemetryAdapter implements TelemetryPort {
               ),
           );
         }
-        batchStmts.splice(1, 0, ...ledgerStmts);
+        batchStmts.splice(2, 0, ...ledgerStmts);
       }
 
       let batchMeta: { rows_written?: number; rows_read?: number } | null =

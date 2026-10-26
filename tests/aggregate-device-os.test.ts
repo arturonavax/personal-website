@@ -122,6 +122,18 @@ describe("minimized device/OS rollups", () => {
     ).toBe(false);
   });
 
+  it("does not count a repeated D1 insert after the L1 shield is lost", async () => {
+    const { db, sqlite, rows } = fixture();
+    const adapter = new D1TelemetryAdapter(db);
+    const event = visit("retry", windows);
+    await adapter.ingestVisit(event);
+    await adapter.ingestVisit(event);
+    expect(
+      sqlite.prepare("SELECT count(*) AS n FROM telemetry_events").get(),
+    ).toEqual({ n: 1 });
+    expect(rows()[0]).toMatchObject({ views: 1, uniques: 1, os_windows: 1 });
+  });
+
   it("preserves L1 duplicate suppression without changing counters", async () => {
     clearL1DedupeCache();
     const { db, rows } = fixture();
@@ -133,7 +145,7 @@ describe("minimized device/OS rollups", () => {
     clearL1DedupeCache();
   });
 
-  it("replays old WAL without OS as other and new WAL without extra aggregate writes", async () => {
+  it("replays old WAL without OS as other, gating each rollup by its raw insert", async () => {
     const { db, rows, sql } = fixture();
     const records = [
       {
@@ -170,7 +182,80 @@ describe("minimized device/OS rollups", () => {
     });
     expect(
       sql.filter((q) => q.includes("INSERT INTO analytics_rollups")),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
+  });
+
+  it("replayed WAL keys cannot increment rollups more than once", async () => {
+    const { db, sqlite, rows } = fixture();
+    const record = {
+      dedupe_key: "wal-repeat",
+      path: "/blog",
+      created_at: new Date().toISOString(),
+      device_type: "mobile",
+      os_type: "android",
+    };
+    const bucket = {
+      list: async ({ prefix }: { prefix: string }) => ({
+        objects:
+          prefix === "wal/telemetry/"
+            ? [{ key: "wal/telemetry/retry.ndjson" }]
+            : [],
+        truncated: false,
+      }),
+      get: async () => ({
+        text: async () =>
+          JSON.stringify(record) + "\n" + JSON.stringify(record),
+      }),
+      delete: async () => {},
+    };
+    await reconcileR2WalToD1({ DB: db, R2_BUCKET: bucket as never });
+    await reconcileR2WalToD1({ DB: db, R2_BUCKET: bucket as never });
+    expect(
+      sqlite.prepare("SELECT count(*) AS n FROM telemetry_events").get(),
+    ).toEqual({ n: 1 });
+    expect(rows()[0]).toMatchObject({
+      views: 1,
+      device_mobile: 1,
+      os_android: 1,
+    });
+  });
+
+  it("rebuilds complete daily summaries without overlap and prunes raw events", async () => {
+    const { db, sqlite } = fixture();
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const insert = sqlite.prepare(
+      "INSERT INTO pageview_events (path, locale, country, referrer, timestamp) VALUES ('/blog', 'en', 'XX', '', ?)",
+    );
+    insert.run(Date.parse(`${yesterday}T01:00:00Z`));
+    insert.run(Date.parse(`${yesterday}T23:00:00Z`));
+    insert.run(Date.parse(`${today}T01:00:00Z`));
+    sqlite
+      .prepare(
+        "INSERT INTO telemetry_events (dedupe_key, path, event_type, visitor_hash, created_at) VALUES ('expired', '/blog', 'pageview', 'anon', '2020-01-01T00:00:00Z')",
+      )
+      .run();
+    await handleAnalyticsRollup({ DB: db });
+    await handleAnalyticsRollup({ DB: db });
+    expect(
+      sqlite
+        .prepare(
+          "SELECT summary_date, total_views FROM pageviews_daily_summary WHERE path = '/blog' ORDER BY summary_date",
+        )
+        .all(),
+    ).toEqual([
+      { summary_date: yesterday, total_views: 2 },
+      { summary_date: today, total_views: 1 },
+    ]);
+    expect(
+      sqlite
+        .prepare(
+          "SELECT count(*) AS n FROM telemetry_events WHERE dedupe_key = 'expired'",
+        )
+        .get(),
+    ).toEqual({ n: 0 });
   });
 
   it("cron bounds new dimensions to 30 days without deleting historical views", async () => {
