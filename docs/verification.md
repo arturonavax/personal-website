@@ -35,6 +35,12 @@ A missing test is a coverage gap, not evidence that the implementation is absent
 
 Use the pinned package manager and existing lockfile. Do not install or upgrade packages simply to turn a missing-environment check green. Test counts depend on discovery and inputs; report observed counts, not the old README's fixed count.
 
+## Package workflow boundaries
+
+`package.json` groups local development (`dev`, `dev:local`, `dev:r2`, `dev:worker`, `dev-prod`), build and explicit deployment (`prebuild`, `build`, `preview`, `predeploy`, `deploy`), checks, content/CV publication, asset maintenance and local D1 setup. The build/deploy hook commands are unchanged: `pnpm build` and `pnpm deploy` may hydrate remote content, and `deploy` is a remote mutation. `dev-prod` alone selects the offline local build path. Do not use a remote command to validate a script inventory.
+
+The duplicate `typecheck` alias, repository-wide `format`/`format:check` shortcuts, unpinned `audit:mobile` wrapper, Cloudflare JSD shortcut and remote D1 schema/reset aliases have been retired. Run the already documented `pnpm check` for diagnostics and `pnpm exec prettier --write <changed-files>` or `--check <changed-files>` only on intended files. A mobile performance audit needs its own pinned runner and environment; remote account settings or D1 migrations/resets need separate, exact authorization rather than a convenience alias. These removals do not delete the underlying maintenance scripts or grant authority to execute them.
+
 ## Local-content build without the pull hook
 
 `CONTENT_SOURCE=local` is not an offline guarantee. `scripts/r2-pull.mjs --auto` forces a freshness pull for any truthy `CI`, `CF_PAGES`, `CLOUDFLARE_BUILD`, or `GITHUB_ACTIONS`; missing content can also trigger remote transfer. The value `"false"` is still a truthy environment string. `pnpm build` invokes that automatic prebuild hook.

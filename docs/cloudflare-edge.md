@@ -74,7 +74,7 @@ Run commands only after understanding their inputs and side effects:
 | Production-like preview | `pnpm dev-prod`        | Check/build + local Wrangler port 8788; default bind 0.0.0.0 exposes LAN |
 | Local schema bootstrap  | `pnpm db:schema:local` | Existing schema must be considered; not an upgrade/reset substitute      |
 
-For an existing database, inspect migration history before applying a migration. `db:reset:local` and `db:reset:remote` are **destructive**; never use them as ordinary setup/upgrade instructions. `content:push`, pruning, `cv:publish`, deployment, secret changes and remote DB operations mutate external state and require scoped authorization. This guide does not authorize any of them.
+For an existing database, inspect migration history before applying a migration. `db:reset:local` is **destructive**, even locally; there is deliberately no package shortcut for remote reset or remote schema replay. Use tracked migrations for upgrades, and require a separate authorized, backed-up operation for any remote D1 maintenance. `content:push`, pruning, `cv:publish`, deployment, secret changes and remote DB operations mutate external state and require scoped authorization. This guide does not authorize any of them.
 
 ### Remote D1 change gate
 
