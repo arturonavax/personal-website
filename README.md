@@ -41,6 +41,8 @@ Astro development runs on port 4321. The configured development/preview commands
 | `pnpm run dev-prod`     | Local check/build and Worker on port 8788; no R2 pull; optional local vault staging |
 | `pnpm dev:worker`       | Wrangler dev; its custom build can pull R2 unless explicitly skipped                |
 | `pnpm check`            | Astro/TypeScript diagnostics                                                        |
+| `pnpm format`           | Format the whole repository; use only when that broad scope is intended             |
+| `pnpm build`            | Build with the automatic content-pull hook                                          |
 | `pnpm test`             | Bun unit/integration tests; not the Playwright browser suite                        |
 | `pnpm run audit`        | Project static architecture/hydration checks, not a dependency vulnerability audit  |
 | `pnpm content:pull`     | Download private editorial content/assets/CVs; requires authorized transport        |
@@ -48,7 +50,7 @@ Astro development runs on port 4321. The configured development/preview commands
 
 `CONTENT_SOURCE=local` is not an offline switch: missing content or truthy CI environment flags can still trigger a pull. For a static build that bypasses the content-pull hook, use the direct Astro commands in [verification](docs/verification.md#local-content-build-without-the-pull-hook). Wrangler also has a custom build command that can pull content.
 
-Scripts are grouped by local development, build/deployment, checks, private content, asset generation and local database setup. `pnpm build` still runs its content-pull hook, and `pnpm deploy` remains a remote mutation with its existing hooks; neither is an offline check. Use `pnpm exec prettier --write <changed-files>` to format only intended files. Redundant check/format aliases and convenience shortcuts for unpinned mobile audits, Cloudflare JSD changes, remote schema replay and remote D1 reset were retired; see [verification](docs/verification.md#package-workflow-boundaries). Builds, content uploads, deploys and database commands have different side effects. Read the domain guide before using them. Remote resets remain destructive maintenance operations, not setup or upgrade steps.
+Scripts are grouped by local development, build/deployment, checks, private content, asset generation and local database setup. `pnpm build` still runs its content-pull hook, and `pnpm deploy` remains a remote mutation with its existing hooks; neither is an offline check. Use `pnpm exec prettier --write <changed-files>` to format only intended files; `pnpm format` explicitly formats the whole repository and was restored as an opt-in command. The duplicate `typecheck` and `format:check` aliases and convenience shortcuts for unpinned mobile audits, Cloudflare JSD changes, remote schema replay and remote D1 reset remain retired; see [verification](docs/verification.md#package-workflow-boundaries). Builds, content uploads, deploys and database commands have different side effects. Read the domain guide before using them. Remote resets remain destructive maintenance operations, not setup or upgrade steps.
 
 ## What is and is not in Git
 

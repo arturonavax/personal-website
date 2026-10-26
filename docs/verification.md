@@ -26,6 +26,7 @@ A missing test is a coverage gap, not evidence that the implementation is absent
 | Check              | Command                                         | Prerequisites / boundaries                                                                 |
 | ------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Formatting         | `pnpm exec prettier --check <changed-files>`    | Check only the candidate; normalize intended files before review                           |
+| Whole-repo format  | `pnpm format`                                   | Explicit opt-in: writes across the repository; do not use for a scoped change              |
 | Patch hygiene      | `git diff --check`                              | Does not inspect functionality                                                             |
 | Astro/TypeScript   | `pnpm check`                                    | Installed toolchain; content may affect diagnostics                                        |
 | Unit/integration   | `pnpm test`                                     | Bun; Playwright suites have a guard and do not become browser checks under Bun             |
@@ -39,7 +40,7 @@ Use the pinned package manager and existing lockfile. Do not install or upgrade 
 
 `package.json` groups local development (`dev`, `dev:local`, `dev:r2`, `dev:worker`, `dev-prod`), build and explicit deployment (`prebuild`, `build`, `preview`, `predeploy`, `deploy`), checks, content/CV publication, asset maintenance and local D1 setup. The build/deploy hook commands are unchanged: `pnpm build` and `pnpm deploy` may hydrate remote content, and `deploy` is a remote mutation. `dev-prod` alone selects the offline local build path. Do not use a remote command to validate a script inventory.
 
-The duplicate `typecheck` alias, repository-wide `format`/`format:check` shortcuts, unpinned `audit:mobile` wrapper, Cloudflare JSD shortcut and remote D1 schema/reset aliases have been retired. Run the already documented `pnpm check` for diagnostics and `pnpm exec prettier --write <changed-files>` or `--check <changed-files>` only on intended files. A mobile performance audit needs its own pinned runner and environment; remote account settings or D1 migrations/resets need separate, exact authorization rather than a convenience alias. These removals do not delete the underlying maintenance scripts or grant authority to execute them.
+`pnpm format` is restored as an explicit repository-wide `prettier --write .` command; do not run it to normalize a scoped patch. The duplicate `typecheck` and `format:check` aliases, unpinned `audit:mobile` wrapper, Cloudflare JSD shortcut and remote D1 schema/reset aliases remain retired. Use `pnpm check` for diagnostics and `pnpm exec prettier --write <changed-files>` or `--check <changed-files>` for intended files. A mobile performance audit needs its own pinned runner and environment; remote account settings or D1 migrations/resets need separate, exact authorization rather than a convenience alias. These removals do not delete the underlying maintenance scripts or grant authority to execute them.
 
 ## Local-content build without the pull hook
 

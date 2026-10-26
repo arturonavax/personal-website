@@ -66,13 +66,17 @@ describe("zero-baseline D1 lifecycle", () => {
       expect(db.query("SELECT COUNT(*) AS n FROM pageviews").get()).toEqual({
         n: 0,
       });
-      expect(db.query("SELECT COUNT(*) AS n FROM contact_leads").get()).toEqual({
-        n: 0,
-      });
-      expect(db.query("SELECT name FROM d1_migrations ORDER BY name").all()).toEqual([
-        { name: "0001_initial_schema.sql" },
-      ]);
-      expect(db.query("SELECT COUNT(*) AS n FROM system_deployments").get()).toEqual({
+      expect(db.query("SELECT COUNT(*) AS n FROM contact_leads").get()).toEqual(
+        {
+          n: 0,
+        },
+      );
+      expect(
+        db.query("SELECT name FROM d1_migrations ORDER BY name").all(),
+      ).toEqual([{ name: "0001_initial_schema.sql" }]);
+      expect(
+        db.query("SELECT COUNT(*) AS n FROM system_deployments").get(),
+      ).toEqual({
         n: 1,
       });
     } finally {

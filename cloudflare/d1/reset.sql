@@ -3,7 +3,8 @@
 -- Drops only the known application tables/view and migration tracking, then
 -- rebuilds the compacted baseline and records it in Wrangler's ledger.
 -- Check sqlite_master against the expected object inventory before remote use;
--- unexpected objects survive and must stop the reset before it begins.
+-- unexpected application objects survive and must stop the reset before it begins.
+-- D1's reserved _cf_KV table is provider-managed and must not be touched.
 -- =============================================================================
 
 DROP VIEW IF EXISTS v_prefetch_daily_summary;

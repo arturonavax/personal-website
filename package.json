@@ -18,6 +18,7 @@
     "predeploy": "node scripts/r2-pull.mjs && pnpm run build",
     "deploy": "wrangler deploy -c wrangler.jsonc",
     "check": "astro check",
+    "format": "prettier --write .",
     "test": "bun test",
     "audit": "bun scripts/audit-codebase.ts",
     "types:worker": "wrangler types -c wrangler.jsonc",

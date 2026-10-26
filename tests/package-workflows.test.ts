@@ -21,7 +21,6 @@ describe("public package workflow", () => {
     const listing = listedScripts();
     for (const name of [
       "typecheck",
-      "format",
       "format:check",
       "audit:mobile",
       "cf:disable-jsd",
@@ -35,6 +34,8 @@ describe("public package workflow", () => {
   it("retains the explicit build, offline development and publication paths", () => {
     const listing = listedScripts();
     for (const [name, command] of [
+      ["format", "prettier --write ."],
+      ["check", "astro check"],
       ["prebuild", "node scripts/r2-pull.mjs --auto"],
       ["build", "astro build && node scripts/isolate-admin-build.mjs"],
       ["predeploy", "node scripts/r2-pull.mjs && pnpm run build"],
