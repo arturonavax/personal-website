@@ -1,19 +1,21 @@
 # Integrated feature test branch
 
 Branch: `test/integrated-website-changes` from `feat/search-console-indexation` (`9e94651`), which already contains the Obsidian/R2 and edge-telemetry feature branches by ancestry.
-Scope: local integration and checks only; keep `main`, the original feature refs, unrelated `.gitignore` edits and remote resources unchanged.
+Scope: local integration followed by the owner's authorized fast-forward of `main`; keep the original feature refs, unrelated worktree edits and remote resources unchanged.
 
 ## Specs
 
 S1. "Fusiona todas las ramas no mergeadas a main en una sola para probar todos los cambios realizados para luego si hacer el merge final" — assemble one branch containing the eligible features, test their combined result, and do not merge into `main` yet.
 S2. "Excluir respaldo antiguo (recomendado)" — exclude `backup-corrupted-state` from this integration; it has no merge base with `main` and is not one of the chained feature branches.
+S3. "No hagas tu pruebas, ya yo hice las pruebas y confirmo que esta rama funciona totalmente, mergea a main" — record the owner's verification assertion without changing the observed test evidence, run no further tests, and advance only local `main` to the integration tip.
 
 ## Tasks
 
 T1 [S1-S2] route inline/read-only, done; commit not needed — identify unmerged branch ancestry, independent backup and existing worktree changes.
 T2 [S1-S2] route inline, done; branch ref `test/integrated-website-changes` at `9e94651` — create the integration branch at the latest feature tip, retaining prior branch references and unrelated local changes.
-T3 [S1] route inline, blocked on an owner-authorized Zero Trust admin session; evidence commit `a7c46f2` — local typecheck, Bun suite, offline build, architecture audit and unprotected browser tests passed, but the Worker-admin browser check exited 1 at its expected 401 access gate without credentials. The isolated Astro admin UI test passed; it cannot certify authenticated Worker-admin behavior.
-T4 [S1-S2] route inline, done; evidence commit `a7c46f2` — record observed results and the authentication-limited verification without push, PR, deployment or merging `main`.
+T3 [S1] route inline, dropped by S3; evidence commit `a7c46f2` — local typecheck, Bun suite, offline build, architecture audit and unprotected browser tests passed, but the Worker-admin browser check exited 1 at its expected 401 access gate without credentials. Owner reports independent verification; do not overwrite the observed failure or run more tests.
+T4 [S1-S2] route inline, done; evidence commit `a7c46f2` — record observed results and the authentication-limited verification before the owner's final merge authorization.
+T5 [S3] route inline, in progress; commit pending — record the owner's explicit no-more-tests and merge decision, then advance local `main` by a checked fast-forward without staging unrelated worktree edits or pushing.
 
 ## Log
 
@@ -25,3 +27,5 @@ L5: Integrated branch checks: `pnpm test` passed 499 tests across 45 files with 
 L6: The Worker Playwright invocation used `PLAYWRIGHT_BASE_URL=http://127.0.0.1:8794 BLOG_SURFACE_SLUG=joining-latam-airlines pnpm exec playwright test tests/admin-coverage.spec.ts tests/timeline-telemetry.spec.ts tests/spa-continuity.spec.ts tests/blog-surfaces.spec.ts --workers=1 --reporter=dot` and exited 1: 28 passed and one failed. `tests/admin-coverage.spec.ts` could not find `#coverage-desktop` because the protected Worker `/admin/` and `/es/admin/` surfaces return HTTP 401 and render the expected Zero Trust access gate without an owner session. The public Worker SPA, timeline and content cases passed. This is an authentication-limited test failure, not evidence of an admin UI regression or proof of authenticated Worker behavior.
 L7: A separate UI-only `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4328 pnpm exec playwright test tests/admin-coverage.spec.ts --workers=1 --reporter=dot` passed 1/1 against a loopback Astro dev origin, with mocked API responses. It does not bypass Worker Zero Trust or establish production admin data persistence. Both loopback servers were stopped after the checks. `git diff --check main...HEAD` passed before the evidence commit; the integration candidate then contained 27 commits and 30 files with 2,648 insertions and 170 deletions relative to `main`, a substantial final-merge review workload. The generated untracked `test-results/` directory and unattributed `.gitignore` edit remain outside the integration commit. No production access, remote data mutation, push, PR or merge into `main` was attempted.
 L8: Committed the bounded verification record as `a7c46f2` on the local integration branch. Confirmed all three feature refs remain ancestors of the new tip, `main` remains `b461557`, and only the previously unattributed `.gitignore` modification and generated untracked `test-results/` remain outside the committed candidate. The full admin Worker check still needs owner-authorized access or an explicit decision to accept the authentication-limited verification; do not reinterpret a 401 as a passing UI test.
+L9 (user continuation verbatim): No hagas tu pruebas, ya yo hice las pruebas y confirmo que esta rama funciona totalmente, mergea a main
+L10: The owner reported independent successful verification and expressly authorized the local final merge without further agent tests. The earlier Worker-admin Playwright command's 401 failure stays recorded in L6, not converted to PASS. Before merging, unrelated heading-spacing edits appeared in `odd/tasks/edge-telemetry-coverage.md` and `odd/tasks/obsidian-r2-telemetry-workflow.md` alongside the existing `.gitignore` modification and generated `test-results/`; preserve all unstaged. Local `main` at `b461557` is an ancestor of integration tip `e4d9ff3` and no tracked-path changes to `.gitignore` or `test-results/` occur across that range. Avoid checkout/stash of dirty paths by using an atomic, ancestry-checked fast-forward of the local `main` reference only; no remote push, deployment or migration is implied.
