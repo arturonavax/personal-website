@@ -55,6 +55,10 @@ CREATE TABLE IF NOT EXISTS telemetry_events (
   bot_name TEXT,
   country TEXT DEFAULT 'XX',
   device_type TEXT DEFAULT 'desktop',
+  region TEXT NOT NULL DEFAULT 'unknown',
+  os_type TEXT NOT NULL DEFAULT 'unknown',
+  browser TEXT NOT NULL DEFAULT 'unknown',
+  browser_language TEXT NOT NULL DEFAULT 'unknown',
   referrer_host TEXT DEFAULT '',
   status_code INTEGER NOT NULL DEFAULT 200,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -228,12 +232,12 @@ INSERT OR IGNORE INTO system_deployments (
 );
 
 -- Match Wrangler's D1 migration ledger after resetting the full schema.
--- 0001 is already materialized above; replaying it would be inconsistent.
+-- Both 0001 and the additive 0002 are materialized above; replaying either would be inconsistent.
 CREATE TABLE d1_migrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE,
   applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
-INSERT INTO d1_migrations (name) VALUES ('0001_initial_schema.sql');
+INSERT INTO d1_migrations (name) VALUES ('0001_initial_schema.sql'), ('0002_visit_dimensions.sql');
 
 PRAGMA optimize;

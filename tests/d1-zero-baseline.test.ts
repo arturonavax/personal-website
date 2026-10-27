@@ -22,7 +22,23 @@ function objects(source: string) {
     ).map(({ type, name, sql }) => ({
       type,
       name,
-      definition: sql.replace(/\s+/g, " ").trim(),
+      definition:
+        name === "telemetry_events"
+          ? JSON.stringify(
+              (
+                db.query("PRAGMA table_info(telemetry_events)").all() as {
+                  cid: number;
+                  name: string;
+                  type: string;
+                  notnull: number;
+                  dflt_value: string | null;
+                  pk: number;
+                }[]
+              )
+                .map(({ cid: _cid, ...column }) => column)
+                .sort((a, b) => a.name.localeCompare(b.name)),
+            )
+          : sql.replace(/\s+/g, " ").trim(),
     }));
   } finally {
     db.close();
@@ -30,16 +46,39 @@ function objects(source: string) {
 }
 
 describe("zero-baseline D1 lifecycle", () => {
-  it("exposes one complete initial migration matching fresh and reset schemas", () => {
+  it("applies the additive migration to existing rows and matches fresh/reset schemas", () => {
     expect(
       readdirSync(join(d1, "migrations"))
         .filter((file) => file.endsWith(".sql"))
         .sort(),
-    ).toEqual(["0001_initial_schema.sql"]);
-
+    ).toEqual(["0001_initial_schema.sql", "0002_visit_dimensions.sql"]);
     const baseline = sql("migrations/0001_initial_schema.sql");
+    const additive = sql("migrations/0002_visit_dimensions.sql");
+    const db = new Database(":memory:");
+    try {
+      db.exec(baseline);
+      db.exec(
+        "INSERT INTO telemetry_events(path, visitor_hash) VALUES ('/existing', 'retained')",
+      );
+      db.exec(additive);
+      expect(
+        db
+          .query(
+            "SELECT path, region, os_type, browser, browser_language FROM telemetry_events",
+          )
+          .get(),
+      ).toEqual({
+        path: "/existing",
+        region: "unknown",
+        os_type: "unknown",
+        browser: "unknown",
+        browser_language: "unknown",
+      });
+    } finally {
+      db.close();
+    }
     const fresh = objects(sql("schema.sql"));
-    expect(objects(baseline)).toEqual(fresh);
+    expect(objects(baseline + "\n" + additive)).toEqual(fresh);
     expect(objects(sql("reset.sql"))).toEqual(fresh);
     expect(baseline).toContain("bot_category TEXT");
     expect(baseline).toContain("device_desktop INTEGER NOT NULL DEFAULT 0");
@@ -73,7 +112,10 @@ describe("zero-baseline D1 lifecycle", () => {
       );
       expect(
         db.query("SELECT name FROM d1_migrations ORDER BY name").all(),
-      ).toEqual([{ name: "0001_initial_schema.sql" }]);
+      ).toEqual([
+        { name: "0001_initial_schema.sql" },
+        { name: "0002_visit_dimensions.sql" },
+      ]);
       expect(
         db.query("SELECT COUNT(*) AS n FROM system_deployments").get(),
       ).toEqual({
