@@ -1,10 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import { storedVisitDimensions } from "../src/lib/adapters/cloudflare/telemetry-dimensions";
-import {
-  buildAnalyticsRollupUpsert,
-  rollupDimensions,
-  type CompactRollupEntry,
-} from "../src/lib/adapters/cloudflare/d1-telemetry.adapter";
+import { buildAnalyticsRollupUpsert, rollupDimensions } from "../src/lib/adapters/cloudflare/d1-telemetry.adapter";
+import { readBoundedBody } from "./runtime/request-body";
 
 export interface CronEnv {
   DB: D1Database;
@@ -12,363 +9,222 @@ export interface CronEnv {
   R2_BUCKET?: R2Bucket | undefined;
   CONTENT_BUCKET?: R2Bucket | undefined;
 }
-
 function getWalBucket(env: CronEnv): R2Bucket | undefined {
   return env.R2_BUCKET ?? env.CONTENT_BUCKET ?? env.STORAGE_BUCKET;
 }
 
-async function readR2ObjectText(
-  obj: R2ObjectBody | { body?: unknown; text?: () => Promise<string> },
-): Promise<string> {
-  if (typeof (obj as { text?: () => Promise<string> }).text === "function") {
-    return (obj as { text: () => Promise<string> }).text();
-  }
-  const body = (obj as { body?: unknown }).body;
-  if (typeof body === "string") return body;
-  if (body instanceof Uint8Array) {
-    return new TextDecoder().decode(body);
-  }
-  if (body && typeof (body as ReadableStream).getReader === "function") {
-    return new Response(body as ReadableStream).text();
-  }
-  return "";
-}
+// Producer writes one JSON visit per key and one web lead per key. These limits
+// allow historical multi-line WAL but bound both memory and D1 batch work.
+const MAX_OBJECTS = 20;
+const MAX_SCAN_PER_PREFIX = 40; // bounded lookahead beyond poisoned oldest keys
+const MAX_OBJECT_BYTES = 64 * 1024;
+const MAX_RUN_BYTES = 256 * 1024;
+const MAX_RECORDS = 128;
+const MAX_STATEMENTS = 384; // 3 per human visit; D1 batch remains small
 
-async function listR2Keys(
-  bucket: R2Bucket,
-  prefix: string,
-  limit?: number,
-): Promise<string[]> {
-  if (typeof bucket.list !== "function") return [];
+async function listKeys(bucket: R2Bucket, prefix: string): Promise<string[]> {
   const keys: string[] = [];
   let cursor: string | undefined;
-  do {
-    const maxKeys = limit ? Math.min(limit - keys.length, 1000) : undefined;
-    const opts: R2ListOptions = {
-      prefix,
-      ...(cursor ? { cursor } : {}),
-      ...(maxKeys ? { limit: maxKeys } : {}),
-    };
-    const listed = await bucket.list(opts);
-    for (const obj of listed.objects || []) {
-      keys.push(obj.key);
-      if (limit && keys.length >= limit) break;
-    }
-    cursor =
-      listed.truncated && (!limit || keys.length < limit)
-        ? listed.cursor
-        : undefined;
-  } while (cursor && (!limit || keys.length < limit));
+  while (keys.length < MAX_SCAN_PER_PREFIX) {
+    const listed = await bucket.list({ prefix, limit: MAX_SCAN_PER_PREFIX - keys.length, ...(cursor ? { cursor } : {}) });
+    keys.push(...listed.objects.map(obj => obj.key));
+    if (!listed.truncated || !listed.cursor || listed.cursor === cursor || !listed.objects.length) break;
+    cursor = listed.cursor;
+  }
   return keys;
 }
 
+function parseTelemetry(text: string): Record<string, unknown>[] | null | "deferred" {
+  const lines = text.split("\n").map(line => line.trim()).filter(Boolean);
+  if (!lines.length) return null;
+  const rows: Record<string, unknown>[] = [];
+  for (const line of lines) {
+    try {
+      const row: unknown = JSON.parse(line);
+      if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+      const v = row as Record<string, unknown>;
+      if (typeof v.dedupe_key !== "string" || !v.dedupe_key ||
+          typeof v.path !== "string" || !v.path.startsWith("/") ||
+          typeof v.created_at !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(v.created_at) ||
+          !Number.isFinite(Date.parse(v.created_at)) ||
+          (v.is_bot !== undefined && v.is_bot !== 0 && v.is_bot !== 1) ||
+          (v.status_code !== undefined && (!Number.isInteger(v.status_code) || (v.status_code as number) < 100)) ||
+          ["event_type", "visitor_hash", "bot_name", "country", "region", "device_type", "os_type", "browser", "browser_language", "referrer_host"].some(field =>
+            v[field] !== undefined && v[field] !== null && typeof v[field] !== "string")) return null;
+      rows.push(v);
+      if (rows.length > MAX_RECORDS) return "deferred";
+    } catch { return null; }
+  }
+  return rows;
+}
+function parseLead(text: string): Record<string, unknown> | null {
+  try {
+    const row: unknown = JSON.parse(text);
+    if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+    const lead = row as Record<string, unknown>;
+    if (typeof (lead.from_email ?? lead.email) !== "string" || !(lead.from_email ?? lead.email) ||
+        typeof (lead.body ?? lead.message) !== "string" || !(lead.body ?? lead.message) ||
+        ["name", "phone", "subject", "locale", "ip", "country", "city", "region", "timezone", "as_organization", "user_agent", "referer"].some(field =>
+          lead[field] !== undefined && lead[field] !== null && typeof lead[field] !== "string") ||
+        (lead.created_at !== undefined && (typeof lead.created_at !== "string" || !Number.isFinite(Date.parse(lead.created_at)))) ||
+        (lead.asn !== undefined && !Number.isFinite(Number(lead.asn))) ||
+        (lead.turnstile_verified !== undefined && ![0, 1].includes(Number(lead.turnstile_verified)))) return null;
+    return lead;
+  } catch { return null; }
+}
+
 export async function reconcileR2WalToD1(env: CronEnv): Promise<{
-  telemetryReconciled: number;
-  leadsReconciled: number;
-  telemetryObjectsProcessed: number;
-  telemetryEventsInserted: number;
-  leadObjectsProcessed: number;
-  leadsInserted: number;
-  deletedKeys: string[];
+  telemetryReconciled: number; leadsReconciled: number;
+  telemetryObjectsProcessed: number; telemetryEventsInserted: number;
+  leadObjectsProcessed: number; leadsInserted: number; deletedKeys: string[];
 }> {
   const bucket = getWalBucket(env);
-  if (!bucket) {
-    return {
-      telemetryReconciled: 0,
-      leadsReconciled: 0,
-      telemetryObjectsProcessed: 0,
-      telemetryEventsInserted: 0,
-      leadObjectsProcessed: 0,
-      leadsInserted: 0,
-      deletedKeys: [],
-    };
-  }
-
-  let telemetryReconciled = 0;
-  let leadsReconciled = 0;
-  let telemetryObjectsProcessed = 0;
-  let leadObjectsProcessed = 0;
-  const deletedKeys: string[] = [];
-
-  const MAX_WAL_OBJECTS_PER_CRON = 20;
-
-  // 1. Reconcile wal/telemetry/ NDJSON objects (capped at 20)
-  const telemetryKeys = await listR2Keys(
-    bucket,
-    "wal/telemetry/",
-    MAX_WAL_OBJECTS_PER_CRON,
-  );
-  const remainingSlots = Math.max(
-    0,
-    MAX_WAL_OBJECTS_PER_CRON - telemetryKeys.length,
-  );
-  const leadKeys =
-    remainingSlots > 0
-      ? await listR2Keys(bucket, "wal/leads/", remainingSlots)
-      : [];
-
+  const result = {
+    telemetryReconciled: 0, leadsReconciled: 0,
+    telemetryObjectsProcessed: 0, telemetryEventsInserted: 0,
+    leadObjectsProcessed: 0, leadsInserted: 0, deletedKeys: [] as string[],
+  };
+  if (!bucket) return result;
+  const telemetry = await listKeys(bucket, "wal/telemetry/");
+  const leads = await listKeys(bucket, "wal/leads/");
+  let bytes = 0, records = 0, statements = 0, considered = 0, invalid = 0, deferred = 0;
   const allStatements: D1PreparedStatement[] = [];
-  const processedKeys: string[] = [];
-
-  if (telemetryKeys.length > 0) {
-    const rawEvents: Array<{
-      rollup: CompactRollupEntry;
-      dedupe_key: string;
-      path: string;
-      event_type: string;
-      visitor_hash: string;
-      is_bot: number;
-      bot_name: string | null;
-      country: string;
-      region: string;
-      os_type: string;
-      device_type: string;
-      browser: string;
-      browser_language: string;
-      referrer_host: string;
-      status_code: number;
-      created_at: string;
-    }> = [];
-
-    for (const key of telemetryKeys) {
-      const obj = await bucket.get(key);
-      if (!obj) continue;
-      const text = await readR2ObjectText(obj);
-      const lines = text
-        .split("\n")
-        .map((l) => l.trim())
-        .filter(Boolean);
-
-      for (const line of lines) {
-        try {
-          const parsed = JSON.parse(line) as Record<string, unknown>;
-          const path = String(parsed.path || "/").slice(0, 255);
-          const createdAt = String(
-            parsed.created_at || new Date().toISOString(),
-          );
-          const date = createdAt.slice(0, 10);
-          const isBot = Number(parsed.is_bot) === 1 ? 1 : 0;
-          const humanInc = isBot === 0 ? 1 : 0;
-          const dedupeKey = String(
-            parsed.dedupe_key ||
-              `wal:${parsed.visitor_hash || "anon"}:${path}:${date}`,
-          );
-
-          const stored = storedVisitDimensions(parsed);
-          const dimensions = rollupDimensions(
-            stored.deviceType,
-            stored.osType,
-          );
-          // Old WAL can arrive after the cron retention pass. Keep its views but
-          // do not restore expired dimensions or spend another D1 cleanup write.
-          const dimensionCutoff = new Date(Date.now() - 30 * 86_400_000)
-            .toISOString()
-            .slice(0, 10);
-          if (date < dimensionCutoff) {
-            for (const field of Object.keys(
-              dimensions,
-            ) as (keyof typeof dimensions)[]) {
-              dimensions[field] = 0;
-            }
-          }
-          rawEvents.push({
-            rollup: {
-              date,
-              path,
-              views: 1,
-              uniques: 1,
-              botViews: isBot,
-              humanViews: humanInc,
-              ...dimensions,
-            },
-            dedupe_key: dedupeKey,
-            path,
-            event_type: String(parsed.event_type || "pageview"),
-            visitor_hash: String(parsed.visitor_hash || "anon"),
-            is_bot: isBot,
-            bot_name: parsed.bot_name ? String(parsed.bot_name) : null,
-            country: stored.country,
-            region: stored.region,
-            os_type: stored.osType,
-            device_type: stored.deviceType,
-            browser: stored.browser,
-            browser_language: stored.browserLanguage,
-            referrer_host: String(parsed.referrer_host || ""),
-            status_code: Number(parsed.status_code || 200),
-            created_at: createdAt,
-          });
-          telemetryReconciled += 1;
-        } catch {
-          // Skip malformed NDJSON line
-        }
-      }
-      processedKeys.push(key);
-      telemetryObjectsProcessed += 1;
-    }
-
-    for (const ev of rawEvents) {
-      allStatements.push(
-        env.DB.prepare(
-          `INSERT OR IGNORE INTO telemetry_events (
-            dedupe_key, path, event_type, visitor_hash, is_bot, bot_name,
-            country, device_type, region, os_type, browser, browser_language,
-            referrer_host, status_code, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        ).bind(
-          ev.dedupe_key,
-          ev.path,
-          ev.event_type,
-          ev.visitor_hash,
-          ev.is_bot,
-          ev.bot_name,
-          ev.country,
-          ev.device_type,
-          ev.region,
-          ev.os_type,
-          ev.browser,
-          ev.browser_language,
-          ev.referrer_host,
-          ev.status_code,
-          ev.created_at,
-        ),
-        // Adjacent statements in the same D1 batch preserve exactly-once
-        // rollups even when an object is retried or repeats a dedupe key.
-        buildAnalyticsRollupUpsert(env.DB, ev.rollup, true),
-      );
-      if (!ev.is_bot && ev.rollup.date >= new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10)) {
-        allStatements.push(env.DB.prepare(
+  const accepted: { key: string; events: number; lead: boolean; startsAt: number; rawOffsets: number[] }[] = [];
+  const now = Date.now();
+  const dimensionCutoff = new Date(now - 30 * 86_400_000).toISOString().slice(0, 10);
+  const summaryCutoff = new Date(now - 6 * 86_400_000).toISOString().slice(0, 10);
+  // Telemetry has priority, with up to five lead slots reserved when both
+  // prefixes have backlog. Bounded lookahead avoids 20 poisoned keys blocking
+  // healthy neighbors, but cannot guarantee drainage beyond the scan window.
+  const selectedTelemetry = telemetry.length > MAX_OBJECTS
+    ? [...telemetry.slice(0, 10), ...telemetry.slice(-10)] : telemetry;
+  const candidates = leads.length
+    ? [...selectedTelemetry.slice(0, 15), ...leads.slice(0, 5), ...selectedTelemetry.slice(15), ...leads.slice(5)]
+    : selectedTelemetry;
+  for (const key of candidates) {
+    if (considered >= MAX_OBJECTS || bytes >= MAX_RUN_BYTES || records >= MAX_RECORDS || statements >= MAX_STATEMENTS) break;
+    considered++;
+    const obj = await bucket.get(key);
+    if (!obj) continue;
+    if (obj.size > MAX_OBJECT_BYTES || obj.size > MAX_RUN_BYTES - bytes) { deferred++; continue; }
+    let text: string | null;
+    try {
+      text = await readBoundedBody({ headers: new Headers(), body: obj.body }, Math.min(MAX_OBJECT_BYTES, MAX_RUN_BYTES - bytes));
+    } catch { invalid++; continue; }
+    if (text === null) { deferred++; continue; }
+    const actualBytes = new TextEncoder().encode(text).byteLength;
+    if (actualBytes !== obj.size) { invalid++; continue; } // truncated or dishonest stream
+    bytes += actualBytes;
+    const isTelemetry = key.startsWith("wal/telemetry/");
+    const events = isTelemetry ? parseTelemetry(text) : null;
+    const lead = isTelemetry ? null : parseLead(text);
+    if (events === "deferred") { deferred++; continue; }
+    if ((isTelemetry && !events) || (!isTelemetry && !lead)) { invalid++; continue; }
+    const neededRecords = events?.length ?? 1;
+    const neededStatements = events?.reduce((n, row) => n + (row.is_bot === 1 || String(row.created_at).slice(0, 10) < summaryCutoff ? 2 : 3), 0) ?? 1;
+    if (records + neededRecords > MAX_RECORDS || statements + neededStatements > MAX_STATEMENTS) { deferred++; continue; }
+    const batch: D1PreparedStatement[] = [];
+    const rawOffsets: number[] = [];
+    if (events) {
+      for (const row of events) {
+        const path = String(row.path).slice(0, 255);
+        const createdAt = String(row.created_at);
+        const date = createdAt.slice(0, 10);
+        const bot = row.is_bot === 1 ? 1 : 0;
+        const stored = storedVisitDimensions(row);
+        const dimensions = rollupDimensions(stored.deviceType, stored.osType);
+        if (date < dimensionCutoff) for (const field of Object.keys(dimensions) as (keyof typeof dimensions)[]) dimensions[field] = 0;
+        rawOffsets.push(allStatements.length + batch.length);
+        batch.push(env.DB.prepare(`INSERT OR IGNORE INTO telemetry_events (
+          dedupe_key, path, event_type, visitor_hash, is_bot, bot_name,
+          country, device_type, region, os_type, browser, browser_language,
+          referrer_host, status_code, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+          String(row.dedupe_key), path, String(row.event_type || "pageview"), String(row.visitor_hash || "anon"), bot,
+          row.bot_name ? String(row.bot_name) : null, stored.country, stored.deviceType, stored.region,
+          stored.osType, stored.browser, stored.browserLanguage, String(row.referrer_host || ""),
+          Number(row.status_code || 200), createdAt,
+        ), buildAnalyticsRollupUpsert(env.DB, {
+          date, path, views: 1, uniques: 1, botViews: bot, humanViews: 1 - bot, ...dimensions,
+        }, true));
+        if (!bot && date >= summaryCutoff) batch.push(env.DB.prepare(
           `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
            SELECT ?, ?, ?, ?, ? WHERE changes() > 0`,
-        ).bind(ev.path, /^\/es(?:\/|$)/.test(ev.path) ? "es" : "en", ev.country,
-          ev.referrer_host, Date.parse(ev.created_at)));
+        ).bind(path, /^\/es(?:\/|$)/.test(path) ? "es" : "en", stored.country,
+          String(row.referrer_host || ""), Date.parse(createdAt)));
+      }
+    } else if (lead) {
+      const email = String(lead.from_email || lead.email);
+      const subject = String(lead.subject || "Direct Web Inquiry");
+      const body = String(lead.body || lead.message);
+      const created = String(lead.created_at || obj.uploaded?.toISOString() || new Date(now).toISOString());
+      // A lead has no WAL key in D1. Insert each object independently; a
+      // DB-success/R2-delete-failure retry can duplicate it (at-least-once).
+      batch.push(env.DB.prepare(`INSERT INTO contact_leads (
+        name, from_email, phone, subject, body, locale, ip, country, city, region,
+        timezone, asn, as_organization, user_agent, referer, turnstile_verified, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+        String(lead.name || ""), email, lead.phone ? String(lead.phone) : null, subject, body,
+        String(lead.locale || "en"), String(lead.ip || "unknown"), String(lead.country || "XX"),
+        String(lead.city || ""), String(lead.region || ""), String(lead.timezone || ""),
+        Number(lead.asn || 0), String(lead.as_organization || ""), String(lead.user_agent || ""),
+        String(lead.referer || ""), Number(lead.turnstile_verified ?? 1), created,
+      ));
+    }
+    accepted.push({ key, events: events?.length ?? 0, lead: !events, startsAt: allStatements.length, rawOffsets });
+    allStatements.push(...batch);
+    records += neededRecords; statements += neededStatements;
+  }
+  if (allStatements.length) {
+    // D1.batch is atomic: failures retain keys. Telemetry retries are idempotent;
+    // lead retries after a successful batch but failed R2 delete may duplicate.
+    const responses = await env.DB.batch(allStatements);
+    if (responses.length !== allStatements.length || responses.some(r => !r.success)) throw new Error("WAL D1 batch unsuccessful");
+    await bucket.delete(accepted.map(item => item.key));
+    result.deletedKeys.push(...accepted.map(item => item.key));
+    for (const item of accepted) {
+      if (item.lead) {
+        result.leadObjectsProcessed++;
+        result.leadsReconciled++;
+        result.leadsInserted += (responses[item.startsAt]?.meta?.rows_written ?? 1) > 0 ? 1 : 0;
+      } else {
+        result.telemetryObjectsProcessed++;
+        result.telemetryReconciled += item.events;
+        // Only raw INSERT results count; conditional rollups and projections do not.
+        for (const index of item.rawOffsets) {
+          result.telemetryEventsInserted += (responses[index]?.meta?.rows_written ?? 1) > 0 ? 1 : 0;
+        }
       }
     }
   }
-
-  // 2. Reconcile wal/leads/ JSON objects
-  if (leadKeys.length > 0) {
-    for (const key of leadKeys) {
-      const obj = await bucket.get(key);
-      if (!obj) continue;
-      const text = await readR2ObjectText(obj);
-      try {
-        const lead = JSON.parse(text) as Record<string, unknown>;
-        allStatements.push(
-          env.DB.prepare(
-            `INSERT INTO contact_leads (
-              name, from_email, phone, subject, body, locale,
-              ip, country, city, region, timezone, asn, as_organization,
-              user_agent, referer, turnstile_verified, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          ).bind(
-            String(lead.name || ""),
-            String(lead.from_email || lead.email || ""),
-            lead.phone ? String(lead.phone) : null,
-            String(lead.subject || "Direct Web Inquiry"),
-            String(lead.body || lead.message || ""),
-            String(lead.locale || "en"),
-            String(lead.ip || "unknown"),
-            String(lead.country || "XX"),
-            String(lead.city || ""),
-            String(lead.region || ""),
-            String(lead.timezone || ""),
-            Number(lead.asn || 0),
-            String(lead.as_organization || ""),
-            String(lead.user_agent || ""),
-            String(lead.referer || ""),
-            Number(lead.turnstile_verified ?? 1),
-            String(lead.created_at || new Date().toISOString()),
-          ),
-        );
-        processedKeys.push(key);
-        leadObjectsProcessed += 1;
-        leadsReconciled += 1;
-      } catch {
-        // Ignore malformed lead payload
-      }
-    }
-  }
-
-  // 3. Execute a SINGLE batch call for all D1 statements (1 subrequest)
-  if (allStatements.length > 0) {
-    if (typeof env.DB.batch === "function") {
-      await env.DB.batch(allStatements);
-    } else {
-      for (const stmt of allStatements) {
-        await stmt.run();
-      }
-    }
-  }
-
-  // 4. Delete all processed keys in a SINGLE bulk R2 call (1 subrequest)
-  if (processedKeys.length > 0) {
-    if (typeof bucket.delete === "function") {
-      await bucket.delete(processedKeys);
-    }
-    deletedKeys.push(...processedKeys);
-  }
-
-  return {
-    telemetryReconciled,
-    leadsReconciled,
-    telemetryObjectsProcessed,
-    telemetryEventsInserted: telemetryReconciled,
-    leadObjectsProcessed,
-    leadsInserted: leadsReconciled,
-    deletedKeys,
-  };
+  if (invalid || deferred) console.warn("[WAL] retained objects", { invalid, deferred, considered });
+  return result;
 }
 
 export async function handleAnalyticsRollup(env: CronEnv): Promise<void> {
-  // Rebuild only whole retained UTC dates: the seventh-oldest day may have
-  // already lost its early hours to the rolling seven-day prune.
   const rollupQuery = `
     INSERT INTO pageviews_daily_summary (summary_date, path, locale, country, total_views)
-    SELECT
-      strftime('%Y-%m-%d', datetime(timestamp / 1000, 'unixepoch')) as summary_date,
-      path,
-      locale,
-      country,
-      COUNT(id) as total_views
+    SELECT strftime('%Y-%m-%d', datetime(timestamp / 1000, 'unixepoch')) as summary_date,
+      path, locale, country, COUNT(id) as total_views
     FROM pageview_events
     WHERE timestamp >= strftime('%s', 'now', '-6 days', 'start of day') * 1000
     GROUP BY summary_date, path, locale, country
     ON CONFLICT(summary_date, path, locale, country)
     DO UPDATE SET total_views = excluded.total_views;
   `;
-
-  // Replay first so human WAL visits enter the same summary rebuild.
-  if (getWalBucket(env)) {
-    await reconcileR2WalToD1(env);
-  }
+  if (getWalBucket(env)) await reconcileR2WalToD1(env);
   await env.DB.exec(rollupQuery);
-
-  // Prune raw event detail to limit storage (Free: 500 MB per D1 database).
   const pruneQuery = `
-    DELETE FROM pageview_events
-    WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
-
-    DELETE FROM telemetry_events
-    WHERE datetime(created_at) < datetime('now', '-7 days');
-
-    DELETE FROM pageviews
-    WHERE created_at < datetime('now', '-30 days');
-
-    DELETE FROM prefetch_analytics_events
-    WHERE created_at < datetime('now', '-30 days');
-
-    DELETE FROM edge_telemetry_events
-    WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
-
-    UPDATE analytics_rollups SET
-      device_desktop = 0, device_mobile = 0,
-      os_windows = 0, os_macos = 0, os_ios = 0,
-      os_android = 0, os_linux = 0, os_other = 0
+    DELETE FROM pageview_events WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
+    DELETE FROM telemetry_events WHERE datetime(created_at) < datetime('now', '-7 days');
+    DELETE FROM pageviews WHERE created_at < datetime('now', '-30 days');
+    DELETE FROM prefetch_analytics_events WHERE created_at < datetime('now', '-30 days');
+    DELETE FROM edge_telemetry_events WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
+    UPDATE analytics_rollups SET device_desktop = 0, device_mobile = 0,
+      os_windows = 0, os_macos = 0, os_ios = 0, os_android = 0, os_linux = 0, os_other = 0
     WHERE date < date('now', '-30 days')
-      AND (device_desktop != 0 OR device_mobile != 0 OR os_windows != 0
-        OR os_macos != 0 OR os_ios != 0 OR os_android != 0
-        OR os_linux != 0 OR os_other != 0);
+      AND (device_desktop != 0 OR device_mobile != 0 OR os_windows != 0 OR os_macos != 0
+        OR os_ios != 0 OR os_android != 0 OR os_linux != 0 OR os_other != 0);
   `;
-
   await env.DB.exec(pruneQuery);
 }

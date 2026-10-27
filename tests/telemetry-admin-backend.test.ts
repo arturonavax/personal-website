@@ -223,7 +223,7 @@ describe("production-shaped telemetry and admin contracts", () => {
           objects: [{ key: `wal/telemetry/${yesterday}/unknown.ndjson` }],
           truncated: false,
         }),
-        get: async () => ({ text: async () => record }),
+        get: async () => ({ size: new TextEncoder().encode(record).byteLength, body: new Blob([record]).stream() }),
         delete: async () => {},
       },
     };
@@ -331,7 +331,7 @@ describe("production-shaped telemetry and admin contracts", () => {
         objects: prefix === "wal/telemetry/" ? [{ key }] : [],
         truncated: false,
       }),
-      get: async () => ({ text: async () => `${record}\n${record}` }),
+      get: async () => ({ size: new TextEncoder().encode(`${record}\n${record}`).byteLength, body: new Blob([`${record}\n${record}`]).stream() }),
       delete: async () => {}, // simulated lost acknowledgement; replay repeats
     };
     const env = { ...f.env, STORAGE_BUCKET: bucket };

@@ -333,9 +333,9 @@ function createMockR2Bucket() {
       return {
         text: async () => val,
         arrayBuffer: async () => new TextEncoder().encode(val).buffer,
-        body: new ReadableStream(),
+        body: new Blob([val]).stream(),
         httpMetadata: { contentType: "application/x-ndjson" },
-        size: val.length,
+        size: new TextEncoder().encode(val).byteLength,
         etag: "mock-etag",
       };
     },

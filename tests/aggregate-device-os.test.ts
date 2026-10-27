@@ -148,12 +148,13 @@ describe("minimized device/OS rollups", () => {
       },
     ];
     const bucket = {
-      list: async () => ({
-        objects: [{ key: "wal/telemetry/test.ndjson" }],
+      list: async ({ prefix }: { prefix: string }) => ({
+        objects: prefix === "wal/telemetry/" ? [{ key: "wal/telemetry/test.ndjson" }] : [],
         truncated: false,
       }),
       get: async () => ({
-        text: async () => records.map((r) => JSON.stringify(r)).join("\n"),
+        size: new TextEncoder().encode(records.map((r) => JSON.stringify(r)).join("\n")).byteLength,
+        body: new Blob([records.map((r) => JSON.stringify(r)).join("\n")]).stream(),
       }),
       delete: async () => {},
     };
@@ -188,8 +189,8 @@ describe("minimized device/OS rollups", () => {
         truncated: false,
       }),
       get: async () => ({
-        text: async () =>
-          JSON.stringify(record) + "\n" + JSON.stringify(record),
+        size: new TextEncoder().encode(JSON.stringify(record) + "\n" + JSON.stringify(record)).byteLength,
+        body: new Blob([JSON.stringify(record) + "\n" + JSON.stringify(record)]).stream(),
       }),
       delete: async () => {},
     };
@@ -287,8 +288,8 @@ describe("minimized device/OS rollups", () => {
         truncated: false,
       }),
       get: async () => ({
-        text: async () =>
-          records.map((record) => JSON.stringify(record)).join("\n"),
+        size: new TextEncoder().encode(records.map((record) => JSON.stringify(record)).join("\n")).byteLength,
+        body: new Blob([records.map((record) => JSON.stringify(record)).join("\n")]).stream(),
       }),
       delete: async () => {},
     };
