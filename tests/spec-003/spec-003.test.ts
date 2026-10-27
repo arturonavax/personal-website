@@ -268,6 +268,7 @@ describe("SPEC-003: Cron Scheduler & Email Worker", () => {
       headers: new Headers({ subject: "Staff Backend Role Opportunity" }),
       raw: new Response("Hello Arturo, we loved your distributed systems work.")
         .body!,
+      rawSize: new TextEncoder().encode("Hello Arturo, we loved your distributed systems work.").byteLength,
       setReject: () => {},
       forward: async () => {},
     };

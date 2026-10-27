@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { Database } from "bun:sqlite";
 import { readFileSync } from "node:fs";
 import { reconcileR2WalToD1 } from "../cloudflare/cron-scheduler";
+import { processIncomingEmail } from "../cloudflare/email-worker";
 
 const encode = (s: string) => new TextEncoder().encode(s);
 const body = (s: string) => new ReadableStream<Uint8Array>({ start(c) { c.enqueue(encode(s)); c.close(); } });
@@ -129,5 +130,32 @@ describe("bounded background replay", () => {
     await run(f);
     expect(f.count("telemetry_events")).toBe(1);
     expect(f.count("analytics_rollups")).toBe(1);
+  });
+});
+
+describe("incoming email", () => {
+  const message = (text: string, rawSize: number) => {
+    let rejection = "";
+    return { value: { from: "sender@example.test", to: "inbox@example.test", headers: new Headers({ subject: "Inquiry" }), raw: body(text), rawSize, setReject: (reason: string) => { rejection = reason; }, forward: async () => {} }, rejected: () => rejection };
+  };
+  it("rejects declared and actual oversized streams without D1 writes", async () => {
+    for (const size of [65_537, 1]) {
+      const f = fixture({});
+      const m = message("X".repeat(65_537), size);
+      const pending: Promise<unknown>[] = [];
+      await processIncomingEmail(m.value, { DB: f.db }, { waitUntil: p => pending.push(p) } as never);
+      await Promise.all(pending);
+      expect(m.rejected()).not.toBe("");
+      expect(f.count("contact_leads")).toBe(0);
+    }
+  });
+  it("accepted email persists through waitUntil without a webhook", async () => {
+    const f = fixture({});
+    const m = message("hello", 5);
+    const pending: Promise<unknown>[] = [];
+    await processIncomingEmail(m.value, { DB: f.db }, { waitUntil: p => pending.push(p) } as never);
+    await Promise.all(pending);
+    expect(m.rejected()).toBe("");
+    expect(f.count("contact_leads")).toBe(1);
   });
 });
