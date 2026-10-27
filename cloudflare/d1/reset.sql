@@ -232,12 +232,12 @@ INSERT OR IGNORE INTO system_deployments (
 );
 
 -- Match Wrangler's D1 migration ledger after resetting the full schema.
--- Both 0001 and the additive 0002 are materialized above; replaying either would be inconsistent.
+-- The complete schema is materialized above; do not replay 0001 on this database.
 CREATE TABLE d1_migrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE,
   applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
-INSERT INTO d1_migrations (name) VALUES ('0001_initial_schema.sql'), ('0002_visit_dimensions.sql');
+INSERT INTO d1_migrations (name) VALUES ('0001_initial_schema.sql');
 
 PRAGMA optimize;

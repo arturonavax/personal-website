@@ -1,14 +1,14 @@
 # Cloudflare D1 Reference SQL Queries & Analytics Playbook
 
 Este documento reúne todas las consultas SQL de referencia para la base de datos analítica Cloudflare D1 del proyecto.
-El esquema completo ha sido compactado en la línea base unificada `0001_initial_schema.sql` (y `schema.sql`) junto con `reset.sql` para reinicios deterministas sin amplificación de escritura.
+El esquema completo, incluidas las dimensiones de visita, está en la única migración `0001_initial_schema.sql` (y `schema.sql`); `reset.sql` reconstruye esta línea base y registra solo `0001` en el ledger. No es una actualización de tablas existentes: `CREATE TABLE IF NOT EXISTS` no agrega columnas y un ledger con `0001` no vuelve a ejecutar la migración.
 
 ### Comandos de Gestión y Reset de Base de Datos
 
 - **Reset Total (Local)**: `pnpm run db:reset:local` (aplica `cloudflare/d1/reset.sql`)
-- **Reset remoto (no hay atajo)**: requiere inventario exacto, export protegido, restauración aislada y confirmación posterior del destino; ver [`docs/cloudflare-edge.md`](../../../docs/cloudflare-edge.md).
+- **Reset remoto (no hay atajo)**: operación destructiva separada para un destino explícito; este cambio no la ejecuta ni exige respaldos o verificaciones; ver [`docs/cloudflare-edge.md`](../../../docs/cloudflare-edge.md).
 - **Aplicar Esquema Base (Local)**: `pnpm run db:schema:local` (aplica `cloudflare/d1/schema.sql`)
-- **Producción**: no aplicar `schema.sql` ni la nueva migración `0001` sobre la D1 existente con ledger histórico.
+- **Producción**: no aplicar `schema.sql` ni la migración reescrita `0001` como actualización de la D1 existente con ledger histórico.
 
 ---
 

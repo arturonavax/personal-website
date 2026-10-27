@@ -24,7 +24,7 @@ const MIGRATIONS_DIR = path.join(
   "d1",
   "migrations",
 );
-const MIGRATIONS = ["0001_initial_schema.sql", "0002_visit_dimensions.sql"];
+const MIGRATIONS = ["0001_initial_schema.sql"];
 
 function createD1Shim() {
   const sqlite = new Database(":memory:");

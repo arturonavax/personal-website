@@ -10,9 +10,6 @@ function fixture() {
   sqlite.exec(
     readFileSync("cloudflare/d1/migrations/0001_initial_schema.sql", "utf8"),
   );
-  sqlite.exec(
-    readFileSync("cloudflare/d1/migrations/0002_visit_dimensions.sql", "utf8"),
-  );
   const db = {
     prepare(sql: string) {
       const bind = (...args: unknown[]) => ({

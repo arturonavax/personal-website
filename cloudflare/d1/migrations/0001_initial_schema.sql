@@ -38,6 +38,10 @@ CREATE TABLE IF NOT EXISTS telemetry_events (
   bot_name TEXT,
   country TEXT DEFAULT 'XX',
   device_type TEXT DEFAULT 'desktop',
+  region TEXT NOT NULL DEFAULT 'unknown',
+  os_type TEXT NOT NULL DEFAULT 'unknown',
+  browser TEXT NOT NULL DEFAULT 'unknown',
+  browser_language TEXT NOT NULL DEFAULT 'unknown',
   referrer_host TEXT DEFAULT '',
   status_code INTEGER NOT NULL DEFAULT 200,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
