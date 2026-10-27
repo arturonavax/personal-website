@@ -1,6 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { handleAnalyticsRollup } from "./cron-scheduler";
+import { BoundedCache } from "./runtime/bounded-cache";
+import { readBoundedBody } from "./runtime/request-body";
 import {
   processIncomingEmail,
   type ForwardableEmailMessage,
@@ -16,7 +18,6 @@ import {
   StaticMemorySearchAdapter,
   DeploymentRegistry,
   QuotaDegradationTier,
-  degradationTierToName,
   edgeQuotaTracker,
   isD1QuotaException,
   D1TelemetryAdapter,
@@ -26,7 +27,6 @@ import {
   checkAndSetL1DedupeCache,
   clearL1DedupeCache,
   clearCompactRollupBuffer,
-  flushCompactRollupBuffer,
   writeTelemetryWalToR2,
   resolveR2Bucket,
 } from "../src/lib/adapters";
@@ -93,8 +93,19 @@ interface CachedTelemetry {
   data: any;
   dbRef?: unknown;
 }
-const telemetryCache = new Map<string, CachedTelemetry>();
-const telemetryFreshCooldown = new Map<string, number>();
+const telemetryCache = new BoundedCache<string, CachedTelemetry>(128, 120_000);
+const telemetryFreshCooldown = new BoundedCache<string, number>(128, 15_000);
+const telemetryDbIds = new WeakMap<object, number>();
+let nextTelemetryDbId = 0;
+function telemetryDbKey(db: D1Database | undefined): string {
+  if (!db) return "missing";
+  let id = telemetryDbIds.get(db);
+  if (!id) {
+    id = ++nextTelemetryDbId;
+    telemetryDbIds.set(db, id);
+  }
+  return String(id);
+}
 let cachedMetricsSnapshot: CachedTelemetry | null = null;
 let cachedLeadsSnapshot: CachedTelemetry | null = null;
 let cachedDeploymentsSnapshot: CachedTelemetry | null = null;
@@ -154,6 +165,14 @@ const TRACKING_PARAMS = [
   "fbclid",
   "gclid",
 ];
+
+// The Workers Cache API exposes `default`; DOM CacheStorage alone does not.
+// Keep the capability optional for non-Workers runtimes and test fixtures.
+function getDefaultCache(): Cache | null {
+  if (typeof caches === "undefined") return null;
+  const storage: CacheStorage & { readonly default?: Cache } = caches;
+  return storage.default ?? null;
+}
 
 const routingPolicy = new CloudflareEdgeRoutingPolicy();
 const circuitBreaker = new FailOpenCircuitBreaker();
@@ -279,8 +298,7 @@ async function handleAiMarkdownNegotiation(
   const canonicalUrl = `https://arturonavax.dev${canonicalPath}`;
   const llmsAnchorUrl = `https://arturonavax.dev/llms-full.txt#${encodeURIComponent(slug)}`;
 
-  const cache =
-    typeof caches !== "undefined" && caches.default ? caches.default : null;
+  const cache = getDefaultCache();
   const cacheKeyUrl = `${new URL(request.url).origin}${pathname}?__format=markdown`;
   const cacheKey = new Request(cacheKeyUrl, { method: "GET" });
 
@@ -541,7 +559,7 @@ export default {
         normalizedLowerPath === "/status"
       ) {
         return withNoIndexHeaders(
-          await handleAdminDashboardRequest(request, env, ctx),
+          await handleAuthorizedAdminRequest(request, env, ctx),
         );
       }
 
@@ -814,7 +832,7 @@ export default {
 
     if (pathname === "/api/search") {
       return withNoIndexHeaders(
-        await handleSemanticSearch(request, env, ctx, url),
+        await handleSemanticSearch(request, env, ctx),
       );
     }
 
@@ -832,12 +850,12 @@ export default {
 
     if (pathname === "/api/telemetry/views" && request.method === "GET") {
       return withNoIndexHeaders(
-        await handleTelemetryViewsRead(request, env, ctx, url),
+        await handleTelemetryViewsRead(env, ctx, url),
       );
     }
 
     if (pathname.startsWith("/cdn-assets/") && env.STORAGE_BUCKET) {
-      return handleCdnStorageAsset(request, env, ctx, url);
+      return handleCdnStorageAsset(env, ctx, url);
     }
 
     if (pathname === "/api/status" || pathname === "/api/deployment") {
@@ -1112,7 +1130,7 @@ export default {
 
   // Cron Trigger Engine for Daily Analytics Rollups (SPEC-003 Section 2.3.2)
   async scheduled(
-    controller: ScheduledController,
+    _controller: ScheduledController,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
@@ -1138,8 +1156,7 @@ export async function handleCachedGet(
   cacheTags: string[],
   ctx?: ExecutionContext,
 ): Promise<Response> {
-  const cache =
-    typeof caches !== "undefined" && caches.default ? caches.default : null;
+  const cache = getDefaultCache();
   const cacheUrl = new URL(request.url);
   const cacheKey = new Request(cacheUrl.toString(), {
     method: "GET",
@@ -1191,7 +1208,6 @@ async function handleSemanticSearch(
   request: Request,
   env: Env,
   ctx: ExecutionContext,
-  url: URL,
 ): Promise<Response> {
   const cleanUrl = new URL(request.url);
   for (const param of TRACKING_PARAMS) {
@@ -1297,7 +1313,7 @@ async function handleCaptchaVerification(
           token: body.token || "",
           remoteIp: clientIp,
         }),
-      { success: false, error: "Verification timeout" },
+      { success: false },
       500,
       "captcha-verify",
     );
@@ -1318,7 +1334,10 @@ async function handleCaptchaVerification(
 }
 
 // IP Rate Limiter for public form submissions (max 5 submissions per 10 minutes per IP)
-const contactRateLimits = new Map<string, { count: number; resetAt: number }>();
+const contactRateLimits = new BoundedCache<
+  string,
+  { count: number; resetAt: number }
+>(4096, 10 * 60 * 1000);
 
 export function checkContactRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -1327,8 +1346,11 @@ export function checkContactRateLimit(ip: string): boolean {
 
   const record = contactRateLimits.get(ip);
   if (!record || now > record.resetAt) {
-    contactRateLimits.set(ip, { count: 1, resetAt: now + windowMs });
-    return true;
+    return contactRateLimits.admit(
+      ip,
+      { count: 1, resetAt: now + windowMs },
+      now,
+    );
   }
 
   if (record.count >= maxRequests) {
@@ -1354,6 +1376,25 @@ export async function handleContactFormSubmission(
     });
   }
 
+  let rawBody: string | null;
+  try {
+    rawBody = await readBoundedBody(request, 32 * 1024);
+  } catch {
+    rawBody = "";
+  }
+  if (rawBody === null) {
+    return new Response(
+      JSON.stringify({ status: "error", error: "Payload too large" }),
+      {
+        status: 413,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store, private",
+        },
+      },
+    );
+  }
+
   const clientIp = request.headers.get("cf-connecting-ip") || "unknown";
   if (!checkContactRateLimit(clientIp)) {
     return new Response(
@@ -1373,10 +1414,13 @@ export async function handleContactFormSubmission(
   }
 
   try {
-    const data = (await request.json().catch(() => ({}))) as Record<
-      string,
-      any
-    >;
+    const data = (() => {
+      try {
+        return JSON.parse(rawBody || "{}");
+      } catch {
+        return {};
+      }
+    })() as Record<string, any>;
     const name = (data.name || "").toString().trim().slice(0, 100);
     const email = (data.email || "").toString().trim().slice(0, 120);
     const phone = (data.phone || "").toString().trim().slice(0, 35);
@@ -2309,15 +2353,13 @@ async function handleTelemetryCollectBeacon(
  * Queries `analytics_rollups` (1 indexed row read) and caches in `caches.default` for 60s.
  */
 async function handleTelemetryViewsRead(
-  request: Request,
   env: Env,
   ctx: ExecutionContext,
   url: URL,
 ): Promise<Response> {
   const rawPath = url.searchParams.get("path") || "/";
   const normalizedPath = normalizeTelemetryPath(rawPath);
-  const cache =
-    typeof caches !== "undefined" && caches.default ? caches.default : null;
+  const cache = getDefaultCache();
   const cacheKey = new Request(
     `https://arturonavax.dev/__cf_edge_views?path=${encodeURIComponent(normalizedPath)}`,
     { method: "GET" },
@@ -2426,7 +2468,6 @@ async function handleTelemetryViewsRead(
  * R2 Storage Asset Handler via Workers Cache API (SPEC-003, SPEC-004 REQ-EDG-03)
  */
 async function handleCdnStorageAsset(
-  request: Request,
   env: Env,
   ctx: ExecutionContext,
   url: URL,
@@ -2445,7 +2486,14 @@ async function handleCdnStorageAsset(
     return new Response("Not Found", { status: 404 });
   }
 
-  return new Response(item.data, {
+  // Preserve the R2 streaming fast path and the exact byte range of views.
+  // Only SharedArrayBuffer-backed views need an owned ArrayBuffer copy for BodyInit.
+  const body = item.data instanceof Uint8Array
+    ? item.data.buffer instanceof ArrayBuffer
+      ? new Uint8Array(item.data.buffer, item.data.byteOffset, item.data.byteLength)
+      : new Uint8Array(item.data)
+    : item.data;
+  return new Response(body, {
     status: 200,
     headers: {
       "Content-Type": item.metadata.contentType,
@@ -2479,7 +2527,7 @@ interface JwksCacheEntry {
 }
 const jwksMemoryCache = new Map<string, JwksCacheEntry>();
 
-export function base64UrlDecode(str: string): Uint8Array {
+export function base64UrlDecode(str: string): Uint8Array<ArrayBuffer> {
   let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
   while (base64.length % 4 !== 0) {
     base64 += "=";
@@ -2728,7 +2776,7 @@ export async function verifyAdminAccess(
         authorized: true,
         status: 200,
         method: "cf_access",
-        email: jwtResult.email,
+        ...(jwtResult.email !== undefined ? { email: jwtResult.email } : {}),
       };
     }
   }
@@ -2787,9 +2835,9 @@ export async function verifyAdminAuthorization(
   return {
     authorized: res.authorized,
     status: res.status,
-    email: res.email,
+    ...(res.email !== undefined ? { email: res.email } : {}),
     method: res.method || "none",
-    reason: res.reason,
+    ...(res.reason !== undefined ? { reason: res.reason } : {}),
   };
 }
 
@@ -2824,7 +2872,7 @@ export function isProtectedApiSurface(
  * Clean, dark-mode 401 challenge screen for unauthorized admin access (Zero telemetry leakage)
  */
 export function renderAdminUnauthorizedHtml(
-  reason?: string,
+  _reason?: string,
   status: number = 401,
 ): Response {
   const html = `<!doctype html>
@@ -3144,6 +3192,17 @@ export async function handleAdminDashboardRequest(
     );
   }
 
+  return handleAuthorizedAdminRequest(request, env, ctx);
+}
+
+// Only the verified fetch branch or the exported handler after verification calls this closure.
+async function handleAuthorizedAdminRequest(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const url = new URL(request.url);
+  edgeQuotaTracker.configureFromEnv(env as unknown as Record<string, unknown>);
   if (url.pathname === "/status" || url.pathname === "/api/status") {
     const registry = new DeploymentRegistry(env.DB);
     const activeDeployment = await registry.getActiveDeployment();
@@ -3232,7 +3291,6 @@ export async function handleAdminDashboardRequest(
   }
 
   const buildUnifiedQuotas = (
-    dailyUsedRequests: number,
     dailyWrites: number,
     dailyReads: number,
   ) => {
@@ -3461,9 +3519,6 @@ export async function handleAdminDashboardRequest(
     const envRecord = env as unknown as Record<string, unknown>;
     const prefStatus = prefetchCircuitBreaker.getStatus(envRecord);
     const botStatus = botCircuitBreaker.getStatus(envRecord);
-    const dailyPrefetches = prefStatus?.dailyPrefetchCount || 0;
-    const dailyBots = botStatus?.dailyBotCount || 0;
-
     let snap = edgeQuotaTracker.getSnapshot(now);
     try {
       if (env.DB) {
@@ -3473,15 +3528,7 @@ export async function handleAdminDashboardRequest(
       // Fail-open
     }
 
-    const estimatedDailyRequests = Math.max(
-      dailyPrefetches + dailyBots + 150,
-      snap.dailyWrites > 0 ? snap.dailyWrites : 0,
-    );
-    const quotas = buildUnifiedQuotas(
-      estimatedDailyRequests,
-      snap.dailyWrites,
-      snap.dailyReads,
-    );
+    const quotas = buildUnifiedQuotas(snap.dailyWrites, snap.dailyReads);
 
     const metricsPayload = {
       metrics: rollups,
@@ -3609,18 +3656,16 @@ export async function handleAdminDashboardRequest(
       url.searchParams.get("refresh") === "1";
 
     const now = Date.now();
-    const cacheKey = `${range}:${countryParam}:${segmentParam}:${pathFilter}:${searchParam}:${fromParam || ""}:${toParam || ""}:${page}:${limit}:${pageOnly ? "1" : "0"}`;
+    const cacheKey = `${telemetryDbKey(env.DB)}:${range}:${countryParam}:${segmentParam}:${pathFilter}:${searchParam}:${fromParam || ""}:${toParam || ""}:${page}:${limit}:${pageOnly ? "1" : "0"}`;
 
-    // Enforce 15-second cooldown on `fresh=true` cache bypasses to prevent D1 read amplification
-    const lastFreshAt = telemetryFreshCooldown.get(cacheKey) || 0;
-    const isFresh =
-      requestedFresh && now - lastFreshAt >= TELEMETRY_FRESH_COOLDOWN_MS;
-    if (isFresh) {
-      telemetryFreshCooldown.set(cacheKey, now);
-    }
+    // Resolved cooldown entries may evict by recency; unlike the IP security
+    // window, a full table must not silently discard an explicit fresh request.
+    const lastFreshAt = telemetryFreshCooldown.get(cacheKey, now) || 0;
+    const isFresh = requestedFresh && now - lastFreshAt >= TELEMETRY_FRESH_COOLDOWN_MS;
+    if (isFresh) telemetryFreshCooldown.set(cacheKey, now, now);
 
-    // 1. Edge In-Memory Cache + Cache API Check (TTL: 120s) - Prevents burning D1 row read quota
-    const cachedHit = telemetryCache.get(cacheKey);
+    // Bounded per-isolate resolved snapshot cache; never share D1 I/O across requests.
+    const cachedHit = telemetryCache.get(cacheKey, now);
     if (
       !isFresh &&
       cachedHit &&
@@ -3635,36 +3680,6 @@ export async function handleAdminDashboardRequest(
           "X-Telemetry-Source": "edge-memory-cache",
         },
       });
-    }
-
-    const edgeCache =
-      typeof caches !== "undefined" && caches.default ? caches.default : null;
-    const edgeCacheRequest = new Request(
-      `https://arturonavax.dev/__cf_edge_admin_telemetry/${encodeURIComponent(cacheKey)}`,
-      { method: "GET" },
-    );
-    if (!isFresh && edgeCache) {
-      try {
-        const edgeHit = await edgeCache.match(edgeCacheRequest);
-        if (edgeHit) {
-          const hitData = await edgeHit.clone().json();
-          telemetryCache.set(cacheKey, {
-            timestamp: now,
-            data: hitData,
-            dbRef: env.DB,
-          });
-          return new Response(JSON.stringify(hitData), {
-            status: 200,
-            headers: {
-              "Content-Type": "application/json",
-              "Cache-Control": "private, no-store",
-              "X-Telemetry-Source": "edge-memory-cache",
-            },
-          });
-        }
-      } catch {
-        // Ignore Cache API lookup error
-      }
     }
 
     let pageviews: any[] = [];
@@ -4015,8 +4030,6 @@ export async function handleAdminDashboardRequest(
 
     const totalFiltered = stats.total_pageviews;
     const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
-    const dailyUsedReq = stats.total_pageviews + stats.prefetches_count;
-
     let snap = edgeQuotaTracker.getSnapshot(now);
     try {
       if (env.DB) {
@@ -4065,11 +4078,7 @@ export async function handleAdminDashboardRequest(
         ),
       },
       degradation_tier: snap,
-      quotas: buildUnifiedQuotas(
-        Math.max(dailyUsedReq, snap.dailyWrites > 0 ? snap.dailyWrites : 0),
-        snap.dailyWrites,
-        snap.dailyReads,
-      ),
+      quotas: buildUnifiedQuotas(snap.dailyWrites, snap.dailyReads),
     };
 
     // Cache only observed data; an unavailable ledger must never masquerade as empty.
@@ -4078,27 +4087,9 @@ export async function handleAdminDashboardRequest(
         timestamp: now,
         data: responsePayload,
         dbRef: env.DB,
-      });
+      }, now);
 
-      if (edgeCache) {
-        try {
-          const cachedResp = new Response(JSON.stringify(responsePayload), {
-            status: 200,
-            headers: {
-              "Content-Type": "application/json",
-              "Cache-Control": "public, max-age=120",
-              "X-Robots-Tag": "noindex, nofollow, noarchive",
-            },
-          });
-          if (ctx && typeof ctx.waitUntil === "function") {
-            ctx.waitUntil(edgeCache.put(edgeCacheRequest, cachedResp));
-          } else {
-            await edgeCache.put(edgeCacheRequest, cachedResp);
-          }
-        } catch {
-          // Ignore Cache API write failure
-        }
-      }
+
     }
 
     return new Response(JSON.stringify(responsePayload), {

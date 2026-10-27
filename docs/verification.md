@@ -36,6 +36,8 @@ A missing test is a coverage gap, not evidence that the implementation is absent
 
 Use the pinned package manager and existing lockfile. Do not install or upgrade packages simply to turn a missing-environment check green. Test counts depend on discovery and inputs; report observed counts, not the old README's fixed count.
 
+The existing `pnpm check` command runs Astro's strict project diagnostics; `tsconfig.json` includes both `src/**/*` and `cloudflare/**/*.ts` so the Worker, cron and email handlers are not silently omitted. In a restricted offline sandbox, the installed Astro CLI may be invoked directly with Node to avoid package-manager lifecycle/bootstrap work. Cache writes belong in disposable scratch, not the read-only dependency tree. Node's documented `--disable-wasm-trap-handler` mode uses inline Wasm bounds checks instead of large virtual-memory reservations when an address-space limit prevents the compiler from starting. This is a local tooling option, not a deployed Worker setting or a performance claim.
+
 ## Package workflow boundaries
 
 `package.json` groups local development (`dev`, `dev:local`, `dev:r2`, `dev:worker`, `dev-prod`), build and explicit deployment (`prebuild`, `build`, `preview`, `predeploy`, `deploy`), checks, content/CV publication, asset maintenance and local D1 setup. The build/deploy hook commands are unchanged: `pnpm build` and `pnpm deploy` may hydrate remote content, and `deploy` is a remote mutation. `dev-prod` alone selects the offline local build path. Do not use a remote command to validate a script inventory.
