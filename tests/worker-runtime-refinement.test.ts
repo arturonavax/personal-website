@@ -107,4 +107,26 @@ describe("bounded Worker refinement", () => {
     expect(f.writes).toBe(0);
   });
 
+  it("attempts the compact lead insert once before spilling a failed D1 write to WAL", async () => {
+    const f = fixture();
+    const statements: string[] = [];
+    const keys: string[] = [];
+    f.env.DB = { prepare(sql: string) {
+      statements.push(sql);
+      return { bind() { return { async run() { throw new Error("D1 unavailable"); } }; } };
+    } } as never;
+    f.env.R2_BUCKET = { async put(key: string) { keys.push(key); } } as never;
+    const response = await f.send("/api/contact", {
+      method: "POST", headers: { "cf-connecting-ip": `lead-${crypto.randomUUID()}` },
+      body: JSON.stringify({ name: "Test", email: "test@example.test", subject: "Inquiry", message: "A sufficiently long inquiry message" }),
+    });
+    expect(response.status).toBe(200);
+    expect((await response.json() as { status: string }).status).toBe("ok");
+    expect(statements).toHaveLength(1);
+    expect(statements[0]).toContain("INSERT INTO contact_leads");
+    expect(statements[0]).toContain("turnstile_verified");
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toStartWith("wal/leads/");
+  });
+
 });

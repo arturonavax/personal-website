@@ -1608,14 +1608,14 @@ export async function handleContactFormSubmission(
     const asn = typeof cf?.asn === "number" ? cf.asn : null;
     const asOrganization = (cf?.asOrganization || "").toString().slice(0, 150);
 
-    // Format legacy body representation for fallback logging
+    // Format the stored lead body and notification representation.
     let formattedBody = `Name: ${name}\nEmail: ${email}`;
     if (phone) {
       formattedBody += `\nPhone: ${phone}`;
     }
     formattedBody += `\nLocale: ${locale}\nIP: ${ip}\nLocation: ${[city, country].filter(Boolean).join(", ") || "Unknown"}\n\nMessage:\n${message}`;
 
-    // Persist in D1 contact_leads (Migration 0008 includes legal, network & geo telemetry)
+    // Persist in the compact contact_leads schema with network and geo fields.
     // Tier 4 or D1 error automatically spills the lead to R2 WAL (`wal/leads/${uuid}.json`)
     const leadWalPayload = {
       name,
@@ -1683,31 +1683,8 @@ export async function handleContactFormSubmission(
         leadPersisted = true;
         edgeQuotaTracker.recordWrite(1);
       } catch (err) {
-        if (isD1QuotaException(err)) {
-          edgeQuotaTracker.tripCircuitBreaker(String(err));
-          await spillLeadToR2Wal();
-        } else {
-          try {
-            const fallbackStmt = env.DB.prepare(
-              "INSERT INTO contact_leads (from_email, subject, body, name, phone, locale, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
-            ).bind(
-              email,
-              `[Web] ${subject}`,
-              formattedBody,
-              name,
-              phone || null,
-              locale,
-            );
-            await fallbackStmt.run();
-            leadPersisted = true;
-            edgeQuotaTracker.recordWrite(1);
-          } catch (fallbackErr) {
-            if (isD1QuotaException(fallbackErr)) {
-              edgeQuotaTracker.tripCircuitBreaker(String(fallbackErr));
-            }
-            await spillLeadToR2Wal();
-          }
-        }
+        if (isD1QuotaException(err)) edgeQuotaTracker.tripCircuitBreaker(String(err));
+        await spillLeadToR2Wal();
       }
     }
 
@@ -3360,7 +3337,7 @@ export async function handleAdminDashboardRequest(
         queries_monthly_limit: 5000000,
         unit: "dimensions",
       },
-      // Flat aliases for /admin UI renderQuotas() compatibility
+      // Flat fields are part of the current /admin UI renderQuotas() API contract.
       workers_daily: {
         used: null,
         limit: workersDailyLimit,
@@ -4542,11 +4519,8 @@ export async function computeDedupeKey(
  * so the rollup row is written if and only if the pageview row was actually inserted.
  */
 function resolveBotTelemetrySampleRate(env?: Env): number {
-  // Unconfigured legacy integrations retain their original behavior; explicitly
-  // configured bot collection defaults to a Free-plan 1% sample.
-  const value =
-    env?.BOT_TELEMETRY_SAMPLE_RATE ??
-    (env?.ENABLE_BOT_TELEMETRY === undefined ? 1 : 0.01);
+  // Unconfigured collection uses the same bounded 1% default as enabled collection.
+  const value = env?.BOT_TELEMETRY_SAMPLE_RATE ?? 0.01;
   if (typeof value === "string" && value.trim() === "") return 0.01;
   const rate = Number(value);
   return Number.isFinite(rate) && rate >= 0 && rate <= 1 ? rate : 0.01;
@@ -4680,7 +4654,7 @@ export async function recordAnalyticsNonBlocking(
     prefetchCircuitBreaker.recordVisit();
 
     // Documents and committed browser routes share the authoritative raw insert
-    // and conditional rollup. Keep bot sampling and nominal category handling below.
+    // and conditional rollup. Bot sampling and nominal category handling follow.
     if (!isBot) {
       const dimensions = visitDimensions(request);
       const bucket = Math.floor(now / PAGEVIEW_DEDUPE_WINDOW_MS);
@@ -4708,7 +4682,7 @@ export async function recordAnalyticsNonBlocking(
       event_type: "pageview",
       visitor_hash: visitorHash,
       is_bot: isBot,
-      bot_name: isBot ? visitorInfo.reason : null,
+      bot_name: visitorInfo.reason,
       country: country.slice(0, 10),
       device_type: coarseDeviceOs(userAgent).device,
       os_type: coarseDeviceOs(userAgent).os,
@@ -4735,8 +4709,8 @@ export async function recordAnalyticsNonBlocking(
         dedupeKey: l1Key30m,
         skipL1Check: true,
         eventType: "pageview",
-        isBot: false,
-        botName: null,
+        isBot: true,
+        botName: visitorInfo.reason,
         country,
         referrerHost: referrer,
         statusCode: 200,
@@ -4744,8 +4718,6 @@ export async function recordAnalyticsNonBlocking(
       });
       return;
     }
-
-    const locale = path.startsWith("/es") ? "es" : "en";
 
     // L2 dedupe: current bucket key (UNIQUE) + previous bucket probe so two hits that straddle a
     // bucket boundary within the window are still collapsed.
@@ -4755,17 +4727,14 @@ export async function recordAnalyticsNonBlocking(
       computeDedupeKey(visitorHash, normalizedPath, bucket - 1),
     ]);
 
-    // Only classified bot rows need the additive 0012 column; human ingestion
-    // remains compatible during a staged migration rollout.
-    const botCategoryColumn = isBot ? ", bot_category" : "";
-    const botCategoryValue = isBot ? ", ?" : "";
+    // Human ingestion returned above; this path writes classified bot rows.
     const pageviewsInsert = db
       .prepare(
         `INSERT INTO pageviews (
            path, visitor_hash, referrer, country,
            utm_source, utm_medium, utm_campaign, utm_content, utm_term,
-           is_bot${botCategoryColumn}, created_at, dedupe_key
-         ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${botCategoryValue}, datetime('now'), ?
+           is_bot, bot_category, created_at, dedupe_key
+         ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?
          WHERE NOT EXISTS (SELECT 1 FROM pageviews WHERE dedupe_key = ?)
          ON CONFLICT(dedupe_key) DO NOTHING`,
       )
@@ -4780,30 +4749,12 @@ export async function recordAnalyticsNonBlocking(
         utmContent.slice(0, 100),
         utmTerm.slice(0, 100),
         isBot,
-        ...(isBot ? [visitorInfo.classification] : []),
+        visitorInfo.classification,
         dedupeKey,
         prevDedupeKey,
       );
 
     const statements = [pageviewsInsert];
-
-    // Rollup row only for humans, and only if the pageview row above was really inserted.
-    if (!isBot) {
-      statements.push(
-        db
-          .prepare(
-            `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
-             SELECT ?, ?, ?, ?, ? WHERE changes() > 0`,
-          )
-          .bind(
-            path.slice(0, 200),
-            locale,
-            country.slice(0, 10),
-            referrer.slice(0, 100),
-            now,
-          ),
-      );
-    }
 
     if (edgeQuotaTracker.shouldSyncD1()) {
       const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(db, now);

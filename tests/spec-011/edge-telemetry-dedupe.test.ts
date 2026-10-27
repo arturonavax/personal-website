@@ -84,11 +84,12 @@ async function recordAt(
   db: D1Database,
   urlPath: string,
   req = humanRequest(urlPath),
+  env = {} as never,
 ) {
   const realNow = Date.now;
   Date.now = () => now;
   try {
-    await recordAnalyticsNonBlocking(req, urlPath, db, {} as never);
+    await recordAnalyticsNonBlocking(req, urlPath, db, env);
   } finally {
     Date.now = realNow;
   }
@@ -249,6 +250,7 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
       db,
       "/blog/",
       humanRequest("/blog/", "192.0.2.50", botUa),
+      { BOT_TELEMETRY_SAMPLE_RATE: "1" } as never,
     );
 
     expect(count("pageviews")).toBe(1);

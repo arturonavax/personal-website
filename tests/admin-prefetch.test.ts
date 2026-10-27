@@ -317,6 +317,15 @@ describe("bounded admin telemetry coverage", () => {
     f.sqlite.close();
   });
 
+  it("uses the same 1% bot rate when the optional setting is absent", async () => {
+    const f = fixture();
+    delete f.env.BOT_TELEMETRY_SAMPLE_RATE;
+    const response = await f.admin("path=/unset-rate/");
+    expect(response.status).toBe(200);
+    expect((await response.json()).coverage.bots.sample_rate).toBe(0.01);
+    f.sqlite.close();
+  });
+
   it("keeps only bot classification unavailable on the pre-bot legacy schema", async () => {
     const f = fixture(200, "pre-bot");
     const response = await f.admin("path=/migration-boundary/");
@@ -330,6 +339,7 @@ describe("bounded admin telemetry coverage", () => {
 
   it("keeps the admin response available on the pre-rollup legacy schema", async () => {
     const f = fixture(200, "pre-rollup");
+    f.env.BOT_TELEMETRY_SAMPLE_RATE = "1";
     const response = await f.admin("path=/legacy-schema/");
     const data = await response.json();
     expect(response.status).toBe(200);
