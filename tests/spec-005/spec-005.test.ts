@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import worker, {
   type Env,
   handleAdminDashboardRequest,
@@ -10,7 +10,13 @@ import {
   resolveSubdomainPath,
   FailOpenCircuitBreaker,
   StaticMemorySearchAdapter,
+  edgeQuotaTracker,
 } from "../../src/lib/adapters";
+
+beforeEach(() => {
+  edgeQuotaTracker.reset();
+  clearRecentPageviewsCache();
+});
 
 const dummyAssets: Fetcher = {
   fetch: async (req: Request | string) => {
@@ -143,7 +149,7 @@ describe("SPEC-005 SDD: Edge Routing Policy Port & Adapter", () => {
           method: "POST",
         }),
       ),
-    ).toBe("TELEMETRY_INGESTION");
+    ).toBe("PASSTHROUGH");
   });
 
   it("identifies Fast-Path candidates without blocking overhead", () => {
@@ -558,134 +564,20 @@ describe("SPEC-005 REQ-PCD-04 & REQ-PCD-05: Non-Blocking Telemetry & Fail-Open R
     await expect(Promise.all(ctx.promises)).resolves.toBeDefined();
   });
 
-  it("Prefetch requests bypass telemetry collection completely with HTTP 204", async () => {
-    const ctx = createMockCtx();
-    const db = createMockDb();
-    const env: Env = { ASSETS: dummyAssets, DB: db };
-
-    const req = new Request("https://arturonavax.dev/api/v1/telemetry", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        purpose: "prefetch",
-      },
-      body: JSON.stringify({ path: "/blog" }),
-    });
-
-    const res = await worker.fetch(req, env, ctx);
-    expect(res.status).toBe(204);
-    expect(ctx.promises.length).toBe(0);
-    expect(db.executedQueries.length).toBe(0);
-  });
-
-  it("Non-speculative telemetry returns HTTP 202 queued immediately", async () => {
-    const ctx = createMockCtx();
-    const db = createMockDb();
-    const env: Env = { ASSETS: dummyAssets, DB: db };
-
-    clearRecentPageviewsCache();
-    const req = new Request("https://arturonavax.dev/api/v1/telemetry", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Sec-Fetch-Site": "same-origin",
-      },
-      body: JSON.stringify({
-        path: "/projects",
-        locale: "en",
-        visitorHash: "client-supplied-hash-must-be-ignored",
-      }),
-    });
-
-    const res = await worker.fetch(req, env, ctx);
-    expect(res.status).toBe(202);
-    const data = (await res.json()) as any;
-    expect(data.status).toBe("queued");
-    expect(data.queued).toBe(true);
-
-    await Promise.all(ctx.promises);
-    // Only edge_telemetry_events: pageview_events rollups belong exclusively to the server-side pipeline.
-    expect(db.executedQueries.length).toBe(1);
-    expect(db.executedQueries[0].sql).toContain("edge_telemetry_events");
-    expect(db.executedQueries[0].params).not.toContain(
-      "client-supplied-hash-must-be-ignored",
-    );
-  });
-
-  it("rejects cross-origin telemetry beacons with 403 and never touches D1", async () => {
-    const ctx = createMockCtx();
-    const db = createMockDb();
-    const env: Env = { ASSETS: dummyAssets, DB: db };
-
-    const res = await worker.fetch(
-      new Request("https://arturonavax.dev/api/v1/telemetry", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Origin: "https://evil.example",
-          "Sec-Fetch-Site": "cross-site",
-        },
-        body: JSON.stringify({ path: "/blog" }),
-      }),
-      env,
-      ctx,
-    );
-    expect(res.status).toBe(403);
-    expect(ctx.promises.length).toBe(0);
-    expect(db.executedQueries.length).toBe(0);
-  });
-
-  it("rejects oversized telemetry payloads with 413", async () => {
-    const ctx = createMockCtx();
-    const db = createMockDb();
-    const env: Env = { ASSETS: dummyAssets, DB: db };
-
-    const res = await worker.fetch(
-      new Request("https://arturonavax.dev/api/v1/telemetry", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Sec-Fetch-Site": "same-origin",
-          "Content-Length": "999999",
-        },
-        body: JSON.stringify({ path: "/blog" }),
-      }),
-      env,
-      ctx,
-    );
-    expect(res.status).toBe(413);
-    expect(db.executedQueries.length).toBe(0);
-  });
-
-  it("silently drops beacons with scanner, static-asset or malformed paths (no D1 writes)", async () => {
-    for (const badPath of [
-      "/.env",
-      "/wp-login.php",
-      "/_astro/app.js",
-      "no-leading-slash",
-      "/blog/<script>",
-    ]) {
-      clearRecentPageviewsCache();
+  it("retired v1 ingestion cannot write for either speculative or committed requests", async () => {
+    for (const headers of [{ purpose: "prefetch" }, { "Sec-Fetch-Site": "same-origin" }]) {
       const ctx = createMockCtx();
       const db = createMockDb();
-      const env: Env = { ASSETS: dummyAssets, DB: db };
-      const res = await worker.fetch(
-        new Request("https://arturonavax.dev/api/v1/telemetry", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Sec-Fetch-Site": "same-origin",
-          },
-          body: JSON.stringify({ path: badPath }),
-        }),
-        env,
-        ctx,
-      );
-      expect(res.status).toBe(202);
-      await Promise.all(ctx.promises);
-      expect(db.executedQueries.length).toBe(0);
+      const res = await worker.fetch(new Request("https://arturonavax.dev/api/v1/telemetry", {
+        method: "POST", headers, body: JSON.stringify({ path: "/blog" }),
+      }), { ASSETS: dummyAssets, DB: db }, ctx);
+      expect(res.status).toBe(404);
+      expect(await res.text()).toBe(JSON.stringify({ error: "Not Found" }));
+      expect(ctx.promises).toHaveLength(0);
+      expect(db.executedQueries).toHaveLength(0);
     }
   });
+
 });
 
 describe("SPEC-005 REQ-PCD-05: Semantic Search Circuit Breaker & Fail-Open Invariant", () => {

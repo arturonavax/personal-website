@@ -255,45 +255,14 @@ describe("SPEC-004 ODD: Cloudflare Edge Prefetch Shielding & Cache API Optimizat
     passThroughOnException: () => {},
   } as any;
 
-  it("REQ-EDG-02: Speculative prefetch requests to telemetry return 204 without writing to D1", async () => {
-    const prefetchHeaders = [
-      { Purpose: "prefetch" },
-      { "Sec-Purpose": "prefetch" },
-      { "X-Astro-Prefetch": "true" },
-    ];
-
-    for (const h of prefetchHeaders) {
-      const req = new Request("https://arturonavax.dev/api/v1/telemetry", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...h,
-        },
-        body: JSON.stringify({ path: "/blog", locale: "en" }),
-      });
-
-      const res = await worker.fetch(req, dummyEnv, dummyCtx);
-      expect(res.status).toBe(204);
+  it("REQ-EDG-02: retired v1 telemetry does not accept speculative or ordinary writes", async () => {
+    for (const headers of [{ Purpose: "prefetch" }, { "Sec-Fetch-Site": "same-origin" }]) {
+      const response = await worker.fetch(new Request("https://arturonavax.dev/api/v1/telemetry", {
+        method: "POST", headers, body: JSON.stringify({ path: "/blog" }),
+      }), dummyEnv, dummyCtx);
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe(JSON.stringify({ error: "Not Found" }));
     }
-  });
-
-  it("Valid non-speculative telemetry requests return 202 queued", async () => {
-    const req = new Request("https://arturonavax.dev/api/v1/telemetry", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Sec-Fetch-Site": "same-origin",
-      },
-      body: JSON.stringify({
-        path: "/blog",
-        locale: "en",
-      }),
-    });
-
-    const res = await worker.fetch(req, dummyEnv, dummyCtx);
-    expect(res.status).toBe(202);
-    const body = (await res.json()) as any;
-    expect(body.status).toBe("queued");
   });
 
   it("REQ-EDG-01: Injects immutable cache-control headers on versioned static assets", async () => {

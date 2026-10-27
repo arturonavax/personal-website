@@ -9,7 +9,6 @@ export type RequestClassification =
   | "ADMIN_SURFACE"
   | "SUBDOMAIN_ALIAS"
   | "DYNAMIC_API"
-  | "TELEMETRY_INGESTION"
   | "PASSTHROUGH";
 
 export interface CanonicalRedirectResult {

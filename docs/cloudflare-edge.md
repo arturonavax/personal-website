@@ -20,7 +20,7 @@ request -> configured Static Assets/Worker routing
 - Immutable assets/fonts: one-year caching. Public documents: revalidation, not an extra URL-only application HTML cache.
 - Runtime R2 `/cdn-assets/` objects: Cache API lookup before object fetch. Build-time editorial R2 synchronization is a separate flow; see [content sync](content-sync.md).
 - Search: optional AI/Vectorize, 350ms static-search fallback. Missing index/model availability must not remove the static path.
-- Admin: authenticated internal ASSETS vault lookup; no public vault URL bypass.
+- Admin: authenticated internal ASSETS vault lookup; no public vault URL bypass. Missing protected HTML returns private `503`, not an inline or unvaulted fallback dashboard.
 
 ## Bindings and account-side dependencies
 
@@ -39,7 +39,7 @@ Source disables `workers.dev` and version preview URLs. This is a checked-in set
 
 ## Telemetry and `/admin`
 
-An initial successful document schedules server analytics through `waitUntil()`. The mounted browser collector handles Astro transitions, cached timeline commits and bfcache; speculative job fetches carry a prefetch marker. L1 suppression and authoritative D1 dedupe reduce repeated work. See [TEL-01–03](../openspec/specs/current-telemetry-admin.md#tel-01--initial-documents-and-committed-browser-routes).
+An initial successful document schedules server analytics through `waitUntil()`. The active browser path is `/api/telemetry/collect`; the retired `/api/v1/telemetry` ingestion route returns JSON `404` without writing. The old `edge_telemetry_events` table remains untouched while migration decisions are paused. The mounted browser collector handles Astro transitions, cached timeline commits and bfcache; speculative job fetches carry a prefetch marker. L1 suppression and authoritative D1 dedupe reduce repeated work. See [TEL-01–03](../openspec/specs/current-telemetry-admin.md#tel-01--initial-documents-and-committed-browser-routes).
 
 Successful speculative HTML GETs (`200`/`304`), including `astro-prefetch` query markers, can record isolated prefetch rows through `waitUntil()` without counting a human visit. Failed/HEAD/static requests do not. Existing sampling, circuit breakers and kill switches still apply.
 

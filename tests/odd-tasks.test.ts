@@ -1,16 +1,41 @@
-import { describe, it, expect } from "bun:test";
+import { beforeEach, describe, it, expect } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import { isIndexableSitemapPath } from "../scripts/lib/sitemap-metadata.mjs";
 import worker, {
   handleAdminDashboardRequest,
   classifyVisitor,
+  clearRecentPageviewsCache,
+  botCircuitBreaker,
+  prefetchCircuitBreaker,
 } from "../cloudflare/worker";
+import { edgeQuotaTracker } from "../src/lib/adapters";
+
+beforeEach(() => {
+  edgeQuotaTracker.reset();
+  clearRecentPageviewsCache();
+  botCircuitBreaker.reset();
+  prefetchCircuitBreaker.reset();
+});
 
 const ROOT_DIR = process.cwd();
+const requiredEditorialFiles = [
+  "src/content/experience/en/latam.md",
+  "src/content/experience/es/latam.md",
+  "src/content/experience/en/leal.md",
+  "src/content/experience/en/mercado-libre.md",
+];
+const hasEditorialFiles = requiredEditorialFiles.every((file) =>
+  fs.existsSync(path.join(ROOT_DIR, file)),
+);
+const editorialIt = hasEditorialFiles ? it : it.skip;
+const hasAdminVault = ["default", "es"].every((locale) =>
+  fs.existsSync(path.join(ROOT_DIR, "dist", "__admin_vault__", locale, "index.html")),
+);
+const adminBuildIt = hasAdminVault ? it : it.skip;
 
 describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard)", () => {
-  it("generates static admin pages in build output for both default and Spanish locales (isolated in vault)", () => {
+  adminBuildIt("generates static admin pages in build output for both default and Spanish locales (isolated in vault; SKIP requires prebuilt dist/__admin_vault__/{default,es}/index.html)", () => {
     const vaultEnPath = path.join(
       ROOT_DIR,
       "dist",
@@ -25,35 +50,15 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
       "es",
       "index.html",
     );
-    const adminEnPath = path.join(ROOT_DIR, "dist", "admin", "index.html");
-    const adminEsPath = path.join(
-      ROOT_DIR,
-      "dist",
-      "es",
-      "admin",
-      "index.html",
-    );
-
-    const isVaultIsolated =
-      fs.existsSync(vaultEnPath) && fs.existsSync(vaultEsPath);
-    if (isVaultIsolated) {
-      expect(fs.existsSync(adminEnPath)).toBe(false);
-      expect(fs.existsSync(adminEsPath)).toBe(false);
-      const enHtml = fs.readFileSync(vaultEnPath, "utf8");
-      expect(enHtml).toContain("Admin Management Surface");
-      expect(enHtml).toContain("Zero Trust");
-      expect(enHtml).toContain('id="site-header"');
-      expect(enHtml).toContain('id="theme-toggle"');
-      expect(enHtml).toContain('aria-label="Language selector"');
-    } else {
-      expect(fs.existsSync(adminEnPath)).toBe(true);
-      expect(fs.existsSync(adminEsPath)).toBe(true);
-      const enHtml = fs.readFileSync(adminEnPath, "utf8");
-      expect(enHtml).toContain("Admin Management Surface");
-      expect(enHtml).toContain("Zero Trust");
-      expect(enHtml).toContain('id="site-header"');
-      expect(enHtml).toContain('id="theme-toggle"');
-      expect(enHtml).toContain('aria-label="Language selector"');
+    expect(fs.existsSync(path.join(ROOT_DIR, "dist", "admin", "index.html"))).toBe(false);
+    expect(fs.existsSync(path.join(ROOT_DIR, "dist", "es", "admin", "index.html"))).toBe(false);
+    for (const vaultPath of [vaultEnPath, vaultEsPath]) {
+      const html = fs.readFileSync(vaultPath, "utf8");
+      expect(html).toContain("Admin Management Surface");
+      expect(html).toContain("Zero Trust");
+      expect(html).toContain('id="site-header"');
+      expect(html).toContain('id="theme-toggle"');
+      expect(html).toContain('aria-label="Language selector"');
     }
   });
 
@@ -92,46 +97,21 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
     }
   });
 
-  it("serves rich isolated dashboard with header, theme toggle, and footer in Worker fallback", async () => {
-    const mockCtx = {
-      waitUntil: () => {},
-      passThroughOnException: () => {},
-    } as any;
+  it("never serves an unvaulted or inline dashboard when admin assets are missing", async () => {
+    let reads = 0;
     const mockEnv = {
       ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
-      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
-      DB: {
-        prepare: () => ({
-          bind: () => ({ all: async () => ({ results: [] }) }),
-          all: async () => ({ results: [] }),
-        }),
-      },
+      ASSETS: { fetch: async () => { reads++; return new Response("Not found", { status: 404 }); } },
     } as any;
-
     const req = new Request("https://admin.arturonavax.dev/", {
-      headers: {
-        Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
-      },
+      headers: { Authorization: "Bearer mock-admin-token-for-testing-32-chars-long" },
     });
-    const res = await worker.fetch(req, mockEnv, mockCtx);
-
-    expect(res.status).toBe(200);
-    const html = await res.text();
-    expect(html).toContain("Admin Management Surface");
-    expect(html).toContain("Zero Trust Surface");
-    expect(html).toContain("site-header");
-    expect(html).toContain("theme-btn");
-    expect(html).toContain("lang-switcher");
-    expect(html).toContain("site-footer");
-    expect(html).toContain("chart-svg");
-    expect(html).toContain("kpi-total");
-    expect(html).toContain("kpi-human");
-    expect(html).toContain("kpi-bot");
-    expect(html).toContain("kpi-unique");
-    expect(html).toContain("kpi-prefetch");
-    expect(html).toContain("kpi-leads");
-    expect(html).not.toContain('<a href="/experience/">Experience</a>');
-    expect(html).not.toContain('<a href="/services/">Services</a>');
+    const res = await worker.fetch(req, mockEnv, { waitUntil() {} } as any);
+    expect(res.status).toBe(503);
+    expect(res.headers.get("Cache-Control")).toContain("no-store");
+    expect(res.headers.get("X-Robots-Tag")).toContain("noindex");
+    expect(await res.text()).toBe("Admin assets unavailable");
+    expect(reads).toBeGreaterThan(0);
   });
 
   it("provides /api/leads endpoint in Cloudflare Worker", async () => {
@@ -846,7 +826,7 @@ describe("ODD Task: Refined Contact Container, Form Modal & Cloudflare Free Tier
 });
 
 describe("ODD Task: LATAM Airlines Timeline Entry & Writing-History Animations", () => {
-  it("defines LATAM Airlines as active current role at order 1 in both locales", () => {
+  editorialIt("defines LATAM Airlines as active current role at order 1 in both locales (SKIP requires ignored experience LATAM, leal and mercado-libre files)", () => {
     const latamEnPath = path.join(
       ROOT_DIR,
       "src",
@@ -886,7 +866,7 @@ describe("ODD Task: LATAM Airlines Timeline Entry & Writing-History Animations",
     expect(esContent).toContain("Google Cloud Spanner");
   });
 
-  it("re-sequences existing experience orders cleanly after LATAM", () => {
+  editorialIt("re-sequences existing experience orders cleanly after LATAM (SKIP requires ignored experience LATAM, leal and mercado-libre files)", () => {
     const lealPath = path.join(
       ROOT_DIR,
       "src",
@@ -990,6 +970,8 @@ describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
 
     const mockEnv = {
       DB: mockDb,
+      ENABLE_BOT_TELEMETRY: "true",
+      BOT_TELEMETRY_SAMPLE_RATE: "1",
       ASSETS: {
         fetch: async () => new Response("Static asset", { status: 200 }),
       },
@@ -1043,6 +1025,8 @@ describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
     const mockEnv = {
       DB: mockDb,
       SIMULATE_LOW_DB_QUOTA: "true",
+      ENABLE_BOT_TELEMETRY: "true",
+      BOT_TELEMETRY_SAMPLE_RATE: "1",
       ASSETS: {
         fetch: async () => new Response("Static asset", { status: 200 }),
       },
@@ -1107,59 +1091,21 @@ describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
 });
 
 describe("ODD Task: Real-Time Admin Telemetry Dashboard Overhaul", () => {
-  it("renders real-time dual circuit breakers monitor and distribution bars in adminHtml", async () => {
-    const mockCtx = {
-      waitUntil: () => {},
-      passThroughOnException: () => {},
-    } as any;
-    const mockEnv = {
+  it("fails privately instead of rendering the obsolete dashboard when vault assets are absent", async () => {
+    let reads = 0;
+    const env = {
       ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
-      DB: {
-        prepare: () => ({
-          bind: () => ({ all: async () => ({ results: [] }) }),
-          all: async () => ({ results: [] }),
-        }),
-      },
+      ASSETS: { fetch: async () => { reads++; return new Response("missing", { status: 404 }); } },
     } as any;
-
     const req = new Request("https://admin.arturonavax.dev/", {
-      headers: {
-        Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
-      },
+      headers: { Authorization: "Bearer mock-admin-token-for-testing-32-chars-long" },
     });
-    const res = await worker.fetch(req, mockEnv, mockCtx);
-    expect(res.status).toBe(200);
-
-    const html = await res.text();
-    // Live pulse and elapsed sync indicator
-    expect(html).toContain("badge-sync-time");
-    expect(html).toContain("Sincronizado: justo ahora");
-
-    // Dual circuit breakers panel
-    expect(html).toContain("cb-prefetch-badge");
-    expect(html).toContain("cb-prefetch-stats");
-    expect(html).toContain("cb-prefetch-bar");
-    expect(html).toContain("cb-bot-badge");
-    expect(html).toContain("cb-bot-stats");
-    expect(html).toContain("cb-bot-bar");
-
-    // Real-time distribution sections
-    expect(html).toContain("top-paths");
-    expect(html).toContain("countries-list");
-    expect(html).toContain("leads-tbody");
-    expect(html).toContain("telemetry-tbody");
-
-    // Server-side pagination controls
-    expect(html).toContain("pagination-info");
-    expect(html).toContain("btn-page-first");
-    expect(html).toContain("btn-page-prev");
-    expect(html).toContain("btn-page-next");
-    expect(html).toContain("btn-page-last");
-    expect(html).toContain("select-limit");
-
-    // Live polling default option (paused by default to protect D1 daily quota)
-    expect(html).toContain('value="0" selected');
-    expect(html).toContain('value="30000"');
+    const res = await worker.fetch(req, env, { waitUntil() {} } as any);
+    expect(res.status).toBe(503);
+    expect(res.headers.get("Cache-Control")).toContain("no-store");
+    expect(res.headers.get("X-Robots-Tag")).toContain("noindex");
+    expect(await res.text()).toBe("Admin assets unavailable");
+    expect(reads).toBeGreaterThan(0);
   });
 
   it("supports server-side pagination, aggregations, and filtering in /api/telemetry", async () => {

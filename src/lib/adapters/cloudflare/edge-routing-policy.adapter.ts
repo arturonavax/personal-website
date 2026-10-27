@@ -86,17 +86,12 @@ export class CloudflareEdgeRoutingPolicy implements EdgeRoutingPolicyPort {
       return "ADMIN_SURFACE";
     }
 
-    // 4. Telemetry ingestion
-    if (pathname === "/api/v1/telemetry") {
-      return "TELEMETRY_INGESTION";
-    }
-
-    // 5. Dynamic API endpoints
+    // 4. Dynamic API endpoints
     if (pathname === "/api/search" || pathname === "/api/verify-captcha") {
       return "DYNAMIC_API";
     }
 
-    // 6. Static immutable assets & fingerprinted bundles
+    // 5. Static immutable assets & fingerprinted bundles
     if (
       pathname.startsWith("/_astro/") ||
       pathname.startsWith("/fonts/") ||
@@ -105,7 +100,7 @@ export class CloudflareEdgeRoutingPolicy implements EdgeRoutingPolicyPort {
       return "STATIC_ASSET";
     }
 
-    // 7. Public HTML documents
+    // 6. Public HTML documents
     if (request.method === "GET") {
       const accept = request.headers.get("accept") || "";
       const secFetchDest = request.headers.get("sec-fetch-dest");
