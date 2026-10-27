@@ -42,6 +42,10 @@ Matrix is decorative, hidden below `md`, hidden in print, and initially skipped 
 - Project and blog/post details share separate opaque header/prose surfaces. Experience role headers must cover the rail behind them without blocking arrows.
 - Geometric accents and normal borders share full bounds and actual responsive radius. Never repair alignment with class-substring radius detection or divergent negative offsets.
 
+## Admin dashboard lifecycle
+
+The admin script installs page-local controls on each `astro:page-load` (including the manual language swap), disposes its timers and document listeners on departure, and ignores responses from older filter, poll, or pagination requests. The language switch keeps the router, Matrix, and collector owners intact. Contact leads distinguish an observed empty list from an unavailable read; unmeasured provider quotas display unknown rather than zero or estimated account usage. Local browser fixtures in `tests/admin-dashboard-reliability.spec.ts` check these boundaries without production contacts.
+
 ## Focused checks
 
 Use the existing test runners and an explicitly prepared local server described in the [current documentation index](../openspec/specs/README.md). Browser suites honor `PLAYWRIGHT_BASE_URL` (default localhost:8788); some also support `CHROMIUM_EXECUTABLE_PATH`. Do not treat Bun discovering a guarded Playwright file as execution of that browser suite.

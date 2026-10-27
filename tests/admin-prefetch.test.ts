@@ -534,7 +534,9 @@ function dashboardFixture(fail = false, pageOnly = false) {
     },
   };
   const run = runInNewContext(
-    fn + `; fetchDashboardData(false, ${pageOnly})`,
+    "var active = true; var requestVersion = 0;" +
+      fn +
+      `; fetchDashboardData(false, ${pageOnly})`,
     state,
   );
   return { calls, state, nodes, run };

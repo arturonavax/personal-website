@@ -385,7 +385,9 @@ const description = isEs
         <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
           <span class="inline-flex items-center gap-1.5 rounded-xs border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-400 font-medium">
             <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span id="badge-live-status">{isEs ? "EN VIVO" : "LIVE"}</span>
+            <span id="badge-live-status">
+              {isEs ? "Sin verificar" : "Unverified"}
+            </span>
           </span>
           <span
             id="badge-sync-time"
@@ -749,18 +751,20 @@ const description = isEs
                 class="text-sm font-bold text-[var(--color-text-primary)]"
                 id="quota-d1-storage"
               >
-                12.4 MB / 5 GB
+                — / 500 MB
               </div>
               <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
                 <div
                   id="quota-d1-storage-bar"
                   class="h-full bg-emerald-400 transition-all duration-300"
-                  style="width: 1%;"
+                  style="width: 0%;"
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>SQLite Distribuido</span>
-                <span class="text-emerald-400 font-semibold">&lt; 1% uso</span>
+                <span class="text-[var(--color-text-muted)] font-semibold">
+                  {isEs ? "Uso sin medir" : "Usage unmeasured"}
+                </span>
               </div>
             </div>
           </div>
@@ -889,7 +893,7 @@ const description = isEs
                 <div
                   id="quota-r2-class-a-bar"
                   class="h-full bg-[var(--color-accent-gold)] transition-all duration-300"
-                  style="width: 1%;"
+                  style="width: 0%;"
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
@@ -920,12 +924,14 @@ const description = isEs
                 <div
                   id="quota-r2-class-b-bar"
                   class="h-full bg-cyan-400 transition-all duration-300"
-                  style="width: 1%;"
+                  style="width: 0%;"
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>24h Edge Cache</span>
-                <span class="text-cyan-400 font-semibold">0 Class B reads</span>
+                <span class="text-[var(--color-text-muted)] font-semibold">
+                  {isEs ? "Uso sin medir" : "Usage unmeasured"}
+                </span>
               </div>
             </div>
 
@@ -941,18 +947,20 @@ const description = isEs
                 class="text-sm font-bold text-[var(--color-text-primary)]"
                 id="quota-r2-storage"
               >
-                0.18 GB / 10 GB
+                — / 10 GB
               </div>
               <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
                 <div
                   id="quota-r2-storage-bar"
                   class="h-full bg-emerald-400 transition-all duration-300"
-                  style="width: 2%;"
+                  style="width: 0%;"
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>PDFs, Assets, R2 Sync</span>
-                <span class="text-emerald-400 font-semibold">1.8% uso</span>
+                <span class="text-[var(--color-text-muted)] font-semibold">
+                  {isEs ? "Uso sin medir" : "Usage unmeasured"}
+                </span>
               </div>
             </div>
           </div>
@@ -991,13 +999,13 @@ const description = isEs
                 class="text-sm font-bold text-[var(--color-text-primary)]"
                 id="quota-workers-ai"
               >
-                0 / 10,000 neuronas
+                — / 10,000 neuronas
               </div>
               <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
                 <div
                   id="quota-workers-ai-bar"
                   class="h-full bg-cyan-400 transition-all duration-300"
-                  style="width: 1%;"
+                  style="width: 0%;"
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
@@ -1020,13 +1028,13 @@ const description = isEs
                 class="text-sm font-bold text-[var(--color-text-primary)]"
                 id="quota-vectorize"
               >
-                0 / 5,000,000 dims
+                — / 5,000,000 dims
               </div>
               <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
                 <div
                   id="quota-vectorize-bar"
                   class="h-full bg-cyan-400 transition-all duration-300"
-                  style="width: 1%;"
+                  style="width: 0%;"
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
@@ -1072,19 +1080,19 @@ const description = isEs
                 class="text-sm font-bold text-[var(--color-text-primary)]"
                 id="quota-zero-trust"
               >
-                1 / 50 asientos
+                — / 50 asientos
               </div>
               <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
                 <div
                   id="quota-zero-trust-bar"
                   class="h-full bg-emerald-400 transition-all duration-300"
-                  style="width: 2%;"
+                  style="width: 0%;"
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
                 <span>Cloudflare Access</span>
-                <span class="text-emerald-400 font-semibold">
-                  Admin aislado
+                <span class="text-[var(--color-text-muted)] font-semibold">
+                  {isEs ? "Uso sin medir" : "Usage unmeasured"}
                 </span>
               </div>
             </div>
@@ -1696,7 +1704,15 @@ const description = isEs
 
 <script>
   // @ts-nocheck
-  (function () {
+  if (!window.__adminDashboardInstalled) {
+    window.__adminDashboardInstalled = true;
+    var disposeAdmin = null;
+    function initAdmin() {
+      if (disposeAdmin) disposeAdmin();
+      disposeAdmin = null;
+      if (!document.getElementById("btn-refresh")) return;
+      var active = true;
+      var requestVersion = 0;
     var isEs = document.documentElement.lang === "es";
 
     // Automatic device/saved language detection for root /admin
@@ -1708,11 +1724,11 @@ const description = isEs
         var savedAdminLang =
           localStorage.getItem("preferred_locale") ||
           localStorage.getItem("admin_lang");
-        var userLangs = (navigator.languages || [navigator.language || ""]).map(
-          function (l) {
+          var userLangs = (
+            navigator.languages || [navigator.language || ""]
+          ).map(function (l) {
             return (l || "").toLowerCase().split("-")[0];
-          },
-        );
+          });
         if (
           savedAdminLang === "es" ||
           (!savedAdminLang && userLangs[0] === "es")
@@ -1777,10 +1793,12 @@ const description = isEs
     var rawIncidents = [];
     var rawDeployments = [];
     var rawLeads = [];
+      var leadsAvailable = false;
     var knownCountries = new Set();
 
     // Live Sync Elapsed Timer
-    setInterval(function () {
+      var syncIntervalId = setInterval(function () {
+        if (!active) return;
       var badge = document.getElementById("badge-sync-time");
       if (!badge) return;
       if (!lastSyncTimestamp) {
@@ -1941,11 +1959,16 @@ const description = isEs
       });
     }
 
-    document.addEventListener("click", function (e) {
-      if (!e.target || !e.target.closest || !e.target.closest(".country-tag")) {
+      function onCountryDismiss(e) {
+        if (
+          !e.target ||
+          !e.target.closest ||
+          !e.target.closest(".country-tag")
+        ) {
         hideCountryTooltip();
       }
-    });
+      }
+      document.addEventListener("click", onCountryDismiss);
 
     // Staged Filtering Logic
     function markFiltersStaged(staged) {
@@ -1992,7 +2015,10 @@ const description = isEs
 
     function changeCountriesPage(delta) {
       var list = rawTopCountries || [];
-      var maxPages = Math.max(1, Math.ceil(list.length / COUNTRIES_PAGE_SIZE));
+        var maxPages = Math.max(
+          1,
+          Math.ceil(list.length / COUNTRIES_PAGE_SIZE),
+        );
       countriesPage = Math.max(1, Math.min(maxPages, countriesPage + delta));
       renderCountries(
         rawTopCountries,
@@ -2005,7 +2031,10 @@ const description = isEs
 
     function changeReferrersPage(delta) {
       var list = rawTopReferrers || [];
-      var maxPages = Math.max(1, Math.ceil(list.length / REFERRERS_PAGE_SIZE));
+        var maxPages = Math.max(
+          1,
+          Math.ceil(list.length / REFERRERS_PAGE_SIZE),
+        );
       referrersPage = Math.max(1, Math.min(maxPages, referrersPage + delta));
       renderAttribution(rawUtmAttributions, rawTopReferrers);
     }
@@ -2030,6 +2059,7 @@ const description = isEs
     }
 
     async function fetchDashboardData(isManual, pageOnly) {
+        var version = ++requestVersion;
       var refreshIcon = document.getElementById("refresh-icon");
       if (refreshIcon) refreshIcon.classList.add("animate-spin");
 
@@ -2063,6 +2093,7 @@ const description = isEs
           );
           if (pageRes.ok) {
             var pData = await pageRes.json();
+              if (!active || version !== requestVersion) return;
             rawPageviews = pData.pageviews || [];
             if (pData.quotas) cachedQuotas = pData.quotas;
             if (pData.pagination) {
@@ -2071,6 +2102,7 @@ const description = isEs
               totalFiltered = pData.pagination.total_filtered || 0;
             }
           }
+            if (!active || version !== requestVersion) return;
           if (!pageRes.ok && cacheBadge) {
             cacheBadge.textContent = isEs
               ? "● Datos no disponibles; actualización fallida"
@@ -2089,6 +2121,17 @@ const description = isEs
           fetch("/api/leads?fresh=true", fetchOptions),
         ]);
 
+          // Parse first, then commit one coherent snapshot only if it is still current.
+          var bodies = await Promise.all(
+            results.map(function (result) {
+              return result.status === "fulfilled" && result.value.ok
+                ? result.value.json().catch(function () {
+                    return null;
+                  })
+                : null;
+            }),
+          );
+          if (!active || version !== requestVersion) return;
         var telemetryRes = results[0];
         var metricsRes = results[1];
         var deployRes = results[2];
@@ -2110,7 +2153,8 @@ const description = isEs
         }
 
         if (telemetryRes.status === "fulfilled" && telemetryRes.value.ok) {
-          var tData = await telemetryRes.value.json();
+            var tData = bodies[0];
+            if (tData) {
           cachedTelemetryData = tData;
           rawPageviews = tData.pageviews || [];
           rawPrefetches = tData.prefetches || [];
@@ -2125,26 +2169,42 @@ const description = isEs
             totalFiltered = tData.pagination.total_filtered || 0;
           }
         }
+          }
 
         if (metricsRes.status === "fulfilled" && metricsRes.value.ok) {
-          var mData = await metricsRes.value.json();
+            var mData = bodies[1];
+            if (mData) {
           rawIncidents = mData.data_quality_warnings || [];
           if (mData.quotas) cachedQuotas = mData.quotas;
         }
+          }
 
         if (deployRes.status === "fulfilled" && deployRes.value.ok) {
-          var dData = await deployRes.value.json();
-          rawDeployments = dData.deployments || [];
+            var dData = bodies[2];
+            if (dData) rawDeployments = dData.deployments || [];
         }
 
         if (leadsRes.status === "fulfilled" && leadsRes.value.ok) {
-          var lData = await leadsRes.value.json();
-          rawLeads = lData.leads || [];
-        }
+            var lData = bodies[3];
+            if (lData && Array.isArray(lData.leads)) {
+              rawLeads = lData.leads;
+              leadsAvailable = true;
+            } else leadsAvailable = false;
+          } else leadsAvailable = false;
 
         var allSucceeded = results.every(function (result) {
           return result.status === "fulfilled" && result.value.ok;
         });
+          var liveBadge = document.getElementById("badge-live-status");
+          if (liveBadge)
+            liveBadge.textContent =
+              allSucceeded && tData && tData.status === "ok"
+                ? isEs
+                  ? "Actualizado"
+                  : "Updated"
+                : isEs
+                  ? "No disponible"
+                  : "Unavailable";
         if (allSucceeded && tData && tData.status === "ok") {
           var observedAt = Date.parse(tData.timestamp);
           if (Number.isFinite(observedAt)) lastSyncTimestamp = observedAt;
@@ -2168,6 +2228,7 @@ const description = isEs
         }
         renderDashboard();
       } catch (err) {
+          if (!active || version !== requestVersion) return;
         var failedBadge = document.getElementById("badge-cache-mode");
         if (failedBadge) {
           failedBadge.textContent = isEs
@@ -2177,7 +2238,8 @@ const description = isEs
         }
         console.warn("Error fetching dashboard telemetry:", err);
       } finally {
-        if (refreshIcon) refreshIcon.classList.remove("animate-spin");
+          if (active && version === requestVersion && refreshIcon)
+            refreshIcon.classList.remove("animate-spin");
       }
     }
 
@@ -2191,19 +2253,53 @@ const description = isEs
 
     function renderQuotas() {
       if (!cachedQuotas) return;
+        // Provider usage is not measured by this endpoint. Null is unknown, not zero.
+        function providerMeter(key, id, unit) {
+          var quota = cachedQuotas[key];
+          var label = document.getElementById(id);
+          var bar = document.getElementById(id + "-bar");
+          if (!label || !quota) return;
+          var known =
+            quota.available !== false &&
+            typeof quota.used === "number" &&
+            Number.isFinite(quota.used);
+          var limit = quota.limit;
+          label.textContent =
+            (known ? fmtK(quota.used) : "—") +
+            " / " +
+            (typeof limit === "number" && Number.isFinite(limit)
+              ? fmtK(limit)
+              : "—") +
+            unit;
+          if (bar)
+            bar.style.width =
+              known && limit > 0
+                ? Math.min(100, Math.round((quota.used / limit) * 100)) + "%"
+                : "0%";
+        }
 
       if (cachedQuotas.workers_daily) {
         var q1 = cachedQuotas.workers_daily;
         var el1 = document.getElementById("quota-workers-daily");
         var bar1 = document.getElementById("quota-workers-daily-bar");
         var status1 = document.getElementById("quota-workers-daily-status");
-        var limit1 = q1.limit || 100000;
-        var used1 = q1.used || 0;
-        if (el1) el1.textContent = fmtK(used1) + " / " + fmtK(limit1);
-        var pct1 = Math.min(100, Math.round((used1 / limit1) * 100));
-        if (bar1) bar1.style.width = Math.max(1, pct1) + "%";
+          var limit1 = q1.limit;
+          var used1 = q1.used;
+          var known1 =
+            q1.available !== false &&
+            typeof used1 === "number" &&
+            Number.isFinite(used1);
+          providerMeter("workers_daily", "quota-workers-daily", "");
         if (status1) {
-          if (used1 >= limit1) {
+            if (
+              !known1 ||
+              typeof limit1 !== "number" ||
+              !Number.isFinite(limit1)
+            ) {
+              status1.textContent = isEs ? "SIN DATOS" : "UNAVAILABLE";
+              status1.className =
+                "text-[var(--color-text-muted)] font-semibold";
+            } else if (used1 >= limit1) {
             status1.textContent = "EXCEDIDO";
             status1.className = "text-red-400 font-bold";
           } else {
@@ -2214,15 +2310,7 @@ const description = isEs
       }
 
       if (cachedQuotas.workers_monthly) {
-        var q2 = cachedQuotas.workers_monthly;
-        var el2 = document.getElementById("quota-workers-monthly");
-        var bar2 = document.getElementById("quota-workers-monthly-bar");
-        var limit2 = q2.limit || 3000000;
-        var used2 = q2.used || 0;
-        if (el2) el2.textContent = fmtK(used2) + " / " + fmtK(limit2);
-        if (bar2)
-          bar2.style.width =
-            Math.min(100, Math.round((used2 / limit2) * 100)) + "%";
+          providerMeter("workers_monthly", "quota-workers-monthly", "");
       }
 
       if (cachedQuotas.d1_reads_daily) {
@@ -2263,9 +2351,11 @@ const description = isEs
           } else if (pctw >= 95)
             barw.className = "h-full bg-red-500 transition-all duration-300";
           else if (pctw >= 85)
-            barw.className = "h-full bg-orange-500 transition-all duration-300";
+              barw.className =
+                "h-full bg-orange-500 transition-all duration-300";
           else if (pctw >= 70)
-            barw.className = "h-full bg-amber-400 transition-all duration-300";
+              barw.className =
+                "h-full bg-amber-400 transition-all duration-300";
           else if (pctw >= 50)
             barw.className = "h-full bg-cyan-400 transition-all duration-300";
           else
@@ -2342,86 +2432,47 @@ const description = isEs
       }
 
       if (cachedQuotas.r2_class_a_monthly) {
-        var q5 = cachedQuotas.r2_class_a_monthly;
-        var el5 = document.getElementById("quota-r2-class-a");
-        var bar5 = document.getElementById("quota-r2-class-a-bar");
-        var limit5 = q5.limit || 1000000;
-        var used5 = q5.used || 0;
-        if (el5) el5.textContent = fmtK(used5) + " / " + fmtK(limit5);
-        if (bar5)
-          bar5.style.width =
-            Math.min(100, Math.round((used5 / limit5) * 100)) + "%";
+          providerMeter("r2_class_a_monthly", "quota-r2-class-a", "");
       }
 
       if (cachedQuotas.r2_class_b_monthly) {
-        var q6 = cachedQuotas.r2_class_b_monthly;
-        var el6 = document.getElementById("quota-r2-class-b");
-        var bar6 = document.getElementById("quota-r2-class-b-bar");
-        var limit6 = q6.limit || 10000000;
-        var used6 = q6.used || 0;
-        if (el6) el6.textContent = fmtK(used6) + " / " + fmtK(limit6);
-        if (bar6)
-          bar6.style.width =
-            Math.min(100, Math.round((used6 / limit6) * 100)) + "%";
+          providerMeter("r2_class_b_monthly", "quota-r2-class-b", "");
       }
 
       if (cachedQuotas.r2_storage) {
         var q7 = cachedQuotas.r2_storage;
         var el7 = document.getElementById("quota-r2-storage");
         var bar7 = document.getElementById("quota-r2-storage-bar");
+          var known7 = q7.available !== false && typeof q7.used_gb === "number";
         if (el7)
           el7.textContent =
-            (q7.used_gb || 0.18) + " GB / " + (q7.limit_gb || 10) + " GB";
+              (known7 ? q7.used_gb : "—") + " GB / " + q7.limit_gb + " GB";
         if (bar7)
           bar7.style.width =
-            Math.min(
-              100,
-              Math.max(
-                1,
-                Math.round(((q7.used_gb || 0.18) / (q7.limit_gb || 10)) * 100),
-              ),
-            ) + "%";
+              known7 && q7.limit_gb > 0
+                ? Math.min(100, Math.round((q7.used_gb / q7.limit_gb) * 100)) +
+                  "%"
+                : "0%";
       }
 
       if (cachedQuotas.zero_trust_seats) {
-        var q8 = cachedQuotas.zero_trust_seats;
-        var el8 = document.getElementById("quota-zero-trust");
-        var bar8 = document.getElementById("quota-zero-trust-bar");
-        if (el8)
-          el8.textContent =
-            (q8.used || 1) + " / " + (q8.limit || 50) + " asientos";
-        if (bar8)
-          bar8.style.width =
-            Math.min(
-              100,
-              Math.round(((q8.used || 1) / (q8.limit || 50)) * 100),
-            ) + "%";
+          providerMeter(
+            "zero_trust_seats",
+            "quota-zero-trust",
+            isEs ? " asientos" : " seats",
+          );
       }
 
       if (cachedQuotas.workers_ai_daily) {
-        var q9 = cachedQuotas.workers_ai_daily;
-        var el9 = document.getElementById("quota-workers-ai");
-        var bar9 = document.getElementById("quota-workers-ai-bar");
-        var limit9 = q9.limit || 10000;
-        var used9 = q9.used || 0;
-        if (el9)
-          el9.textContent = fmtK(used9) + " / " + fmtK(limit9) + " neuronas";
-        if (bar9)
-          bar9.style.width =
-            Math.min(100, Math.round((used9 / limit9) * 100)) + "%";
+          providerMeter(
+            "workers_ai_daily",
+            "quota-workers-ai",
+            isEs ? " neuronas" : " neurons",
+          );
       }
 
       if (cachedQuotas.vectorize_monthly) {
-        var qv = cachedQuotas.vectorize_monthly;
-        var elv = document.getElementById("quota-vectorize");
-        var barv = document.getElementById("quota-vectorize-bar");
-        var limitv = qv.limit || 5000000;
-        var usedv = qv.used || 0;
-        if (elv) elv.textContent = fmtK(usedv) + " / " + fmtK(limitv) + " dims";
-        if (barv)
-          barv.style.width =
-            Math.min(100, Math.max(1, Math.round((usedv / limitv) * 100))) +
-            "%";
+          providerMeter("vectorize_monthly", "quota-vectorize", " dims");
       }
     }
 
@@ -2467,7 +2518,9 @@ const description = isEs
               " · " +
               rate +
               " configurado · 7 días · pageviews · subconjunto"
-            : (bots.collection_enabled ? "Partial sample" : "Collection off") +
+              : (bots.collection_enabled
+                  ? "Partial sample"
+                  : "Collection off") +
               " · " +
               rate +
               " configured · 7 days · pageviews · subset";
@@ -2485,7 +2538,14 @@ const description = isEs
         "coverage-mobile",
         deviceAvailable && device.device ? device.device.mobile : null,
       );
-      for (var os of ["windows", "macos", "ios", "android", "linux", "other"]) {
+        for (var os of [
+          "windows",
+          "macos",
+          "ios",
+          "android",
+          "linux",
+          "other",
+        ]) {
         put(
           os === "other" ? "coverage-other-os" : "coverage-" + os,
           deviceAvailable && device.os ? device.os[os] : null,
@@ -2569,7 +2629,19 @@ const description = isEs
         kpiPrefetch.textContent = prefetchesCount.toLocaleString();
 
       var kpiLeads = document.getElementById("kpi-leads");
-      if (kpiLeads) kpiLeads.textContent = leadsCount.toLocaleString();
+        if (kpiLeads)
+          kpiLeads.textContent = leadsAvailable
+            ? leadsCount.toLocaleString()
+            : "—";
+        var leadsSub = document.getElementById("kpi-leads-sub");
+        if (leadsSub)
+          leadsSub.textContent = leadsAvailable
+            ? isEs
+              ? "Mensajes de contacto"
+              : "Inbound messages"
+            : isEs
+              ? "Lectura no disponible"
+              : "Read unavailable";
 
       // Pagination indicators
       var pagInfo = document.getElementById("pagination-info");
@@ -2615,7 +2687,8 @@ const description = isEs
 
       var currentVal = select.value;
       rawTopCountries.forEach(function (c) {
-        if (c.country && c.country !== "UNKNOWN") knownCountries.add(c.country);
+          if (c.country && c.country !== "UNKNOWN")
+            knownCountries.add(c.country);
       });
       rawPageviews.forEach(function (p) {
         if (p.country && p.country !== "XX") knownCountries.add(p.country);
@@ -2672,7 +2745,8 @@ const description = isEs
           var count = p.total_views || 0;
           var hCount = p.human_views || 0;
           var uCount = p.unique_visitors || 0;
-          var pct = totalViews > 0 ? Math.round((count / totalViews) * 100) : 0;
+            var pct =
+              totalViews > 0 ? Math.round((count / totalViews) * 100) : 0;
           var barPct = Math.round((count / maxViews) * 100);
           return (
             '<tr class="border-b border-[var(--color-surface-border)] hover:bg-[var(--color-accent-gold-subtle)] transition-colors">' +
@@ -2886,7 +2960,8 @@ const description = isEs
       if (!container) return;
 
       if (badge)
-        badge.textContent = totalCount + (isEs ? " precargas" : " prefetches");
+          badge.textContent =
+            totalCount + (isEs ? " precargas" : " prefetches");
 
       if (!prefetches.length) {
         container.innerHTML =
@@ -2930,7 +3005,12 @@ const description = isEs
       var btnPrev = document.getElementById("btn-leads-prev");
       var btnNext = document.getElementById("btn-leads-next");
 
-      if (badge) badge.textContent = rawLeads.length + " leads";
+        if (badge)
+          badge.textContent = leadsAvailable
+            ? rawLeads.length + " leads"
+            : isEs
+              ? "No disponible"
+              : "Unavailable";
 
       var totalP = Math.max(1, Math.ceil(rawLeads.length / LEADS_PAGE_SIZE));
       leadsPage = Math.max(1, Math.min(totalP, leadsPage));
@@ -2946,10 +3026,14 @@ const description = isEs
 
       if (!tbody) return;
 
-      if (!rawLeads.length) {
+        if (!leadsAvailable || !rawLeads.length) {
         tbody.innerHTML =
           '<tr><td colspan="6" class="py-4 text-center text-[var(--color-text-muted)] italic">' +
-          (isEs
+            (!leadsAvailable
+              ? isEs
+                ? "Lectura no disponible; vuelva a intentar."
+                : "Read unavailable; retry refresh."
+              : isEs
             ? "Sin leads registrados aún en el búfer D1."
             : "No leads received yet in D1 buffer.") +
           "</td></tr>";
@@ -2979,12 +3063,16 @@ const description = isEs
           var ipText = l.ip
             ? '<br><small class="text-[var(--color-text-dim)] text-[10px]">IP: ' +
               escapeHtml(l.ip) +
-              (l.as_organization ? " · " + escapeHtml(l.as_organization) : "") +
+                (l.as_organization
+                  ? " · " + escapeHtml(l.as_organization)
+                  : "") +
               "</small>"
             : "";
           var subj = escapeHtml(l.subject || "--");
           var rawBody = l.body || "";
-          var msg = escapeHtml(rawBody.replace(/[\r\n]+/g, " ").slice(0, 100));
+            var msg = escapeHtml(
+              rawBody.replace(/[\r\n]+/g, " ").slice(0, 100),
+            );
 
           return (
             '<tr class="border-b border-[var(--color-surface-border)] hover:bg-[var(--color-accent-gold-subtle)] transition-colors">' +
@@ -3284,6 +3372,7 @@ const description = isEs
 
     win["toggleTimezone"] = toggleTimezone;
     win["applyFilters"] = applyFilters;
+      win["fetchDashboardData"] = fetchDashboardData;
     win["changePathsPage"] = changePathsPage;
     win["changeCountriesPage"] = changeCountriesPage;
     win["changeReferrersPage"] = changeReferrersPage;
@@ -3399,10 +3488,15 @@ const description = isEs
 
     // Auto initialize
     fetchDashboardData(false);
-    if (pollDelay > 0) {
-      pollIntervalId = setInterval(function () {
-        fetchDashboardData(false);
-      }, pollDelay);
+      disposeAdmin = function () {
+        active = false;
+        requestVersion++;
+        clearInterval(syncIntervalId);
+        if (pollIntervalId) clearInterval(pollIntervalId);
+        document.removeEventListener("click", onCountryDismiss);
+      };
     }
-  })();
+    document.addEventListener("astro:page-load", initAdmin);
+    initAdmin();
+  }
 </script>
