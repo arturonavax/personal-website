@@ -809,14 +809,14 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       var finalTop = Math.max(minTop, desiredTop);
       desktopRoot.style.top = finalTop + "px";
 
-      // Viewport safety clamp: ensure desktop aside never hangs outside the viewport
+      // Anchor to the measured surface, not the shell's generic max-w-5xl.
       desktopAside.style.transform = "";
       var asideRect = desktopAside.getBoundingClientRect();
-      if (asideRect.left < 16) {
-        var overflowShift = 16 - asideRect.left;
-        desktopAside.style.transform =
-          "translateX(" + Math.ceil(overflowShift) + "px)";
-      }
+      var contentLeft = targetRect.left;
+      var desiredRight =
+        contentLeft - (desktopAside.classList.contains("mr-16") ? 64 : 24);
+      var shift = Math.min(0, desiredRight - asideRect.right);
+      desktopAside.style.transform = "translateX(" + Math.round(shift) + "px)";
     }
     window.__alignDesktopIndex = alignDesktopIndex;
 
@@ -826,7 +826,8 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
         "mobile-page-index-container",
       );
       var maxw = document.getElementById("desktop-page-index-maxw");
-      if (!desktopRoot || !mobileContainer) return;
+      var mobileRoot = document.getElementById("mobile-page-index-root");
+      if (!desktopRoot || !mobileContainer || !mobileRoot) return;
 
       var hasSections =
         window.__hasPageIndex !== false &&
@@ -853,8 +854,14 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
         spaceLeft = Math.max(0, (window.innerWidth - contentWidth) / 2);
       }
 
-      var canFitDesktop = window.innerWidth >= 1600 && spaceLeft >= 280;
+      var aside = document.getElementById("desktop-page-index");
+      var asideWidth = aside ? aside.getBoundingClientRect().width : 256;
+      var canFitDesktop =
+        window.innerWidth >= 1600 && spaceLeft >= asideWidth + 40;
 
+      // The container cannot show while its parent is display:none above 1600px.
+      // Keep the existing floating-stack owner in charge of the handoff.
+      mobileRoot.classList.toggle("force-show-mobile", !canFitDesktop);
       var changed = false;
       if (canFitDesktop) {
         if (desktopRoot.classList.contains("force-hide-desktop")) {
@@ -1608,6 +1615,13 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
         );
       } else {
         setTimeout(alignDesktopIndex, 60);
+      }
+
+      // Route swaps can preserve the shell after its original alignment listener
+      // was installed; bind the responsive handoff independently, once.
+      if (!window.__pageIndexResponsiveResizeBound) {
+        window.__pageIndexResponsiveResizeBound = true;
+        window.addEventListener("resize", syncResponsiveMode, { passive: true });
       }
 
       if (!window.__desktopIndexAlignBound) {

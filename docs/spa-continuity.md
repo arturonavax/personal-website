@@ -44,7 +44,7 @@ Matrix is decorative, hidden below `md`, hidden in print, and initially skipped 
 
 ## Admin dashboard lifecycle
 
-The admin script installs page-local controls on each `astro:page-load` (including the manual language swap), disposes its timers and document listeners on departure, and ignores responses from older filter, poll, or pagination requests. The language switch keeps the router, Matrix, and collector owners intact. Contact leads distinguish an observed empty list from an unavailable read; unmeasured provider quotas display unknown rather than zero or estimated account usage. Local browser fixtures in `tests/admin-dashboard-reliability.spec.ts` check these boundaries without production contacts.
+The admin script installs page-local controls on each `astro:page-load` (including the manual language swap), disposes its timers and document listeners on departure, and ignores responses from older filter, poll, or pagination requests. The language switch keeps the router, Matrix, and collector owners intact. Contact leads distinguish an observed empty list from an unavailable read; unmeasured provider quotas display unknown rather than zero or estimated account usage. The desktop index measures the active content edge rather than assuming every route uses the default 5xl width, and falls back to the floating index when the left gutter cannot fit it. Local browser fixtures in `tests/admin-dashboard-reliability.spec.ts` check these boundaries without production contacts.
 
 ## Focused checks
 

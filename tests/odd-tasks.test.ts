@@ -1630,7 +1630,8 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
 
     expect(navContent).toContain("function syncResponsiveMode");
     expect(navContent).toContain("window.visualViewport");
-    expect(navContent).toContain("spaceLeft >= 280");
+    expect(navContent).toContain("spaceLeft >= asideWidth + 40");
+    expect(navContent).toContain("window.innerWidth >= 1600");
     expect(navContent).toContain("force-hide-desktop");
     expect(navContent).toContain("force-show-mobile");
     expect(navContent).toContain("force-hide-mobile");

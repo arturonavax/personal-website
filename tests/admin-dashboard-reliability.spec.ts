@@ -140,4 +140,55 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     await expect(page.locator("#kpi-total")).toHaveText("9");
   });
 
+  test("desktop index stays outside the actual admin surface and other page surfaces", async ({
+    page,
+  }) => {
+    for (const width of [1280, 1700, 1800, 2000]) {
+      await page.setViewportSize({ width, height: 950 });
+      for (const path of ["/admin/", "/"]) {
+        await page.goto(base + path);
+        if (width === 2000)
+          await expect
+            .poll(async () => page.locator("#desktop-page-index").isVisible())
+            .toBe(true);
+        if (!(await page.locator("#desktop-page-index").isVisible())) {
+          console.info(`${path} ${width}px: floating index`);
+          await expect(page.locator("#mobile-page-index-container")).toBeVisible();
+          const trigger = page.locator("#open-index-floating-btn");
+          await trigger.click();
+          await expect(trigger).toHaveAttribute("aria-expanded", "true");
+          await expect(page.locator("#index-expanded-panel")).toBeVisible();
+          await page.keyboard.press("Escape");
+          await expect(page.locator("#index-expanded-panel")).toBeHidden();
+          await expect(trigger).toBeFocused();
+          continue;
+        }
+        await expect(page.locator("#mobile-page-index-container")).toBeHidden();
+        const edges = await page.evaluate(() => {
+          const aside = document
+            .querySelector("#desktop-page-index")!
+            .getBoundingClientRect();
+          const content = document
+            .querySelector(pathForContent())!
+            .getBoundingClientRect();
+          function pathForContent() {
+            return location.pathname.includes("admin")
+              ? "main > div"
+              : "#about";
+          }
+          return { asideRight: aside.right, contentLeft: content.left };
+        });
+        console.info(`${path} ${width}px: aside right ${edges.asideRight}, content left ${edges.contentLeft}`);
+        expect(edges.asideRight).toBeLessThanOrEqual(edges.contentLeft - 20);
+      }
+    }
+    await page.goto(base + "/admin/");
+    await expect(page.locator("#desktop-page-index")).toBeVisible();
+    await page.setViewportSize({ width: 1700, height: 950 });
+    await expect(page.locator("#desktop-page-index")).toBeHidden();
+    await expect(page.locator("#mobile-page-index-container")).toBeVisible();
+    await page.setViewportSize({ width: 2000, height: 950 });
+    await expect(page.locator("#desktop-page-index")).toBeVisible();
+    await expect(page.locator("#mobile-page-index-container")).toBeHidden();
+  });
 }
