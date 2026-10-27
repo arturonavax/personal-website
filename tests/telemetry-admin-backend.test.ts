@@ -376,4 +376,94 @@ describe("production-shaped telemetry and admin contracts", () => {
     f.sqlite.close();
   });
 
+  it("does not acknowledge an unpersisted contact lead as received", async () => {
+    const f = fixture();
+    const request = () =>
+      new Request("https://arturonavax.dev/api/contact", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": "198.51.100.9",
+        },
+        body: JSON.stringify({
+          name: "Test Visitor",
+          email: "visitor@example.org",
+          subject: "Question",
+          message: "Could we talk about a project?",
+        }),
+      });
+    const missing = await worker.fetch(
+      request(),
+      { ...f.env, DB: undefined },
+      f.ctx,
+    );
+    expect(missing.status).toBe(503);
+    expect(await missing.json()).toMatchObject({ status: "unavailable" });
+    expect(f.count("contact_leads")).toBe(0);
+    const ok = await worker.fetch(request(), f.env, f.ctx);
+    expect(ok.status).toBe(200);
+    expect(f.count("contact_leads")).toBe(1);
+    f.sqlite.close();
+  });
+
+  it("does not present fabricated provider usage as measured counters", async () => {
+    const f = fixture();
+    const env = {
+      ...f.env,
+      ADMIN_ACCESS_TOKEN: "test-only-admin-token-at-least-20",
+    };
+    const response = await worker.fetch(
+      new Request("https://arturonavax.dev/api/metrics?fresh=true", {
+        headers: { Authorization: "Bearer test-only-admin-token-at-least-20" },
+      }),
+      env,
+      f.ctx,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { quotas: Record<string, any> };
+    expect(body.quotas.workers_daily.used).toBeNull();
+    expect(body.quotas.workers_monthly.used).toBeNull();
+    expect(body.quotas.r2_class_a_monthly.used).toBeNull();
+    expect(body.quotas.pages_builds_monthly.used).toBeNull();
+    expect(body.quotas.usage_evidence).toMatchObject({
+      workers: "unavailable",
+      d1: "local_estimate",
+    });
+    f.sqlite.close();
+  });
+
+  it("distinguishes unavailable and degraded leads from observed empty success", async () => {
+    const f = fixture();
+    const auth = {
+      ...f.env,
+      ADMIN_ACCESS_TOKEN: "test-only-admin-token-at-least-20",
+    };
+    const get = (env: unknown) =>
+      worker.fetch(
+        new Request("https://arturonavax.dev/api/leads?fresh=true", {
+          headers: {
+            Authorization: "Bearer test-only-admin-token-at-least-20",
+          },
+        }),
+        env as never,
+        f.ctx,
+      );
+    const ok = await get(auth);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ status: "ok", leads: [] });
+    const missing = await get({ ...auth, DB: undefined });
+    expect(missing.status).toBe(503);
+    expect(await missing.json()).toMatchObject({
+      status: "unavailable",
+      leads: [],
+    });
+    edgeQuotaTracker.setCountsForTesting(90_000, 0);
+    const degraded = await get(auth);
+    expect(degraded.status).toBe(503);
+    expect(await degraded.json()).toMatchObject({
+      status: "degraded",
+      leads: [],
+    });
+    f.sqlite.close();
+  });
 });

@@ -1649,6 +1649,7 @@ export async function handleContactFormSubmission(
       created_at: new Date().toISOString(),
     };
 
+    let leadPersisted = false;
     const spillLeadToR2Wal = async () => {
       const bucket = resolveR2Bucket(env);
       if (!bucket || typeof bucket.put !== "function") return;
@@ -1657,6 +1658,7 @@ export async function handleContactFormSubmission(
         await bucket.put(walKey, JSON.stringify(leadWalPayload), {
           httpMetadata: { contentType: "application/json" },
         });
+        leadPersisted = true;
       } catch (walErr) {
         console.warn("[Contact Lead R2 WAL Error]:", walErr);
       }
@@ -1690,6 +1692,7 @@ export async function handleContactFormSubmission(
           isTurnstileVerified ? 1 : 0,
         );
         await stmt.run();
+        leadPersisted = true;
         edgeQuotaTracker.recordWrite(1);
       } catch (err) {
         if (isD1QuotaException(err)) {
@@ -1708,6 +1711,7 @@ export async function handleContactFormSubmission(
               locale,
             );
             await fallbackStmt.run();
+            leadPersisted = true;
             edgeQuotaTracker.recordWrite(1);
           } catch (fallbackErr) {
             if (isD1QuotaException(fallbackErr)) {
@@ -1717,6 +1721,13 @@ export async function handleContactFormSubmission(
           }
         }
       }
+    }
+
+    if (!leadPersisted) {
+      return new Response(JSON.stringify({ status: "unavailable", error: "Unable to persist message at this time." }), {
+        status: 503,
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-store, private" },
+      });
     }
 
     // Webhook & Push dispatch if configured (Discord/Slack/Telegram)
@@ -3393,7 +3404,8 @@ export async function handleAdminDashboardRequest(
     const trackerSnap = edgeQuotaTracker.getSnapshot();
     const effectiveWrites = Math.max(dailyWrites, trackerSnap.dailyWrites);
     const effectiveReads = Math.max(dailyReads, trackerSnap.dailyReads);
-    const monthlyUsed = Math.round(dailyUsedRequests * 28 + 2400);
+    // Provider usage is not available through local request/D1 counters.
+    const monthlyUsed = null;
 
     const workersDailyLimit = Number.isFinite(quotaConfig.workersDailyBudget)
       ? quotaConfig.workersDailyBudget
@@ -3408,7 +3420,7 @@ export async function handleAdminDashboardRequest(
 
     const isWritesExceeded = effectiveWrites >= d1WritesDailyLimit;
     const isReadsExceeded = effectiveReads >= d1ReadsDailyLimit;
-    const isWorkersExceeded = dailyUsedRequests >= workersDailyLimit;
+    const isWorkersExceeded = null; // Provider request usage is unavailable.
 
     const degradationTier = isWritesExceeded ? 4 : trackerSnap.tier;
     const degradationTierName = isWritesExceeded
@@ -3436,8 +3448,9 @@ export async function handleAdminDashboardRequest(
         visit_budget_ratio: quotaConfig.visitBudgetRatio,
         prefetch_sample_rate: quotaConfig.prefetchSampleRate,
       },
+      usage_evidence: { workers: "unavailable", d1: "local_estimate", r2: "unavailable", ai: "unavailable", vectorize: "unavailable", pages: "unavailable", zero_trust: "unavailable" },
       workers_requests: {
-        daily_used: dailyUsedRequests,
+        daily_used: null,
         daily_limit: workersDailyLimit,
         monthly_used: monthlyUsed,
         monthly_limit: workersMonthlyLimit,
@@ -3456,41 +3469,41 @@ export async function handleAdminDashboardRequest(
         unit: "rows",
       },
       r2_storage: {
-        class_a_monthly_used: 240,
+        class_a_monthly_used: null,
         class_a_monthly_limit: 1000000,
-        class_b_monthly_used: 3420,
+        class_b_monthly_used: null,
         class_b_monthly_limit: 10000000,
-        storage_gb: 0.18,
+        storage_gb: null,
         storage_limit_gb: 10,
-        used_gb: 0.18,
+        used_gb: null,
         limit_gb: 10,
         unit: "operations",
       },
       zero_trust: {
-        active_seats: 1,
+        active_seats: null,
         total_seats: 50,
         unit: "seats",
       },
       workers_ai: {
-        neurons_today: 0,
+        neurons_today: null,
         neurons_daily_limit: 10000,
         unit: "neurons",
       },
       pages_deployments: {
-        builds_monthly_used: 42,
+        builds_monthly_used: null,
         builds_monthly_limit: 500,
         unit: "builds",
       },
       vectorize: {
-        dimensions_monthly_used: 0,
+        dimensions_monthly_used: null,
         dimensions_monthly_limit: 5000000,
-        queries_monthly_used: 0,
+        queries_monthly_used: null,
         queries_monthly_limit: 5000000,
         unit: "dimensions",
       },
       // Flat aliases for /admin UI renderQuotas() compatibility
       workers_daily: {
-        used: dailyUsedRequests,
+        used: null,
         limit: workersDailyLimit,
         is_exceeded: isWorkersExceeded,
       },
@@ -3511,12 +3524,12 @@ export async function handleAdminDashboardRequest(
         limit_gb: 0.5,
         scope: "per_database",
       },
-      r2_class_a_monthly: { used: 240, limit: 1000000 },
-      r2_class_b_monthly: { used: 3420, limit: 10000000 },
-      zero_trust_seats: { used: 1, limit: 50 },
-      workers_ai_daily: { used: 0, limit: 10000 },
-      vectorize_monthly: { used: 0, limit: 5000000 },
-      pages_builds_monthly: { used: 42, limit: 500 },
+      r2_class_a_monthly: { used: null, limit: 1000000 },
+      r2_class_b_monthly: { used: null, limit: 10000000 },
+      zero_trust_seats: { used: null, limit: 50 },
+      workers_ai_daily: { used: null, limit: 10000 },
+      vectorize_monthly: { used: null, limit: 5000000 },
+      pages_builds_monthly: { used: null, limit: 500 },
     };
   };
 
@@ -3690,10 +3703,11 @@ export async function handleAdminDashboardRequest(
     }
 
     let leads: any[] = [];
-    if (
-      env.DB &&
-      edgeQuotaTracker.getTier(now) < QuotaDegradationTier.CRITICAL_SURVIVAL
-    ) {
+    let leadsStatus: "ok" | "unavailable" | "degraded" = !env.DB
+      ? "unavailable"
+      : edgeQuotaTracker.getTier(now) >= QuotaDegradationTier.CRITICAL_SURVIVAL
+        ? "degraded" : "ok";
+    if (leadsStatus === "ok") {
       try {
         const stmt = env.DB.prepare(
           "SELECT id, name, from_email, phone, subject, body, locale, ip, country, city, region, timezone, asn, as_organization, user_agent, referer, turnstile_verified, created_at FROM contact_leads ORDER BY created_at DESC LIMIT 50",
@@ -3705,6 +3719,7 @@ export async function handleAdminDashboardRequest(
         leads = q.results || [];
         edgeQuotaTracker.recordD1Meta(q.meta, 0, leads.length || 1, now);
       } catch (err) {
+        leadsStatus = isD1QuotaException(err) ? "degraded" : "unavailable";
         if (isD1QuotaException(err)) {
           edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
         }
@@ -3712,17 +3727,18 @@ export async function handleAdminDashboardRequest(
     }
 
     const leadsPayload = {
-      status: "ok",
+      status: leadsStatus,
       leads,
+      ...(leadsStatus === "ok" ? {} : { error: "Lead data is not available" }),
     };
-    cachedLeadsSnapshot = {
+    if (leadsStatus === "ok") cachedLeadsSnapshot = {
       timestamp: now,
       data: leadsPayload,
       dbRef: env.DB,
     };
 
     return new Response(JSON.stringify(leadsPayload), {
-      status: 200,
+      status: leadsStatus === "ok" ? 200 : 503,
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "private, no-store",
