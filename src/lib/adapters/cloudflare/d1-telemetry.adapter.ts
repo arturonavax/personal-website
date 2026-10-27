@@ -5,6 +5,7 @@ import type {
   DailySummaryMetric,
   TelemetryIngestionResult,
 } from "../../ports/telemetry.port";
+import { rawDeviceOs, storedVisitDimensions } from "./telemetry-dimensions";
 import {
   QuotaDegradationTier,
   edgeQuotaTracker,
@@ -165,6 +166,9 @@ export interface TelemetryVisitEvent {
   isBot?: boolean | undefined;
   botName?: string | null | undefined;
   country?: string | undefined;
+  region?: string | undefined;
+  browser?: string | undefined;
+  browserLanguage?: string | undefined;
   deviceType?: string | undefined;
   referrerHost?: string | undefined;
   statusCode?: number | undefined;
@@ -179,6 +183,7 @@ export interface TelemetryVisitEvent {
     campaign: string;
     content: string;
     term: string;
+    botCategory?: string | undefined;
   };
 }
 
@@ -574,11 +579,20 @@ export class D1TelemetryAdapter implements TelemetryPort {
     const humanViewsInc = isBotInt === 0 ? 1 : 0;
     const eventType = event.eventType ?? "pageview";
     const botName = event.botName ? event.botName.slice(0, 64) : null;
-    const country = (event.country || "XX").slice(0, 10);
     const { device: deviceType, os: osType } = coarseDeviceOs(
       event.userAgent ?? "",
       event.deviceType,
     );
+    const raw = rawDeviceOs(event.userAgent ?? "", event.deviceType);
+    const stored = storedVisitDimensions({
+      country: event.country,
+      region: event.region,
+      os_type: raw.os,
+      device_type: raw.device,
+      browser: event.browser,
+      browser_language: event.browserLanguage,
+    });
+    const { country, region, browser, browserLanguage } = stored;
     const dimensions = rollupDimensions(deviceType, osType);
     const referrerHost = (event.referrerHost || "").slice(0, 255);
     const statusCode = event.statusCode ?? 200;
@@ -591,8 +605,11 @@ export class D1TelemetryAdapter implements TelemetryPort {
       is_bot: isBotInt,
       bot_name: botName,
       country,
-      device_type: deviceType,
-      os_type: osType,
+      region,
+      device_type: stored.deviceType,
+      os_type: stored.osType,
+      browser,
+      browser_language: browserLanguage,
       referrer_host: referrerHost,
       status_code: statusCode,
       created_at: createdAtIso,
@@ -709,8 +726,9 @@ export class D1TelemetryAdapter implements TelemetryPort {
         .prepare(
           `INSERT OR IGNORE INTO telemetry_events (
             dedupe_key, path, event_type, visitor_hash, is_bot, bot_name,
-            country, device_type, referrer_host, status_code, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            country, device_type, region, os_type, browser, browser_language,
+            referrer_host, status_code, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           dedupeKey,
@@ -720,7 +738,11 @@ export class D1TelemetryAdapter implements TelemetryPort {
           isBotInt,
           botName,
           country,
-          deviceType,
+          stored.deviceType,
+          region,
+          stored.osType,
+          browser,
+          browserLanguage,
           referrerHost,
           statusCode,
           createdAtIso,
@@ -758,8 +780,8 @@ export class D1TelemetryAdapter implements TelemetryPort {
             .prepare(
               `INSERT INTO pageviews (
               path, visitor_hash, referrer, country, utm_source, utm_medium,
-              utm_campaign, utm_content, utm_term, is_bot, created_at, dedupe_key
-            ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+              utm_campaign, utm_content, utm_term, is_bot, bot_category, created_at, dedupe_key
+            ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             WHERE changes() > 0
               AND NOT EXISTS (SELECT 1 FROM pageviews WHERE dedupe_key = ?)
             ON CONFLICT(dedupe_key) DO NOTHING`,
@@ -775,6 +797,7 @@ export class D1TelemetryAdapter implements TelemetryPort {
               detail.content.slice(0, 100),
               detail.term.slice(0, 100),
               isBotInt,
+              detail.botCategory ?? null,
               createdAtIso.replace("T", " ").slice(0, 19),
               detail.dedupeKey,
               detail.previousDedupeKey,
@@ -801,8 +824,14 @@ export class D1TelemetryAdapter implements TelemetryPort {
 
       let batchMeta: { rows_written?: number; rows_read?: number } | null =
         null;
+      let inserted: boolean | undefined;
       if (typeof this.db.batch === "function") {
         const results = await this.db.batch(batchStmts);
+        // Only the first statement is the authoritative raw insert. Subsequent
+        // rollup, ledger and quota writes must not stand in for its changes.
+        if (typeof results[0]?.meta?.rows_written === "number") {
+          inserted = results[0].meta.rows_written > 0;
+        }
         const totalWritten = results.reduce(
           (acc, r) =>
             acc +
@@ -817,7 +846,7 @@ export class D1TelemetryAdapter implements TelemetryPort {
             (typeof r?.meta?.rows_read === "number" ? r.meta.rows_read : 0),
           0,
         );
-        batchMeta = { rows_written: totalWritten || 2, rows_read: totalRead };
+        batchMeta = { rows_written: totalWritten, rows_read: totalRead };
       } else {
         for (const statement of batchStmts) await statement.run();
       }
@@ -828,9 +857,9 @@ export class D1TelemetryAdapter implements TelemetryPort {
       );
 
       return {
-        recorded: true,
-        deduped: false,
-        deduplicated: false,
+        recorded: inserted ?? true,
+        deduped: inserted === false,
+        deduplicated: inserted === false,
         degradationTier: edgeQuotaTracker.getTierName(nowMs),
         storageTier: "D1",
         storageTarget: "D1_RAW_AND_ROLLUP",

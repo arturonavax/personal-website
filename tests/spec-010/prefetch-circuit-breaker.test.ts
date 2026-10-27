@@ -263,8 +263,20 @@ describe("Edge Worker Prefetch Telemetry Integration", () => {
     expect(ctx.promises.length).toBe(1);
     await Promise.all(ctx.promises);
 
-    expect(db.executedQueries.length).toBe(2); // pageviews + pageview_events
-    expect(db.executedQueries[0].sql).toContain("pageviews");
+    // The nominal atomic batch includes the dashboard ledger, compatibility ledger,
+    // aggregate and quota alongside the P0 visit. Prefetch remains disabled.
+    expect(
+      db.executedQueries.some((q) => /INSERT INTO pageviews\s*\(/.test(q.sql)),
+    ).toBe(true);
+    expect(db.executedQueries.some((q) => /pageview_events/.test(q.sql))).toBe(
+      true,
+    );
+    expect(db.executedQueries.some((q) => /telemetry_events/.test(q.sql))).toBe(
+      true,
+    );
+    expect(
+      db.executedQueries.some((q) => /prefetch_analytics_events/.test(q.sql)),
+    ).toBe(false);
   });
 });
 

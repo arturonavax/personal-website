@@ -24,6 +24,13 @@ function fixture(status = 200, legacy?: "pre-bot" | "pre-rollup") {
     );
   }
   sqlite.exec(baseline);
+  if (!legacy)
+    sqlite.exec(
+      readFileSync(
+        "cloudflare/d1/migrations/0002_visit_dimensions.sql",
+        "utf8",
+      ),
+    );
   function statement(sql: string, params: unknown[] = []) {
     return {
       sql,

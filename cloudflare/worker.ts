@@ -31,6 +31,7 @@ import {
   resolveR2Bucket,
 } from "../src/lib/adapters";
 import { coarseDeviceOs } from "../src/lib/adapters/cloudflare/d1-telemetry.adapter";
+import { visitDimensions } from "../src/lib/adapters/cloudflare/telemetry-dimensions";
 import type { SearchResultItem } from "../src/lib/ports/search.port";
 
 export interface Env {
@@ -2393,10 +2394,8 @@ async function handleTelemetryCollectBeacon(
 
     const ip = request.headers.get("cf-connecting-ip") || "127.0.0.1";
     const visitorHash = await computeVisitorHash(ip, userAgent);
-    const country =
-      (request as unknown as { cf?: { country?: string } }).cf?.country ||
-      request.headers.get("cf-ipcountry") ||
-      "XX";
+    const dimensions = visitDimensions(request);
+    const country = dimensions.country;
     const attribution = parseAttribution(
       request.url,
       String(payload.referrer || request.headers.get("referer") || ""),
@@ -2418,7 +2417,10 @@ async function handleTelemetryCollectBeacon(
       isBot: visitorInfo.isBot,
       botName: visitorInfo.isBot ? visitorInfo.reason : null,
       country,
-      deviceType: coarseDeviceOs(userAgent).device,
+      region: dimensions.region,
+      browser: dimensions.browser,
+      browserLanguage: dimensions.browserLanguage,
+      deviceType: dimensions.deviceType,
       referrerHost: attribution.referrer,
       statusCode: 200,
       nowMs,
@@ -8039,6 +8041,29 @@ export async function recordAnalyticsNonBlocking(
 
     // Quota accounting happens only for visits that survived the L1 dedupe gate.
     prefetchCircuitBreaker.recordVisit();
+
+    // Documents and committed browser routes share the authoritative raw insert
+    // and conditional rollup. Keep bot sampling and nominal category handling below.
+    if (!isBot) {
+      const dimensions = visitDimensions(request);
+      const bucket = Math.floor(now / PAGEVIEW_DEDUPE_WINDOW_MS);
+      const [dedupeKey, previousDedupeKey] = await Promise.all([
+        computeDedupeKey(visitorHash, normalizedPath, bucket),
+        computeDedupeKey(visitorHash, normalizedPath, bucket - 1),
+      ]);
+      await new D1TelemetryAdapter(db, env).ingestVisit({
+        path: normalizedPath, visitorHash, ip, userAgent,
+        dedupeKey: l1Key30m, skipL1Check: true, eventType: "pageview",
+        country: dimensions.country, region: dimensions.region,
+        browser: dimensions.browser, browserLanguage: dimensions.browserLanguage,
+        deviceType: dimensions.deviceType, referrerHost: referrer,
+        statusCode: 200, nowMs: now,
+        dashboard: { path, dedupeKey, previousDedupeKey,
+          source: utmSource, medium: utmMedium, campaign: utmCampaign,
+          content: utmContent, term: utmTerm },
+      });
+      return;
+    }
 
     const walRecord = {
       dedupe_key: l1Key30m,

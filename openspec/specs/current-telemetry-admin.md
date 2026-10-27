@@ -14,7 +14,7 @@ D1 pageview_events -> scheduled daily summary; R2 WAL -> bounded scheduled repla
 protected dashboard -> telemetry / metrics / deployments / leads APIs
 ```
 
-The initial document is recorded server-side; committed browser-only navigations need the beacon. Blocking browser JavaScript or beacons therefore preserves initial-document recording, not every SPA event. The two paths share suppression helpers. At NOMINAL quota, accepted collector visits also project into the dashboard `pageviews` ledger and, for humans, `pageview_events` in the same D1 batch. They MUST NOT be described as one identical table pipeline or as globally exactly-once delivery.
+The initial document is recorded server-side; committed browser-only navigations need the beacon. Blocking browser JavaScript or beacons therefore preserves initial-document recording, not every SPA event. The two paths share suppression helpers. At NOMINAL quota, initial human documents and accepted collector visits share `D1TelemetryAdapter.ingestVisit`: accepted raw `telemetry_events` feed the conditional `analytics_rollups` update, with a dashboard `pageviews` projection and human `pageview_events` in the same D1 batch. Bot sampling and category recording remain separately gated. These are not globally exactly-once delivery.
 
 ## TEL-01 — Initial documents and committed browser routes
 
