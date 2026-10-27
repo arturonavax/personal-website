@@ -61,8 +61,7 @@ test("backs up only mapped files with portable paths, content hashes and private
   await put(root, "notes.md", "unmapped");
   await put(root, ".env", "secret");
   const result = run(root);
-  expect(result.status).toBe(0);
-  expect(result.stderr).toBe("");
+  expect(result).toMatchObject({ status: 0, stderr: "" });
   const archives = await readdir(path.join(root, ".cache/backups"));
   expect(archives).toHaveLength(1);
   const archive = path.join(root, ".cache/backups", archives[0]);
@@ -155,7 +154,7 @@ test("empty input and invalid arguments fail without creating an archive directo
 test("never clobbers a previous backup or changes its bytes", async () => {
   const root = await site();
   await put(root, "src/content/posts/en/a.md", "post");
-  expect(run(root).status).toBe(0);
+  expect(run(root)).toMatchObject({ status: 0, stderr: "" });
   const [name] = await readdir(path.join(root, ".cache/backups"));
   const archive = path.join(root, ".cache/backups", name);
   const original = await readFile(archive);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { tmpdir } from "node:os";
 import { Database } from "bun:sqlite";
 import fs from "node:fs";
 import path from "node:path";
@@ -236,8 +237,28 @@ describe("SPEC-012: Configurable Edge Quota Engine (Free Tier to Paid Plan Migra
   });
 });
 
+// Ignored editorial collections are not included in a clean public-source checkout.
+// This gate runs only when all collection/locale inputs are available; the negative
+// test below always exercises the production failure behavior.
+const contentRoot = path.join(ROOT_DIR, "src/content");
+const hasProductionContent = ["posts", "projects", "experience", "services", "resume"].every(
+  (collection) => ["en", "es"].every((locale) => {
+    const localeDir = path.join(contentRoot, collection, locale);
+    const hasLocaleDir = fs.existsSync(localeDir) &&
+      fs.readdirSync(localeDir, { recursive: true, withFileTypes: true }).some(
+        (entry) => entry.isFile() && /\.(md|mdx|json)$/i.test(entry.name) && !entry.name.startsWith("_") && !entry.name.startsWith("."),
+      );
+    const collectionDir = path.join(contentRoot, collection);
+    const hasFlatFile = fs.existsSync(collectionDir) && fs.readdirSync(collectionDir).some(
+      (name) => new RegExp(`(?:^|[-_.])${locale}\\.(?:md|mdx|json)$`, "i").test(name),
+    );
+    return hasLocaleDir || hasFlatFile;
+  }),
+);
+
 describe("SPEC-012: Build-Time Content Integrity Gate (TASK SEO-1)", () => {
-  it("verifies that all production collections and locales are hydrated", async () => {
+  const hydrationIt = hasProductionContent ? it : it.skip;
+  hydrationIt("verifies that all production collections and locales are hydrated (SKIP requires ignored content for posts/projects/experience/services/resume in en and es)", async () => {
     const res = await verifyContentHydration();
     expect(res.valid).toBe(true);
     expect(res.missing.length).toBe(0);
@@ -254,8 +275,7 @@ describe("SPEC-012: Build-Time Content Integrity Gate (TASK SEO-1)", () => {
   });
 
   it("throws a descriptive fatal Error when required collections are missing and allowEmpty is false", async () => {
-    const tempEmptyDir = path.join(ROOT_DIR, "tmp-test-empty-content");
-    fs.mkdirSync(tempEmptyDir, { recursive: true });
+    const tempEmptyDir = fs.mkdtempSync(path.join(tmpdir(), "website-empty-content-"));
 
     let thrownError: Error | null = null;
     try {

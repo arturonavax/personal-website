@@ -1,24 +1,13 @@
 import { describe, expect, it } from "bun:test";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 
-const root = fileURLToPath(new URL("../", import.meta.url));
-
-function listedScripts() {
-  const result = spawnSync("pnpm", ["run"], {
-    cwd: root,
-    encoding: "utf8",
-    env: { ...process.env, FORCE_COLOR: "0" },
-  });
-  expect(result.error).toBeUndefined();
-  expect(result.status).toBe(0);
-  expect(result.stderr).toBe("");
-  return result.stdout;
-}
+// package.json is the public command inventory, not a package-manager log format.
+const { scripts } = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { scripts: Record<string, string> };
 
 describe("public package workflow", () => {
   it("omits redundant and unsafe shortcut commands", () => {
-    const listing = listedScripts();
     for (const name of [
       "typecheck",
       "format:check",
@@ -27,12 +16,11 @@ describe("public package workflow", () => {
       "db:reset:remote",
       "db:schema:remote",
     ]) {
-      expect(listing).not.toContain(`\n  ${name}\n`);
+      expect(Object.hasOwn(scripts, name)).toBe(false);
     }
   });
 
   it("retains the explicit build, offline development and publication paths", () => {
-    const listing = listedScripts();
     for (const [name, command] of [
       ["format", "prettier --write ."],
       ["check", "astro check"],
@@ -48,9 +36,9 @@ describe("public package workflow", () => {
         "wrangler d1 execute personal-website-analytics --local --file=./cloudflare/d1/schema.sql",
       ],
     ]) {
-      expect(listing).toContain(`\n  ${name}\n    ${command}\n`);
+      expect(scripts[name]).toBe(command);
     }
-    expect(listing).toContain(
+    expect(scripts["dev-prod"]).toContain(
       "SITE_LOCAL_BUILD=1 node scripts/dev-prod.mjs --env local --local",
     );
   });
