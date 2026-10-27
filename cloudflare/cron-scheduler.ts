@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+import { storedVisitDimensions } from "../src/lib/adapters/cloudflare/telemetry-dimensions";
 import {
   buildAnalyticsRollupUpsert,
   rollupDimensions,
@@ -119,7 +120,11 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
       is_bot: number;
       bot_name: string | null;
       country: string;
+      region: string;
+      os_type: string;
       device_type: string;
+      browser: string;
+      browser_language: string;
       referrer_host: string;
       status_code: number;
       created_at: string;
@@ -149,10 +154,10 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
               `wal:${parsed.visitor_hash || "anon"}:${path}:${date}`,
           );
 
-          const device = parsed.device_type === "mobile" ? "mobile" : "desktop";
+          const stored = storedVisitDimensions(parsed);
           const dimensions = rollupDimensions(
-            device,
-            String(parsed.os_type || "other"),
+            stored.deviceType,
+            stored.osType,
           );
           // Old WAL can arrive after the cron retention pass. Keep its views but
           // do not restore expired dimensions or spend another D1 cleanup write.
@@ -182,8 +187,12 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
             visitor_hash: String(parsed.visitor_hash || "anon"),
             is_bot: isBot,
             bot_name: parsed.bot_name ? String(parsed.bot_name) : null,
-            country: String(parsed.country || "XX"),
-            device_type: String(parsed.device_type || "desktop"),
+            country: stored.country,
+            region: stored.region,
+            os_type: stored.osType,
+            device_type: stored.deviceType,
+            browser: stored.browser,
+            browser_language: stored.browserLanguage,
             referrer_host: String(parsed.referrer_host || ""),
             status_code: Number(parsed.status_code || 200),
             created_at: createdAt,
@@ -202,8 +211,9 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
         env.DB.prepare(
           `INSERT OR IGNORE INTO telemetry_events (
             dedupe_key, path, event_type, visitor_hash, is_bot, bot_name,
-            country, device_type, referrer_host, status_code, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            country, device_type, region, os_type, browser, browser_language,
+            referrer_host, status_code, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).bind(
           ev.dedupe_key,
           ev.path,
@@ -213,6 +223,10 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
           ev.bot_name,
           ev.country,
           ev.device_type,
+          ev.region,
+          ev.os_type,
+          ev.browser,
+          ev.browser_language,
           ev.referrer_host,
           ev.status_code,
           ev.created_at,
@@ -221,6 +235,13 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
         // rollups even when an object is retried or repeats a dedupe key.
         buildAnalyticsRollupUpsert(env.DB, ev.rollup, true),
       );
+      if (!ev.is_bot && ev.rollup.date >= new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10)) {
+        allStatements.push(env.DB.prepare(
+          `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
+           SELECT ?, ?, ?, ?, ? WHERE changes() > 0`,
+        ).bind(ev.path, /^\/es(?:\/|$)/.test(ev.path) ? "es" : "en", ev.country,
+          ev.referrer_host, Date.parse(ev.created_at)));
+      }
     }
   }
 
@@ -299,7 +320,8 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
 }
 
 export async function handleAnalyticsRollup(env: CronEnv): Promise<void> {
-  // Rebuild both complete UTC calendar days touched by the daily cron.
+  // Rebuild only whole retained UTC dates: the seventh-oldest day may have
+  // already lost its early hours to the rolling seven-day prune.
   const rollupQuery = `
     INSERT INTO pageviews_daily_summary (summary_date, path, locale, country, total_views)
     SELECT
@@ -309,12 +331,16 @@ export async function handleAnalyticsRollup(env: CronEnv): Promise<void> {
       country,
       COUNT(id) as total_views
     FROM pageview_events
-    WHERE timestamp >= strftime('%s', 'now', '-1 day', 'start of day') * 1000
+    WHERE timestamp >= strftime('%s', 'now', '-6 days', 'start of day') * 1000
     GROUP BY summary_date, path, locale, country
     ON CONFLICT(summary_date, path, locale, country)
     DO UPDATE SET total_views = excluded.total_views;
   `;
 
+  // Replay first so human WAL visits enter the same summary rebuild.
+  if (getWalBucket(env)) {
+    await reconcileR2WalToD1(env);
+  }
   await env.DB.exec(rollupQuery);
 
   // Prune raw event detail to limit storage (Free: 500 MB per D1 database).
@@ -345,9 +371,4 @@ export async function handleAnalyticsRollup(env: CronEnv): Promise<void> {
   `;
 
   await env.DB.exec(pruneQuery);
-
-  // Reconcile any R2 Write-Ahead Log (WAL) telemetry & contact lead objects when R2 bucket is bound
-  if (getWalBucket(env)) {
-    await reconcileR2WalToD1(env);
-  }
 }

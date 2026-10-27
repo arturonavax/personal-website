@@ -24,7 +24,7 @@ const MIGRATIONS_DIR = path.join(
   "d1",
   "migrations",
 );
-const MIGRATIONS = ["0001_initial_schema.sql"];
+const MIGRATIONS = ["0001_initial_schema.sql", "0002_visit_dimensions.sql"];
 
 function createD1Shim() {
   const sqlite = new Database(":memory:");
@@ -216,10 +216,13 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
     const { db, count } = createD1Shim();
     await recordAt(BASE + 100, db, "/blog/");
     clearRecentPageviewsCache();
-    await recordAt(BASE + 3 * PAGEVIEW_DEDUPE_WINDOW_MS, db, "/blog/"); // outside window
-    await recordAt(BASE + 3 * PAGEVIEW_DEDUPE_WINDOW_MS + 10, db, "/projects/"); // other path
+    const afterWindow = BASE + 3 * 1_800_000;
+    await recordAt(afterWindow, db, "/blog/"); // outside the shared 30m shield
+    expect(count("pageviews")).toBe(2);
+    await recordAt(afterWindow + 10, db, "/projects/"); // other path
+    expect(count("pageviews")).toBe(3);
     await recordAt(
-      BASE + 3 * PAGEVIEW_DEDUPE_WINDOW_MS + 20,
+      afterWindow + 20,
       db,
       "/blog/",
       humanRequest("/blog/", "203.0.113.9"), // other visitor

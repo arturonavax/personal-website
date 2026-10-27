@@ -202,4 +202,178 @@ describe("production-shaped telemetry and admin contracts", () => {
     f.sqlite.close();
   });
 
+  it("replays unknown raw dimensions without inferring a desktop from an absent UA", async () => {
+    const f = fixture();
+    const yesterday = new Date(Date.now() - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const record = JSON.stringify({
+      dedupe_key: "unknown-wal",
+      path: "/en/blog",
+      event_type: "pageview",
+      visitor_hash: "fixture",
+      is_bot: 0,
+      device_type: "unknown",
+      os_type: "other",
+      browser: "unknown",
+      browser_language: "zh-Hant-TW",
+      created_at: `${yesterday}T11:00:00.000Z`,
+    });
+    const env = {
+      ...f.env,
+      STORAGE_BUCKET: {
+        list: async () => ({
+          objects: [{ key: `wal/telemetry/${yesterday}/unknown.ndjson` }],
+          truncated: false,
+        }),
+        get: async () => ({ text: async () => record }),
+        delete: async () => {},
+      },
+    };
+    await worker.scheduled(
+      { cron: "0 2 * * *" } as ScheduledController,
+      env,
+      f.ctx,
+    );
+    await f.drain();
+    expect(
+      f.sqlite
+        .prepare("SELECT device_type, browser_language FROM telemetry_events")
+        .get(),
+    ).toEqual({ device_type: "unknown", browser_language: "zh-Hant-TW" });
+    expect(f.count("telemetry_events")).toBe(1);
+    f.sqlite.close();
+  });
+
+  it("cron runs through the production entrypoint and rolls up yesterday and today idempotently", async () => {
+    const f = fixture();
+    const yesterday = new Date(Date.now() - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const time = Date.parse(`${yesterday}T11:00:00Z`);
+    f.sqlite
+      .prepare(
+        "INSERT INTO pageview_events (path,locale,country,timestamp) VALUES ('/es/blog','es','MX',?)",
+      )
+      .run(time);
+    await worker.scheduled(
+      { cron: "0 2 * * *" } as ScheduledController,
+      f.env,
+      f.ctx,
+    );
+    await f.drain();
+    await worker.scheduled(
+      { cron: "5 0 * * *" } as ScheduledController,
+      f.env,
+      f.ctx,
+    );
+    await f.drain();
+    expect(
+      f.sqlite
+        .prepare(
+          "SELECT total_views FROM pageviews_daily_summary WHERE summary_date=? AND path='/es/blog'",
+        )
+        .get(yesterday),
+    ).toEqual({ total_views: 1 });
+    f.sqlite.close();
+  });
+
+  it("does not overwrite a complete historical day with partially pruned raw events", async () => {
+    const f = fixture();
+    const date = new Date(Date.now() - 7 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    f.sqlite
+      .prepare(
+        "INSERT INTO pageviews_daily_summary (summary_date,path,locale,country,total_views) VALUES (?, '/blog', 'en','XX', 9)",
+      )
+      .run(date);
+    f.sqlite
+      .prepare(
+        "INSERT INTO pageview_events (path,locale,country,timestamp) VALUES ('/blog','en','XX',?)",
+      )
+      .run(Date.now() - 7 * 86_400_000 + 1_000);
+    await worker.scheduled(
+      { cron: "0 2 * * *" } as ScheduledController,
+      f.env,
+      f.ctx,
+    );
+    await f.drain();
+    expect(
+      f.sqlite
+        .prepare(
+          "SELECT total_views FROM pageviews_daily_summary WHERE summary_date=? AND path='/blog'",
+        )
+        .get(date),
+    ).toEqual({ total_views: 9 });
+    f.sqlite.close();
+  });
+
+  it("replays a raw WAL visit with dimensions before cron summary and never double counts a retry", async () => {
+    const f = fixture();
+    const yesterday = new Date(Date.now() - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const key = `wal/telemetry/${yesterday}/fixture.ndjson`;
+    const record = JSON.stringify({
+      dedupe_key: "retry-wal",
+      path: "/es/blog",
+      event_type: "pageview",
+      visitor_hash: "fixture",
+      is_bot: 0,
+      country: "MX",
+      region: "Jalisco",
+      device_type: "mobile",
+      os_type: "android",
+      browser: "chrome",
+      browser_language: "es-MX",
+      created_at: `${yesterday}T11:00:00.000Z`,
+    });
+    const bucket = {
+      list: async ({ prefix }: { prefix: string }) => ({
+        objects: prefix === "wal/telemetry/" ? [{ key }] : [],
+        truncated: false,
+      }),
+      get: async () => ({ text: async () => `${record}\n${record}` }),
+      delete: async () => {}, // simulated lost acknowledgement; replay repeats
+    };
+    const env = { ...f.env, STORAGE_BUCKET: bucket };
+    for (let i = 0; i < 2; i++) {
+      await worker.scheduled(
+        { cron: "0 2 * * *" } as ScheduledController,
+        env,
+        f.ctx,
+      );
+      await f.drain();
+    }
+    expect(f.count("telemetry_events")).toBe(1);
+    expect(
+      f.sqlite
+        .prepare(
+          "SELECT country, region, os_type, device_type, browser, browser_language FROM telemetry_events",
+        )
+        .get(),
+    ).toEqual({
+      country: "MX",
+      region: "Jalisco",
+      os_type: "android",
+      device_type: "mobile",
+      browser: "chrome",
+      browser_language: "es-MX",
+    });
+    expect(
+      f.sqlite
+        .prepare("SELECT views FROM analytics_rollups WHERE path='/es/blog'")
+        .get(),
+    ).toEqual({ views: 1 });
+    expect(
+      f.sqlite
+        .prepare(
+          "SELECT total_views FROM pageviews_daily_summary WHERE summary_date=? AND path='/es/blog'",
+        )
+        .get(yesterday),
+    ).toEqual({ total_views: 1 });
+    f.sqlite.close();
+  });
+
 });
