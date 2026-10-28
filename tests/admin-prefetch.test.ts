@@ -10,20 +10,9 @@ import worker, {
 import { edgeQuotaTracker } from "../src/lib/adapters";
 
 const TOKEN = "local-test-only-admin-token-32-characters";
-function fixture(status = 200, legacy?: "pre-bot" | "pre-rollup") {
+function fixture(status = 200) {
   const sqlite = new Database(":memory:");
-  let baseline = readFileSync(
-    "cloudflare/d1/migrations/0001_initial_schema.sql",
-    "utf8",
-  );
-  if (legacy) baseline = baseline.replace("  bot_category TEXT,\n", "");
-  if (legacy === "pre-rollup") {
-    baseline = baseline.replace(
-      /^  (?:device_(?:desktop|mobile)|os_(?:windows|macos|ios|android|linux|other)) INTEGER NOT NULL DEFAULT 0,\n/gm,
-      "",
-    );
-  }
-  sqlite.exec(baseline);
+  sqlite.exec(readFileSync("cloudflare/d1/migrations/0001_initial_schema.sql", "utf8"));
   function statement(sql: string, params: unknown[] = []) {
     return {
       sql,
@@ -129,11 +118,10 @@ describe("successful speculative delivery is isolated from committed visits", ()
         );
         expect(response.status).toBe(status);
         expect(f.count("prefetch_analytics_events")).toBe(1);
-        expect(f.count("pageviews")).toBe(0);
         expect(f.count("telemetry_events")).toBe(0);
         delete headers[marker];
         await f.fetch("/blog/", { headers });
-        expect(f.count("pageviews")).toBe(1);
+        expect(f.count("telemetry_events")).toBe(1);
         expect(f.count("prefetch_analytics_events")).toBe(1);
         f.sqlite.close();
       });
@@ -149,7 +137,7 @@ describe("successful speculative delivery is isolated from committed visits", ()
       const f = fixture(status);
       await f.fetch(path + "?astro-prefetch", { method });
       expect(f.count("prefetch_analytics_events")).toBe(0);
-      expect(f.count("pageviews")).toBe(0);
+      expect(f.count("telemetry_events")).toBe(0);
       f.sqlite.close();
     });
   }
@@ -166,7 +154,7 @@ it("retains explicit bypass and kill-switch protection for query-marker prefetch
     });
     await f.fetch("/protected/?astro-prefetch");
     expect(f.count("prefetch_analytics_events")).toBe(0);
-    expect(f.count("pageviews")).toBe(0);
+    expect(f.count("telemetry_events")).toBe(0);
     f.sqlite.close();
   }
 });
@@ -189,12 +177,9 @@ describe("truthful admin prefetch data", () => {
     expect(data.prefetches).toHaveLength(2);
     expect(data.stats.total_pageviews).toBe(0);
     expect(data.pageviews).toEqual([]);
-    expect(data.quotas.d1_storage).toEqual({
-      used_mb: null,
-      limit_mb: 500,
-      limit_gb: 0.5,
-      scope: "per_database",
-    });
+    expect(data.quotas.provider_usage).toBeNull();
+    expect(data.quotas.strategy.daily_write_budget).toBe(100000);
+    expect(data.quotas.d1_storage).toBeUndefined();
     const empty = await (await f.admin("path=/missing/")).json();
     expect(empty.stats.prefetches_count).toBe(0);
     expect(empty.pageviews).toEqual([]);
@@ -267,7 +252,7 @@ describe("bounded admin telemetry coverage", () => {
       )
       .run(today);
     const event = f.sqlite.prepare(
-      `INSERT INTO pageviews (dedupe_key, path, visitor_hash, is_bot, bot_category, created_at)
+      `INSERT INTO telemetry_events (dedupe_key, path, visitor_hash, is_bot, bot_category, created_at)
        VALUES (?, '/experience/latam', 'hash', 1, ?, ?)`,
     );
     const recent = new Date().toISOString().replace("T", " ").slice(0, 19);
@@ -291,7 +276,7 @@ describe("bounded admin telemetry coverage", () => {
       },
       bots: {
         status: "subset",
-        source: "pageviews",
+        source: "telemetry_events",
         window_days: 7,
         collection_enabled: false,
         sample_rate: 0.01,
@@ -326,44 +311,6 @@ describe("bounded admin telemetry coverage", () => {
     f.sqlite.close();
   });
 
-  it("keeps only bot classification unavailable on the pre-bot legacy schema", async () => {
-    const f = fixture(200, "pre-bot");
-    const response = await f.admin("path=/migration-boundary/");
-    const data = await response.json();
-    expect(response.status).toBe(200);
-    expect(data.coverage.device_os.status).toBe("subset");
-    expect(data.coverage.bots.status).toBe("unavailable");
-    expect(data.coverage.bots.observed).toBeNull();
-    f.sqlite.close();
-  });
-
-  it("keeps the admin response available on the pre-rollup legacy schema", async () => {
-    const f = fixture(200, "pre-rollup");
-    f.env.BOT_TELEMETRY_SAMPLE_RATE = "1";
-    const response = await f.admin("path=/legacy-schema/");
-    const data = await response.json();
-    expect(response.status).toBe(200);
-    expect(data.coverage.device_os).toEqual({
-      status: "unavailable",
-      source: "analytics_rollups",
-      window_days: 30,
-      classified_views: null,
-      device: null,
-      os: null,
-    });
-    expect(data.coverage.bots).toEqual({
-      status: "unavailable",
-      source: "pageviews",
-      window_days: 7,
-      collection_enabled: true,
-      sample_rate: 1,
-      observed: null,
-      ai: null,
-      other: null,
-      unknown: null,
-    });
-    f.sqlite.close();
-  });
 });
 
 function coverageFixture(isEs: boolean, coverage: unknown) {
@@ -387,6 +334,29 @@ function coverageFixture(isEs: boolean, coverage: unknown) {
   return nodes;
 }
 
+it("renders the visit dimensions from the API row without mixing route locale and browser language", () => {
+  const source = readFileSync("src/pages/[...lang]/admin/index.astro", "utf8");
+  const render = source.slice(source.indexOf("    function renderTable(items)"), source.indexOf("    function renderPanes()"));
+  for (const isEs of [false, true]) {
+    const nodes = new Map<string, { innerHTML: string; textContent: string }>();
+    runInNewContext(`${render}; renderTable([visit])`, {
+      visit: { path: "/es/blog", country: "MX", region: "Jalisco", device_type: "desktop", os_type: "windows", browser: "chrome", browser_language: "zh-Hant-TW<script>", is_bot: 0, created_at: "2026-10-27T10:00:00Z", visitor_hash: "hashed" },
+      isEs, totalFiltered: 1,
+      escapeHtml: (value: string) => String(value).replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
+      formatDateTime: (value: string) => value,
+      getCountryFullName: () => "Mexico",
+      attachCountryTooltipEvents: () => {},
+      document: { getElementById: (id: string) => {
+        if (!nodes.has(id)) nodes.set(id, { innerHTML: "", textContent: "" });
+        return nodes.get(id);
+      } },
+    });
+    const html = nodes.get("telemetry-tbody")?.innerHTML || "";
+    for (const value of ["MX", "Jalisco", "desktop", "windows", "chrome", "zh-Hant-TW&lt;script&gt;"]) expect(html).toContain(value);
+    expect(html).not.toContain("<script>");
+  }
+});
+
 describe("truthful bilingual coverage rendering", () => {
   it("does not present fabricated D1 storage usage or the account cap as a per-database limit", () => {
     const source = readFileSync(
@@ -399,29 +369,28 @@ describe("truthful bilingual coverage rendering", () => {
     );
     for (const isEs of [false, true]) {
       for (const d1Storage of [
-        { used_mb: null, limit_mb: 500, scope: "per_database" },
-        { used_mb: 12.4, limit_gb: 5 }, // old synthetic API payload
+        { used: null, status: "unavailable", source: "D1 binding meta.size_after", scope: "selected database", period: "current read-only query", retrieved_at: "2026-10-28T00:00:00Z", accuracy: "Not account usage" },
+        { used: 12_400_000, status: "observed", source: "D1 binding meta.size_after", scope: "selected database", period: "current read-only query", retrieved_at: "2026-10-28T00:00:00Z", accuracy: "Not account usage" },
       ]) {
         const nodes = new Map<
           string,
-          { textContent: string; style: { width: string } }
+          { textContent: string; style: { width: string }; classList: { toggle(): void } }
         >();
         runInNewContext(fn + "; renderQuotas()", {
           isEs,
-          cachedQuotas: { d1_storage: d1Storage },
+          fmtK: (n: number) => String(n),
+          cachedQuotas: { provider_usage: { d1_storage: d1Storage }, strategy: {} },
           document: {
             getElementById: (id: string) => {
               if (!nodes.has(id))
-                nodes.set(id, { textContent: "", style: { width: "" } });
+                nodes.set(id, { textContent: "", style: { width: "" }, classList: { toggle() {} } });
               return nodes.get(id);
             },
           },
         });
-        expect(nodes.get("quota-d1-storage")?.textContent).toMatch(/500 MB/);
-        expect(nodes.get("quota-d1-storage")?.textContent).not.toMatch(
-          /12\.4|5 GB/,
-        );
-        expect(nodes.get("quota-d1-storage-bar")?.style.width).toBe("0%");
+        expect(nodes.get("quota-d1-storage")?.textContent).toContain("D1 binding meta.size_after");
+        expect(nodes.get("quota-d1-storage")?.textContent).not.toContain("5 GB");
+        expect(nodes.get("quota-d1-storage-bar")?.style.width).toBe(d1Storage.used === null ? "0%" : "2%");
       }
     }
   });
@@ -450,7 +419,7 @@ describe("truthful bilingual coverage rendering", () => {
       /30.*analytics_rollups.*subset/i,
     );
     expect(en.get("coverage-bot-status")?.textContent).toMatch(
-      /off.*1%.*7.*pageviews/i,
+      /off.*1%.*7.*sampled telemetry_events.*subset/i,
     );
     expect(en.get("coverage-desktop")?.textContent).toBe("2");
     expect(en.get("coverage-ai")?.textContent).toBe("1");
@@ -460,7 +429,7 @@ describe("truthful bilingual coverage rendering", () => {
       /30.*analytics_rollups.*subconjunto/i,
     );
     expect(es.get("coverage-bot-status")?.textContent).toMatch(
-      /desactivada.*1%.*7.*pageviews/i,
+      /desactivada.*1%.*7.*telemetry_events muestreados.*subconjunto/i,
     );
   });
 

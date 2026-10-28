@@ -13,7 +13,7 @@ export const THEMATIC_SUBDOMAINS: Record<string, string> = {
   "maker.arturonavax.dev": "/tools/resume-maker",
 };
 
-export const ADMIN_HOSTNAMES = new Set([
+export const RETIRED_ADMIN_HOSTNAMES = new Set([
   "admin.arturonavax.dev",
   "dash.arturonavax.dev",
 ]);
@@ -72,7 +72,7 @@ export class CloudflareEdgeRoutingPolicy implements EdgeRoutingPolicyPort {
     const pathname = url.pathname;
 
     // 1. Admin surface isolation
-    if (ADMIN_HOSTNAMES.has(host)) {
+    if (RETIRED_ADMIN_HOSTNAMES.has(host)) {
       return "ADMIN_SURFACE";
     }
 
@@ -82,7 +82,7 @@ export class CloudflareEdgeRoutingPolicy implements EdgeRoutingPolicyPort {
     }
 
     // 3. Admin path on apex
-    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    if (/^\/(?:[a-z]{2}\/)?admin(?:\/|$)/i.test(pathname)) {
       return "ADMIN_SURFACE";
     }
 
@@ -125,12 +125,22 @@ export class CloudflareEdgeRoutingPolicy implements EdgeRoutingPolicyPort {
     const host = url.hostname.toLowerCase();
     const pathname = url.pathname;
 
-    // Admin redirect from apex to dedicated isolated subdomain
-    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-      const adminPath = pathname.replace(/^\/admin/, "") || "/";
+    // Canonical admin documents stay on the same origin. Only the missing
+    // directory slash redirects, before the guarded document is read.
+    if (
+      (method === "GET" || method === "HEAD") &&
+      /^\/(?:es\/)?admin$/i.test(pathname) &&
+      !RETIRED_ADMIN_HOSTNAMES.has(host)
+    ) {
+      const target = new URL(`${pathname.toLowerCase()}/`, url.origin);
+      for (const [key, value] of url.searchParams) {
+        if (["lang", "range", "country", "path", "segment", "search", "from", "to"].includes(key)) {
+          target.searchParams.append(key, value);
+        }
+      }
       return {
         shouldRedirect: true,
-        targetUrl: `https://admin.arturonavax.dev${adminPath}${url.search}`,
+        targetUrl: target.toString(),
         statusCode: 308,
       };
     }
@@ -155,8 +165,7 @@ export class CloudflareEdgeRoutingPolicy implements EdgeRoutingPolicyPort {
       !pathname.endsWith("/") &&
       !pathname.startsWith("/api/") &&
       !pathname.startsWith("/__admin_vault__") &&
-      pathname !== "/admin" &&
-      !pathname.startsWith("/admin/") &&
+      !/^\/(?:[a-z]{2}\/)?admin(?:\/|$)/i.test(pathname) &&
       !STATIC_EXT_REGEX.test(pathname)
     ) {
       return {

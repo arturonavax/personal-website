@@ -103,7 +103,7 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
       ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
       ASSETS: { fetch: async () => { reads++; return new Response("Not found", { status: 404 }); } },
     } as any;
-    const req = new Request("https://admin.arturonavax.dev/", {
+    const req = new Request("https://arturonavax.dev/admin/", {
       headers: { Authorization: "Bearer mock-admin-token-for-testing-32-chars-long" },
     });
     const res = await worker.fetch(req, mockEnv, { waitUntil() {} } as any);
@@ -139,7 +139,7 @@ describe("ODD Task 1: Refined /admin Surface (Cloudflare Access & Rich Dashboard
       },
     } as any;
 
-    const req = new Request("https://admin.arturonavax.dev/api/leads", {
+    const req = new Request("https://arturonavax.dev/api/leads", {
       headers: {
         Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
       },
@@ -270,7 +270,7 @@ describe("ODD Task 3: Mobile View Transitions Hardening & Anti-Squishing", () =>
     expect(themeContent).toContain("::view-transition-new(root)");
   });
 
-  it("bypasses startViewTransition on mobile devices in LanguageSwitcher.astro while maintaining DOM swap", () => {
+  it("uses Astro ClientRouter instead of manually swapping language DOM/history", () => {
     const langPath = path.join(
       ROOT_DIR,
       "src",
@@ -280,10 +280,10 @@ describe("ODD Task 3: Mobile View Transitions Hardening & Anti-Squishing", () =>
     );
     const langContent = fs.readFileSync(langPath, "utf8");
 
-    expect(langContent).toContain("isMobile");
-    expect(langContent).toMatch(
-      /if\s*\(\s*isMobile\s*\|\|\s*typeof document\.startViewTransition !== "function"\s*\)\s*\{[\s\S]*?swapDOM\(\);/,
-    );
+    expect(langContent).not.toContain("swapDOM");
+    expect(langContent).not.toContain("history.pushState");
+    expect(langContent).not.toContain("fetch(dest)");
+    expect(langContent).not.toContain("data-astro-reload");
   });
 });
 
@@ -946,14 +946,13 @@ describe("ODD Task: Timeline Sticky Scroll Mobile Header Alignment", () => {
 });
 
 describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
-  it("records bot telemetry in D1 pageviews with is_bot = 1 when circuit breaker is closed", async () => {
+  it("records sampled bot telemetry in the canonical D1 ledger with is_bot = 1 when circuit breaker is closed", async () => {
     let insertedIsBot: number | null = null;
     const mockDb = {
       prepare: (sql: string) => ({
         bind: (...args: any[]) => {
-          if (sql.includes("INSERT INTO pageviews")) {
-            // is_bot is the 10th parameter
-            insertedIsBot = args[9];
+          if (sql.includes("INSERT OR IGNORE INTO telemetry_events")) {
+            insertedIsBot = args[4];
           }
           return {
             run: async () => ({ success: true }),
@@ -1005,7 +1004,7 @@ describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
             incidentSubsystem = args[0];
             incidentReason = args[2];
           }
-          if (sql.includes("INSERT INTO pageviews")) {
+          if (sql.includes("INSERT OR IGNORE INTO telemetry_events")) {
             pageviewInserted = true;
           }
           return {
@@ -1067,7 +1066,7 @@ describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
     const authHeaders = {
       Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
     };
-    const telReq = new Request("https://admin.arturonavax.dev/api/telemetry", {
+    const telReq = new Request("https://arturonavax.dev/api/telemetry", {
       headers: authHeaders,
     });
     const telRes = await worker.fetch(telReq, mockEnv, mockCtx);
@@ -1079,7 +1078,7 @@ describe("ODD Task: Bot Telemetry Circuit Breaker & Quota Shedding", () => {
     expect(telData.circuit_breakers.prefetch).toBeDefined();
     expect(telData.circuit_breakers.prefetch.maxPrefetchBudget).toBe(25000);
 
-    const metReq = new Request("https://admin.arturonavax.dev/api/metrics", {
+    const metReq = new Request("https://arturonavax.dev/api/metrics", {
       headers: authHeaders,
     });
     const metRes = await worker.fetch(metReq, mockEnv, mockCtx);
@@ -1097,7 +1096,7 @@ describe("ODD Task: Real-Time Admin Telemetry Dashboard Overhaul", () => {
       ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
       ASSETS: { fetch: async () => { reads++; return new Response("missing", { status: 404 }); } },
     } as any;
-    const req = new Request("https://admin.arturonavax.dev/", {
+    const req = new Request("https://arturonavax.dev/admin/", {
       headers: { Authorization: "Bearer mock-admin-token-for-testing-32-chars-long" },
     });
     const res = await worker.fetch(req, env, { waitUntil() {} } as any);
@@ -1124,7 +1123,7 @@ describe("ODD Task: Real-Time Admin Telemetry Dashboard Overhaul", () => {
     } as any;
 
     const req = new Request(
-      "https://admin.arturonavax.dev/api/telemetry?page=2&limit=25&range=7d&segment=human&path=/blog/",
+      "https://arturonavax.dev/api/telemetry?page=2&limit=25&range=7d&segment=human&path=/blog/",
       {
         headers: {
           Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
@@ -1215,9 +1214,9 @@ describe("ODD Task: Comprehensive Security Audit Hardening", () => {
     } as any;
 
     // Request from production domain without Access headers
-    const req = new Request("https://admin.arturonavax.dev/", {
+    const req = new Request("https://arturonavax.dev/admin/", {
       headers: {
-        Host: "admin.arturonavax.dev",
+        Host: "arturonavax.dev",
       },
     });
 
@@ -1305,7 +1304,7 @@ describe("ODD Task: Comprehensive Security Audit Hardening", () => {
     } as any;
 
     const req = new Request(
-      "https://admin.arturonavax.dev/api/telemetry?range=24h",
+      "https://arturonavax.dev/api/telemetry?range=24h",
       {
         headers: {
           Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",

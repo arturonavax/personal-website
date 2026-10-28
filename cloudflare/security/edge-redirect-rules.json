@@ -82,19 +82,5 @@
         "preserve_query_string": true
       }
     }
-  },
-  {
-    "description": "Redirect apex admin path to dedicated admin.arturonavax.dev isolated surface",
-    "expression": "http.host eq \"arturonavax.dev\" and (http.request.uri.path eq \"/admin\" or starts_with(http.request.uri.path, \"/admin/\"))",
-    "action": "redirect",
-    "action_parameters": {
-      "from_value": {
-        "status_code": 308,
-        "target_url": {
-          "expression": "concat(\"https://admin.arturonavax.dev\", substring(http.request.uri.path, 6), (len(http.request.uri.query) > 0 ? concat(\"?\", http.request.uri.query) : \"\"))"
-        },
-        "preserve_query_string": true
-      }
-    }
   }
 ]

@@ -16,10 +16,6 @@
       "custom_domain": true,
     },
     {
-      "pattern": "admin.arturonavax.dev",
-      "custom_domain": true,
-    },
-    {
       "pattern": "blog.arturonavax.dev",
       "custom_domain": true,
     },
@@ -89,6 +85,11 @@
   // D1_VISIT_BUDGET_RATIO (0.65), D1_PREFETCH_SAMPLE_RATE (0.10 free / 1.0 paid),
   // BOT_TELEMETRY_SAMPLE_RATE (0.01 when explicitly enabled; requires D1 migration 0012)
   "vars": {
+    // Analytics scopes match the declared production bindings, not content-sync R2.
+    // CLOUDFLARE_ANALYTICS_API_TOKEN must be a separate read-only Worker secret.
+    "CLOUDFLARE_ANALYTICS_ACCOUNT_ID": "d4986ed43391f516630760f10ada092f",
+    "CLOUDFLARE_ANALYTICS_DATABASE_ID": "8b881d48-f08b-4e77-9731-541eab349f16",
+    "CLOUDFLARE_ANALYTICS_BUCKET_NAME": "arturonavax-production-assets",
     "CLOUDFLARE_PLAN_TIER": "free",
     "D1_DAILY_WRITE_BUDGET": "100000",
     "D1_DAILY_READ_BUDGET": "5000000",

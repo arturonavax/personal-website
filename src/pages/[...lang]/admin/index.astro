@@ -52,7 +52,7 @@ const description = isEs
       </p>
       <div class="flex flex-wrap items-center gap-3 pt-2">
         <a
-          href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/admin.arturonavax.dev"
+          href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/arturonavax.dev"
           class="px-3 py-1.5 rounded-xs bg-[var(--color-accent-gold)] text-[var(--color-bg-primary)] font-bold text-xs hover:bg-[var(--color-accent-gold-hover)] transition-colors"
         >
           {isEs
@@ -745,7 +745,7 @@ const description = isEs
                 <span class="text-[var(--color-text-secondary)] font-medium">
                   {isEs ? "D1 Almacenamiento" : "D1 Storage"}
                 </span>
-                <span class="text-emerald-400 font-bold">5 GB máx</span>
+                <span class="text-emerald-400 font-bold">500 MB / DB</span>
               </div>
               <div
                 class="text-sm font-bold text-[var(--color-text-primary)]"
@@ -819,35 +819,6 @@ const description = isEs
                   class="text-emerald-400 font-semibold"
                 >
                   OK
-                </span>
-              </div>
-            </div>
-
-            <!-- Quota 2: Workers Requests Monthly -->
-            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-[var(--color-text-secondary)] font-medium">
-                  {isEs ? "Workers (Mensual)" : "Workers (Monthly)"}
-                </span>
-                <span class="text-emerald-400 font-bold">~3M / mes</span>
-              </div>
-              <div
-                class="text-sm font-bold text-[var(--color-text-primary)]"
-                id="quota-workers-monthly"
-              >
-                -- / 3,000,000
-              </div>
-              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-                <div
-                  id="quota-workers-monthly-bar"
-                  class="h-full bg-[var(--color-accent-gold)] transition-all duration-300"
-                  style="width: 1%;"
-                ></div>
-              </div>
-              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-                <span>{isEs ? "Ventana 30 días" : "30-day window"}</span>
-                <span class="text-emerald-400 font-semibold">
-                  {isEs ? "Capa Gratuita" : "Free Tier"}
                 </span>
               </div>
             </div>
@@ -941,7 +912,7 @@ const description = isEs
                 <span class="text-[var(--color-text-secondary)] font-medium">
                   R2 Storage
                 </span>
-                <span class="text-emerald-400 font-bold">10 GB / mes</span>
+                <span class="text-emerald-400 font-bold">{isEs ? "Muestra actual" : "Current sample"}</span>
               </div>
               <div
                 class="text-sm font-bold text-[var(--color-text-primary)]"
@@ -957,7 +928,7 @@ const description = isEs
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-                <span>PDFs, Assets, R2 Sync</span>
+                <span>{isEs ? "Bucket desplegado" : "Deployed bucket"}</span>
                 <span class="text-[var(--color-text-muted)] font-semibold">
                   {isEs ? "Uso sin medir" : "Usage unmeasured"}
                 </span>
@@ -966,86 +937,7 @@ const description = isEs
           </div>
         </details>
 
-        <!-- Group 4: Cloudflare Workers AI & Vectorize -->
-        <details
-          open
-          class="group border border-[var(--color-surface-border)] rounded-sm bg-[var(--color-bg-primary)] p-3"
-        >
-          <summary class="cursor-pointer font-bold text-xs uppercase tracking-wider text-[var(--color-accent-gold)] flex items-center justify-between select-none list-none [&::-webkit-details-marker]:hidden">
-            <span class="flex items-center gap-2">
-              <span class="transition-transform duration-200 group-open:rotate-90 text-[10px]">
-                ▶
-              </span>
-              <span>
-                {isEs
-                  ? "Cloudflare Workers AI & Vectorize"
-                  : "Cloudflare Workers AI & Vectorize"}
-              </span>
-            </span>
-            <span class="text-[11px] text-cyan-400 font-semibold lowercase">
-              edge ml & embeddings
-            </span>
-          </summary>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3">
-            <!-- Quota 9: Workers AI Neurons -->
-            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-[var(--color-text-secondary)] font-medium">
-                  {isEs ? "Workers AI (Diario)" : "Workers AI (Daily)"}
-                </span>
-                <span class="text-emerald-400 font-bold">10k / día</span>
-              </div>
-              <div
-                class="text-sm font-bold text-[var(--color-text-primary)]"
-                id="quota-workers-ai"
-              >
-                — / 10,000 neuronas
-              </div>
-              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-                <div
-                  id="quota-workers-ai-bar"
-                  class="h-full bg-cyan-400 transition-all duration-300"
-                  style="width: 0%;"
-                ></div>
-              </div>
-              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-                <span>{isEs ? "Inferencia Edge" : "Edge Inference"}</span>
-                <span class="text-emerald-400 font-semibold">
-                  {isEs ? "Disponible" : "Ready"}
-                </span>
-              </div>
-            </div>
-
-            <!-- Quota 10: Vectorize Semantic Embeddings -->
-            <div class="p-3 rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-surface,var(--color-bg-primary))] space-y-2">
-              <div class="flex justify-between items-center text-[11px]">
-                <span class="text-[var(--color-text-secondary)] font-medium">
-                  {isEs ? "Vectorize (Mensual)" : "Vectorize (Monthly)"}
-                </span>
-                <span class="text-emerald-400 font-bold">5M / mes</span>
-              </div>
-              <div
-                class="text-sm font-bold text-[var(--color-text-primary)]"
-                id="quota-vectorize"
-              >
-                — / 5,000,000 dims
-              </div>
-              <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-                <div
-                  id="quota-vectorize-bar"
-                  class="h-full bg-cyan-400 transition-all duration-300"
-                  style="width: 0%;"
-                ></div>
-              </div>
-              <div class="flex justify-between text-[10px] text-[var(--color-text-muted)]">
-                <span>{isEs ? "Búsqueda Semántica" : "Semantic Search"}</span>
-                <span class="text-emerald-400 font-semibold">
-                  {isEs ? "Disponible" : "Ready"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </details>
+        <!-- AI and semantic search services remain active; unsupported quota gauges are omitted. -->
 
         <!-- Group 5: Zero Trust & Deployments -->
         <details
@@ -1074,13 +966,13 @@ const description = isEs
                 <span class="text-[var(--color-text-secondary)] font-medium">
                   Zero Trust Access
                 </span>
-                <span class="text-emerald-400 font-bold">50 asientos</span>
+                <span class="text-emerald-400 font-bold">{isEs ? "Ocupación" : "Occupancy"}</span>
               </div>
               <div
                 class="text-sm font-bold text-[var(--color-text-primary)]"
                 id="quota-zero-trust"
               >
-                — / 50 asientos
+                —
               </div>
               <div class="w-full h-1.5 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
                 <div
@@ -1525,6 +1417,11 @@ const description = isEs
               <th class="py-2 px-2.5">{isEs ? "Tipo" : "Type"}</th>
               <th class="py-2 px-2.5">{isEs ? "Ruta" : "Path"}</th>
               <th class="py-2 px-2.5">{isEs ? "País" : "Country"}</th>
+              <th class="py-2 px-2.5">{isEs ? "Región" : "Region"}</th>
+              <th class="py-2 px-2.5">{isEs ? "Dispositivo" : "Device"}</th>
+              <th class="py-2 px-2.5">OS</th>
+              <th class="py-2 px-2.5">{isEs ? "Navegador" : "Browser"}</th>
+              <th class="py-2 px-2.5">{isEs ? "Idioma del navegador" : "Browser language"}</th>
               <th class="py-2 px-2.5">
                 {isEs ? "Referrer / Origen" : "Referrer / Source"}
               </th>
@@ -1537,7 +1434,7 @@ const description = isEs
           <tbody id="telemetry-tbody">
             <tr>
               <td
-                colspan="7"
+                colspan="12"
                 class="py-6 text-center text-[var(--color-text-muted)] italic"
               >
                 {isEs
@@ -1637,7 +1534,7 @@ const description = isEs
           LinkedIn
         </a>
         <span class="text-[var(--color-text-muted)]">
-          admin.arturonavax.dev
+          arturonavax.dev/admin/
         </span>
       </div>
     </footer>
@@ -1714,32 +1611,6 @@ const description = isEs
       var active = true;
       var requestVersion = 0;
     var isEs = document.documentElement.lang === "es";
-
-    // Automatic device/saved language detection for root /admin
-    if (
-      window.location.pathname === "/admin" ||
-      window.location.pathname === "/admin/"
-    ) {
-      try {
-        var savedAdminLang =
-          localStorage.getItem("preferred_locale") ||
-          localStorage.getItem("admin_lang");
-          var userLangs = (
-            navigator.languages || [navigator.language || ""]
-          ).map(function (l) {
-            return (l || "").toLowerCase().split("-")[0];
-          });
-        if (
-          savedAdminLang === "es" ||
-          (!savedAdminLang && userLangs[0] === "es")
-        ) {
-          window.location.replace(
-            "/es/admin/" + window.location.search + window.location.hash,
-          );
-          return;
-        }
-      } catch (_) {}
-    }
 
     // Filter staging states
     var stagedRange = "7d";
@@ -2095,7 +1966,7 @@ const description = isEs
             var pData = await pageRes.json();
               if (!active || version !== requestVersion) return;
             rawPageviews = pData.pageviews || [];
-            if (pData.quotas) cachedQuotas = pData.quotas;
+            if (pData.quotas && !cachedQuotas) cachedQuotas = pData.quotas;
             if (pData.pagination) {
               currentPage = pData.pagination.page;
               totalPages = pData.pagination.total_pages || 1;
@@ -2162,7 +2033,7 @@ const description = isEs
           rawTopCountries = tData.top_countries || [];
           rawUtmAttributions = tData.utm_attributions || [];
           rawTopReferrers = tData.top_referrers || [];
-          if (tData.quotas) cachedQuotas = tData.quotas;
+          if (tData.quotas && !cachedQuotas) cachedQuotas = tData.quotas;
           if (tData.pagination) {
             currentPage = tData.pagination.page;
             totalPages = tData.pagination.total_pages || 1;
@@ -2253,227 +2124,43 @@ const description = isEs
 
     function renderQuotas() {
       if (!cachedQuotas) return;
-        // Provider usage is not measured by this endpoint. Null is unknown, not zero.
-        function providerMeter(key, id, unit) {
-          var quota = cachedQuotas[key];
-          var label = document.getElementById(id);
-          var bar = document.getElementById(id + "-bar");
-          if (!label || !quota) return;
-          var known =
-            quota.available !== false &&
-            typeof quota.used === "number" &&
-            Number.isFinite(quota.used);
-          var limit = quota.limit;
-          label.textContent =
-            (known ? fmtK(quota.used) : "—") +
-            " / " +
-            (typeof limit === "number" && Number.isFinite(limit)
-              ? fmtK(limit)
-              : "—") +
-            unit;
-          if (bar)
-            bar.style.width =
-              known && limit > 0
-                ? Math.min(100, Math.round((quota.used / limit) * 100)) + "%"
-                : "0%";
+      var usage = cachedQuotas.provider_usage;
+      var strategy = cachedQuotas.strategy || {};
+      function display(key, id, unit, limit) {
+        var metric = usage && usage[key];
+        var label = document.getElementById(id);
+        var bar = document.getElementById(id + "-bar");
+        if (!label) return;
+        var known = metric && typeof metric.used === "number" && Number.isFinite(metric.used);
+        var status = metric ? metric.status : "unavailable";
+        var state = status === "setup_required" ? (isEs ? "Configurar acceso" : "Setup required") : status === "partial" ? (isEs ? "Parcial" : "Partial") : (isEs ? "No disponible" : "Unavailable");
+        label.textContent = (known ? fmtK(metric.used) : "—") + unit + (typeof limit === "number" ? " / " + fmtK(limit) : "") + " · " + (status === "observed" ? (isEs ? "Observado" : "Observed") : state);
+        if (metric) {
+          label.textContent += " · " + metric.source + " · " + metric.scope + " · " + metric.period;
+          label.title = metric.accuracy + " · " + metric.retrieved_at;
         }
-
-      if (cachedQuotas.workers_daily) {
-        var q1 = cachedQuotas.workers_daily;
-        var el1 = document.getElementById("quota-workers-daily");
-        var bar1 = document.getElementById("quota-workers-daily-bar");
-        var status1 = document.getElementById("quota-workers-daily-status");
-          var limit1 = q1.limit;
-          var used1 = q1.used;
-          var known1 =
-            q1.available !== false &&
-            typeof used1 === "number" &&
-            Number.isFinite(used1);
-          providerMeter("workers_daily", "quota-workers-daily", "");
-        if (status1) {
-            if (
-              !known1 ||
-              typeof limit1 !== "number" ||
-              !Number.isFinite(limit1)
-            ) {
-              status1.textContent = isEs ? "SIN DATOS" : "UNAVAILABLE";
-              status1.className =
-                "text-[var(--color-text-muted)] font-semibold";
-            } else if (used1 >= limit1) {
-            status1.textContent = "EXCEDIDO";
-            status1.className = "text-red-400 font-bold";
-          } else {
-            status1.textContent = "OK";
-            status1.className = "text-emerald-400 font-semibold";
-          }
-        }
+        if (bar) bar.style.width = known && typeof limit === "number" && limit > 0 ? Math.min(100, Math.round(metric.used / limit * 100)) + "%" : "0%";
       }
-
-      if (cachedQuotas.workers_monthly) {
-          providerMeter("workers_monthly", "quota-workers-monthly", "");
-      }
-
-      if (cachedQuotas.d1_reads_daily) {
-        var q3 = cachedQuotas.d1_reads_daily;
-        var el3 = document.getElementById("quota-d1-reads");
-        var bar3 = document.getElementById("quota-d1-reads-bar");
-        var limit3 = q3.limit || 5000000;
-        var used3 = q3.used || 0;
-        if (el3) el3.textContent = fmtK(used3) + " / " + fmtK(limit3);
-        if (bar3)
-          bar3.style.width =
-            Math.min(100, Math.round((used3 / limit3) * 100)) + "%";
-      }
-
-      if (cachedQuotas.d1_writes_daily) {
-        var qw = cachedQuotas.d1_writes_daily;
-        var elw = document.getElementById("quota-d1-writes");
-        var barw = document.getElementById("quota-d1-writes-bar");
-        var statusw = document.getElementById("quota-d1-writes-status");
-        var banner = document.getElementById("quota-d1-overrun-banner");
-        var bannerDetail = document.getElementById("quota-d1-overrun-detail");
-        var globalBadge = document.getElementById("quotas-global-badge");
-
-        var limitw = qw.limit || 100000;
-        var usedw = qw.used || 0;
-        var isExceeded = qw.is_exceeded || usedw >= limitw;
-
-        if (elw)
-          elw.textContent =
-            fmtK(usedw) + " / " + fmtK(limitw) + (isEs ? " filas" : " rows");
-        var pctw = Math.min(100, Math.round((usedw / limitw) * 100));
-
-        if (barw) {
-          barw.style.width = Math.max(1, isExceeded ? 100 : pctw) + "%";
-          if (isExceeded) {
-            barw.className =
-              "h-full bg-red-500 animate-pulse transition-all duration-300";
-          } else if (pctw >= 95)
-            barw.className = "h-full bg-red-500 transition-all duration-300";
-          else if (pctw >= 85)
-              barw.className =
-                "h-full bg-orange-500 transition-all duration-300";
-          else if (pctw >= 70)
-              barw.className =
-                "h-full bg-amber-400 transition-all duration-300";
-          else if (pctw >= 50)
-            barw.className = "h-full bg-cyan-400 transition-all duration-300";
-          else
-            barw.className =
-              "h-full bg-emerald-400 transition-all duration-300";
-        }
-
-        if (statusw) {
-          if (isExceeded) {
-            statusw.textContent = "EXCEDIDO // R2 WAL";
-            statusw.className = "text-red-400 font-bold animate-pulse";
-          } else {
-            var tierw = cachedQuotas.degradation_tier_name || "NOMINAL";
-            statusw.textContent = tierw;
-            if (tierw === "NOMINAL")
-              statusw.className = "text-emerald-400 font-semibold";
-            else if (tierw === "CONSERVATIVE")
-              statusw.className = "text-cyan-400 font-semibold";
-            else if (tierw === "COMPACT_ROLLUP")
-              statusw.className = "text-amber-400 font-semibold";
-            else if (tierw === "CRITICAL_SURVIVAL")
-              statusw.className = "text-orange-400 font-semibold";
-            else statusw.className = "text-red-400 font-semibold";
-          }
-        }
-
-        if (banner) {
-          if (isExceeded) {
-            banner.classList.remove("hidden");
-            if (bannerDetail) {
-              bannerDetail.textContent = fmtK(usedw) + " / " + fmtK(limitw);
-            }
-          } else {
-            banner.classList.add("hidden");
-          }
-        }
-
-        if (globalBadge) {
-          if (isExceeded) {
-            globalBadge.textContent = isEs
-              ? "⚠️ CUPO D1 EXCEDIDO // R2 WAL ACTIVO"
-              : "⚠️ D1 QUOTA EXCEEDED // R2 WAL ACTIVE";
-            globalBadge.className =
-              "font-mono text-[11px] text-red-400 font-bold animate-pulse";
-          } else {
-            globalBadge.textContent = isEs
-              ? "Estimaciones locales · verificar cuenta"
-              : "Local estimates · check account";
-            globalBadge.className =
-              "font-mono text-[11px] text-emerald-400 font-semibold";
-          }
-        }
-      }
-
-      if (cachedQuotas.d1_storage) {
-        var q4 = cachedQuotas.d1_storage;
-        var el4 = document.getElementById("quota-d1-storage");
-        var bar4 = document.getElementById("quota-d1-storage-bar");
-        if (el4)
-          el4.textContent =
-            q4.scope === "per_database" && typeof q4.used_mb === "number"
-              ? q4.used_mb + " / " + q4.limit_mb + " MB"
-              : isEs
-                ? "Uso sin medir / 500 MB por BD"
-                : "Usage unmeasured / 500 MB per DB";
-        if (bar4)
-          bar4.style.width =
-            q4.scope === "per_database" &&
-            typeof q4.used_mb === "number" &&
-            q4.limit_mb > 0
-              ? Math.min(100, Math.round((q4.used_mb / q4.limit_mb) * 100)) +
-                "%"
-              : "0%";
-      }
-
-      if (cachedQuotas.r2_class_a_monthly) {
-          providerMeter("r2_class_a_monthly", "quota-r2-class-a", "");
-      }
-
-      if (cachedQuotas.r2_class_b_monthly) {
-          providerMeter("r2_class_b_monthly", "quota-r2-class-b", "");
-      }
-
-      if (cachedQuotas.r2_storage) {
-        var q7 = cachedQuotas.r2_storage;
-        var el7 = document.getElementById("quota-r2-storage");
-        var bar7 = document.getElementById("quota-r2-storage-bar");
-          var known7 = q7.available !== false && typeof q7.used_gb === "number";
-        if (el7)
-          el7.textContent =
-              (known7 ? q7.used_gb : "—") + " GB / " + q7.limit_gb + " GB";
-        if (bar7)
-          bar7.style.width =
-              known7 && q7.limit_gb > 0
-                ? Math.min(100, Math.round((q7.used_gb / q7.limit_gb) * 100)) +
-                  "%"
-                : "0%";
-      }
-
-      if (cachedQuotas.zero_trust_seats) {
-          providerMeter(
-            "zero_trust_seats",
-            "quota-zero-trust",
-            isEs ? " asientos" : " seats",
-          );
-      }
-
-      if (cachedQuotas.workers_ai_daily) {
-          providerMeter(
-            "workers_ai_daily",
-            "quota-workers-ai",
-            isEs ? " neuronas" : " neurons",
-          );
-      }
-
-      if (cachedQuotas.vectorize_monthly) {
-          providerMeter("vectorize_monthly", "quota-vectorize", " dims");
-      }
+      display("workers_requests", "quota-workers-daily", "", strategy.workers_daily_budget);
+      display("d1_rows_read", "quota-d1-reads", isEs ? " filas" : " rows", strategy.daily_read_budget);
+      display("d1_rows_written", "quota-d1-writes", isEs ? " filas" : " rows", strategy.daily_write_budget);
+      display("d1_storage", "quota-d1-storage", " bytes", 500_000_000);
+      display("r2_class_a", "quota-r2-class-a", "", 1_000_000);
+      display("r2_class_b", "quota-r2-class-b", "", 10_000_000);
+      display("r2_storage", "quota-r2-storage", " bytes", null);
+      display("zero_trust_seats", "quota-zero-trust", isEs ? " asientos ocupados" : " occupied seats", null);
+      var workers = usage && usage.workers_requests;
+      var workerStatus = document.getElementById("quota-workers-daily-status");
+      if (workerStatus) workerStatus.textContent = workers && workers.status === "observed" ? (isEs ? "OBSERVADO" : "OBSERVED") : (isEs ? "SIN DATOS" : "UNAVAILABLE");
+      var exceeded = cachedQuotas.is_d1_writes_exceeded;
+      var tier = document.getElementById("quota-d1-writes-status");
+      if (tier) tier.textContent = exceeded ? "EXCEDIDO // R2 WAL" : cachedQuotas.degradation_tier_name || "NOMINAL";
+      var banner = document.getElementById("quota-d1-overrun-banner");
+      if (banner) banner.classList.toggle("hidden", !exceeded);
+      var detail = document.getElementById("quota-d1-overrun-detail");
+      if (detail && exceeded) detail.textContent = isEs ? "Presupuesto local agotado" : "Local budget exceeded";
+      var globalBadge = document.getElementById("quotas-global-badge");
+      if (globalBadge) globalBadge.textContent = exceeded ? (isEs ? "⚠️ CUPO LOCAL D1 EXCEDIDO // R2 WAL" : "⚠️ LOCAL D1 BUDGET EXCEEDED // R2 WAL") : (isEs ? "Presupuestos locales · verificar cuenta" : "Local budgets · check account");
     }
 
     function renderCoverage() {
@@ -2517,13 +2204,13 @@ const description = isEs
                 : "Recolección desactivada") +
               " · " +
               rate +
-              " configurado · 7 días · pageviews · subconjunto"
+              " configurado · 7 días · telemetry_events muestreados · subconjunto"
               : (bots.collection_enabled
                   ? "Partial sample"
                   : "Collection off") +
               " · " +
               rate +
-              " configured · 7 days · pageviews · subset";
+              " configured · 7 days · sampled telemetry_events · subset";
         }
       }
       put(
@@ -3119,7 +2806,7 @@ const description = isEs
 
       if (!items.length) {
         tbody.innerHTML =
-          '<tr><td colspan="7" class="py-6 text-center text-[var(--color-text-muted)] italic">' +
+          '<tr><td colspan="12" class="py-6 text-center text-[var(--color-text-muted)] italic">' +
           (isEs
             ? "No se encontraron eventos coincidentes."
             : "No matching events found.") +
@@ -3173,6 +2860,11 @@ const description = isEs
             '">' +
             escapeHtml(country) +
             "</span></td>" +
+            [item.region, item.device_type, item.os_type, item.browser, item.browser_language]
+              .map(function (value) {
+                return '<td class="py-2 px-2.5 text-[var(--color-text-secondary)] whitespace-nowrap">' +
+                  escapeHtml(value || "unknown") + "</td>";
+              }).join("") +
             '<td class="py-2 px-2.5 text-[var(--color-text-secondary)] max-w-xs truncate">' +
             escapeHtml(ref) +
             "</td>" +

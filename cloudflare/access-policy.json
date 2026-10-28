@@ -1,30 +1,31 @@
 {
-  "name": "Arturo Nava Private Analytics Gateway",
-  "domain": "admin.arturonavax.dev",
-  "application_domain": "admin.arturonavax.dev",
+  "name": "Admin Dashboard",
+  "domain": "arturonavax.dev/admin",
+  "application_domain": "arturonavax.dev/admin",
+  "destinations": [
+    {
+      "type": "public",
+      "uri": "arturonavax.dev/admin"
+    },
+    {
+      "type": "public",
+      "uri": "arturonavax.dev/es/admin"
+    }
+  ],
+  "operator_note": "Live destinations were migrated on 2026-10-28 while preserving the existing audience and Owner Only policy. This policy has no explicit MFA requirement; identity-provider MFA was not verified. This repository descriptor does not apply account changes.",
   "decision": "allow",
   "include": [
     {
       "email": {
         "email": "arturonavax@gmail.com"
       }
-    },
-    {
-      "email": {
-        "email": "contact@arturonava.com"
-      }
     }
   ],
-  "require": [
-    {
-      "auth_method": {
-        "auth_method": "two_factor"
-      }
-    }
-  ],
+  "exclude": [],
+  "require": [],
   "rules": [
     {
-      "name": "Admins Only",
+      "name": "Owner Only",
       "action": "allow"
     }
   ]

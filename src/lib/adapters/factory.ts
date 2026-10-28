@@ -1,6 +1,5 @@
 import type { StoragePort } from "../ports/storage.port";
 import type { SearchEnginePort } from "../ports/search.port";
-import type { TelemetryPort } from "../ports/telemetry.port";
 import type { CaptchaVerifierPort } from "../ports/captcha.port";
 
 import { CloudflareR2StorageAdapter } from "./cloudflare/r2-storage.adapter";
@@ -14,9 +13,6 @@ import {
 } from "./cloudflare/vectorize-search.adapter";
 import { StaticMemorySearchAdapter } from "./fallback/static-memory-search.adapter";
 
-import { D1TelemetryAdapter } from "./cloudflare/d1-telemetry.adapter";
-import { SQLiteTelemetryAdapter } from "./fallback/sqlite-telemetry.adapter";
-
 import { TurnstileCaptchaAdapter } from "./cloudflare/turnstile-captcha.adapter";
 import { HoneypotCaptchaAdapter } from "./fallback/honeypot-captcha.adapter";
 
@@ -25,7 +21,6 @@ export interface AdapterContext {
     | {
         APP_STORAGE_DRIVER?: string | undefined;
         APP_SEARCH_DRIVER?: string | undefined;
-        APP_TELEMETRY_DRIVER?: string | undefined;
         APP_CAPTCHA_DRIVER?: string | undefined;
 
         // Cloudflare bindings
@@ -95,21 +90,6 @@ export function createSearchAdapter(
   }
 
   return new StaticMemorySearchAdapter();
-}
-
-export function createTelemetryAdapter(
-  ctx?: AdapterContext | undefined,
-): TelemetryPort {
-  const driver =
-    ctx?.env?.APP_TELEMETRY_DRIVER ||
-    (typeof process !== "undefined" && process.env?.APP_TELEMETRY_DRIVER) ||
-    "cloudflare-d1";
-
-  if (driver === "cloudflare-d1" && ctx?.env?.DB) {
-    return new D1TelemetryAdapter(ctx.env.DB);
-  }
-
-  return new SQLiteTelemetryAdapter();
 }
 
 export function createCaptchaAdapter(

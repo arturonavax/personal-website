@@ -40,23 +40,6 @@ export interface TelemetryIngestionResult {
     | undefined;
 }
 
-export interface PageviewEvent {
-  path: string;
-  locale: string;
-  country?: string | undefined;
-  referrer?: string | undefined;
-  userAgent?: string | undefined;
-  timestamp: number;
-}
-
-export interface DailySummaryMetric {
-  date: string;
-  path: string;
-  locale: string;
-  country: string;
-  views: number;
-}
-
 export interface PrefetchTelemetryEvent {
   path: string;
   visitorHash: string;
@@ -130,7 +113,6 @@ export interface BotCircuitBreakerPort {
 }
 
 export interface TelemetryPort {
-  recordPageview(event: PageviewEvent): Promise<void>;
   recordPrefetch?(event: PrefetchTelemetryEvent): Promise<void>;
   getCircuitBreakerIncidents?(
     subsystem?: string,
@@ -139,8 +121,4 @@ export interface TelemetryPort {
     startDate: string,
     endDate: string,
   ): Promise<PrefetchDailySummaryWithQuality[]>;
-  getAggregatedMetrics(
-    startDate: string,
-    endDate: string,
-  ): Promise<DailySummaryMetric[]>;
 }

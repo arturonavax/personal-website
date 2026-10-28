@@ -20,7 +20,7 @@ const MAX_SCAN_PER_PREFIX = 40; // bounded lookahead beyond poisoned oldest keys
 const MAX_OBJECT_BYTES = 64 * 1024;
 const MAX_RUN_BYTES = 256 * 1024;
 const MAX_RECORDS = 128;
-const MAX_STATEMENTS = 384; // 3 per human visit; D1 batch remains small
+const MAX_STATEMENTS = 384; // two statements per visit; D1 batch remains small
 
 async function listKeys(bucket: R2Bucket, prefix: string): Promise<string[]> {
   const keys: string[] = [];
@@ -49,7 +49,7 @@ function parseTelemetry(text: string): Record<string, unknown>[] | null | "defer
           !Number.isFinite(Date.parse(v.created_at)) ||
           (v.is_bot !== undefined && v.is_bot !== 0 && v.is_bot !== 1) ||
           (v.status_code !== undefined && (!Number.isInteger(v.status_code) || (v.status_code as number) < 100)) ||
-          ["event_type", "visitor_hash", "bot_name", "country", "region", "device_type", "os_type", "browser", "browser_language", "referrer_host"].some(field =>
+          ["event_type", "visitor_hash", "bot_name", "country", "region", "device_type", "os_type", "browser", "browser_language", "referrer_host", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "bot_category"].some(field =>
             v[field] !== undefined && v[field] !== null && typeof v[field] !== "string")) return null;
       rows.push(v);
       if (rows.length > MAX_RECORDS) return "deferred";
@@ -92,7 +92,6 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
   const accepted: { key: string; events: number; lead: boolean; startsAt: number; rawOffsets: number[] }[] = [];
   const now = Date.now();
   const dimensionCutoff = new Date(now - 30 * 86_400_000).toISOString().slice(0, 10);
-  const summaryCutoff = new Date(now - 6 * 86_400_000).toISOString().slice(0, 10);
   // Telemetry has priority, with up to five lead slots reserved when both
   // prefixes have backlog. Bounded lookahead avoids 20 poisoned keys blocking
   // healthy neighbors, but cannot guarantee drainage beyond the scan window.
@@ -121,7 +120,7 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
     if (events === "deferred") { deferred++; continue; }
     if ((isTelemetry && !events) || (!isTelemetry && !lead)) { invalid++; continue; }
     const neededRecords = events?.length ?? 1;
-    const neededStatements = events?.reduce((n, row) => n + (row.is_bot === 1 || String(row.created_at).slice(0, 10) < summaryCutoff ? 2 : 3), 0) ?? 1;
+    const neededStatements = events?.length ? events.length * 2 : 1;
     if (records + neededRecords > MAX_RECORDS || statements + neededStatements > MAX_STATEMENTS) { deferred++; continue; }
     const batch: D1PreparedStatement[] = [];
     const rawOffsets: number[] = [];
@@ -138,20 +137,19 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
         batch.push(env.DB.prepare(`INSERT OR IGNORE INTO telemetry_events (
           dedupe_key, path, event_type, visitor_hash, is_bot, bot_name,
           country, device_type, region, os_type, browser, browser_language,
-          referrer_host, status_code, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+          referrer_host, utm_source, utm_medium, utm_campaign, utm_content,
+          utm_term, bot_category, status_code, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
           String(row.dedupe_key), path, String(row.event_type || "pageview"), String(row.visitor_hash || "anon"), bot,
           row.bot_name ? String(row.bot_name) : null, stored.country, stored.deviceType, stored.region,
           stored.osType, stored.browser, stored.browserLanguage, String(row.referrer_host || ""),
+          String(row.utm_source || "direct").slice(0, 50), String(row.utm_medium || "none").slice(0, 50),
+          String(row.utm_campaign || "").slice(0, 100), String(row.utm_content || "").slice(0, 100),
+          String(row.utm_term || "").slice(0, 100), row.bot_category ? String(row.bot_category).slice(0, 64) : null,
           Number(row.status_code || 200), createdAt,
         ), buildAnalyticsRollupUpsert(env.DB, {
           date, path, views: 1, uniques: 1, botViews: bot, humanViews: 1 - bot, ...dimensions,
         }, true));
-        if (!bot && date >= summaryCutoff) batch.push(env.DB.prepare(
-          `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
-           SELECT ?, ?, ?, ?, ? WHERE changes() > 0`,
-        ).bind(path, /^\/es(?:\/|$)/.test(path) ? "es" : "en", stored.country,
-          String(row.referrer_host || ""), Date.parse(createdAt)));
       }
     } else if (lead) {
       const email = String(lead.from_email || lead.email);
@@ -202,24 +200,11 @@ export async function reconcileR2WalToD1(env: CronEnv): Promise<{
 }
 
 export async function handleAnalyticsRollup(env: CronEnv): Promise<void> {
-  const rollupQuery = `
-    INSERT INTO pageviews_daily_summary (summary_date, path, locale, country, total_views)
-    SELECT strftime('%Y-%m-%d', datetime(timestamp / 1000, 'unixepoch')) as summary_date,
-      path, locale, country, COUNT(id) as total_views
-    FROM pageview_events
-    WHERE timestamp >= strftime('%s', 'now', '-6 days', 'start of day') * 1000
-    GROUP BY summary_date, path, locale, country
-    ON CONFLICT(summary_date, path, locale, country)
-    DO UPDATE SET total_views = excluded.total_views;
-  `;
   if (getWalBucket(env)) await reconcileR2WalToD1(env);
-  await env.DB.exec(rollupQuery);
   const pruneQuery = `
-    DELETE FROM pageview_events WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
-    DELETE FROM telemetry_events WHERE datetime(created_at) < datetime('now', '-7 days');
-    DELETE FROM pageviews WHERE created_at < datetime('now', '-30 days');
+    DELETE FROM telemetry_events WHERE (is_bot = 0 AND datetime(created_at) < datetime('now', '-7 days'))
+      OR (is_bot = 1 AND datetime(created_at) < datetime('now', '-30 days'));
     DELETE FROM prefetch_analytics_events WHERE created_at < datetime('now', '-30 days');
-    DELETE FROM edge_telemetry_events WHERE timestamp < (strftime('%s', 'now') - 604800) * 1000;
     UPDATE analytics_rollups SET device_desktop = 0, device_mobile = 0,
       os_windows = 0, os_macos = 0, os_ios = 0, os_android = 0, os_linux = 0, os_other = 0
     WHERE date < date('now', '-30 days')

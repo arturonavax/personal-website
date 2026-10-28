@@ -104,6 +104,28 @@ it("preserves cryptographically verified Access JWT authentication", async () =>
     expect(result.authorized).toBe(true);
     expect(result.method).toBe("cf_access");
     expect(result.email).toBe("owner@example.com");
+    const reads: string[] = [];
+    const response = await worker.fetch(
+      new Request("https://arturonavax.dev/es/admin/", {
+        headers: { "cf-access-jwt-assertion": jwt },
+      }),
+      {
+        ...env,
+        CF_ACCESS_TEAM_DOMAIN: team,
+        CF_ACCESS_AUD: "test-audience",
+        ASSETS: {
+          fetch: async (request: Request) => {
+            reads.push(new URL(request.url).pathname);
+            return new Response("SIGNED PRIVATE DASHBOARD");
+          },
+        } as Fetcher,
+      },
+      context,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Location")).toBeNull();
+    expect(await response.text()).toBe("SIGNED PRIVATE DASHBOARD");
+    expect(reads).toEqual(["/__admin_vault__/es/index.html"]);
   } finally {
     globalThis.fetch = originalFetch;
   }

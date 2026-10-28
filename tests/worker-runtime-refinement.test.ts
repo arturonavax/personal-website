@@ -98,7 +98,15 @@ describe("bounded Worker refinement", () => {
 
   it("returns private 503 instead of an alternate dashboard when the vault is absent", async () => {
     const f = fixture();
-    const response = await f.send("/admin/", { headers: { ...auth, accept: "text/html" } });
+    const redirected = await f.send("/admin", { headers: { ...auth, accept: "text/html" } });
+    expect(redirected.status).toBe(308);
+    expect(redirected.headers.get("location")).toBe("https://arturonavax.dev/admin/");
+    expect(f.assets).toBe(0);
+    const response = await worker.fetch(
+      new Request("https://arturonavax.dev/admin/", { headers: { ...auth, accept: "text/html" } }),
+      f.env,
+      f.ctx,
+    );
     expect(response.status).toBe(503);
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(response.headers.get("x-robots-tag")).toContain("noindex");

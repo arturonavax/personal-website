@@ -22,29 +22,6 @@ DROP TABLE IF EXISTS system_deployments;
 DROP TABLE IF EXISTS d1_migrations;
 
 -- Rebuild complete authoritative schema
-CREATE TABLE IF NOT EXISTS pageviews (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  dedupe_key TEXT,
-  path TEXT NOT NULL,
-  visitor_hash TEXT NOT NULL,
-  referrer TEXT,
-  country TEXT,
-  utm_source TEXT DEFAULT 'direct',
-  utm_medium TEXT DEFAULT 'none',
-  utm_campaign TEXT DEFAULT '',
-  utm_content TEXT DEFAULT '',
-  utm_term TEXT DEFAULT '',
-  is_bot INTEGER DEFAULT 0,
-  bot_category TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_pageviews_dedupe_key ON pageviews(dedupe_key);
-CREATE INDEX IF NOT EXISTS idx_pageviews_analytics ON pageviews(is_bot, created_at, path);
-CREATE INDEX IF NOT EXISTS idx_pageviews_visitor ON pageviews(visitor_hash, created_at);
-CREATE INDEX IF NOT EXISTS idx_pageviews_attribution ON pageviews(utm_source, utm_medium, utm_campaign, created_at);
-CREATE INDEX IF NOT EXISTS idx_pageviews_created_at ON pageviews(created_at DESC);
-
 CREATE TABLE IF NOT EXISTS telemetry_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   dedupe_key TEXT,
@@ -60,47 +37,19 @@ CREATE TABLE IF NOT EXISTS telemetry_events (
   browser TEXT NOT NULL DEFAULT 'unknown',
   browser_language TEXT NOT NULL DEFAULT 'unknown',
   referrer_host TEXT DEFAULT '',
+  utm_source TEXT NOT NULL DEFAULT 'direct',
+  utm_medium TEXT NOT NULL DEFAULT 'none',
+  utm_campaign TEXT NOT NULL DEFAULT '',
+  utm_content TEXT NOT NULL DEFAULT '',
+  utm_term TEXT NOT NULL DEFAULT '',
+  bot_category TEXT,
   status_code INTEGER NOT NULL DEFAULT 200,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_telemetry_dedupe_key ON telemetry_events(dedupe_key);
 CREATE INDEX IF NOT EXISTS idx_telemetry_created_at ON telemetry_events(created_at DESC);
-
-CREATE TABLE IF NOT EXISTS edge_telemetry_events (
-  id TEXT PRIMARY KEY,
-  timestamp INTEGER NOT NULL,
-  path TEXT NOT NULL,
-  locale TEXT NOT NULL,
-  country TEXT NOT NULL,
-  user_agent TEXT NOT NULL,
-  visitor_hash TEXT NOT NULL,
-  referrer TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON edge_telemetry_events(timestamp DESC);
-
-CREATE TABLE IF NOT EXISTS pageview_events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  path TEXT NOT NULL,
-  locale TEXT NOT NULL,
-  country TEXT NOT NULL,
-  referrer TEXT,
-  timestamp INTEGER NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_pageview_timestamp ON pageview_events(timestamp);
-
-CREATE TABLE IF NOT EXISTS pageviews_daily_summary (
-  summary_date TEXT NOT NULL,
-  path TEXT NOT NULL,
-  locale TEXT NOT NULL,
-  country TEXT NOT NULL,
-  total_views INTEGER NOT NULL,
-  PRIMARY KEY (summary_date, path, locale, country)
-) WITHOUT ROWID;
-
-CREATE INDEX IF NOT EXISTS idx_summary_date ON pageviews_daily_summary(summary_date);
+CREATE INDEX IF NOT EXISTS idx_telemetry_analytics ON telemetry_events(is_bot, created_at, path);
 
 CREATE TABLE IF NOT EXISTS analytics_rollups (
   date TEXT NOT NULL,

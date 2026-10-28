@@ -16,7 +16,6 @@ interface Props {
 
 const { currentLocale, translationKey, collectionName } = Astro.props;
 const targetLocale: Locale = currentLocale === "en" ? "es" : "en";
-
 const targetUrl = await getCounterpartUrl(
   currentLocale,
   targetLocale,
@@ -24,7 +23,6 @@ const targetUrl = await getCounterpartUrl(
   collectionName,
   translationKey,
 );
-
 const effectiveTargetUrl =
   targetUrl ??
   (targetLocale === "es"
@@ -36,351 +34,77 @@ const effectiveTargetUrl =
       : "/");
 ---
 
-<!-- The custom language swap owns these links; prevent a competing Astro navigation. -->
 <nav
   aria-label="Language selector"
   class="hidden min-[391px]:inline-flex items-center text-xs font-mono shrink-0 whitespace-nowrap"
 >
   <div class="group inline-flex h-8 items-center rounded border border-[var(--color-surface-border)] bg-[var(--color-bg-primary)] px-1.5 sm:px-2 gap-1 sm:gap-1.5 hover:border-[var(--color-accent-gold)] transition-colors">
-    <!-- Ingenious Translate SVG Icon (Hidden on screens < 420px for extreme compact fit) -->
     <span
       class="hidden min-[420px]:flex h-4 w-4 items-center justify-center text-[var(--color-text-muted)] group-hover:text-[var(--color-accent-gold)] transition-colors select-none shrink-0"
       aria-hidden="true"
-      title={
-        currentLocale === "en"
-          ? "Switch language (Spanish)"
-          : "Cambiar idioma (Inglés)"
-      }
+      title={currentLocale === "en" ? "Switch language (Spanish)" : "Cambiar idioma (Inglés)"}
     >
-      <svg
-        class="h-3.5 w-3.5 stroke-current fill-none shrink-0 transition-transform duration-300 group-hover:scale-105"
-        viewBox="0 0 24 24"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="m5 8 6 6"></path>
-        <path d="m4 14 6-6 2-3"></path>
-        <path d="M2 5h12"></path>
-        <path d="M7 2h1"></path>
-        <path d="m22 22-5-10-5 10"></path>
-        <path d="M14 18h6"></path>
+      <svg class="h-3.5 w-3.5 stroke-current fill-none shrink-0 transition-transform duration-300 group-hover:scale-105" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m5 8 6 6"></path><path d="M4 14 6 6 2 3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path>
       </svg>
     </span>
-
-    <!-- Segmented Language Toggle Pill (Whole container area is clickable) -->
     {currentLocale === "en" ? (
-      <span class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">
-        EN
-      </span>
+      <span class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">EN</span>
     ) : (
-      <a
-        href={effectiveTargetUrl}
-        hreflang="en"
-        lang="en"
-        data-astro-prefetch="hover"
-        data-lang-switch="en"
-        data-astro-reload
-        class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
-      >
-        EN
-      </a>
+      <a href={effectiveTargetUrl} hreflang="en" lang="en" data-astro-prefetch="hover" data-lang-switch="en" class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer">EN</a>
     )}
-    <span
-      class="text-[var(--color-surface-border)] select-none text-[10px] leading-none"
-      aria-hidden="true"
-    >
-      /
-    </span>
+    <span class="text-[var(--color-surface-border)] select-none text-[10px] leading-none" aria-hidden="true">/</span>
     {currentLocale === "es" ? (
-      <span class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">
-        ES
-      </span>
+      <span class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-semibold text-center text-xs bg-[var(--color-surface-border)] text-[var(--color-text-primary)] shadow-xs select-none">ES</span>
     ) : (
-      <a
-        href={effectiveTargetUrl}
-        hreflang="es"
-        lang="es"
-        data-astro-prefetch="hover"
-        data-lang-switch="es"
-        data-astro-reload
-        class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer"
-      >
-        ES
-      </a>
+      <a href={effectiveTargetUrl} hreflang="es" lang="es" data-astro-prefetch="hover" data-lang-switch="es" class="h-6 px-2 sm:px-2.5 min-w-[28px] sm:min-w-[32px] inline-flex items-center justify-center rounded font-medium text-center text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-gold)] hover:bg-[var(--color-surface-border)]/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent-gold)] cursor-pointer">ES</a>
     )}
   </div>
 </nav>
 
 <script>
-  // @ts-nocheck
-  if (!window.__langSwitchDelegationBound) {
-    window.__langSwitchDelegationBound = true;
-
-    document.addEventListener("click", function (e) {
-      var link = e.target.closest("[data-lang-switch]");
-      if (!link) return;
-      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)
-        return;
-
-      var dest = link.getAttribute("href");
-      if (!dest) return;
-
-      // Asegurar que dest viaje siempre con trailing slash
-      if (
-        dest.indexOf("?") === -1 &&
-        dest.indexOf("#") === -1 &&
-        !dest.endsWith("/")
-      ) {
-        dest = dest + "/";
+  // Keep counterpart links synchronized after native ClientRouter swaps. Astro
+  // owns fetch, history, scroll and lifecycle; no second navigation owner.
+  function syncLanguageSwitcherTargetUrls() {
+    const targetUrls: Record<string, string> = {};
+    document.head.querySelectorAll<HTMLLinkElement>('link[rel="alternate"][hreflang]').forEach((link) => {
+      const href = new URL(link.href, location.href);
+      if (href.origin === location.origin) {
+        targetUrls[link.hreflang] = href.pathname + href.search + href.hash;
       }
+    });
+    document.querySelectorAll<HTMLAnchorElement>("[data-lang-switch]").forEach((link) => {
+      const url = targetUrls[link.dataset.langSwitch || ""];
+      if (url) link.href = url;
+    });
+  }
 
-      // Persistence
-      var targetLang = link.getAttribute("data-lang-switch");
+  if (!(window as Window & { __languageSwitcherInstalled?: boolean }).__languageSwitcherInstalled) {
+    (window as Window & { __languageSwitcherInstalled?: boolean }).__languageSwitcherInstalled = true;
+    document.addEventListener("astro:after-swap", syncLanguageSwitcherTargetUrls);
+    document.addEventListener("click", (event) => {
+      const link = (event.target as Element)?.closest<HTMLAnchorElement>("[data-lang-switch]");
+      if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = new URL(link.href, location.href);
+      if (target.origin !== location.origin) return;
+      const lang = link.dataset.langSwitch;
+      if (!lang) return;
+      if (!target.search) target.search = location.search;
+      if (!target.hash) target.hash = location.hash;
+      link.href = target.href;
       try {
-        sessionStorage.setItem("preferred_locale", targetLang);
+        sessionStorage.setItem("preferred_locale", lang);
         sessionStorage.setItem("lang_manual_override", "true");
         sessionStorage.setItem("lang_banner_dismissed", "true");
         localStorage.setItem("lang-banner-dismissed", "true");
-        sessionStorage.setItem("page_lang_override_" + dest, targetLang);
-        sessionStorage.setItem(
-          "page_lang_override_" + dest.replace(/\/+$/, ""),
-          targetLang,
-        );
-        localStorage.setItem("preferred_locale", targetLang);
-        document.cookie =
-          "preferred_locale=" +
-          targetLang +
-          "; path=/; max-age=31536000; SameSite=Lax";
-      } catch (_) {}
-
-      var activeBanner = document.getElementById("lang-suggestion-banner");
-      if (activeBanner) {
-        activeBanner.classList.remove("flex", "translate-y-0", "opacity-100");
-        activeBanner.classList.add("hidden", "translate-y-3", "opacity-0");
+        localStorage.setItem("preferred_locale", lang);
+        document.cookie = `preferred_locale=${lang}; path=/; max-age=31536000; SameSite=Lax`;
+      } catch { /* Storage is optional. */ }
+      const banner = document.getElementById("lang-suggestion-banner");
+      if (banner) {
+        banner.hidden = true;
+        banner.style.display = "none";
       }
-
-      e.preventDefault();
-      if (window.__isLangSwitching) return;
-      window.__isLangSwitching = true;
-
-      var isTargetEs = dest === "/es/" || dest.indexOf("/es/") === 0;
-      if (typeof window.__showBeacon === "function") {
-        window.__showBeacon(isTargetEs ? "Cargando..." : "Fetching...", true);
-      }
-
-      var currentY =
-        window.pageYOffset || document.documentElement.scrollTop || 0;
-
-      // Defensive backup in case of fetch network error
-      try {
-        sessionStorage.setItem("lang_switch_scroll", String(currentY));
-      } catch (_) {}
-
-      fetch(dest)
-        .then(function (res) {
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          return res.text();
-        })
-        .then(function (html) {
-          var parser = new DOMParser();
-          var newDoc = parser.parseFromString(html, "text/html");
-
-          function swapDOM() {
-            // 1. Root language attribute & document title
-            var newLang =
-              newDoc.documentElement.getAttribute("lang") ||
-              (dest.indexOf("/es/") === 0 ? "es" : "en");
-            document.documentElement.setAttribute("lang", newLang);
-            if (document.body) {
-              document.body.setAttribute("data-current-locale", newLang);
-            }
-            document.title = newDoc.title;
-
-            // 2. SEO & Head metadata tags
-            var headSelectors = [
-              'meta[name="description"]',
-              'link[rel="canonical"]',
-              'link[rel="alternate"]',
-              'meta[property="og:title"]',
-              'meta[property="og:description"]',
-              'meta[name="twitter:title"]',
-              'meta[name="twitter:description"]',
-            ];
-            headSelectors.forEach(function (sel) {
-              var oldTags = document.head.querySelectorAll(sel);
-              var newTags = newDoc.head.querySelectorAll(sel);
-              if (oldTags.length && newTags.length) {
-                oldTags.forEach(function (tag) {
-                  tag.remove();
-                });
-                newTags.forEach(function (tag) {
-                  document.head.appendChild(tag.cloneNode(true));
-                });
-              }
-            });
-
-            // 3. Header swap (updates nav links, active sections, language buttons, mobile drawer)
-            var oldHeader = document.querySelector("header");
-            var newHeader = newDoc.querySelector("header");
-            if (oldHeader && newHeader) {
-              oldHeader.innerHTML = newHeader.innerHTML;
-            }
-
-            // 4. Main content swap
-            var oldMain = document.querySelector("main");
-            var newMain = newDoc.querySelector("main");
-            if (oldMain && newMain) {
-              oldMain.innerHTML = newMain.innerHTML;
-              oldMain.className = newMain.className;
-            }
-
-            // 5. Footer swap
-            var oldFooter = document.querySelector("footer");
-            var newFooter = newDoc.querySelector("footer");
-            if (oldFooter && newFooter) {
-              oldFooter.innerHTML = newFooter.innerHTML;
-            }
-
-            // 6. Page Index swap (Desktop left sidebar)
-            var oldDesktopIndex = document.getElementById("desktop-page-index");
-            var newDesktopIndex = newDoc.getElementById("desktop-page-index");
-            if (oldDesktopIndex && newDesktopIndex) {
-              oldDesktopIndex.innerHTML = newDesktopIndex.innerHTML;
-            }
-
-            // 7. Page Index: Retained inside persistent shell; setupPageIndex on page-load synchronizes state.
-
-            // 8. Shortcuts dialog
-            var oldShortcuts = document.getElementById("shortcuts-dialog");
-            var newShortcuts = newDoc.getElementById("shortcuts-dialog");
-            if (oldShortcuts && newShortcuts) {
-              oldShortcuts.innerHTML = newShortcuts.innerHTML;
-            }
-
-            // 9. Search owns its controls and localizes them on astro:page-load.
-            // Keep its input/result nodes so their lazy engine listeners survive.
-            var oldJudges =
-              document.getElementById("online-judges-dialog") ||
-              document.getElementById("judges-dialog");
-            var newJudges =
-              newDoc.getElementById("online-judges-dialog") ||
-              newDoc.getElementById("judges-dialog");
-            if (oldJudges && newJudges) {
-              oldJudges.innerHTML = newJudges.innerHTML;
-            }
-
-            // 9.5 Language suggestion banner: keep persisted node hidden after manual switch
-            var oldBanner = document.getElementById("lang-suggestion-banner");
-            if (oldBanner) {
-              oldBanner.classList.remove(
-                "flex",
-                "translate-y-0",
-                "opacity-100",
-              );
-              oldBanner.classList.add("hidden", "translate-y-3", "opacity-0");
-              oldBanner.hidden = true;
-              oldBanner.style.display = "none";
-            }
-
-            // 10. Update browser URL history without reload
-            history.pushState({ path: dest }, "", dest);
-
-            // 11. Lock scroll position strictly to currentY (ZERO scroll jump or flicker)
-            window.scrollTo({ top: currentY, behavior: "instant" });
-
-            // 12. Dispatch lifecycle events to rebind components
-            document.dispatchEvent(new Event("astro:after-swap"));
-            document.dispatchEvent(new Event("astro:page-load"));
-            window.dispatchEvent(new Event("scroll"));
-          }
-
-          var isMobile =
-            (typeof window !== "undefined" &&
-              window.matchMedia &&
-              (window.matchMedia("(max-width: 768px)").matches ||
-                window.matchMedia("(pointer: coarse)").matches)) ||
-            false;
-
-          if (isMobile || typeof document.startViewTransition !== "function") {
-            swapDOM();
-            try {
-              sessionStorage.removeItem("lang_switch_scroll");
-            } catch (_) {}
-            window.__isLangSwitching = false;
-            return;
-          }
-
-          document.documentElement.classList.add(
-            "lang-switching",
-            "lang-text-reacting",
-          );
-
-          var transition = document.startViewTransition(function () {
-            swapDOM();
-          });
-          var finishLang = function () {
-            document.documentElement.classList.remove("lang-switching");
-            try {
-              sessionStorage.removeItem("lang_switch_scroll");
-            } catch (_) {}
-            setTimeout(function () {
-              document.documentElement.classList.remove("lang-text-reacting");
-              window.__isLangSwitching = false;
-            }, 240);
-          };
-          transition.finished.then(finishLang).catch(finishLang);
-        })
-        .catch(function () {
-          if (typeof window.__hideBeacon === "function") {
-            window.__hideBeacon();
-          }
-          // Graceful fallback to MPA navigation on network failure
-          window.location.href = dest;
-        });
-    });
+    }, { capture: true });
   }
-
-  function toRelativePath(rawHref) {
-    if (!rawHref) return "";
-    if (rawHref.indexOf("http://") === 0 || rawHref.indexOf("https://") === 0) {
-      try {
-        var u = new URL(rawHref, window.location.origin);
-        return u.pathname + u.search + u.hash;
-      } catch (_) {
-        return rawHref;
-      }
-    }
-    return rawHref;
-  }
-
-  function syncLanguageSwitcherTargetUrls() {
-    if (
-      typeof document === "undefined" ||
-      !document.head ||
-      !document.head.querySelectorAll
-    )
-      return;
-    var altLinks = document.head.querySelectorAll(
-      'link[rel="alternate"][hreflang]',
-    );
-    if (!altLinks.length) return;
-    var targetUrls = {};
-    altLinks.forEach(function (link) {
-      var hreflang = link.getAttribute("hreflang");
-      var href = toRelativePath(link.getAttribute("href"));
-      if (hreflang && href) {
-        targetUrls[hreflang] = href;
-      }
-    });
-
-    document.querySelectorAll("[data-lang-switch]").forEach(function (el) {
-      var lang = el.getAttribute("data-lang-switch");
-      if (lang && targetUrls[lang]) {
-        el.setAttribute("href", targetUrls[lang]);
-      }
-    });
-  }
-
-  document.addEventListener("astro:after-swap", syncLanguageSwitcherTargetUrls);
 </script>

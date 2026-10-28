@@ -110,14 +110,14 @@ describe("zero-baseline D1 lifecycle", () => {
       );
       INSERT INTO d1_migrations (name) VALUES
         ('0001_initial_schema.sql'), ('0011_aggregate_device_os.sql');
-      INSERT INTO pageviews (path, visitor_hash) VALUES ('/fixture/', 'fixture');
+      INSERT INTO telemetry_events (path, visitor_hash) VALUES ('/fixture/', 'fixture');
       INSERT INTO contact_leads (from_email, subject, body)
         VALUES ('fixture@example.invalid', 'fixture', 'fixture');`);
 
       const reset = sql("reset.sql");
       expect(reset).not.toMatch(/\bDELETE\s+FROM\b/i);
       db.exec(reset);
-      expect(db.query("SELECT COUNT(*) AS n FROM pageviews").get()).toEqual({
+      expect(db.query("SELECT COUNT(*) AS n FROM telemetry_events").get()).toEqual({
         n: 0,
       });
       expect(db.query("SELECT COUNT(*) AS n FROM contact_leads").get()).toEqual(

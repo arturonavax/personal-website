@@ -233,7 +233,7 @@ describe("SPEC-005 REQ-PCD-03: Subdomain Canonicalization Engine", () => {
   });
 });
 
-describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolation", () => {
+describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Single-Apex Isolation", () => {
   it("blocks unauthenticated apex /admin with fail-closed Zero Trust (HTTP 401/403)", async () => {
     const ctx = createMockCtx();
     const env: Env = { ASSETS: dummyAssets, DB: createMockDb() };
@@ -241,8 +241,8 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     const req = new Request("https://arturonavax.dev/admin");
     const res = await worker.fetch(req, env, ctx);
 
-    expect(res.status).toBe(403);
-    expect(res.headers.get("Cache-Control")).toContain("no-store");
+    expect(res.status).toBe(308);
+    expect(res.headers.get("Location")).toBe("https://arturonavax.dev/admin/");
   });
 
   it("blocks unauthenticated nested /admin paths and query parameters with fail-closed Zero Trust", async () => {
@@ -258,7 +258,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     expect(res.headers.get("Cache-Control")).toContain("no-store");
   });
 
-  it("serves isolated admin UI on admin.arturonavax.dev when authenticated", async () => {
+  it("serves isolated admin UI on apex /admin/ when authenticated", async () => {
     const ctx = createMockCtx();
     const env: Env = {
       ASSETS: dummyAssets,
@@ -266,7 +266,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
       ADMIN_ACCESS_TOKEN: "super-secret-admin-token-min-32-chars-long",
     };
 
-    const req = new Request("https://admin.arturonavax.dev/", {
+    const req = new Request("https://arturonavax.dev/admin/", {
       headers: {
         Authorization: "Bearer super-secret-admin-token-min-32-chars-long",
       },
@@ -280,7 +280,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     expect(res.headers.get("Cache-Control")).toContain("no-store");
   });
 
-  it("serves isolated admin status API on admin.arturonavax.dev when authenticated", async () => {
+  it("serves isolated admin status API on apex when authenticated", async () => {
     const ctx = createMockCtx();
     const env: Env = {
       ASSETS: dummyAssets,
@@ -288,7 +288,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
       ADMIN_ACCESS_TOKEN: "super-secret-admin-token-min-32-chars-long",
     };
 
-    const req = new Request("https://admin.arturonavax.dev/api/status", {
+    const req = new Request("https://arturonavax.dev/api/status", {
       headers: {
         Authorization: "Bearer super-secret-admin-token-min-32-chars-long",
       },
@@ -301,7 +301,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     expect(data.surface).toBe("admin-isolated");
   });
 
-  it("serves admin APIs on both apex domain and admin subdomain when authenticated", async () => {
+  it("serves protected admin APIs on apex when authenticated", async () => {
     const ctx = createMockCtx();
     const env: Env = {
       ASSETS: dummyAssets,
@@ -357,7 +357,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     };
 
     // 1. Unauthenticated HTML request to admin subdomain returns HTTP 401 with challenge HTML
-    const htmlReq = new Request("https://admin.arturonavax.dev/", {
+    const htmlReq = new Request("https://arturonavax.dev/admin/", {
       headers: { Accept: "text/html" },
     });
     const htmlRes = await worker.fetch(htmlReq, env, ctx);
@@ -370,7 +370,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     );
 
     // 2. Unauthenticated API request returns HTTP 401 JSON
-    const telReq = new Request("https://admin.arturonavax.dev/api/telemetry");
+    const telReq = new Request("https://arturonavax.dev/api/telemetry");
     const telRes = await worker.fetch(telReq, env, ctx);
     expect(telRes.status).toBe(401);
     const telData = (await telRes.json()) as any;
@@ -386,7 +386,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
 
     // 4. Request with unauthorized email returns HTTP 401
     const unauthEmailReq = new Request(
-      "https://admin.arturonavax.dev/api/telemetry",
+      "https://arturonavax.dev/api/telemetry",
       {
         headers: {
           "cf-access-authenticated-user-email": "malicious@attacker.com",
@@ -398,7 +398,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
 
     // 5. Verified bearer authorization succeeds; identity headers alone never grant access.
     const authEmailReq = new Request(
-      "https://admin.arturonavax.dev/api/telemetry",
+      "https://arturonavax.dev/api/telemetry",
       {
         headers: {
           "cf-access-authenticated-user-email": "arturonavax@gmail.com",
@@ -410,14 +410,15 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     expect(authEmailRes.status).toBe(200);
     const authTelData = (await authEmailRes.json()) as any;
     expect(authTelData.status).toBe("ok");
-    expect(authTelData.quotas.d1_writes_daily).toBeDefined();
-    expect(authTelData.quotas.d1_writes_daily.limit).toBe(100000);
-    expect(authTelData.quotas.workers_ai_daily).toBeDefined();
-    expect(authTelData.quotas.vectorize_monthly).toBeDefined();
+    expect(authTelData.quotas.strategy.daily_write_budget).toBe(100000);
+    expect(authTelData.quotas.d1_writes_daily).toBeUndefined();
+    expect(authTelData.quotas.workers_ai_daily).toBeUndefined();
+    expect(authTelData.quotas.vectorize_monthly).toBeUndefined();
+    expect(authTelData.quotas.provider_usage).toBeNull();
 
     // 6. Another protected endpoint preserves configured bearer authentication.
     const authEmail2Req = new Request(
-      "https://admin.arturonavax.dev/api/metrics",
+      "https://arturonavax.dev/api/metrics",
       {
         headers: {
           "cf-access-authenticated-user-email": "contact@arturonava.com",
@@ -440,7 +441,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
     };
 
     // Bearer header
-    const bearerReq = new Request("https://admin.arturonavax.dev/api/status", {
+    const bearerReq = new Request("https://arturonavax.dev/api/status", {
       headers: { Authorization: "Bearer super-secret-admin-token-xyz" },
     });
     const bearerRes = await worker.fetch(bearerReq, env, ctx);
@@ -448,17 +449,15 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
 
     // Query token on document request sets cookie and returns 200
     const queryReq = new Request(
-      "https://admin.arturonavax.dev/?token=super-secret-admin-token-xyz",
+      "https://arturonavax.dev/admin/?token=super-secret-admin-token-xyz",
     );
     const queryRes = await worker.fetch(queryReq, env, ctx);
     expect(queryRes.status).toBe(200);
-    expect(queryRes.headers.get("Set-Cookie")).toContain(
-      "admin_session=super-secret-admin-token-xyz",
-    );
+    expect(queryRes.headers.get("Set-Cookie")).toBeNull();
 
     // Cookie session
     const cookieReq = new Request(
-      "https://admin.arturonavax.dev/api/telemetry",
+      "https://arturonavax.dev/api/telemetry",
       {
         headers: { Cookie: "admin_session=super-secret-admin-token-xyz" },
       },
@@ -468,7 +467,7 @@ describe("SPEC-005 REQ-PCD-02: Cloudflare Access & Dashboard Dual-Surface Isolat
 
     // Invalid token rejected
     const invalidTokenReq = new Request(
-      "https://admin.arturonavax.dev/api/telemetry",
+      "https://arturonavax.dev/api/telemetry",
       {
         headers: { Authorization: "Bearer wrong-token" },
       },

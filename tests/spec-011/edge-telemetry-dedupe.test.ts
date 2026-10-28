@@ -113,10 +113,10 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
     } as never;
     await recordAnalyticsNonBlocking(request, "/en/blog/bot/", db, env);
     await recordAnalyticsNonBlocking(request, "/en/blog/bot/", db, env);
-    expect(count("pageviews")).toBe(1);
-    expect(count("telemetry_events")).toBe(0);
+    expect(count("telemetry_events")).toBe(1);
+    expect(count("analytics_rollups")).toBe(0);
     expect(
-      sqlite.prepare("SELECT is_bot, bot_category FROM pageviews").get(),
+      sqlite.prepare("SELECT is_bot, bot_category FROM telemetry_events").get(),
     ).toEqual({
       is_bot: 1,
       bot_category: "ai_scraper",
@@ -132,7 +132,6 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
       ENABLE_BOT_TELEMETRY: "true",
       BOT_TELEMETRY_SAMPLE_RATE: "0",
     } as never);
-    expect(count("pageviews")).toBe(0);
     expect(count("telemetry_events")).toBe(0);
     expect(botCircuitBreaker.getStatus({}).dailyBotCount).toBe(0);
     await recordAnalyticsNonBlocking(
@@ -140,8 +139,8 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
       "/en/blog/sample/",
       db,
     );
-    expect(count("pageviews")).toBe(1);
-    expect(sqlite.prepare("SELECT is_bot FROM pageviews").get()).toEqual({
+    expect(count("telemetry_events")).toBe(1);
+    expect(sqlite.prepare("SELECT is_bot FROM telemetry_events").get()).toEqual({
       is_bot: 0,
     });
     sqlite.close();
@@ -159,7 +158,6 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
       ENABLE_BOT_TELEMETRY: "false",
       BOT_TELEMETRY_SAMPLE_RATE: "1",
     } as never);
-    expect(count("pageviews")).toBe(0);
     expect(count("telemetry_events")).toBe(0);
     sqlite.close();
   });
@@ -167,30 +165,11 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
   it("schema: UNIQUE dedupe_key exists and redundant indexes are pruned", () => {
     const { sqlite } = createD1Shim();
     const names = (
-      sqlite
-        .prepare(
-          "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='pageviews'",
-        )
-        .all() as { name: string }[]
+      sqlite.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='telemetry_events'").all() as { name: string }[]
     ).map((r) => r.name);
-    expect(names).toContain("idx_pageviews_dedupe_key");
-    for (const pruned of [
-      "idx_pageviews_perf_composite",
-      "idx_pageviews_path_created",
-      "idx_pageviews_country_created",
-      "idx_pageviews_content",
-      "idx_pageviews_referrer",
-    ]) {
-      expect(names).not.toContain(pruned);
-    }
-    for (const kept of [
-      "idx_pageviews_created_at",
-      "idx_pageviews_analytics",
-      "idx_pageviews_visitor",
-      "idx_pageviews_attribution",
-    ]) {
-      expect(names).toContain(kept);
-    }
+    expect(names).toContain("idx_telemetry_dedupe_key");
+    expect(names).toContain("idx_telemetry_created_at");
+    expect(names).toContain("idx_telemetry_analytics");
   });
 
   it("collapses a duplicate across isolates (L1 cleared) into ONE pageview and ONE rollup row", async () => {
@@ -199,8 +178,8 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
     clearRecentPageviewsCache(); // simulate a different isolate with an empty L1 cache
     await recordAt(BASE + 900, db, "/blog/");
 
-    expect(count("pageviews")).toBe(1);
-    expect(count("pageview_events")).toBe(1);
+    expect(count("telemetry_events")).toBe(1);
+    expect(count("analytics_rollups")).toBe(1);
   });
 
   it("collapses duplicates that straddle a bucket boundary inside the window", async () => {
@@ -209,8 +188,8 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
     clearRecentPageviewsCache();
     await recordAt(BASE + PAGEVIEW_DEDUPE_WINDOW_MS + 1, db, "/experience/");
 
-    expect(count("pageviews")).toBe(1);
-    expect(count("pageview_events")).toBe(1);
+    expect(count("telemetry_events")).toBe(1);
+    expect(count("analytics_rollups")).toBe(1);
   });
 
   it("records again once the window has elapsed, and records distinct paths/visitors independently", async () => {
@@ -219,9 +198,9 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
     clearRecentPageviewsCache();
     const afterWindow = BASE + 3 * 1_800_000;
     await recordAt(afterWindow, db, "/blog/"); // outside the shared 30m shield
-    expect(count("pageviews")).toBe(2);
+    expect(count("telemetry_events")).toBe(2);
     await recordAt(afterWindow + 10, db, "/projects/"); // other path
-    expect(count("pageviews")).toBe(3);
+    expect(count("telemetry_events")).toBe(3);
     await recordAt(
       afterWindow + 20,
       db,
@@ -229,8 +208,7 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
       humanRequest("/blog/", "203.0.113.9"), // other visitor
     );
 
-    expect(count("pageviews")).toBe(3 + 0 + 0 + 0 === 3 ? 4 : 4);
-    expect(count("pageview_events")).toBe(4);
+    expect(count("telemetry_events")).toBe(4);
   });
 
   it("normalizes trailing slashes/case so /Blog and /blog/ are the same page", async () => {
@@ -238,7 +216,7 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
     await recordAt(BASE + 100, db, "/Blog/");
     clearRecentPageviewsCache();
     await recordAt(BASE + 200, db, "/blog");
-    expect(count("pageviews")).toBe(1);
+    expect(count("telemetry_events")).toBe(1);
   });
 
   it("bots (search/AI) are recorded with is_bot=1 and NEVER feed human rollups", async () => {
@@ -253,10 +231,10 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
       { BOT_TELEMETRY_SAMPLE_RATE: "1" } as never,
     );
 
-    expect(count("pageviews")).toBe(1);
-    expect(count("pageview_events")).toBe(0);
+    expect(count("telemetry_events")).toBe(1);
+    expect(count("analytics_rollups")).toBe(0);
     const row = sqlite
-      .prepare("SELECT is_bot, dedupe_key FROM pageviews")
+      .prepare("SELECT is_bot, dedupe_key FROM telemetry_events")
       .get() as {
       is_bot: number;
       dedupe_key: string;
@@ -269,11 +247,11 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
     const { sqlite } = createD1Shim();
     const key = await computeDedupeKey("hash", "/blog", 1);
     sqlite.exec(
-      `INSERT INTO pageviews (path, visitor_hash, is_bot, dedupe_key) VALUES ('/blog','hash',0,'${key}')`,
+      `INSERT INTO telemetry_events (path, visitor_hash, is_bot, dedupe_key) VALUES ('/blog','hash',0,'${key}')`,
     );
     expect(() =>
       sqlite.exec(
-        `INSERT INTO pageviews (path, visitor_hash, is_bot, dedupe_key) VALUES ('/blog','hash',0,'${key}')`,
+        `INSERT INTO telemetry_events (path, visitor_hash, is_bot, dedupe_key) VALUES ('/blog','hash',0,'${key}')`,
       ),
     ).toThrow();
   });
@@ -300,7 +278,7 @@ describe("Authoritative D1 pageview dedupe (migration 0010)", () => {
     await recordAt(BASE + 100, db, "/blog/", humanRequest("/blog/", ip1));
     clearRecentPageviewsCache();
     await recordAt(BASE + 200, db, "/blog/", humanRequest("/blog/", ip2));
-    expect(count("pageviews")).toBe(1);
+    expect(count("telemetry_events")).toBe(1);
   });
 });
 
@@ -434,7 +412,7 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     const prefetchRes = await worker.fetch(prefetchReq, mockEnv, mockCtx);
     await Promise.all(waitPromises.splice(0));
     expect(prefetchRes.headers.get("X-Edge-Visit-Logged")).toBeNull();
-    expect(count("pageviews")).toBe(0);
+    expect(count("telemetry_events")).toBe(1);
 
     const spaBeaconReq = new Request(
       "https://arturonavax.dev/api/telemetry/collect",
@@ -457,11 +435,9 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     await Promise.all(waitPromises.splice(0));
     expect(spaBeaconRes.status).toBe(202);
     expect(count("telemetry_events")).toBe(2);
-    // A committed SPA visit must appear in the same ledger as document visits.
-    expect(count("pageviews")).toBe(1);
-    expect(count("pageview_events")).toBe(1);
-    expect(sqlite.prepare("SELECT path FROM pageviews").get()).toEqual({
-      path: "/en/blog/post-2/",
+    // A committed SPA visit is in the same ledger as document visits.
+    expect(sqlite.prepare("SELECT path FROM telemetry_events ORDER BY id DESC LIMIT 1").get()).toEqual({
+      path: "/en/blog/post-2",
     });
 
     // (b) Real SSR navigation (/en/projects/ with Sec-Fetch-Mode: navigate) sets X-Edge-Visit-Logged: 1
@@ -479,9 +455,8 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     await Promise.all(waitPromises.splice(0));
     expect(ssrNavRes.headers.get("X-Edge-Visit-Logged")).toBe("1");
     expect(ssrNavRes.headers.get("Set-Cookie")).toContain("ev_init=1");
-    const pageviewsAfterSsr = count("pageviews");
     const telemetryAfterSsr = count("telemetry_events");
-    expect(pageviewsAfterSsr).toBe(2);
+    expect(telemetryAfterSsr).toBe(3);
 
     const dupBeaconReq = new Request(
       "https://arturonavax.dev/api/telemetry/collect",
@@ -509,7 +484,6 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
     expect(dupJson.recorded).toBe(false);
     expect(dupJson.deduped).toBe(true);
     expect(dupJson.storageTier).toBe("L1_CACHE");
-    expect(count("pageviews")).toBe(pageviewsAfterSsr);
     expect(count("telemetry_events")).toBe(telemetryAfterSsr);
   });
 
@@ -545,7 +519,7 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
       speculative.headers.set("X-Astro-Prefetch", "true");
       await worker.fetch(speculative, env, ctx);
       await Promise.all(pending.splice(0));
-      expect(count("pageviews")).toBe(writes === 0 ? 1 : 0);
+      expect(count("telemetry_events")).toBe(writes < 70_000 ? 1 : 0);
       const beacon = () =>
         new Request("https://arturonavax.dev/api/telemetry/collect", {
           method: "POST",
@@ -573,16 +547,15 @@ describe("Task 6: 30m L1 Cache Dedupe, 5-Tier Degradation, R2 WAL & Static Bypas
       edgeQuotaTracker.setCountsForTesting(writes, 0);
       await worker.fetch(beacon(), env, ctx);
       await Promise.all(pending.splice(0));
-      expect(count("pageviews")).toBe(writes === 0 ? 2 : 0);
-      expect(count("pageview_events")).toBe(writes === 0 ? 2 : 0);
+      expect(count("telemetry_events")).toBe(writes < 70_000 ? 2 : 0);
       if (writes === 0) {
         expect(
           sqlite
-            .prepare("SELECT path, referrer, is_bot FROM pageviews ORDER BY id")
+            .prepare("SELECT path, referrer_host AS referrer, is_bot FROM telemetry_events ORDER BY id")
             .all(),
         ).toEqual([
           { path: "/experience/leal/", referrer: "Direct", is_bot: 0 },
-          { path: target, referrer: "example.org", is_bot: 0 },
+          { path: "/experience/mercado-libre", referrer: "example.org", is_bot: 0 },
         ]);
       }
       sqlite.close();

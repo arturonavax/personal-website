@@ -478,10 +478,53 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     await expect(banner).toBeHidden();
   });
 
+  test("language switch commits the final same-origin redirect URL, query and fragment", async ({ page }) => {
+    // Exercise committed navigation/history, not an interrupted smooth-scroll animation.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788";
+    await page.route("**/*", (route) => {
+      const url = new URL(route.request().url());
+      if (url.origin !== new URL(baseUrl).origin) return route.abort();
+      return route.continue();
+    });
+    await page.route("**/es/?requested=1", (route) =>
+      route.fulfill({ status: 302, headers: { location: "/es/?canonical=1" } }),
+    );
+    await page.goto(baseUrl, { waitUntil: "networkidle" });
+    await page.locator('header [data-lang-switch="es"]').first().evaluate((link) => {
+      link.setAttribute("href", "/es/?requested=1#contact");
+    });
+    const original = await page.evaluateHandle(() => document);
+    const canvas = await page.locator("#matrix-canvas").elementHandle();
+    await page.evaluate(() => window.scrollTo(0, 450));
+    await page.locator('header [data-lang-switch="es"]').first().click();
+    await expect(page).toHaveURL(`${baseUrl}/es/?canonical=1#contact`);
+    await expect(page.locator("html")).toHaveAttribute("lang", "es");
+    expect(await page.evaluate((doc) => document === doc, original)).toBe(true);
+    expect(await page.locator("#matrix-canvas").evaluate((node, prior) => node === prior, canvas)).toBe(true);
+    await expect(page.locator("#contact")).toBeInViewport();
+    await page.goBack();
+    await expect(page).toHaveURL(baseUrl + "/");
+    expect(await page.evaluate((doc) => document === doc, original)).toBe(true);
+    expect(await page.locator("#matrix-canvas").evaluate((node, prior) => node === prior, canvas)).toBe(true);
+    await page.goForward();
+    await expect(page).toHaveURL(`${baseUrl}/es/?canonical=1#contact`);
+    await expect(page.locator("html")).toHaveAttribute("lang", "es");
+    // Native history owns the restored position; only explicit arrival above
+    // requires the destination anchor, not every history traversal.
+    expect(await page.evaluate((doc) => document === doc, original)).toBe(true);
+    expect(await page.locator("#matrix-canvas").evaluate((node, prior) => node === prior, canvas)).toBe(true);
+  });
+
   test("mobile language switching uses one fetch without reloading", async ({
     page,
   }) => {
     const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788";
+    await page.route("**/*", (route) => {
+      const url = new URL(route.request().url());
+      if (url.origin !== new URL(baseUrl).origin) return route.abort();
+      return route.continue();
+    });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${baseUrl}/es/`, { waitUntil: "networkidle" });
     await page.evaluate(() =>

@@ -2,6 +2,7 @@
 
 import { handleAnalyticsRollup } from "./cron-scheduler";
 import { BoundedCache } from "./runtime/bounded-cache";
+import { readProviderUsage, type ProviderUsage } from "./runtime/provider-usage";
 import { readBoundedBody } from "./runtime/request-body";
 import {
   processIncomingEmail,
@@ -65,6 +66,10 @@ export interface Env {
   BOT_TELEMETRY_SAMPLE_RATE?: string | number;
   SIMULATE_LOW_DB_QUOTA?: string | boolean;
   CLOUDFLARE_PLAN_TIER?: string;
+  CLOUDFLARE_ANALYTICS_API_TOKEN?: string;
+  CLOUDFLARE_ANALYTICS_ACCOUNT_ID?: string;
+  CLOUDFLARE_ANALYTICS_DATABASE_ID?: string;
+  CLOUDFLARE_ANALYTICS_BUCKET_NAME?: string;
   D1_DAILY_WRITE_BUDGET?: string | number;
   D1_DAILY_READ_BUDGET?: string | number;
   WORKERS_DAILY_REQUEST_BUDGET?: string | number;
@@ -92,6 +97,7 @@ interface CachedTelemetry {
   timestamp: number;
   data: any;
   dbRef?: unknown;
+  providerKey?: string;
 }
 const telemetryCache = new BoundedCache<string, CachedTelemetry>(128, 120_000);
 const telemetryFreshCooldown = new BoundedCache<string, number>(128, 15_000);
@@ -427,6 +433,17 @@ export default {
       url.hostname;
     const host = rawHost.split(":")[0]!.toLowerCase();
 
+    // Retired admin hosts must never serve private content.
+    if (
+      host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev" ||
+      url.hostname === "admin.arturonavax.dev" || url.hostname === "dash.arturonavax.dev"
+    ) {
+      return new Response("Not Found", {
+        status: 404,
+        headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow, noarchive" },
+      });
+    }
+
     // 1. Canonical Path Normalization
     let decodedPath = url.pathname;
     try {
@@ -438,6 +455,15 @@ export default {
     const cleanPath = collapsedPath.replace(/\.html$/i, "");
     const normalizedLowerPath = (cleanPath || "/").toLowerCase();
     const pathname = cleanPath || "/";
+
+    // English uses /admin/; unsupported localized admin paths are not aliases.
+    if (/^\/[a-z]{2}\/admin(?:\/|$)/i.test(normalizedLowerPath) &&
+        !normalizedLowerPath.startsWith("/es/admin")) {
+      return new Response("Not Found", {
+        status: 404,
+        headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow, noarchive" },
+      });
+    }
 
     // 2. Block Direct External Access to /__admin_vault__*
     if (normalizedLowerPath.startsWith("/__admin_vault__")) {
@@ -451,6 +477,23 @@ export default {
       });
     }
 
+    // Entry aliases carry no private data. Resolve them before the auth guard;
+    // all destination documents and APIs still pass the same guard on arrival.
+    if (
+      (request.method === "GET" || request.method === "HEAD") &&
+      /^(?:\/(?:[a-z]{2}\/)?admin\/?$)/i.test(normalizedLowerPath)
+    ) {
+      const normalizedUrl = new URL(url);
+      normalizedUrl.pathname = pathname;
+      const entry = routingPolicy.resolveCanonicalRedirect(
+        normalizedUrl,
+        request.method,
+      );
+      if (entry.shouldRedirect && entry.targetUrl) {
+        return Response.redirect(entry.targetUrl, entry.statusCode);
+      }
+    }
+
     if (env) {
       edgeQuotaTracker.configureFromEnv(
         env as unknown as Record<string, unknown>,
@@ -458,27 +501,12 @@ export default {
     }
 
     // 3. Identify All Protected Admin & API Surfaces
-    const isAdminHost =
-      host === "admin.arturonavax.dev" || host === "dash.arturonavax.dev";
     const isAdminPage =
-      isAdminHost ||
       /^\/(?:[a-z]{2}\/)?admin(?:\/|$)/.test(normalizedLowerPath);
     const isProtectedApi = isProtectedApiSurface(
       normalizedLowerPath,
       request.method.toUpperCase(),
     );
-
-    // Bypass auth on immutable static assets / icons on admin host
-    if (
-      isAdminHost &&
-      (normalizedLowerPath === "/favicon.ico" ||
-        normalizedLowerPath === "/favicon.svg" ||
-        normalizedLowerPath.startsWith("/favicon-") ||
-        STATIC_PREFIX_REGEX.test(pathname) ||
-        STATIC_EXT_REGEX.test(pathname))
-    ) {
-      return withNoIndexHeaders(await env.ASSETS.fetch(request));
-    }
 
     // 4. Fail-Closed Zero-Trust Guard for Admin Page and Protected API Surfaces
     if (isAdminPage || isProtectedApi) {
@@ -486,8 +514,6 @@ export default {
         const origin = request.headers.get("origin") || "";
         const isAllowedOrigin =
           origin === "https://arturonavax.dev" ||
-          origin === "https://admin.arturonavax.dev" ||
-          origin.endsWith(".arturonavax.dev") ||
           origin.startsWith("http://localhost:") ||
           origin.startsWith("http://127.0.0.1:");
         return new Response(null, {
@@ -520,14 +546,12 @@ export default {
         const origin = request.headers.get("origin") || "";
         const isAllowedOrigin =
           origin === "https://arturonavax.dev" ||
-          origin === "https://admin.arturonavax.dev" ||
-          origin.endsWith(".arturonavax.dev") ||
           origin.startsWith("http://localhost:") ||
           origin.startsWith("http://127.0.0.1:");
         const errHeaders: Record<string, string> = {
           "Content-Type": "application/json",
           "Cache-Control": "private, no-store, no-cache, must-revalidate",
-          "WWW-Authenticate": 'Bearer realm="admin.arturonavax.dev"',
+          "WWW-Authenticate": 'Bearer realm="arturonavax.dev/admin"',
           "X-Robots-Tag": "noindex, nofollow, noarchive",
         };
         if (isAllowedOrigin) {
@@ -552,6 +576,66 @@ export default {
         );
       }
 
+      // A same-origin, verified token exchange issues a host-only HttpOnly session.
+      // Do not accept cookie or Access-only identity as a token to mint this cookie.
+      if (
+        normalizedLowerPath === "/api/admin/session" &&
+        request.method === "POST"
+      ) {
+        const origin = request.headers.get("origin");
+        // Browser exchanges must originate at this host. A missing Origin still
+        // permits a header-authenticated non-browser client; "null" does not.
+        if (origin !== null && origin !== url.origin) {
+          return new Response("Forbidden origin", {
+            status: 403,
+            headers: {
+              "Cache-Control": "private, no-store",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+        // The exchange has no payload contract. Do not consume an unbounded
+        // request stream or silently accept a body alongside the credential.
+        if (request.body !== null) {
+          return new Response("Unexpected request body", {
+            status: 400,
+            headers: {
+              "Cache-Control": "private, no-store",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+        const bearer = request.headers.get("authorization") || "";
+        const configured = (
+          env.ADMIN_ACCESS_TOKEN ||
+          env.ADMIN_API_KEY ||
+          ""
+        ).trim();
+        const bearerAuth = bearer.toLowerCase().startsWith("bearer ")
+          ? await verifyAdminAccess(
+              new Request(request.url, { headers: { Authorization: bearer } }),
+              env,
+            )
+          : null;
+        if (bearerAuth?.method !== "admin_token") {
+          return new Response("Unauthorized", {
+            status: 401,
+            headers: {
+              "Cache-Control": "private, no-store",
+              "X-Robots-Tag": "noindex",
+            },
+          });
+        }
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "Cache-Control": "private, no-store",
+            "X-Robots-Tag": "noindex",
+            "Set-Cookie": `admin_session=${encodeURIComponent(configured)}; Path=/; Max-Age=86400; SameSite=Strict; HttpOnly${url.protocol === "https:" ? "; Secure" : ""}`,
+          },
+        });
+      }
+
       // If authorized and is an API endpoint or /status
       if (
         isProtectedApi ||
@@ -574,21 +658,6 @@ export default {
           (localeMatch[1] === "en" || localeMatch[1] === "es")
         ) {
           localeKey = localeMatch[1];
-        } else if (isAdminHost) {
-          const langParam = url.searchParams.get("lang")?.toLowerCase();
-          const cookieLang =
-            request.headers.get("cookie")?.includes("admin_lang=es") ||
-            request.headers.get("cookie")?.includes("preferred_locale=es");
-          const acceptLang = (
-            request.headers.get("accept-language") || ""
-          ).toLowerCase();
-          if (
-            langParam === "es" ||
-            normalizedLowerPath.startsWith("/es") ||
-            (!langParam && (cookieLang || acceptLang.startsWith("es")))
-          ) {
-            localeKey = "es";
-          }
         }
 
         let vaultResponse: Response | null = null;
@@ -618,40 +687,6 @@ export default {
               );
             }
 
-            // Secondary fallback using apex origin in case ASSETS binding maps assets to apex host
-            if (
-              vaultRes.status !== 200 &&
-              url.origin !== "https://arturonavax.dev"
-            ) {
-              const apexHeaders = new Headers(vaultHeaders);
-              apexHeaders.set("host", "arturonavax.dev");
-              const apexVaultUrl = new URL(
-                `/__admin_vault__/${localeKey}/index.html`,
-                "https://arturonavax.dev",
-              );
-              const apexRes = await env.ASSETS.fetch(
-                new Request(apexVaultUrl.toString(), {
-                  headers: apexHeaders,
-                }),
-              );
-              if (apexRes.status === 200) {
-                vaultRes = apexRes;
-              } else if (localeKey !== "default") {
-                const apexDefaultUrl = new URL(
-                  "/__admin_vault__/default/index.html",
-                  "https://arturonavax.dev",
-                );
-                const apexDefaultRes = await env.ASSETS.fetch(
-                  new Request(apexDefaultUrl.toString(), {
-                    headers: apexHeaders,
-                  }),
-                );
-                if (apexDefaultRes.status === 200) {
-                  vaultRes = apexDefaultRes;
-                }
-              }
-            }
-
             if (vaultRes.status === 200) {
               vaultResponse = vaultRes;
             }
@@ -666,19 +701,6 @@ export default {
           );
           headers.set("X-Frame-Options", "DENY");
           headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-          const queryToken =
-            url.searchParams.get("token") ||
-            url.searchParams.get("admin_token");
-          if (queryToken && auth.method === "admin_token") {
-            const isSecure = url.protocol === "https:";
-            const cookieDomain = host.endsWith("arturonavax.dev")
-              ? "; Domain=.arturonavax.dev"
-              : "";
-            headers.set(
-              "Set-Cookie",
-              `admin_session=${encodeURIComponent(queryToken.trim())}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly${isSecure ? "; Secure" : ""}${cookieDomain}`,
-            );
-          }
           return new Response(vaultResponse.body, {
             status: 200,
             headers,
@@ -2294,11 +2316,6 @@ async function handleTelemetryCollectBeacon(
 
     const adapter = new D1TelemetryAdapter(env.DB, env, ctx);
     const nowMs = Date.now();
-    const bucket = Math.floor(nowMs / PAGEVIEW_DEDUPE_WINDOW_MS);
-    const [dashboardKey, previousDashboardKey] = await Promise.all([
-      computeDedupeKey(visitorHash, normalizedPath, bucket),
-      computeDedupeKey(visitorHash, normalizedPath, bucket - 1),
-    ]);
     const result = await adapter.ingestVisit({
       path: normalizedPath,
       visitorHash,
@@ -2307,6 +2324,7 @@ async function handleTelemetryCollectBeacon(
       eventType,
       isBot: visitorInfo.isBot,
       botName: visitorInfo.isBot ? visitorInfo.reason : null,
+      botCategory: visitorInfo.isBot ? visitorInfo.classification : undefined,
       country,
       region: dimensions.region,
       browser: dimensions.browser,
@@ -2316,9 +2334,6 @@ async function handleTelemetryCollectBeacon(
       statusCode: 200,
       nowMs,
       dashboard: {
-        path: rawPath,
-        dedupeKey: dashboardKey,
-        previousDedupeKey: previousDashboardKey,
         source: attribution.source || "direct",
         medium: attribution.medium || "none",
         campaign: attribution.campaign || "",
@@ -2418,7 +2433,7 @@ async function handleTelemetryViewsRead(
     if (views === 0) {
       try {
         const fallbackStmt = env.DB.prepare(
-          "SELECT COUNT(*) AS total_views FROM pageviews WHERE (path = ? OR path = ?) AND is_bot = 0",
+          "SELECT COUNT(*) AS total_views FROM telemetry_events WHERE (path = ? OR path = ?) AND is_bot = 0",
         ).bind(normalizedPath, `${normalizedPath}/`);
         const fallbackRes =
           typeof (fallbackStmt as any).all === "function"
@@ -3032,12 +3047,7 @@ export function renderAdminUnauthorizedHtml(
     <h1>Acceso Restringido</h1>
     <p>Esta superficie administrativa está estrictamente aislada y protegida. Se requiere una sesión activa de Cloudflare Zero Trust con correo autorizado o una clave de administrador válida.</p>
     
-    <div id="cf-detected-notice" style="display:none; margin-bottom:1.25rem; padding:0.75rem 1rem; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.4); border-radius:3px; font-size:0.8rem; color:#10b981; line-height:1.4;">
-      <span style="font-weight:700;">● Sesión Cloudflare Zero Trust detectada.</span><br />
-      Ingresando a la consola administrativa...
-    </div>
-
-    <a href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/admin.arturonavax.dev" class="btn-access" id="btn-cf-login">
+    <a href="https://orange-art-1302.cloudflareaccess.com/cdn-cgi/access/login/arturonavax.dev" class="btn-access" id="btn-cf-login">
       Autenticar con Cloudflare Zero Trust
     </a>
 
@@ -3057,77 +3067,32 @@ export function renderAdminUnauthorizedHtml(
 
   <script>
     (function () {
-      var host = window.location.hostname;
-      var isApex = host !== "admin.arturonavax.dev";
-
-      // 1. Intelligent Cloudflare Access Session Detection across subdomains
-      if (isApex && (host === "arturonavax.dev" || host.endsWith(".arturonavax.dev"))) {
-        fetch("https://admin.arturonavax.dev/api/status", {
-          credentials: "include",
-          headers: { "Accept": "application/json" }
-        })
-          .then(function (res) {
-            if (res.ok) {
-              var notice = document.getElementById("cf-detected-notice");
-              if (notice) notice.style.display = "block";
-              window.location.replace("https://admin.arturonavax.dev/");
-            }
-          })
-          .catch(function () {});
-      }
-
-      // 2. Token Authentication Form Submission with validation
       var form = document.getElementById("token-auth-form");
-      if (form) {
-        form.addEventListener("submit", function (e) {
-          e.preventDefault();
-          var input = document.getElementById("token-input");
-          var btn = document.getElementById("btn-token-submit");
-          var feedback = document.getElementById("token-feedback");
-          var token = (input ? input.value : "").trim();
-          if (!token) return;
-
-          if (btn) {
-            btn.disabled = true;
-            btn.textContent = "Verificando token...";
-          }
-          if (feedback) feedback.style.display = "none";
-
-          fetch("/api/status", {
-            headers: { "Authorization": "Bearer " + token }
-          })
-            .then(function (res) {
-              if (res.ok) {
-                var sec = window.location.protocol === "https:" ? "; Secure" : "";
-                var domainAttr = host.endsWith("arturonavax.dev") ? "; Domain=.arturonavax.dev" : "";
-                document.cookie = "admin_session=" + encodeURIComponent(token) + "; Path=/; Max-Age=86400; SameSite=Lax" + sec + domainAttr;
-                if (btn) {
-                  btn.textContent = "✓ Consola Desbloqueada";
-                  btn.style.borderColor = "#10b981";
-                  btn.style.color = "#10b981";
-                }
-                setTimeout(function () {
-                  window.location.reload();
-                }, 150);
-              } else {
-                if (feedback) {
-                  feedback.textContent = "Clave de administrador incorrecta o inválida.";
-                  feedback.style.display = "block";
-                }
-                if (btn) {
-                  btn.disabled = false;
-                  btn.textContent = "Desbloquear Consola";
-                }
-              }
-            })
-            .catch(function () {
-              var sec = window.location.protocol === "https:" ? "; Secure" : "";
-              var domainAttr = host.endsWith("arturonavax.dev") ? "; Domain=.arturonavax.dev" : "";
-              document.cookie = "admin_session=" + encodeURIComponent(token) + "; Path=/; Max-Age=86400; SameSite=Lax" + sec + domainAttr;
-              window.location.reload();
-            });
-        });
-      }
+      if (!form) return;
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        var input = document.getElementById("token-input");
+        var feedback = document.getElementById("token-feedback");
+        var button = document.getElementById("btn-token-submit");
+        var token = input.value.trim();
+        if (!token) return;
+        button.disabled = true;
+        try {
+          var response = await fetch("/api/admin/session", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+            credentials: "same-origin",
+            cache: "no-store"
+          });
+          if (!response.ok) throw new Error("Unauthorized");
+          window.location.replace(window.location.pathname);
+        } catch (_) {
+          feedback.textContent = "Clave de administrador incorrecta o inválida.";
+          feedback.style.display = "block";
+          button.disabled = false;
+          input.value = "";
+        }
+      });
     })();
   </script>
 </body>
@@ -3138,7 +3103,7 @@ export function renderAdminUnauthorizedHtml(
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "private, no-store, no-cache, must-revalidate",
-      "WWW-Authenticate": 'Bearer realm="admin.arturonavax.dev"',
+      "WWW-Authenticate": 'Bearer realm="arturonavax.dev/admin"',
       "X-Robots-Tag": "noindex, nofollow, noarchive",
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
@@ -3209,8 +3174,6 @@ async function handleAuthorizedAdminRequest(
     const origin = request.headers.get("origin") || "";
     const isAllowedOrigin =
       origin === "https://arturonavax.dev" ||
-      origin === "https://admin.arturonavax.dev" ||
-      origin.endsWith(".arturonavax.dev") ||
       origin.startsWith("http://localhost:") ||
       origin.startsWith("http://127.0.0.1:");
     const statusHeaders: Record<string, string> = {
@@ -3290,21 +3253,15 @@ async function handleAuthorizedAdminRequest(
     });
   }
 
-  const buildUnifiedQuotas = (
-    dailyWrites: number,
-    dailyReads: number,
-  ) => {
+  const buildUnifiedQuotas = (dailyWrites: number, dailyReads: number, usage?: ProviderUsage) => {
     const quotaConfig = edgeQuotaTracker.getConfig();
     const trackerSnap = edgeQuotaTracker.getSnapshot();
     const effectiveWrites = Math.max(dailyWrites, trackerSnap.dailyWrites);
     const effectiveReads = Math.max(dailyReads, trackerSnap.dailyReads);
-    // Provider usage is not available through local request/D1 counters.
-    const monthlyUsed = null;
 
     const workersDailyLimit = Number.isFinite(quotaConfig.workersDailyBudget)
       ? quotaConfig.workersDailyBudget
       : 100_000;
-    const workersMonthlyLimit = workersDailyLimit * 30;
     const d1ReadsDailyLimit = Number.isFinite(quotaConfig.dailyReadBudget)
       ? quotaConfig.dailyReadBudget
       : 5_000_000;
@@ -3314,7 +3271,6 @@ async function handleAuthorizedAdminRequest(
 
     const isWritesExceeded = effectiveWrites >= d1WritesDailyLimit;
     const isReadsExceeded = effectiveReads >= d1ReadsDailyLimit;
-    const isWorkersExceeded = null; // Provider request usage is unavailable.
 
     const degradationTier = isWritesExceeded ? 4 : trackerSnap.tier;
     const degradationTierName = isWritesExceeded
@@ -3327,7 +3283,6 @@ async function handleAuthorizedAdminRequest(
       degradation_tier_name: degradationTierName,
       is_d1_writes_exceeded: isWritesExceeded,
       is_d1_reads_exceeded: isReadsExceeded,
-      is_workers_exceeded: isWorkersExceeded,
       strategy: {
         plan_tier: quotaConfig.planTier,
         daily_write_budget: d1WritesDailyLimit,
@@ -3342,93 +3297,21 @@ async function handleAuthorizedAdminRequest(
         visit_budget_ratio: quotaConfig.visitBudgetRatio,
         prefetch_sample_rate: quotaConfig.prefetchSampleRate,
       },
-      usage_evidence: { workers: "unavailable", d1: "local_estimate", r2: "unavailable", ai: "unavailable", vectorize: "unavailable", pages: "unavailable", zero_trust: "unavailable" },
-      workers_requests: {
-        daily_used: null,
-        daily_limit: workersDailyLimit,
-        monthly_used: monthlyUsed,
-        monthly_limit: workersMonthlyLimit,
-        reset: "00:00 UTC",
-        unit: "requests",
-      },
-      d1_operations: {
-        reads_today: effectiveReads,
-        reads_daily_limit: d1ReadsDailyLimit,
-        writes_today: effectiveWrites,
-        writes_daily_limit: d1WritesDailyLimit,
-        is_exceeded: isWritesExceeded,
-        exceeded_by: Math.max(0, effectiveWrites - d1WritesDailyLimit),
-        storage_mb: null,
-        storage_limit_mb: 500,
-        unit: "rows",
-      },
-      r2_storage: {
-        class_a_monthly_used: null,
-        class_a_monthly_limit: 1000000,
-        class_b_monthly_used: null,
-        class_b_monthly_limit: 10000000,
-        storage_gb: null,
-        storage_limit_gb: 10,
-        used_gb: null,
-        limit_gb: 10,
-        unit: "operations",
-      },
-      zero_trust: {
-        active_seats: null,
-        total_seats: 50,
-        unit: "seats",
-      },
-      workers_ai: {
-        neurons_today: null,
-        neurons_daily_limit: 10000,
-        unit: "neurons",
-      },
-      pages_deployments: {
-        builds_monthly_used: null,
-        builds_monthly_limit: 500,
-        unit: "builds",
-      },
-      vectorize: {
-        dimensions_monthly_used: null,
-        dimensions_monthly_limit: 5000000,
-        queries_monthly_used: null,
-        queries_monthly_limit: 5000000,
-        unit: "dimensions",
-      },
-      // Flat fields are part of the current /admin UI renderQuotas() API contract.
-      workers_daily: {
-        used: null,
-        limit: workersDailyLimit,
-        is_exceeded: isWorkersExceeded,
-      },
-      workers_monthly: { used: monthlyUsed, limit: workersMonthlyLimit },
-      d1_reads_daily: {
-        used: effectiveReads,
-        limit: d1ReadsDailyLimit,
-        is_exceeded: isReadsExceeded,
-      },
-      d1_writes_daily: {
-        used: effectiveWrites,
-        limit: d1WritesDailyLimit,
-        is_exceeded: isWritesExceeded,
-      },
-      d1_storage: {
-        used_mb: null,
-        limit_mb: 500,
-        limit_gb: 0.5,
-        scope: "per_database",
-      },
-      r2_class_a_monthly: { used: null, limit: 1000000 },
-      r2_class_b_monthly: { used: null, limit: 10000000 },
-      zero_trust_seats: { used: null, limit: 50 },
-      workers_ai_daily: { used: null, limit: 10000 },
-      vectorize_monthly: { used: null, limit: 5000000 },
-      pages_builds_monthly: { used: null, limit: 500 },
+      provider_usage: usage ?? null,
+
     };
   };
 
   if (url.pathname === "/api/metrics") {
     const now = Date.now();
+    const providerIdentity = JSON.stringify([
+      env.CLOUDFLARE_ANALYTICS_API_TOKEN,
+      env.CLOUDFLARE_ANALYTICS_ACCOUNT_ID,
+      env.CLOUDFLARE_ANALYTICS_DATABASE_ID,
+      env.CLOUDFLARE_ANALYTICS_BUCKET_NAME,
+      new Date(now).toISOString().slice(0, 10),
+    ]);
+    const providerKey = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(providerIdentity)))).map((byte) => byte.toString(16).padStart(2, "0")).join("");
     const isFresh =
       url.searchParams.get("fresh") === "true" ||
       url.searchParams.get("refresh") === "1";
@@ -3437,6 +3320,7 @@ async function handleAuthorizedAdminRequest(
       !isFresh &&
       cachedMetricsSnapshot &&
       cachedMetricsSnapshot.dbRef === env.DB &&
+      cachedMetricsSnapshot.providerKey === providerKey &&
       now - cachedMetricsSnapshot.timestamp < TELEMETRY_CACHE_TTL_MS
     ) {
       return new Response(JSON.stringify(cachedMetricsSnapshot.data), {
@@ -3469,29 +3353,6 @@ async function handleAuthorizedAdminRequest(
       } catch (err) {
         if (isD1QuotaException(err)) {
           edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
-        }
-      }
-
-      if (rollups.length === 0) {
-        try {
-          const fallbackStmt = env.DB.prepare(
-            "SELECT summary_date AS date, path, total_views AS views FROM pageviews_daily_summary ORDER BY summary_date DESC LIMIT 30",
-          );
-          const fallbackQuery =
-            typeof (fallbackStmt as any).all === "function"
-              ? await (fallbackStmt as any).all()
-              : await fallbackStmt.bind().all();
-          rollups = fallbackQuery.results || [];
-          edgeQuotaTracker.recordD1Meta(
-            fallbackQuery.meta,
-            0,
-            rollups.length || 1,
-            now,
-          );
-        } catch (err) {
-          if (isD1QuotaException(err)) {
-            edgeQuotaTracker.tripCircuitBreaker(String(err), now, ctx);
-          }
         }
       }
 
@@ -3528,7 +3389,24 @@ async function handleAuthorizedAdminRequest(
       // Fail-open
     }
 
-    const quotas = buildUnifiedQuotas(snap.dailyWrites, snap.dailyReads);
+    let sizeBytes: number | undefined;
+    try {
+      const size = await env.DB?.prepare("SELECT 1").run();
+      if (typeof size?.meta?.size_after === "number") sizeBytes = size.meta.size_after;
+    } catch { /* Storage is unavailable independently of account analytics. */ }
+    const usage: ProviderUsage = {
+      ...await readProviderUsage(env, { refresh: isFresh }),
+      d1_storage: {
+      used: sizeBytes ?? null,
+      status: sizeBytes == null ? (env.DB ? "unavailable" : "setup_required") : "observed",
+      source: "D1 binding meta.size_after",
+      scope: "selected database",
+      period: "current read-only query",
+      retrieved_at: new Date(now).toISOString(),
+      accuracy: "Selected database bytes, not account usage or an invoice quantity.",
+      },
+    };
+    const quotas = buildUnifiedQuotas(snap.dailyWrites, snap.dailyReads, usage);
 
     const metricsPayload = {
       metrics: rollups,
@@ -3551,6 +3429,7 @@ async function handleAuthorizedAdminRequest(
       timestamp: now,
       data: metricsPayload,
       dbRef: env.DB,
+      providerKey,
     };
 
     return new Response(JSON.stringify(metricsPayload), {
@@ -3589,7 +3468,8 @@ async function handleAuthorizedAdminRequest(
     let leadsStatus: "ok" | "unavailable" | "degraded" = !env.DB
       ? "unavailable"
       : edgeQuotaTracker.getTier(now) >= QuotaDegradationTier.CRITICAL_SURVIVAL
-        ? "degraded" : "ok";
+        ? "degraded"
+        : "ok";
     if (leadsStatus === "ok") {
       try {
         const stmt = env.DB.prepare(
@@ -3614,11 +3494,12 @@ async function handleAuthorizedAdminRequest(
       leads,
       ...(leadsStatus === "ok" ? {} : { error: "Lead data is not available" }),
     };
-    if (leadsStatus === "ok") cachedLeadsSnapshot = {
-      timestamp: now,
-      data: leadsPayload,
-      dbRef: env.DB,
-    };
+    if (leadsStatus === "ok")
+      cachedLeadsSnapshot = {
+        timestamp: now,
+        data: leadsPayload,
+        dbRef: env.DB,
+      };
 
     return new Response(JSON.stringify(leadsPayload), {
       status: leadsStatus === "ok" ? 200 : 503,
@@ -3661,7 +3542,8 @@ async function handleAuthorizedAdminRequest(
     // Resolved cooldown entries may evict by recency; unlike the IP security
     // window, a full table must not silently discard an explicit fresh request.
     const lastFreshAt = telemetryFreshCooldown.get(cacheKey, now) || 0;
-    const isFresh = requestedFresh && now - lastFreshAt >= TELEMETRY_FRESH_COOLDOWN_MS;
+    const isFresh =
+      requestedFresh && now - lastFreshAt >= TELEMETRY_FRESH_COOLDOWN_MS;
     if (isFresh) telemetryFreshCooldown.set(cacheKey, now, now);
 
     // Bounded per-isolate resolved snapshot cache; never share D1 I/O across requests.
@@ -3683,7 +3565,6 @@ async function handleAuthorizedAdminRequest(
     }
 
     let pageviews: any[] = [];
-    let edgeEvents: any[] = [];
     let prefetches: any[] = [];
     let dailySummaries: any[] = [];
     let coverage: Record<string, unknown> | null = null;
@@ -3715,24 +3596,24 @@ async function handleAuthorizedAdminRequest(
         const bindValues: (string | number)[] = [];
 
         if (range === "1d" || range === "24h") {
-          whereClauses.push("created_at >= datetime('now', '-1 day')");
+          whereClauses.push("datetime(created_at) >= datetime('now', '-1 day')");
         } else if (range === "2d" || range === "48h") {
-          whereClauses.push("created_at >= datetime('now', '-2 days')");
+          whereClauses.push("datetime(created_at) >= datetime('now', '-2 days')");
         } else if (range === "3d" || range === "72h") {
-          whereClauses.push("created_at >= datetime('now', '-3 days')");
+          whereClauses.push("datetime(created_at) >= datetime('now', '-3 days')");
         } else if (range === "7d" || range === "1w") {
-          whereClauses.push("created_at >= datetime('now', '-7 days')");
+          whereClauses.push("datetime(created_at) >= datetime('now', '-7 days')");
         } else if (range === "30d" || range === "1m") {
-          whereClauses.push("created_at >= datetime('now', '-30 days')");
+          whereClauses.push("datetime(created_at) >= datetime('now', '-30 days')");
         } else if (range === "custom") {
           if (fromParam) {
-            whereClauses.push("created_at >= ?");
+            whereClauses.push("datetime(created_at) >= datetime(?)");
             bindValues.push(
               fromParam.length <= 10 ? `${fromParam} 00:00:00` : fromParam,
             );
           }
           if (toParam) {
-            whereClauses.push("created_at <= ?");
+            whereClauses.push("datetime(created_at) <= datetime(?)");
             bindValues.push(
               toParam.length <= 10 ? `${toParam} 23:59:59` : toParam,
             );
@@ -3761,7 +3642,7 @@ async function handleAuthorizedAdminRequest(
 
         if (searchParam) {
           whereClauses.push(
-            "(path LIKE ? OR country LIKE ? OR referrer LIKE ? OR utm_source LIKE ? OR utm_campaign LIKE ? OR visitor_hash LIKE ?)",
+            "(path LIKE ? OR country LIKE ? OR referrer_host LIKE ? OR utm_source LIKE ? OR utm_campaign LIKE ? OR visitor_hash LIKE ?)",
           );
           const s = `%${searchParam}%`;
           bindValues.push(s, s, s, s, s, s);
@@ -3807,8 +3688,10 @@ async function handleAuthorizedAdminRequest(
         );
         stats.prefetches_count = Number(prefetchTotals[0]?.count || 0);
 
-        // 1. Exact Totals Aggregations (1:1 with D1)
-        const aggSql = `SELECT COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) AS bot_views, COUNT(DISTINCT visitor_hash) AS unique_visitors, COUNT(DISTINCT CASE WHEN is_bot = 0 THEN visitor_hash END) AS unique_human_visitors FROM pageviews ${whereSql}`;
+        // One raw ledger for accepted human and sampled bot visits.
+        const visitSource = "telemetry_events";
+        // 1. Exact filtered raw totals, excluding rollup-only and unreplayed WAL.
+        const aggSql = `SELECT COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) AS bot_views, COUNT(DISTINCT visitor_hash) AS unique_visitors, COUNT(DISTINCT CASE WHEN is_bot = 0 THEN visitor_hash END) AS unique_human_visitors FROM ${visitSource} ${whereSql}`;
         const aggResults = await runQuery(aggSql, bindValues);
         if (aggResults.length > 0) {
           const row = aggResults[0];
@@ -3819,26 +3702,13 @@ async function handleAuthorizedAdminRequest(
           stats.unique_human_visitors = Number(row.unique_human_visitors || 0);
         }
 
-        // 2. All-time total pageviews via compact rollup summary (zero full-table scan on pageviews)
-        if (whereClauses.length === 0) {
-          stats.all_time_pageviews = stats.total_pageviews;
-        } else if (!pageOnly) {
+        // 2. All-time total visits via compact rollups (raw detail has bounded retention)
+        if (!pageOnly) {
           try {
-            let rollupTotal = 0;
-            try {
-              const arRes = await runQuery(
-                "SELECT COALESCE(SUM(views), 0) AS all_views FROM analytics_rollups",
-              );
-              rollupTotal = Number(arRes[0]?.all_views || 0);
-            } catch {
-              // Fallback to pageviews_daily_summary
-            }
-            if (rollupTotal === 0) {
-              const allRes = await runQuery(
-                "SELECT COALESCE(SUM(total_views), 0) AS all_views FROM pageviews_daily_summary",
-              );
-              rollupTotal = Number(allRes[0]?.all_views || 0);
-            }
+            const arRes = await runQuery(
+              "SELECT COALESCE(SUM(views), 0) AS all_views FROM analytics_rollups",
+            );
+            const rollupTotal = Number(arRes[0]?.all_views || 0);
             stats.all_time_pageviews =
               rollupTotal > stats.total_pageviews
                 ? rollupTotal
@@ -3853,19 +3723,19 @@ async function handleAuthorizedAdminRequest(
         // Skip heavy GROUP BY aggregations when `page_only=1` (table pagination fast-path)
         if (!pageOnly) {
           // 3. Exact Top Pages (grouped by path, 1:1 with D1)
-          const pagesSql = `SELECT path, COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql} GROUP BY path ORDER BY total_views DESC LIMIT 15`;
+          const pagesSql = `SELECT path, COUNT(*) AS total_views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM ${visitSource} ${whereSql} GROUP BY path ORDER BY total_views DESC LIMIT 15`;
           topPages = await runQuery(pagesSql, bindValues);
 
           // 4. Exact Top Countries (grouped by country, 1:1 with D1)
-          const countriesSql = `SELECT country, COUNT(*) AS views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${whereSql} GROUP BY country ORDER BY views DESC LIMIT 15`;
+          const countriesSql = `SELECT country, COUNT(*) AS views, SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) AS human_views, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM ${visitSource} ${whereSql} GROUP BY country ORDER BY views DESC LIMIT 15`;
           topCountries = await runQuery(countriesSql, bindValues);
 
           // 5. Exact Top Referrers (1:1 with D1, sanitizing legacy Invalid entries)
           const refWhere =
             whereClauses.length > 0
-              ? `${whereSql} AND referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''`
-              : "WHERE referrer IS NOT NULL AND LOWER(referrer) != 'direct' AND LOWER(referrer) != 'invalid' AND referrer != ''";
-          const refSql = `SELECT referrer, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${refWhere} GROUP BY referrer ORDER BY count DESC LIMIT 15`;
+              ? `${whereSql} AND referrer_host IS NOT NULL AND LOWER(referrer_host) != 'direct' AND LOWER(referrer_host) != 'invalid' AND referrer_host != ''`
+              : "WHERE referrer_host IS NOT NULL AND LOWER(referrer_host) != 'direct' AND LOWER(referrer_host) != 'invalid' AND referrer_host != ''";
+          const refSql = `SELECT referrer_host AS referrer, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM ${visitSource} ${refWhere} GROUP BY referrer_host ORDER BY count DESC LIMIT 15`;
           topReferrers = await runQuery(refSql, bindValues);
 
           // 6. Exact Top UTM Attributions (1:1 with D1, sanitizing legacy Invalid entries)
@@ -3873,12 +3743,12 @@ async function handleAuthorizedAdminRequest(
             whereClauses.length > 0
               ? `${whereSql} AND utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''`
               : "WHERE utm_source IS NOT NULL AND LOWER(utm_source) != 'direct' AND LOWER(utm_source) != 'invalid' AND utm_source != ''";
-          const utmSql = `SELECT utm_source, utm_medium, utm_campaign, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM pageviews ${utmWhere} GROUP BY utm_source, utm_medium, utm_campaign ORDER BY count DESC LIMIT 15`;
+          const utmSql = `SELECT utm_source, utm_medium, utm_campaign, COUNT(*) AS count, COUNT(DISTINCT visitor_hash) AS unique_visitors FROM ${visitSource} ${utmWhere} GROUP BY utm_source, utm_medium, utm_campaign ORDER BY count DESC LIMIT 15`;
           utmAttributions = await runQuery(utmSql, bindValues);
         }
 
         // 7. Paginated Pageviews Batch (bounded LIMIT and OFFSET, sanitizing legacy Invalid rows)
-        const pageviewsSql = `SELECT id, path, visitor_hash, referrer, country, utm_source, utm_medium, utm_campaign, utm_content, utm_term, is_bot, created_at FROM pageviews ${whereSql} ORDER BY id DESC LIMIT ? OFFSET ?`;
+        const pageviewsSql = `SELECT id, path, event_type, visitor_hash, referrer_host AS referrer, country, region, os_type, device_type, browser, browser_language, utm_source, utm_medium, utm_campaign, utm_content, utm_term, is_bot, created_at FROM ${visitSource} ${whereSql} ORDER BY datetime(created_at) DESC, id DESC LIMIT ? OFFSET ?`;
         const rawPageviews = await runQuery(pageviewsSql, [
           ...bindValues,
           limit,
@@ -3903,7 +3773,7 @@ async function handleAuthorizedAdminRequest(
             prefetchBindValues,
           );
 
-          // 9. Daily Summaries (query analytics_rollups first, fallback to pageviews_daily_summary)
+          // 9. Daily Summaries from the existing compact rollup
           try {
             dailySummaries = await runQuery(
               "SELECT date AS summary_date, path, 'ALL' AS country, views AS total_views, human_views, bot_views, uniques FROM analytics_rollups ORDER BY date DESC LIMIT 30",
@@ -3911,12 +3781,6 @@ async function handleAuthorizedAdminRequest(
           } catch {
             dailySummaries = [];
           }
-          if (dailySummaries.length === 0) {
-            dailySummaries = await runQuery(
-              "SELECT summary_date, path, country, total_views FROM pageviews_daily_summary ORDER BY summary_date DESC LIMIT 30",
-            );
-          }
-
           // Fixed recent windows, independent of the raw-ledger filters above.
           // Do not imply these subset counts equal document or unique-visitor totals.
           let deviceOs: {
@@ -3977,7 +3841,7 @@ async function handleAuthorizedAdminRequest(
 
           const bots = {
             status: "unavailable" as "subset" | "unavailable",
-            source: "pageviews",
+            source: "telemetry_events",
             window_days: 7,
             collection_enabled:
               env.ENABLE_BOT_TELEMETRY !== false &&
@@ -3994,8 +3858,8 @@ async function handleAuthorizedAdminRequest(
               `SELECT COUNT(*) AS observed,
                 COALESCE(SUM(CASE WHEN bot_category = 'ai_scraper' THEN 1 ELSE 0 END), 0) AS ai,
                 COALESCE(SUM(CASE WHEN bot_category IS NULL THEN 1 ELSE 0 END), 0) AS unknown
-               FROM pageviews
-               WHERE is_bot = 1 AND created_at >= ?`,
+               FROM ${visitSource}
+               WHERE is_bot = 1 AND datetime(created_at) >= datetime(?)`,
               [
                 new Date(now - 7 * 86_400_000)
                   .toISOString()
@@ -4065,7 +3929,6 @@ async function handleAuthorizedAdminRequest(
       utm_attributions: utmAttributions,
       top_referrers: topReferrers,
       pageviews,
-      edge_events: edgeEvents,
       prefetches,
       daily_summaries: dailySummaries,
       coverage,
@@ -4083,13 +3946,15 @@ async function handleAuthorizedAdminRequest(
 
     // Cache only observed data; an unavailable ledger must never masquerade as empty.
     if (dataStatus === "ok") {
-      telemetryCache.set(cacheKey, {
-        timestamp: now,
-        data: responsePayload,
-        dbRef: env.DB,
-      }, now);
-
-
+      telemetryCache.set(
+        cacheKey,
+        {
+          timestamp: now,
+          data: responsePayload,
+          dbRef: env.DB,
+        },
+        now,
+      );
     }
 
     return new Response(JSON.stringify(responsePayload), {
@@ -4106,7 +3971,11 @@ async function handleAuthorizedAdminRequest(
 
   return new Response(JSON.stringify({ error: "Not Found" }), {
     status: 404,
-    headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow, noarchive" },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "private, no-store",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    },
   });
 }
 
@@ -4426,8 +4295,8 @@ export function parseAttribution(
  *  L1 (this in-memory map): per-isolate fast path that avoids a D1 round-trip for rapid
  *      double-clicks, pre-render races and instant reloads. It is an optimization only: isolates
  *      are many and ephemeral, so it can never be the source of truth.
- *  L2 (authoritative, D1): `pageviews.dedupe_key` UNIQUE index (migration 0010). The key is
- *      sha256(visitor_hash | normalized_path | time_bucket). Correct across every isolate/POP.
+ *  L2 (authoritative, D1): `telemetry_events.dedupe_key` UNIQUE index.
+ *      The normalized path and 30-minute bucket are part of the shared visit key.
  */
 export const recentPageviewsCache = new Map<string, number>();
 export const PAGEVIEW_DEDUPE_WINDOW_MS = 5_000;
@@ -4504,10 +4373,8 @@ export async function computeDedupeKey(
  * Asynchronous Non-Blocking Analytics Logger (REQ-PCD-04, REQ-PCD-05)
  * Runs strictly within ctx.waitUntil without adding any latency to the critical response path.
  *
- * Write path = ONE atomic D1 batch (single round-trip):
- *   1. INSERT INTO pageviews ... guarded by NOT EXISTS(previous bucket) + ON CONFLICT(dedupe_key) DO NOTHING
- *   2. INSERT INTO pageview_events ... SELECT ... WHERE changes() > 0   (humans only)
- * so the rollup row is written if and only if the pageview row was actually inserted.
+ * The shared adapter atomically inserts one deduped telemetry event and, where
+ * applicable, its conditional rollup; bot sampling and quota gates run first.
  */
 function resolveBotTelemetrySampleRate(env?: Env): number {
   // Unconfigured collection uses the same bounded 1% default as enabled collection.
@@ -4533,11 +4400,8 @@ export async function recordAnalyticsNonBlocking(
 
     // Extraer y Normalizar Atribución & Ingress
     const attribution = parseAttribution(request.url, referrerHeader);
-    const utmSource = attribution.source;
-    const utmMedium = attribution.medium;
-    const utmCampaign = attribution.campaign;
-    const utmContent = attribution.content;
-    const utmTerm = attribution.term;
+    const { source: utmSource, medium: utmMedium, campaign: utmCampaign,
+      content: utmContent, term: utmTerm } = attribution;
     const referrer = attribution.referrer;
 
     const visitorInfo = classifyVisitor(request, path);
@@ -4623,6 +4487,7 @@ export async function recordAnalyticsNonBlocking(
           const adapter = new D1TelemetryAdapter(db, env);
           await adapter.ingestVisit({
             path: normalizedPath,
+            recordPath: path,
             visitorHash,
             ip,
             userAgent,
@@ -4631,6 +4496,7 @@ export async function recordAnalyticsNonBlocking(
             eventType: "pageview",
             isBot: true,
             botName: visitorInfo.reason,
+            botCategory: visitorInfo.classification,
             country,
             referrerHost: referrer,
             statusCode: 200,
@@ -4648,28 +4514,37 @@ export async function recordAnalyticsNonBlocking(
     // and conditional rollup. Bot sampling and nominal category handling follow.
     if (!isBot) {
       const dimensions = visitDimensions(request);
-      const bucket = Math.floor(now / PAGEVIEW_DEDUPE_WINDOW_MS);
-      const [dedupeKey, previousDedupeKey] = await Promise.all([
-        computeDedupeKey(visitorHash, normalizedPath, bucket),
-        computeDedupeKey(visitorHash, normalizedPath, bucket - 1),
-      ]);
       await new D1TelemetryAdapter(db, env).ingestVisit({
-        path: normalizedPath, visitorHash, ip, userAgent,
-        dedupeKey: l1Key30m, skipL1Check: true, eventType: "pageview",
-        country: dimensions.country, region: dimensions.region,
-        browser: dimensions.browser, browserLanguage: dimensions.browserLanguage,
-        deviceType: dimensions.deviceType, referrerHost: referrer,
-        statusCode: 200, nowMs: now,
-        dashboard: { path, dedupeKey, previousDedupeKey,
-          source: utmSource, medium: utmMedium, campaign: utmCampaign,
-          content: utmContent, term: utmTerm },
+        path: normalizedPath,
+        recordPath: path,
+        visitorHash,
+        ip,
+        userAgent,
+        dedupeKey: l1Key30m,
+        skipL1Check: true,
+        eventType: "pageview",
+        country: dimensions.country,
+        region: dimensions.region,
+        browser: dimensions.browser,
+        browserLanguage: dimensions.browserLanguage,
+        deviceType: dimensions.deviceType,
+        referrerHost: referrer,
+        statusCode: 200,
+        nowMs: now,
+        dashboard: {
+          source: utmSource,
+          medium: utmMedium,
+          campaign: utmCampaign,
+          content: utmContent,
+          term: utmTerm,
+        },
       });
       return;
     }
 
     const walRecord = {
       dedupe_key: l1Key30m,
-      path: normalizedPath,
+      path,
       event_type: "pageview",
       visitor_hash: visitorHash,
       is_bot: isBot,
@@ -4688,89 +4563,26 @@ export async function recordAnalyticsNonBlocking(
       return;
     }
 
-    // Tier 1 (CONSERVATIVE: >= 50%) & Tier 2 (COMPACT_ROLLUP: >= 70%):
-    // Skip raw pageviews/pageview_events inserts, write strictly to compact analytics_rollups!
-    if (currentTier >= QuotaDegradationTier.CONSERVATIVE) {
-      const adapter = new D1TelemetryAdapter(db, env);
-      await adapter.ingestVisit({
-        path: normalizedPath,
-        visitorHash,
-        ip,
-        userAgent,
-        dedupeKey: l1Key30m,
-        skipL1Check: true,
-        eventType: "pageview",
-        isBot: true,
-        botName: visitorInfo.reason,
-        country,
-        referrerHost: referrer,
-        statusCode: 200,
-        nowMs: now,
-      });
-      return;
-    }
-
-    // L2 dedupe: current bucket key (UNIQUE) + previous bucket probe so two hits that straddle a
-    // bucket boundary within the window are still collapsed.
-    const bucket = Math.floor(now / PAGEVIEW_DEDUPE_WINDOW_MS);
-    const [dedupeKey, prevDedupeKey] = await Promise.all([
-      computeDedupeKey(visitorHash, normalizedPath, bucket),
-      computeDedupeKey(visitorHash, normalizedPath, bucket - 1),
-    ]);
-
-    // Human ingestion returned above; this path writes classified bot rows.
-    const pageviewsInsert = db
-      .prepare(
-        `INSERT INTO pageviews (
-           path, visitor_hash, referrer, country,
-           utm_source, utm_medium, utm_campaign, utm_content, utm_term,
-           is_bot, bot_category, created_at, dedupe_key
-         ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?
-         WHERE NOT EXISTS (SELECT 1 FROM pageviews WHERE dedupe_key = ?)
-         ON CONFLICT(dedupe_key) DO NOTHING`,
-      )
-      .bind(
-        path.slice(0, 200),
-        visitorHash,
-        referrer.slice(0, 100),
-        country.slice(0, 10),
-        (utmSource || "direct").slice(0, 50),
-        (utmMedium || "none").slice(0, 50),
-        (utmCampaign || "").slice(0, 100),
-        utmContent.slice(0, 100),
-        utmTerm.slice(0, 100),
-        isBot,
-        visitorInfo.classification,
-        dedupeKey,
-        prevDedupeKey,
-      );
-
-    const statements = [pageviewsInsert];
-
-    if (edgeQuotaTracker.shouldSyncD1()) {
-      const quotaStmt = edgeQuotaTracker.buildQuotaUpsertStatement(db, now);
-      if (quotaStmt && typeof quotaStmt.run === "function") {
-        quotaStmt.run().catch(() => {});
-      }
-    }
-
-    try {
-      if (typeof db.batch === "function") {
-        await db.batch(statements);
-      } else {
-        for (const stmt of statements) {
-          await stmt.run();
-        }
-      }
-      edgeQuotaTracker.recordWrite(statements.length, now);
-    } catch (batchErr) {
-      if (isD1QuotaException(batchErr)) {
-        edgeQuotaTracker.tripCircuitBreaker(String(batchErr), now);
-        await writeTelemetryWalToR2(walRecord, env, now);
-        return;
-      }
-      throw batchErr;
-    }
+    // NOMINAL sampled bots retain raw category and 30-day retention in the
+    // authoritative event stream, without changing the historical rollup policy.
+    await new D1TelemetryAdapter(db, env).ingestVisit({
+      path: normalizedPath,
+      recordPath: path,
+      visitorHash,
+      ip,
+      userAgent,
+      dedupeKey: l1Key30m,
+      skipL1Check: true,
+      skipRollup: true,
+      eventType: "pageview",
+      isBot: true,
+      botName: visitorInfo.reason,
+      botCategory: visitorInfo.classification,
+      country,
+      referrerHost: referrer,
+      statusCode: 200,
+      nowMs: now,
+    });
   } catch (err) {
     // Fail-open resilience: Never bubble database errors to client
     console.error("[Analytics Background Error - Fail-Open]:", err);

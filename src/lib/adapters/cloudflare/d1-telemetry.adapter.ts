@@ -1,10 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import type {
-  TelemetryPort,
-  PageviewEvent,
-  DailySummaryMetric,
-  TelemetryIngestionResult,
-} from "../../ports/telemetry.port";
+import type { TelemetryPort, TelemetryIngestionResult } from "../../ports/telemetry.port";
 import { rawDeviceOs, storedVisitDimensions } from "./telemetry-dimensions";
 import {
   QuotaDegradationTier,
@@ -156,15 +151,20 @@ export const COMPACT_ROLLUP_FLUSH_INTERVAL_MS = 15_000;
 
 export interface TelemetryVisitEvent {
   path: string;
+  /** Safe document pathname to retain in raw detail; dedupe and rollups use normalized path. */
+  recordPath?: string | undefined;
   visitorHash: string;
   ip?: string | undefined;
   userAgent?: string | undefined;
   dailySalt?: string | undefined;
   dedupeKey?: string | undefined;
   skipL1Check?: boolean | undefined;
+  /** Preserve NOMINAL sampled bot behavior: raw event only, no aggregate increment. */
+  skipRollup?: boolean | undefined;
   eventType?: "pageview" | "spa_transition" | "bfcache" | "beacon" | undefined;
   isBot?: boolean | undefined;
   botName?: string | null | undefined;
+  botCategory?: string | undefined;
   country?: string | undefined;
   region?: string | undefined;
   browser?: string | undefined;
@@ -173,11 +173,8 @@ export interface TelemetryVisitEvent {
   referrerHost?: string | undefined;
   statusCode?: number | undefined;
   nowMs?: number | undefined;
-  /** Optional dashboard ledger projection for committed browser visits. */
+  /** Bounded attribution for the authoritative raw visit. */
   dashboard?: {
-    path: string;
-    dedupeKey: string;
-    previousDedupeKey: string;
     source: string;
     medium: string;
     campaign: string;
@@ -543,6 +540,10 @@ export class D1TelemetryAdapter implements TelemetryPort {
   ): Promise<TelemetryIngestionResult> {
     const nowMs = event.nowMs ?? Date.now();
     const cleanPath = normalizeTelemetryPath(event.path).slice(0, 255);
+    const recordPath = event.recordPath && event.recordPath.length <= 255 &&
+      event.recordPath.startsWith("/") && !/[?#<>{}\\^`|]/.test(event.recordPath) &&
+      normalizeTelemetryPath(event.recordPath) === cleanPath
+      ? event.recordPath : cleanPath;
     const visitorHash = (event.visitorHash || "anon").slice(0, 64);
     const dedupeKey =
       event.dedupeKey ??
@@ -596,10 +597,11 @@ export class D1TelemetryAdapter implements TelemetryPort {
     const dimensions = rollupDimensions(deviceType, osType);
     const referrerHost = (event.referrerHost || "").slice(0, 255);
     const statusCode = event.statusCode ?? 200;
+    const attribution = event.dashboard;
 
     const walRecord = {
       dedupe_key: dedupeKey,
-      path: cleanPath,
+      path: recordPath,
       event_type: eventType,
       visitor_hash: visitorHash,
       is_bot: isBotInt,
@@ -611,6 +613,12 @@ export class D1TelemetryAdapter implements TelemetryPort {
       browser,
       browser_language: browserLanguage,
       referrer_host: referrerHost,
+      utm_source: attribution?.source.slice(0, 50) ?? "direct",
+      utm_medium: attribution?.medium.slice(0, 50) ?? "none",
+      utm_campaign: attribution?.campaign.slice(0, 100) ?? "",
+      utm_content: attribution?.content.slice(0, 100) ?? "",
+      utm_term: attribution?.term.slice(0, 100) ?? "",
+      bot_category: event.botCategory?.slice(0, 64) ?? null,
       status_code: statusCode,
       created_at: createdAtIso,
     };
@@ -727,12 +735,13 @@ export class D1TelemetryAdapter implements TelemetryPort {
           `INSERT OR IGNORE INTO telemetry_events (
             dedupe_key, path, event_type, visitor_hash, is_bot, bot_name,
             country, device_type, region, os_type, browser, browser_language,
-            referrer_host, status_code, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            referrer_host, utm_source, utm_medium, utm_campaign, utm_content,
+            utm_term, bot_category, status_code, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           dedupeKey,
-          cleanPath,
+          recordPath,
           eventType,
           visitorHash,
           isBotInt,
@@ -744,6 +753,12 @@ export class D1TelemetryAdapter implements TelemetryPort {
           browser,
           browserLanguage,
           referrerHost,
+          walRecord.utm_source,
+          walRecord.utm_medium,
+          walRecord.utm_campaign,
+          walRecord.utm_content,
+          walRecord.utm_term,
+          walRecord.bot_category,
           statusCode,
           createdAtIso,
         );
@@ -766,61 +781,7 @@ export class D1TelemetryAdapter implements TelemetryPort {
         this.db,
         nowMs,
       );
-      const batchStmts = quotaStmt
-        ? [telemetryStmt, rollupStmt, quotaStmt]
-        : [telemetryStmt, rollupStmt];
-
-      // Match document ingestion: raw dashboard detail is NOMINAL-only.
-      // Keep these immediately after the conditional rollup: it changes one row
-      // only when the authoritative telemetry insert succeeded.
-      if (event.dashboard && tier === QuotaDegradationTier.NOMINAL) {
-        const detail = event.dashboard;
-        const ledgerStmts = [
-          this.db
-            .prepare(
-              `INSERT INTO pageviews (
-              path, visitor_hash, referrer, country, utm_source, utm_medium,
-              utm_campaign, utm_content, utm_term, is_bot, bot_category, created_at, dedupe_key
-            ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            WHERE changes() > 0
-              AND NOT EXISTS (SELECT 1 FROM pageviews WHERE dedupe_key = ?)
-            ON CONFLICT(dedupe_key) DO NOTHING`,
-            )
-            .bind(
-              detail.path.slice(0, 200),
-              visitorHash,
-              referrerHost.slice(0, 100),
-              country,
-              detail.source.slice(0, 50),
-              detail.medium.slice(0, 50),
-              detail.campaign.slice(0, 100),
-              detail.content.slice(0, 100),
-              detail.term.slice(0, 100),
-              isBotInt,
-              detail.botCategory ?? null,
-              createdAtIso.replace("T", " ").slice(0, 19),
-              detail.dedupeKey,
-              detail.previousDedupeKey,
-            ),
-        ];
-        if (!event.isBot) {
-          ledgerStmts.push(
-            this.db
-              .prepare(
-                `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
-             SELECT ?, ?, ?, ?, ? WHERE changes() > 0`,
-              )
-              .bind(
-                detail.path.slice(0, 200),
-                /^\/es(?:\/|$)/.test(cleanPath) ? "es" : "en",
-                country,
-                referrerHost.slice(0, 100),
-                nowMs,
-              ),
-          );
-        }
-        batchStmts.splice(2, 0, ...ledgerStmts);
-      }
+      const batchStmts = [telemetryStmt, ...(!event.skipRollup ? [rollupStmt] : []), ...(quotaStmt ? [quotaStmt] : [])];
 
       let batchMeta: { rows_written?: number; rows_read?: number } | null =
         null;
@@ -893,31 +854,6 @@ export class D1TelemetryAdapter implements TelemetryPort {
     }
   }
 
-  async recordPageview(event: PageviewEvent): Promise<void> {
-    try {
-      await this.db
-        .prepare(
-          `INSERT INTO pageview_events (path, locale, country, referrer, timestamp)
-           VALUES (?, ?, ?, ?, ?)`,
-        )
-        .bind(
-          event.path.slice(0, 255),
-          event.locale.slice(0, 10),
-          (event.country || "XX").slice(0, 10),
-          (event.referrer || "").slice(0, 255),
-          event.timestamp,
-        )
-        .run();
-      edgeQuotaTracker.recordWrite(1);
-    } catch (err) {
-      if (isD1QuotaException(err)) {
-        edgeQuotaTracker.tripCircuitBreaker(String(err));
-      }
-      // Fail-open: discard telemetry errors defensively without breaking caller
-      console.error("[D1TelemetryAdapter:recordPageview Error]", err);
-    }
-  }
-
   async recordPrefetch(
     event: import("../../ports/telemetry.port").PrefetchTelemetryEvent,
   ): Promise<void> {
@@ -943,24 +879,6 @@ export class D1TelemetryAdapter implements TelemetryPort {
       // Fail-open: discard telemetry errors defensively without breaking caller
       console.error("[D1TelemetryAdapter:recordPrefetch Error]", err);
     }
-  }
-
-  async getAggregatedMetrics(
-    startDate: string,
-    endDate: string,
-  ): Promise<DailySummaryMetric[]> {
-    const results = await this.db
-      .prepare(
-        `SELECT summary_date as date, path, locale, country, total_views as views
-         FROM pageviews_daily_summary
-         WHERE summary_date >= ? AND summary_date <= ?
-         ORDER BY summary_date DESC, total_views DESC`,
-      )
-      .bind(startDate, endDate)
-      .all<DailySummaryMetric>();
-    edgeQuotaTracker.recordRead((results.results || []).length || 1);
-
-    return results.results || [];
   }
 
   async getCircuitBreakerIncidents(

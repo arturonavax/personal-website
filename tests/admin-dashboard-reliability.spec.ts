@@ -12,13 +12,24 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     let slow: (() => void) | undefined;
     let telemetryCalls = 0;
     let pageOnlyCalls = 0;
+    // Deny all non-loopback browser requests before any navigation.
+    await page.route("**/*", (route) => {
+      const url = new URL(route.request().url());
+      return url.hostname === "127.0.0.1" ? route.continue() : route.abort();
+    });
     const quotas = {
-      r2_storage: { used_gb: null, limit_gb: 10, available: false },
-      zero_trust_seats: { used: null, limit: 50, available: false },
-      workers_ai_daily: { used: null, limit: 10000, available: false },
-      vectorize_monthly: { used: null, limit: 5000000, available: false },
-      workers_daily: { used: null, limit: 100000, available: false },
-      workers_monthly: { used: null, limit: 3000000, available: false },
+      strategy: { workers_daily_budget: 100000, daily_read_budget: 5000000, daily_write_budget: 100000 },
+      degradation_tier_name: "NOMINAL",
+      provider_usage: {
+        workers_requests: { used: null, status: "setup_required", source: "workersInvocationsAdaptive", scope: "account", period: "2026-10-28 UTC", retrieved_at: "2026-10-28T12:00:00Z", accuracy: "Sampled, not billing" },
+        d1_rows_read: { used: 7, status: "observed", source: "d1AnalyticsAdaptiveGroups", scope: "account", period: "2026-10-28 UTC", retrieved_at: "2026-10-28T12:00:00Z", accuracy: "Sampled, not billing" },
+        d1_rows_written: { used: 0, status: "observed", source: "d1AnalyticsAdaptiveGroups", scope: "account", period: "2026-10-28 UTC", retrieved_at: "2026-10-28T12:00:00Z", accuracy: "Sampled, not billing" },
+        d1_storage: { used: 0, status: "observed", source: "D1 binding meta.size_after", scope: "selected database", period: "current read-only query", retrieved_at: "2026-10-28T12:00:00Z", accuracy: "Not account usage" },
+        r2_storage: { used: null, status: "unavailable", source: "r2StorageAdaptiveGroups", scope: "selected bucket", period: "latest sample within 31 days", retrieved_at: "2026-10-28T12:00:00Z", accuracy: "Sampled, not billing" },
+        r2_class_a: { used: 0, status: "observed", source: "r2OperationsAdaptiveGroups", scope: "selected bucket", period: "2026-10 month-to-date UTC", retrieved_at: "2026-10-28T12:00:00Z", accuracy: "Sampled, not billing" },
+        r2_class_b: { used: 2, status: "observed", source: "r2OperationsAdaptiveGroups", scope: "selected bucket", period: "2026-10 month-to-date UTC", retrieved_at: "2026-10-28T12:00:00Z", accuracy: "Sampled, not billing" },
+        zero_trust_seats: { used: 1, status: "observed", source: "GET /access/users", scope: "account", period: "current occupied users", retrieved_at: "2026-10-28T12:00:00Z", accuracy: "Observed, not billing" },
+      },
     };
     await page.route("**/api/telemetry?**", async (route) => {
       const params = new URL(route.request().url()).searchParams;
@@ -53,14 +64,8 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
         }),
       });
     });
-    for (const endpoint of ["metrics", "deployments"])
-      await page.route(`**/api/${endpoint}?**`, (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ deployments: [], data_quality_warnings: [] }),
-        }),
-      );
+    await page.route("**/api/metrics?**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ quotas, data_quality_warnings: [] }) }));
+    await page.route("**/api/deployments?**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ deployments: [] }) }));
     let leadsUnavailable = true;
     const lead = {
       id: 1,
@@ -87,15 +92,13 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     await expect(page.locator("#kpi-leads")).not.toHaveText("0");
     await expect(page.locator("#quota-r2-storage")).not.toContainText("0.18");
     await expect(page.locator("#quota-zero-trust")).not.toContainText("1 / 50");
-    await expect(page.locator("#quota-workers-ai")).not.toContainText(
-      "0 / 10,000",
-    );
-    await expect(page.locator("#quota-workers-daily")).toContainText(
-      "— / 100k",
-    );
-    await expect(page.locator("#quota-workers-monthly")).toContainText(
-      "— / 3M",
-    );
+    await expect(page.locator("#quota-workers-ai, #quota-vectorize, #quota-workers-monthly")).toHaveCount(0);
+    await expect(page.locator("#quota-workers-daily")).toContainText("Setup required");
+    await expect(page.locator("#quota-workers-daily")).toContainText("workersInvocationsAdaptive · account · 2026-10-28 UTC");
+    await expect(page.locator("#quota-d1-writes")).toContainText("0 rows / 100k · Observed");
+    await expect(page.locator("#quota-r2-storage")).toContainText("Unavailable");
+    await expect(page.locator("#quota-zero-trust")).toContainText("1 occupied seats");
+    await expect(page.locator("#quota-r2-class-a")).toContainText("0 / 1M · Observed");
     await expect(page.locator("#quota-workers-daily-status")).toHaveText(
       "UNAVAILABLE",
     );
@@ -112,13 +115,11 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     await page.locator("#btn-refresh").click();
     await expect(page.locator("#kpi-leads")).toHaveText("1");
     await expect(page.getByText("Project inquiry")).toBeVisible();
-    quotas.workers_daily = { used: 0, limit: 100000, available: true };
-    quotas.workers_monthly = { used: 0, limit: 3000000, available: true };
+    quotas.provider_usage.workers_requests.used = 0;
+    quotas.provider_usage.workers_requests.status = "observed";
     await page.locator("#btn-refresh").click();
-    await expect(page.locator("#quota-workers-daily")).toContainText(
-      "0 / 100k",
-    );
-    await expect(page.locator("#quota-workers-daily-status")).toHaveText("OK");
+    await expect(page.locator("#quota-workers-daily")).toContainText("0 / 100k · Observed");
+    await expect(page.locator("#quota-workers-daily-status")).toHaveText("OBSERVED");
     await page.locator('[data-lang-switch="es"]').first().click();
     await expect(page).toHaveURL(/\/es\/admin\//);
     await expect(page.locator("#btn-apply-filters")).toContainText(

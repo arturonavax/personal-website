@@ -206,42 +206,13 @@ describe("minimized device/OS rollups", () => {
     });
   });
 
-  it("rebuilds complete daily summaries without overlap and prunes raw events", async () => {
+  it("prunes aged raw events without rebuilding an unused daily projection", async () => {
     const { db, sqlite } = fixture();
-    const today = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date(Date.now() - 86_400_000)
-      .toISOString()
-      .slice(0, 10);
-    const insert = sqlite.prepare(
-      "INSERT INTO pageview_events (path, locale, country, referrer, timestamp) VALUES ('/blog', 'en', 'XX', '', ?)",
-    );
-    insert.run(Date.parse(`${yesterday}T01:00:00Z`));
-    insert.run(Date.parse(`${yesterday}T23:00:00Z`));
-    insert.run(Date.parse(`${today}T01:00:00Z`));
-    sqlite
-      .prepare(
-        "INSERT INTO telemetry_events (dedupe_key, path, event_type, visitor_hash, created_at) VALUES ('expired', '/blog', 'pageview', 'anon', '2020-01-01T00:00:00Z')",
-      )
-      .run();
+    sqlite.exec("INSERT INTO telemetry_events (dedupe_key, path, visitor_hash, created_at) VALUES ('expired', '/blog', 'anon', '2020-01-01T00:00:00Z')");
     await handleAnalyticsRollup({ DB: db });
     await handleAnalyticsRollup({ DB: db });
-    expect(
-      sqlite
-        .prepare(
-          "SELECT summary_date, total_views FROM pageviews_daily_summary WHERE path = '/blog' ORDER BY summary_date",
-        )
-        .all(),
-    ).toEqual([
-      { summary_date: yesterday, total_views: 2 },
-      { summary_date: today, total_views: 1 },
-    ]);
-    expect(
-      sqlite
-        .prepare(
-          "SELECT count(*) AS n FROM telemetry_events WHERE dedupe_key = 'expired'",
-        )
-        .get(),
-    ).toEqual({ n: 0 });
+    expect(sqlite.prepare("SELECT count(*) AS n FROM telemetry_events WHERE dedupe_key = 'expired'").get()).toEqual({ n: 0 });
+    expect(sqlite.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'pageviews_daily_summary'").get()).toEqual({ n: 0 });
   });
 
   it("cron bounds new dimensions to 30 days without deleting historical views", async () => {
@@ -307,6 +278,6 @@ describe("minimized device/OS rollups", () => {
     expect(
       sql.filter((query) => query.includes("INSERT INTO analytics_rollups")),
     ).toHaveLength(2);
-    expect(execSql).toHaveLength(2);
+    expect(execSql).toHaveLength(1);
   });
 });

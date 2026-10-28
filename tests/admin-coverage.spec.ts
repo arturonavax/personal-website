@@ -12,13 +12,14 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     page,
   }) => {
     let pageOnlyRequests = 0;
+    // Deny non-loopback browser requests before loading the current Astro page.
+    await page.route("**/*", (route) => {
+      const url = new URL(route.request().url());
+      return url.hostname === "127.0.0.1" ? route.continue() : route.abort();
+    });
     const quotas = {
-      d1_storage: {
-        used_mb: null,
-        limit_mb: 500,
-        limit_gb: 0.5,
-        scope: "per_database",
-      },
+      provider_usage: { d1_storage: { used: null, status: "unavailable", source: "D1 binding meta.size_after", scope: "selected database", period: "current read-only query", retrieved_at: "2026-10-28T12:00:00Z", accuracy: "Not account usage" } },
+      strategy: { daily_write_budget: 100000 },
     };
     await page.route("**/api/telemetry?**", async (route) => {
       const pageOnly = new URL(route.request().url()).searchParams.has(
@@ -98,7 +99,7 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
       await page.goto(`${base}/${locale}admin/`, { waitUntil: "networkidle" });
       await expect(page.locator("#coverage-desktop")).toHaveText("2");
       await expect(page.locator("#coverage-ai")).toHaveText("1");
-      await expect(page.locator("#quota-d1-storage")).toContainText("500 MB");
+      await expect(page.locator("#quota-d1-storage")).toContainText("D1 binding meta.size_after · selected database");
       await expect(page.locator("#coverage-bot-status")).toContainText(
         locale ? "Recolección desactivada" : "Collection off",
       );

@@ -8,7 +8,6 @@ import {
 import {
   LocalFileSystemStorageAdapter,
   StaticMemorySearchAdapter,
-  SQLiteTelemetryAdapter,
   HoneypotCaptchaAdapter,
   MemoryCacheStorageAdapter,
   CloudflareR2StorageAdapter,
@@ -19,7 +18,6 @@ import {
   CloudflareCacheApiAdapter,
   createStorageAdapter,
   createSearchAdapter,
-  createTelemetryAdapter,
   createCaptchaAdapter,
 } from "../../src/lib/adapters";
 import {
@@ -126,34 +124,6 @@ describe("SPEC-003: Semantic Search Port & Static Memory Adapter", () => {
   });
 });
 
-describe("SPEC-003: Telemetry Port & SQLite Adapter Fallback", () => {
-  it("records pageviews and computes daily aggregations", async () => {
-    const telemetry = new SQLiteTelemetryAdapter();
-
-    const timestamp = Date.now();
-    const dateStr = new Date(timestamp).toISOString().slice(0, 10);
-
-    await telemetry.recordPageview({
-      path: "/blog/post-1",
-      locale: "en",
-      country: "US",
-      timestamp,
-    });
-
-    await telemetry.recordPageview({
-      path: "/blog/post-1",
-      locale: "en",
-      country: "US",
-      timestamp,
-    });
-
-    const metrics = await telemetry.getAggregatedMetrics(dateStr, dateStr);
-    expect(metrics.length).toBe(1);
-    expect(metrics[0].views).toBe(2);
-    expect(metrics[0].path).toBe("/blog/post-1");
-  });
-});
-
 describe("SPEC-003: Captcha Verifier Port & Honeypot Adapter Fallback", () => {
   it("accepts human submissions when honeypot is empty and flags bots when filled", async () => {
     const honeypot = new HoneypotCaptchaAdapter();
@@ -193,9 +163,6 @@ describe("SPEC-003: Hexagonal Adapter Factory Driver Selection", () => {
 
     const search = createSearchAdapter();
     expect(search).toBeInstanceOf(StaticMemorySearchAdapter);
-
-    const telemetry = createTelemetryAdapter();
-    expect(telemetry).toBeInstanceOf(SQLiteTelemetryAdapter);
 
     const captcha = createCaptchaAdapter();
     expect(captcha).toBeInstanceOf(HoneypotCaptchaAdapter);
@@ -244,9 +211,9 @@ describe("SPEC-003: Cron Scheduler & Email Worker", () => {
     } as unknown as D1Database;
 
     await handleAnalyticsRollup({ DB: mockDb });
-    expect(executedQueries.length).toBe(2);
-    expect(executedQueries[0]).toContain("INSERT INTO pageviews_daily_summary");
-    expect(executedQueries[1]).toContain("DELETE FROM pageview_events");
+    expect(executedQueries.length).toBe(1);
+    expect(executedQueries[0]).toContain("DELETE FROM telemetry_events");
+    expect(executedQueries[0]).toContain("DELETE FROM prefetch_analytics_events");
   });
 
   it("processIncomingEmail inserts lead into D1 contact_leads", async () => {
@@ -504,7 +471,7 @@ describe("SPEC-003: Cloudflare Vectorize + Workers AI Search Adapter", () => {
 });
 
 describe("SPEC-003: Cloudflare D1 Telemetry Adapter & Turnstile Captcha", () => {
-  it("D1TelemetryAdapter records pageviews and queries aggregated rollups", async () => {
+  it("D1TelemetryAdapter keeps isolated prefetch event writes", async () => {
     const executedD1Calls: { sql: string; params: any[] }[] = [];
     const mockDb = {
       prepare: (sql: string) => ({
@@ -530,24 +497,10 @@ describe("SPEC-003: Cloudflare D1 Telemetry Adapter & Turnstile Captcha", () => 
 
     const adapter = new D1TelemetryAdapter(mockDb);
 
-    await adapter.recordPageview({
-      path: "/experience",
-      locale: "en",
-      country: "US",
-      referrer: "https://google.com",
-      timestamp: 1727999999000,
-    });
-
+    await adapter.recordPrefetch({ path: "/experience", visitorHash: "visitor", purpose: "prefetch" });
     expect(executedD1Calls.length).toBe(1);
-    expect(executedD1Calls[0].sql).toContain("INSERT INTO pageview_events");
+    expect(executedD1Calls[0].sql).toContain("INSERT INTO prefetch_analytics_events");
     expect(executedD1Calls[0].params[0]).toBe("/experience");
-
-    const metrics = await adapter.getAggregatedMetrics(
-      "2026-10-01",
-      "2026-10-03",
-    );
-    expect(metrics.length).toBe(1);
-    expect(metrics[0].views).toBe(10);
   });
 
   it("TurnstileCaptchaAdapter verifies human challenge against Cloudflare API", async () => {

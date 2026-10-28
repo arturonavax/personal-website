@@ -222,7 +222,7 @@ describe("Edge Worker Prefetch Telemetry Integration", () => {
       DB: db,
       ADMIN_ACCESS_TOKEN: "mock-admin-token-for-testing-32-chars-long",
     };
-    const req = new Request("https://admin.arturonavax.dev/api/metrics", {
+    const req = new Request("https://arturonavax.dev/api/metrics", {
       headers: {
         Authorization: "Bearer mock-admin-token-for-testing-32-chars-long",
       },
@@ -239,7 +239,7 @@ describe("Edge Worker Prefetch Telemetry Integration", () => {
     );
   });
 
-  it("always prioritizes real visits in pageviews table (P0)", async () => {
+  it("always prioritizes real visits in the canonical telemetry ledger (P0)", async () => {
     clearRecentPageviewsCache();
     const ctx = createMockCtx();
     const db = createMockDb();
@@ -263,14 +263,12 @@ describe("Edge Worker Prefetch Telemetry Integration", () => {
     expect(ctx.promises.length).toBe(1);
     await Promise.all(ctx.promises);
 
-    // The nominal atomic batch includes the dashboard ledger, compatibility ledger,
-    // aggregate and quota alongside the P0 visit. Prefetch remains disabled.
+    // The authoritative raw insert and conditional rollup retain P0 priority.
+    // No redundant human projection or disabled prefetch is written.
     expect(
       db.executedQueries.some((q) => /INSERT INTO pageviews\s*\(/.test(q.sql)),
-    ).toBe(true);
-    expect(db.executedQueries.some((q) => /pageview_events/.test(q.sql))).toBe(
-      true,
-    );
+    ).toBe(false);
+    expect(db.executedQueries.some((q) => /pageview_events/.test(q.sql))).toBe(false);
     expect(db.executedQueries.some((q) => /telemetry_events/.test(q.sql))).toBe(
       true,
     );

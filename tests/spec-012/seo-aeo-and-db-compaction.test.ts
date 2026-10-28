@@ -54,11 +54,10 @@ describe("SPEC-012: D1 Database Compaction & Deterministic Reset Architecture", 
       .all()
       .map((r: any) => r.name);
 
-    expect(tables).toContain("pageviews");
     expect(tables).toContain("telemetry_events");
-    expect(tables).toContain("edge_telemetry_events");
-    expect(tables).toContain("pageview_events");
-    expect(tables).toContain("pageviews_daily_summary");
+    for (const obsolete of ["pageviews", "pageview_events", "pageviews_daily_summary", "edge_telemetry_events"]) {
+      expect(tables).not.toContain(obsolete);
+    }
     expect(tables).toContain("analytics_rollups");
     expect(tables).toContain("contact_leads");
     expect(tables).toContain("prefetch_analytics_events");
@@ -66,24 +65,11 @@ describe("SPEC-012: D1 Database Compaction & Deterministic Reset Architecture", 
     expect(tables).toContain("circuit_breaker_incidents");
     expect(tables).toContain("system_deployments");
 
-    // Assert only pruned indexes exist on pageviews
-    const pageviewIndexes = db
-      .query(
-        "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='pageviews';",
-      )
-      .all()
-      .map((r: any) => r.name);
-
-    expect(pageviewIndexes).toContain("idx_pageviews_dedupe_key");
-    expect(pageviewIndexes).toContain("idx_pageviews_analytics");
-    expect(pageviewIndexes).toContain("idx_pageviews_visitor");
-    expect(pageviewIndexes).toContain("idx_pageviews_attribution");
-    expect(pageviewIndexes).toContain("idx_pageviews_created_at");
-
-    // Redundant indexes must be absent
-    expect(pageviewIndexes).not.toContain("idx_pageviews_perf_composite");
-    expect(pageviewIndexes).not.toContain("idx_pageviews_path_created");
-    expect(pageviewIndexes).not.toContain("idx_pageviews_country_created");
+    const telemetryIndexes = db
+      .query("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='telemetry_events';")
+      .all().map((r: any) => r.name);
+    expect(telemetryIndexes).toContain("idx_telemetry_dedupe_key");
+    expect(telemetryIndexes).toContain("idx_telemetry_analytics");
 
     // Initial deployment seed record
     const deployment = db
@@ -659,7 +645,7 @@ describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants"
     expect(wrangler.assets.run_worker_first).toContain("!/fonts/*");
   });
 
-  it("2. Unauthenticated requests to /admin, /es/admin, /en/admin, /ADMIN, /es//admin, /%61dmin, https://admin.arturonavax.dev/, and /__admin_vault__/default/index.html all return 401, 403, or 404 and never invoke env.ASSETS.fetch for the admin HTML shell", async () => {
+  it("2. Unauthenticated apex admin entries redirect to guarded directory paths; vault paths remain private", async () => {
     const workerModule = await import("../../cloudflare/worker");
     const worker = workerModule.default;
 
@@ -681,26 +667,27 @@ describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants"
       passThroughOnException: () => {},
     } as unknown as ExecutionContext;
 
-    const testUrls = [
-      "https://arturonavax.dev/admin",
-      "https://arturonavax.dev/es/admin",
-      "https://arturonavax.dev/en/admin",
-      "https://arturonavax.dev/ADMIN",
-      "https://arturonavax.dev/es//admin",
-      "https://arturonavax.dev/%61dmin",
-      "https://admin.arturonavax.dev/",
-      "https://arturonavax.dev/__admin_vault__/default/index.html",
-    ];
-
-    for (const testUrl of testUrls) {
+    for (const [alias, target] of [
+      ["/admin", "/admin/"], ["/es/admin", "/es/admin/"],
+      ["/ADMIN", "/admin/"], ["/es//admin", "/es/admin/"], ["/%61dmin", "/admin/"],
+    ]) {
       assetsFetchCalledForAdmin = false;
-      const req = new Request(testUrl, {
+      const res = await worker.fetch(new Request(`https://arturonavax.dev${alias}`, {
         headers: { Accept: "text/html" },
-      });
-      const res = await worker.fetch(req, mockEnv as any, mockCtx);
-      expect([401, 403, 404]).toContain(res.status);
+      }), mockEnv as any, mockCtx);
+      expect(res.status).toBe(308);
+      expect(res.headers.get("Location")).toBe(`https://arturonavax.dev${target}`);
+      expect(assetsFetchCalledForAdmin).toBe(false);
+      const guarded = await worker.fetch(new Request(res.headers.get("Location")!, {
+        headers: { Accept: "text/html" },
+      }), mockEnv as any, mockCtx);
+      expect(guarded.status).toBe(403);
+      expect(guarded.headers.get("Cache-Control")).toContain("no-store");
       expect(assetsFetchCalledForAdmin).toBe(false);
     }
+    const vault = await worker.fetch(new Request("https://arturonavax.dev/__admin_vault__/default/index.html"), mockEnv as any, mockCtx);
+    expect(vault.status).toBe(404);
+    expect(assetsFetchCalledForAdmin).toBe(false);
   });
 
   it("3. Unauthenticated requests to protected admin APIs return 401 or 403 with Cache-Control: private, no-store", async () => {
@@ -737,7 +724,7 @@ describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants"
     }
   });
 
-  it("4. Authenticated requests to /admin and /es/admin succeed (200 OK) and serve the isolated admin shell with Cache-Control: private, no-store", async () => {
+  it("4. Authenticated entry aliases redirect before serving a private admin shell", async () => {
     const workerModule = await import("../../cloudflare/worker");
     const worker = workerModule.default;
 
@@ -777,10 +764,14 @@ describe("TASK 5: Zero-Trust Admin & Selective Asset Bypass Security Invariants"
         },
       });
       const res = await worker.fetch(req, mockEnv as any, mockCtx);
-      expect(res.status).toBe(200);
-      const body = await res.text();
-      expect(body).toContain("Vault Dashboard");
-      const cacheControl = res.headers.get("Cache-Control") || "";
+      expect(res.status).toBe(308);
+      expect(res.headers.get("Location")).toMatch(/^https:\/\/arturonavax\.dev\/(?:es\/)?admin\/$/);
+      const canonical = await worker.fetch(new Request(res.headers.get("Location")!, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "text/html" },
+      }), mockEnv as any, mockCtx);
+      expect(canonical.status).toBe(200);
+      expect(await canonical.text()).toContain("Vault Dashboard");
+      const cacheControl = canonical.headers.get("Cache-Control") || "";
       expect(cacheControl).toContain("private");
       expect(cacheControl).toContain("no-store");
     }

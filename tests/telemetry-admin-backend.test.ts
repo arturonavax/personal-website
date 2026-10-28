@@ -98,8 +98,6 @@ describe("production-shaped telemetry and admin contracts", () => {
     await f.drain();
     expect(first.status).toBe(200);
     expect(first.headers.get("X-Edge-Visit-Logged")).toBe("1");
-    expect(f.count("pageviews")).toBe(1);
-    expect(f.count("pageview_events")).toBe(1);
     expect(f.count("telemetry_events")).toBe(1);
     expect(
       f.sqlite
@@ -124,11 +122,7 @@ describe("production-shaped telemetry and admin contracts", () => {
     });
     await worker.fetch(document("/es/blog/"), f.env, f.ctx);
     await f.drain();
-    expect([
-      f.count("pageviews"),
-      f.count("pageview_events"),
-      f.count("telemetry_events"),
-    ]).toEqual([1, 1, 1]);
+    expect(f.count("telemetry_events")).toBe(1);
     expect(
       f.sqlite
         .prepare("SELECT views FROM analytics_rollups WHERE path='/es/blog'")
@@ -242,67 +236,17 @@ describe("production-shaped telemetry and admin contracts", () => {
     f.sqlite.close();
   });
 
-  it("cron runs through the production entrypoint and rolls up yesterday and today idempotently", async () => {
+  it("cron prunes aged human raw detail but keeps 30-day sampled bot detail", async () => {
     const f = fixture();
-    const yesterday = new Date(Date.now() - 86_400_000)
-      .toISOString()
-      .slice(0, 10);
-    const time = Date.parse(`${yesterday}T11:00:00Z`);
-    f.sqlite
-      .prepare(
-        "INSERT INTO pageview_events (path,locale,country,timestamp) VALUES ('/es/blog','es','MX',?)",
-      )
-      .run(time);
-    await worker.scheduled(
-      { cron: "0 2 * * *" } as ScheduledController,
-      f.env,
-      f.ctx,
-    );
+    const insert = f.sqlite.prepare("INSERT INTO telemetry_events (dedupe_key,path,visitor_hash,is_bot,created_at) VALUES (?, '/blog','fixture',?,?)");
+    insert.run("old-human", 0, new Date(Date.now() - 8 * 86_400_000).toISOString());
+    insert.run("old-bot", 1, new Date(Date.now() - 8 * 86_400_000).toISOString());
+    insert.run("expired-bot", 1, new Date(Date.now() - 31 * 86_400_000).toISOString());
+    await worker.scheduled({ cron: "0 2 * * *" } as ScheduledController, f.env, f.ctx);
     await f.drain();
-    await worker.scheduled(
-      { cron: "5 0 * * *" } as ScheduledController,
-      f.env,
-      f.ctx,
-    );
+    await worker.scheduled({ cron: "5 0 * * *" } as ScheduledController, f.env, f.ctx);
     await f.drain();
-    expect(
-      f.sqlite
-        .prepare(
-          "SELECT total_views FROM pageviews_daily_summary WHERE summary_date=? AND path='/es/blog'",
-        )
-        .get(yesterday),
-    ).toEqual({ total_views: 1 });
-    f.sqlite.close();
-  });
-
-  it("does not overwrite a complete historical day with partially pruned raw events", async () => {
-    const f = fixture();
-    const date = new Date(Date.now() - 7 * 86_400_000)
-      .toISOString()
-      .slice(0, 10);
-    f.sqlite
-      .prepare(
-        "INSERT INTO pageviews_daily_summary (summary_date,path,locale,country,total_views) VALUES (?, '/blog', 'en','XX', 9)",
-      )
-      .run(date);
-    f.sqlite
-      .prepare(
-        "INSERT INTO pageview_events (path,locale,country,timestamp) VALUES ('/blog','en','XX',?)",
-      )
-      .run(Date.now() - 7 * 86_400_000 + 1_000);
-    await worker.scheduled(
-      { cron: "0 2 * * *" } as ScheduledController,
-      f.env,
-      f.ctx,
-    );
-    await f.drain();
-    expect(
-      f.sqlite
-        .prepare(
-          "SELECT total_views FROM pageviews_daily_summary WHERE summary_date=? AND path='/blog'",
-        )
-        .get(date),
-    ).toEqual({ total_views: 9 });
+    expect(f.sqlite.prepare("SELECT dedupe_key FROM telemetry_events").all()).toEqual([{ dedupe_key: "old-bot" }]);
     f.sqlite.close();
   });
 
@@ -363,13 +307,7 @@ describe("production-shaped telemetry and admin contracts", () => {
         .prepare("SELECT views FROM analytics_rollups WHERE path='/es/blog'")
         .get(),
     ).toEqual({ views: 1 });
-    expect(
-      f.sqlite
-        .prepare(
-          "SELECT total_views FROM pageviews_daily_summary WHERE summary_date=? AND path='/es/blog'",
-        )
-        .get(yesterday),
-    ).toEqual({ total_views: 1 });
+    expect(f.sqlite.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name IN ('pageview_events','pageviews_daily_summary')").get()).toEqual({ n: 0 });
     f.sqlite.close();
   });
 
@@ -403,6 +341,88 @@ describe("production-shaped telemetry and admin contracts", () => {
     f.sqlite.close();
   });
 
+  it("never invokes provider fetch on unauthenticated metrics or public speculative requests", async () => {
+    const f = fixture();
+    const original = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; throw Error("unexpected provider network"); };
+    try {
+      const env = { ...f.env, CLOUDFLARE_ANALYTICS_API_TOKEN: "fake-local-token", CLOUDFLARE_ANALYTICS_ACCOUNT_ID: "dummy" };
+      const unauthorized = await worker.fetch(new Request("https://arturonavax.dev/api/metrics"), env, f.ctx);
+      expect(unauthorized.status).toBe(403);
+      expect(await unauthorized.json()).toMatchObject({ error: expect.any(String) });
+      const prefetch = await worker.fetch(new Request("https://arturonavax.dev/blog/?astro-prefetch", { headers: { accept: "text/html" } }), env, f.ctx);
+      await f.drain();
+      expect(prefetch.status).toBe(200);
+      expect(calls).toBe(0);
+      expect(f.count("telemetry_events")).toBe(0);
+    } finally { globalThis.fetch = original; f.sqlite.close(); }
+  });
+
+  it("publishes one provider gauge shape while retaining local enforcement", async () => {
+    const f = fixture();
+    const env = { ...f.env, ADMIN_ACCESS_TOKEN: "test-only-admin-token-at-least-20" };
+    const get = (path: string) => worker.fetch(new Request(`https://arturonavax.dev${path}`, { headers: { Authorization: `Bearer ${env.ADMIN_ACCESS_TOKEN}` } }), env, f.ctx);
+    for (const path of ["/api/metrics?fresh=true", "/api/telemetry?fresh=true"]) {
+      const res = await get(path);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(Object.keys(data.quotas).sort()).toEqual(["degradation_tier", "degradation_tier_name", "is_d1_reads_exceeded", "is_d1_writes_exceeded", "plan_tier", "provider_usage", "strategy"].sort());
+      expect(data.quotas.strategy.daily_write_budget).toBe(100000);
+      expect(data.quotas.provider_usage?.workers_requests.used ?? null).toBeNull();
+    }
+    expect(f.count("telemetry_events")).toBe(0);
+    f.sqlite.close();
+  });
+
+  it("isolates the outer private metrics cache by provider configuration and UTC date", async () => {
+    const f = fixture();
+    const previousFetch = globalThis.fetch;
+    const RealDate = Date;
+    let clock = new RealDate("2026-10-28T12:00:00Z").getTime();
+    const requests: string[] = [];
+    globalThis.Date = class extends RealDate {
+      constructor(...args: ConstructorParameters<typeof Date>) { super(...(args.length ? args : [clock])); }
+      static now() { return clock; }
+    } as DateConstructor;
+    globalThis.fetch = async (input, init) => {
+      requests.push(String(input));
+      if (String(input).includes("/access/users")) return Response.json({ success: true, result: [], result_info: { page: 1, total_pages: 1 } });
+      const query = JSON.parse(String(init?.body)).query as string;
+      const value = (init?.headers as Record<string, string>).Authorization.includes("token-b") ? 9 : 3;
+      const field = ["workersInvocationsAdaptive", "d1AnalyticsAdaptiveGroups", "r2StorageAdaptiveGroups", "r2OperationsAdaptiveGroups"].find((item) => query.includes(item));
+      const rows = field === "workersInvocationsAdaptive" ? [{ sum: { requests: value } }] : field === "d1AnalyticsAdaptiveGroups" ? [{ sum: { rowsRead: value, rowsWritten: 0 } }] : field === "r2StorageAdaptiveGroups" ? [{ max: { payloadSize: value, metadataSize: 0 }, dimensions: { datetime: new RealDate(clock).toISOString() } }] : [];
+      return Response.json({ data: { viewer: { accounts: [{ [field!]: rows }] } } });
+    };
+    try {
+      const common = { ...f.env, ADMIN_ACCESS_TOKEN: "test-only-admin-token-at-least-20", CLOUDFLARE_ANALYTICS_DATABASE_ID: "db" };
+      const get = async (config: object) => {
+        const res = await worker.fetch(new Request("https://arturonavax.dev/api/metrics", { headers: { Authorization: "Bearer test-only-admin-token-at-least-20" } }), { ...common, ...config }, f.ctx);
+        return { status: res.status, header: res.headers.get("X-Telemetry-Source"), body: await res.json() };
+      };
+      const a = { CLOUDFLARE_ANALYTICS_API_TOKEN: "token-a", CLOUDFLARE_ANALYTICS_ACCOUNT_ID: "account-a", CLOUDFLARE_ANALYTICS_BUCKET_NAME: "bucket-a" };
+      const first = await get(a);
+      expect(first.status).toBe(200);
+      expect(first.body.quotas.provider_usage.workers_requests.used).toBe(3);
+      const count = requests.length;
+      expect((await get(a)).header).toBe("edge-memory-cache");
+      expect(requests).toHaveLength(count);
+      const changed = await get({ ...a, CLOUDFLARE_ANALYTICS_API_TOKEN: "token-b" });
+      expect(changed.header).not.toBe("edge-memory-cache");
+      expect(changed.body.quotas.provider_usage.workers_requests.used).toBe(9);
+      for (const config of [{ ...a, CLOUDFLARE_ANALYTICS_ACCOUNT_ID: "account-b" }, { ...a, CLOUDFLARE_ANALYTICS_BUCKET_NAME: "bucket-b" }]) {
+        const before = requests.length;
+        expect((await get(config)).header).not.toBe("edge-memory-cache");
+        expect(requests.length).toBeGreaterThan(before);
+      }
+      clock = new RealDate("2026-10-29T00:00:00Z").getTime();
+      const today = await get(a);
+      expect(today.header).not.toBe("edge-memory-cache");
+      expect(today.body.quotas.provider_usage.workers_requests.period).toContain("2026-10-29");
+      expect(f.count("telemetry_events")).toBe(0);
+    } finally { globalThis.Date = RealDate; globalThis.fetch = previousFetch; f.sqlite.close(); }
+  });
+
   it("does not present fabricated provider usage as measured counters", async () => {
     const f = fixture();
     const env = {
@@ -418,14 +438,13 @@ describe("production-shaped telemetry and admin contracts", () => {
     );
     expect(response.status).toBe(200);
     const body = (await response.json()) as { quotas: Record<string, any> };
-    expect(body.quotas.workers_daily.used).toBeNull();
-    expect(body.quotas.workers_monthly.used).toBeNull();
-    expect(body.quotas.r2_class_a_monthly.used).toBeNull();
-    expect(body.quotas.pages_builds_monthly.used).toBeNull();
-    expect(body.quotas.usage_evidence).toMatchObject({
-      workers: "unavailable",
-      d1: "local_estimate",
-    });
+    expect(body.quotas.provider_usage.workers_requests).toMatchObject({ used: null, status: "setup_required" });
+    expect(body.quotas.provider_usage.d1_rows_read.used).toBeNull();
+    expect(body.quotas.provider_usage.r2_class_a.used).toBeNull();
+    expect(body.quotas.strategy.daily_write_budget).toBe(100000);
+    expect(body.quotas.workers_daily).toBeUndefined();
+    expect(body.quotas.workers_monthly).toBeUndefined();
+    expect(body.quotas.pages_builds_monthly).toBeUndefined();
     f.sqlite.close();
   });
 

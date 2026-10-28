@@ -12,7 +12,6 @@ export * from "./cloudflare/deployment-registry.adapter";
 export * from "./fallback/local-filesystem-storage.adapter";
 export * from "./fallback/s3-storage.adapter";
 export * from "./fallback/static-memory-search.adapter";
-export * from "./fallback/sqlite-telemetry.adapter";
 export * from "./fallback/honeypot-captcha.adapter";
 export * from "./fallback/memory-cache.adapter";
 
