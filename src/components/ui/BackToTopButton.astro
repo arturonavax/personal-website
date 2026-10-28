@@ -47,6 +47,10 @@ const isEs = locale === "es";
         : window.pageYOffset || document.documentElement.scrollTop || 0;
       var shouldShow = scrollY > 400;
 
+      // Scrolling within the same visibility range should not rewrite classes
+      // or queue a transition frame on every native scroll event.
+      if (animate && btn.classList.contains("opacity-100") === shouldShow) return;
+
       if (!animate) {
         btn.classList.add("no-transition");
       }
