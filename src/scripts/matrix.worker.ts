@@ -1,4 +1,5 @@
 import { MatrixGrid } from "./matrix-grid";
+import { MatrixQuality } from "./matrix-quality";
 import { resizeMatrixSurface } from "./matrix-viewport";
 
 /// Matrix rain renderer running entirely off the main thread (OffscreenCanvas + dedicated Worker).
@@ -37,6 +38,11 @@ interface PointerMessage {
   active: boolean;
 }
 
+interface QualityMessage {
+  type: "quality";
+  level: 0 | 1 | 2;
+}
+
 interface PauseMessage {
   type: "pause";
 }
@@ -51,6 +57,7 @@ type InboundMessage =
   | ThemeMessage
   | VisibilityMessage
   | PointerMessage
+  | QualityMessage
   | PauseMessage
   | ResumeMessage;
 
@@ -71,10 +78,12 @@ let hidden = false;
 let frameTimerId: number | null = null;
 let grid: MatrixGrid | null = null;
 let lastRenderTime: number | null = null;
+const quality = new MatrixQuality();
+let viewport = { width: 0, height: 0, dpr: 1 };
 function layout(w: number, h: number, dpr: number): void {
   if (!canvas || !ctx) return;
-  resizeMatrixSurface(canvas, ctx, w, h, dpr);
-
+  viewport = { width: w, height: h, dpr };
+  resizeMatrixSurface(canvas, ctx, w, h, dpr, quality.scale);
   grid?.resize(w, h);
 }
 
@@ -84,8 +93,11 @@ function scheduleNextFrame(): void {
   // bounded timer keeps OffscreenCanvas painting during main-thread navigation.
   const delay =
     lastRenderTime === null
-      ? FRAME_INTERVAL
-      : Math.max(0, FRAME_INTERVAL - (performance.now() - lastRenderTime));
+      ? quality.frameInterval
+      : Math.max(
+          0,
+          quality.frameInterval - (performance.now() - lastRenderTime),
+        );
   frameTimerId = scope.setTimeout(
     () => render(performance.now()),
     Math.ceil(delay),
@@ -109,7 +121,11 @@ function render(now: number): void {
       ? FRAME_INTERVAL
       : Math.min(now - lastRenderTime, FRAME_INTERVAL * 2);
   lastRenderTime = now;
+  const started = performance.now();
   grid?.draw(elapsed);
+  if (quality.record(performance.now() - started, performance.now())) {
+    layout(viewport.width, viewport.height, viewport.dpr);
+  }
   scheduleNextFrame();
 }
 
@@ -145,6 +161,13 @@ scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
         lastRenderTime = null;
         stopFrameLoop();
       } else {
+        scheduleNextFrame();
+      }
+      break;
+    case "quality":
+      if (quality.setMinimumLevel(msg.level)) {
+        layout(viewport.width, viewport.height, viewport.dpr);
+        stopFrameLoop();
         scheduleNextFrame();
       }
       break;

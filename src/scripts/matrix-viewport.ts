@@ -5,12 +5,14 @@ export function resizeMatrixSurface(
   width: number,
   height: number,
   dpr: number,
+  qualityScale = 1,
 ): void {
-  const scale = Math.min(
-    dpr || 1,
-    1,
-    Math.sqrt((1920 * 1080) / Math.max(1, width * height)),
-  );
+  const scale =
+    Math.min(
+      dpr || 1,
+      1,
+      Math.sqrt((1920 * 1080) / Math.max(1, width * height)),
+    ) * qualityScale;
   const w = Math.max(1, Math.floor(width * scale));
   const h = Math.max(1, Math.floor(height * scale));
   if (canvas.width !== w) canvas.width = w;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { MatrixGrid } from "../src/scripts/matrix-grid";
+import { MatrixQuality } from "../src/scripts/matrix-quality";
 import { resizeMatrixSurface } from "../src/scripts/matrix-viewport";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -9,7 +10,7 @@ const source = new Bun.Transpiler({ loader: "ts" }).transformSync(
     new URL("../src/scripts/matrix.worker.ts", import.meta.url),
     "utf8",
   ).replace(
-    /import \{ (?:MatrixGrid|resizeMatrixSurface) \} from "\.\/matrix-(?:grid|viewport)";\s*/g,
+    /import \{ (?:MatrixGrid|MatrixQuality|resizeMatrixSurface) \} from "\.\/matrix-(?:grid|quality|viewport)";\s*/g,
     "",
   ),
 );
@@ -20,6 +21,7 @@ function renderer(ownerBlocked = false) {
   let ticks = 0;
   let overlaps = 0;
   let rasterizations = 0;
+  let renderCost = 0;
   const occupied = new Map<string, string>();
   const pending = new Map<number, { at: number; run: () => void }>();
   const paints: { time: number; alpha: number }[] = [];
@@ -37,6 +39,7 @@ function renderer(ownerBlocked = false) {
     fillStyle: "",
     font: "",
     clearRect(x: number, y: number, w: number, h: number) {
+      now += renderCost;
       clears.push(now);
       for (const key of occupied.keys()) {
         const [cx, cy] = key.split(":").map(Number);
@@ -104,6 +107,7 @@ function renderer(ownerBlocked = false) {
     resizeMatrixSurface,
     performance: { now: () => now },
     Math: random,
+    MatrixQuality,
     MatrixGrid: class extends MatrixGrid {
       constructor(ctx: ConstructorParameters<typeof MatrixGrid>[0]) {
         super(
@@ -156,6 +160,9 @@ function renderer(ownerBlocked = false) {
     clears,
     send,
     advance,
+    setRenderCost(cost: number) {
+      renderCost = cost;
+    },
     stall(duration: number) {
       now += duration;
       advance(0);
@@ -185,6 +192,36 @@ describe("Matrix Worker frame independence", () => {
     app.advance(1000);
     expect(app.ticks).toBeGreaterThanOrEqual(55);
     expect(app.ticks).toBeLessThanOrEqual(61);
+    expect(app.pending.size).toBe(1);
+  });
+
+  it("reduces raster work only after sustained expensive paints, then restores it", () => {
+    const app = renderer();
+    app.advance(1500);
+    expect(app.pending.size).toBe(1);
+    expect(app.canvas.width).toBe(140);
+    app.setRenderCost(20);
+    app.advance(4000);
+    expect(app.canvas.width).toBeLessThan(140);
+    const slowerFrames = app.clears.length;
+    app.advance(1000);
+    expect(app.clears.length - slowerFrames).toBeLessThan(50);
+    app.setRenderCost(0);
+    app.advance(13_000);
+    expect(app.canvas.width).toBe(140);
+    expect(app.pending.size).toBe(1);
+  });
+
+  it("applies a scroll quality floor without replacing the renderer or duplicating timers", () => {
+    const app = renderer();
+    app.advance(2000);
+    app.send({ type: "quality", level: 2 });
+    expect(app.canvas.width).toBe(70);
+    expect(app.pending.size).toBe(1);
+    app.send({ type: "quality", level: 2 });
+    expect(app.pending.size).toBe(1);
+    app.send({ type: "quality", level: 0 });
+    expect(app.canvas.width).toBe(140);
     expect(app.pending.size).toBe(1);
   });
 
