@@ -37,6 +37,29 @@ section#contact {
   contain-intrinsic-size: auto 600px;
 }
 
+/* Reveal the long homepage timeline one card at a time, not in one scroll frame. */
+section#experience.home-experience {
+  content-visibility: visible;
+}
+
+section#experience.home-experience [data-experience-item] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 630px;
+}
+
+html.is-anchor-scrolling
+  section#experience.home-experience
+  [data-experience-item],
+html.hydrated-sections
+  section#experience.home-experience
+  [data-experience-item],
+section#experience.home-experience
+  [data-experience-item]:has([data-company-tooltip-root]:hover),
+section#experience.home-experience
+  [data-experience-item]:has([data-tooltip-open="true"]) {
+  content-visibility: visible;
+}
+
 html.is-anchor-scrolling main section,
 html.is-anchor-scrolling footer,
 html.hydrated-sections section#experience,
