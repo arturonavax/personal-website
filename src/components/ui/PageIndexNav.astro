@@ -953,7 +953,8 @@ const asideWidthClass = isJobPage ? "w-52" : "w-64";
       var targetEl = document.getElementById(targetId);
       if (!targetEl) return;
 
-      // Ensure offscreen sections are fully measured during anchor navigation
+      // Explicit navigation needs stable geometry; wheel input stays virtualized.
+      document.documentElement.classList.add("hydrated-sections");
       document.documentElement.classList.add("is-anchor-scrolling");
 
       window.__isProgrammaticNav = true;

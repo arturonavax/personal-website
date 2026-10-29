@@ -486,6 +486,8 @@ const email = "arturo@arturonavax.dev";
       var sec = getContactSec();
       if (!sec) return;
 
+      // Resolve section geometry for an explicit jump, never ordinary scrolling.
+      document.documentElement.classList.add("hydrated-sections");
       highlightContact();
       if (typeof window.__setActiveNavSection === "function") {
         window.__setActiveNavSection("contact");

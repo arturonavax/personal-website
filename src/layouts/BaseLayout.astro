@@ -652,7 +652,10 @@ const hasShortcuts = Boolean(shortcuts?.length);
     <script>
       import { handleEscapeKey } from "@/lib/navigation/escape-router";
       import { setupHistoryScrollRouter } from "@/lib/navigation/history-scroll-router";
-      import { navigate } from "astro:transitions/client";
+      import {
+        navigate,
+        type TransitionBeforeSwapEvent,
+      } from "astro:transitions/client";
 
       (window as any).__astroNavigate = (url: string) => void navigate(url);
       setupHistoryScrollRouter();
@@ -780,7 +783,12 @@ const hasShortcuts = Boolean(shortcuts?.length);
           mobileMenu.removeAttribute("open");
         }
       });
-      document.addEventListener("astro:before-swap", () => {
+      document.addEventListener("astro:before-swap", (event) => {
+        const swap = event as TransitionBeforeSwapEvent;
+        if (swap.navigationType === "traverse" || swap.to.hash) {
+          // Explicit jumps need complete geometry before native restoration.
+          swap.newDocument.documentElement.classList.add("hydrated-sections");
+        }
         hideBeacon(true);
         document.querySelectorAll("dialog[open]").forEach((d) => {
           try {
@@ -808,38 +816,19 @@ const hasShortcuts = Boolean(shortcuts?.length);
       });
       window.addEventListener("pageshow", () => hideBeacon());
 
-      // Task 5: Instant Section Hydration for Seamless Anchor & Cross-Page Hash Navigation
-      function hydrateSections() {
-        document.documentElement.classList.add("hydrated-sections");
-      }
+      // Ordinary pointer/touch/wheel input must not disable viewport rendering.
+      // Preserve full geometry only after an explicit fragment/history jump.
       function setupSectionHydration() {
-        if (
-          window.location.hash ||
-          (typeof window !== "undefined" && window.scrollY > 0)
-        ) {
-          hydrateSections();
-          return;
+        if (window.location.hash) {
+          document.documentElement.classList.add("hydrated-sections");
         }
-        window.addEventListener("scroll", hydrateSections, {
-          once: true,
-          passive: true,
-        });
-        window.addEventListener("pointerdown", hydrateSections, {
-          once: true,
-          passive: true,
-        });
-        window.addEventListener("pointerenter", hydrateSections, {
-          once: true,
-          passive: true,
-        });
-        window.addEventListener("touchstart", hydrateSections, {
-          once: true,
-          passive: true,
-        });
       }
       setupSectionHydration();
-      window.addEventListener("hashchange", hydrateSections, { passive: true });
+      window.addEventListener("hashchange", setupSectionHydration, {
+        passive: true,
+      });
       document.addEventListener("astro:page-load", setupSectionHydration);
+
       document.addEventListener("astro:after-swap", () => {
         hideBeacon(true);
         try {
