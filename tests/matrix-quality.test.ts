@@ -31,6 +31,23 @@ describe("scroll-local Matrix composition trial", () => {
     expect(quality.reset()).toBe(0);
   });
 
+  it("trials spaced missed scroll frames even when most frames stay at refresh rate", () => {
+    const quality = new MatrixScrollQuality();
+    let now = 0;
+    let change: number | undefined;
+    for (let i = 0; i < 24; i++) {
+      const gap = i === 4 || i === 16 ? 33.4 : 16.7;
+      now += gap;
+      change = quality.record(gap, now) ?? change;
+    }
+    expect(change).toBe(1);
+    for (let i = 0; i < 24; i++) {
+      now += 16.7;
+      change = quality.record(16.7, now) ?? change;
+    }
+    expect(change).toBe(1);
+  });
+
   it("tries near-static decoration if half-rate is insufficient", () => {
     const quality = new MatrixScrollQuality();
     expect(feed(quality, 50, 0)).toBe(1);

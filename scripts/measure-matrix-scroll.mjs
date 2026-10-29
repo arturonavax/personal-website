@@ -3,7 +3,10 @@
 import { chromium } from "@playwright/test";
 
 const browser = await chromium.launch({
-  headless: true,
+  headless: process.env.MATRIX_HEADFUL !== "1",
+  ...(process.env.MATRIX_CHROMIUM_PATH
+    ? { executablePath: process.env.MATRIX_CHROMIUM_PATH }
+    : {}),
   args:
     process.env.MATRIX_SOFTWARE === "0"
       ? []
@@ -28,8 +31,9 @@ try {
       : page.waitForEvent("worker", (worker) =>
           worker.url().includes("matrix.worker"),
         );
+  const path = process.env.MATRIX_PATH ?? "/projects/";
   await page.goto(
-    `${process.env.MATRIX_BASE_URL ?? "http://127.0.0.1:8788"}/projects/`,
+    `${process.env.MATRIX_BASE_URL ?? "http://127.0.0.1:8788"}${path}`,
     {
       waitUntil: "networkidle",
     },
@@ -66,6 +70,7 @@ try {
       renderer: gpu.auxAttributes?.glRenderer,
       softwareCompositing: gpu.featureStatus?.gpu_compositing,
       viewport: "1440x900",
+      path,
       matrixEnabled: process.env.MATRIX_DISABLE !== "1",
       samples: gaps.length,
       p50FrameIntervalMs: p50,

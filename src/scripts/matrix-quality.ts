@@ -77,6 +77,8 @@ export class MatrixScrollQuality {
     "baseline";
   private gaps: number[] = [];
   private baseline = 0;
+  private baselineMedian = 0;
+  private baselineMisses = 0;
   private rejectUntil = 0;
 
   record(gap: number, now: number): 0 | 1 | 2 | undefined {
@@ -90,16 +92,35 @@ export class MatrixScrollQuality {
       return;
     this.gaps.push(gap);
     if (this.gaps.length < 24) return;
-    const sorted = this.gaps.sort((a, b) => a - b);
+    const sorted = [...this.gaps].sort((a, b) => a - b);
+    const median = sorted[12]!;
     const p75 = sorted[18]!;
+    // Sparse frame misses can be invisible at p75. Require separated misses
+    // rather than treating one long stall (or its adjacent frames) as pressure.
+    let misses = 0;
+    let lastMiss = -4;
+    for (const [index, interval] of this.gaps.entries()) {
+      if (interval > median * 1.5 && index - lastMiss >= 4) {
+        misses++;
+        lastMiss = index;
+      }
+    }
     this.gaps = [];
     if (this.stage === "baseline") {
-      if (now < this.rejectUntil || p75 < 30) return;
+      if (now < this.rejectUntil || (p75 < 30 && misses < 2)) return;
       this.baseline = p75;
+      this.baselineMedian = median;
+      this.baselineMisses = misses;
       this.stage = "half";
       return 1;
     }
-    if (p75 <= this.baseline * 0.8) {
+    if (
+      p75 <= this.baseline * 0.8 ||
+      (this.baselineMisses >= 2 &&
+        median <= this.baselineMedian * 1.1 &&
+        p75 <= this.baseline * 1.1 &&
+        misses <= this.baselineMisses / 2)
+    ) {
       this.stage = "confirmed";
       return this.lastTrial;
     }
@@ -119,6 +140,8 @@ export class MatrixScrollQuality {
     this.stage = "baseline";
     this.gaps = [];
     this.baseline = 0;
+    this.baselineMedian = 0;
+    this.baselineMisses = 0;
     this.lastTrial = 1;
     return 0;
   }
