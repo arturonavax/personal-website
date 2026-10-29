@@ -203,7 +203,9 @@ The actual `universal-search-modal` custom-element root persists across route sw
 
 Language controls MUST bypass ordinary Header navigation reset handling: their existing owner captures/restores the current pixel offset. Theme changes preserve the viewport through the existing native reveal or reduced-motion fallback without a second restoration owner. Ordinary page navigation still resets intentionally. Browser regression coverage uses visible raw-coordinate controls across both locales, desktop/mobile and both motion modes, preserving Matrix canvas identity (`tests/preference-scroll.spec.ts`). See `docs/preference-scroll.md`.
 
-## Bounded scroll containment correction (local, not yet deployed)
+## Bounded scroll containment correction (deployed 2026-10-28)
+
+Published from correction commit `9a9d5bc` as Worker version `c2f0e58a-9d0c-456f-8fe3-f0adf3833478`, without D1 or Access changes. Existing browser tabs may need a full reload to replace their previous runtime listeners.
 
 Ordinary pointer/touch/wheel input must not force all below-fold sections to `content-visibility: visible`. Preserve browser-managed automatic rendering until an explicit fragment, page-index/contact or history jump requires complete geometry. Native Astro history destinations are prepared in `astro:before-swap`; no competing history/scroll owner or per-frame measurement is added. Existing Matrix canvas/Worker/clock, themes, tools, telemetry and authentication are unchanged.
 

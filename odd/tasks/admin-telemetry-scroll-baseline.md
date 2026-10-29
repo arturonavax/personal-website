@@ -1,6 +1,6 @@
 # Admin, telemetry and scroll baseline
 Objective: repair visit visibility, simplify the demo baseline, make admin entry/auth consistent, obtain real provider metrics and improve scroll.
-Branch: fix/admin-scroll-regression, based on main 60003d9. Previous production version: 7a58c302-f196-4e03-9f37-e713f1e3266e. Performance correction verified locally, not yet deployed; publication/integration needs a fresh decision. No push. Previous failures and verification limits remain recorded.
+Correction branch: fix/admin-scroll-regression. Runtime correction commit: 9a9d5bc. Published Worker version: c2f0e58a-9d0c-456f-8fe3-f0adf3833478 (2026-10-28). Local main integration is authorized and in progress; no push. Prior cutover/failure records below remain historical.
 
 ## Specs
 - S1: "No encuentro los registros con los datos telemetricos que te pedi, no deberian estar en la pagina de visitas y ya?" Reminder: "No olvides los datos telemetricos que te pedi, pais, region, tipo de dispositivo etc etc" Original referenced requirement: "quiero que cada visita registre pais, region/estado, sistema operativo, tipo de dispositivo, navegador, idioma del navegador."
@@ -16,8 +16,10 @@ Branch: fix/admin-scroll-regression, based on main 60003d9. Previous production 
 - S11: "El rendimiento de la web y el scroll a caido brutalmente, ahora funciona muy mal y a bajos FPS, y la ruta arturonavax.dev/admin ni admin.arturonavax.dev funcionan (no accede)"
 - S12: "Acabo de revisar y si funciona el admin, solo es una cuestion de cache en mi navegador que aun redirecciona automaticamente a admin.arturonavax.dev, al probar en modo incognito si funciona. Solo centrate en arreglar el rendimiento, el scroll y que la pagina funcione a maximos FPS super liviana."
 
+- S13: "Sí: desplegar, fusionar y borrar la rama fusionada"; "Publicar sólo la corrección de renderizado, fusionar en main y borrar su rama. Sin push, reset de D1 ni cambios de Access; sin más rondas de pruebas."
 
 ## Tasks
+- T10 [S12,S13] in_progress (production deployment completed; local integration/branch cleanup pending) | route: parent authorized publication | fresh build + deploy correction only, fast-forward main, delete merged correction branch; no push/D1/Access changes | Risk: items 3,5 | commit: 9a9d5bc.
 - T8 [S8,S9] done (Access migrated, selected D1 reset and Worker deployed; live routing/schema observed, optional external metrics unavailable) | route: parent authorized cutover; read-only capability helper | prepare production metric identifiers, preserve Access policy, provision dedicated read token, reset only selected D1 and deploy without push after prerequisites are available | Risk: items 1,2,5 | commit: 5f4fd28.
 - T1 [S1-S5] done | route: delegated worker (context backstop; read-only diagnosis + excluded evidence only) | reproduce URL/metric/data problems, identify provider prerequisites and profile scroll feasibility | commit: none.
 - T2 [S3,S6,S11,S12] done (owner confirms admin works in incognito; failure was cached legacy-host redirect; no auth changes) | route: delegated worker (context backstop) | consistent admin canonical routing and authentication, tests and current docs | Risk: item 2 | commit: 5f4fd28.
@@ -116,12 +118,6 @@ Branch: fix/admin-scroll-regression, based on main 60003d9. Previous production 
 
 - L71 NewuserfailureVERBATIM: "El rendimiento de la web y el scroll a caido brutalmente, ahora funciona muy mal y a bajos FPS, y la ruta arturonavax.dev/admin ni admin.arturonavax.dev funcionan (no accede)". ReopenONLYaffectedT2/S3andT5/S5withS11. PriorHEAD302/readcolumnsNEVERprovedownerloginorFPS; doNOTclaimalreadyworking. Currentmain60003d9clean,branchfix/admin-scroll-regressioncreatedbeforecorrections. No newD1reset,noblindrollbacktoschema-incompatibleoldWorker. Firstoneboundedread-onlyactualreproduction/sourcecausalmap; preserveguard/MFA/issuer/email,countries6fields,Matrixclock andcachedexperience. No prodmutations/sourcefixyet; previousnoextra-test-loopprioritystillapplies, notpermissiontoskipreproducingreportedregression.
 
-- L72 BoundedcurrentdiagnosticsONLY: unauthapexEN/ES302->expectedAccessloginHTML200withoutpublicdenial;retiredadminhostDNSENOTFOUND(intentionallyremoved). CurrentappsameAUD/HTTPOnly/owneronlypolicy. Last2hminimalAccessauthenticationlogqueryreturned0events;notproofownerloginworksorwasnotattempted. SourceJWTsignature/issuer/aud/expiry/emailboundaryreadnotmodified. CodeGraphsyncup-to-date.
 
-[Showing lines 1-118 of 121 (50.0KB limit). Use offset=119 to continue.]
-
-[Showing lines 1-121 of 123 (50.0KB limit). Use offset=122 to continue.]
-
-[Showing lines 1-123 of 126 (50.0KB limit). Use offset=124 to continue.]
-- L78 IndependentboundedSOURCEreviewPASS(T5/S5/S12),no severe candidate-caused regressionestablished; notruntime/deploymentcertification. SourceuncertaintyPageIndexJ/Krectselectionbeforewarmnotdemonstratedfailure,notnewautomaticcheck. Parent3browsercasesPASS10.1s; pnpmcheck143files0errors0warnings0hints(exit0). No furtherprofiles/suites. NativeASSESSunassessablepackage-local-binary-missing;agentEscalation3/highrequiredindependentsourceviewwhichcompleted,notnativeapproval. Localcorrectionready;no sourcepublishing/merge/accountchangeafteroldS8cutoverinthisperformanceunit. Newpublicationdecisionawaited.
-- L79 UserreminderVERBATIM: "The todo plan has not been reviewed during several tool-use turns. Check whether it still matches the work performed and update tasks where needed. Do not mark work done without verification." Visibleplanreconciled: diagnosis/localcode/localchecksDONEonlyafterobservedresults; commitactive; newdeployment/integrationBLOCKEDonhuman,notfalselydone. No moretest/profileloops. Correctiononeworkunitunder400authoredlines; includeactualfailedcandidate/probeconditionhistoryandlimits.
+[Showing lines 1-120 of 128 (50.0KB limit). Use offset=121 to continue.]
+- L81 Actualauthorizedpublicationcompletedjob19exit0(49s):freshlocalcontentAstrobuild+vaultisolationthenSKIP_BUILDWranglerdeployofsource9a9d5bc. Versionc2f0e58a-9d0c-456f-8fe3-f0adf3833478,existingapex/blog/crons. No D1reset/Access/DNS/WAF/secretchange/newtest/profileloop/push. Initialtoolenvelopelabel-lengthvalidationfailedBEFOREexecutionthenonlyvalidjob19executed,noduplicatebuild/deploy. Two serialmeasurementJSONsummarieskeptunderignored.astro/admin-scroll-regression/evidence; exactauthorized/tmpRootremoved,noactiveownedserver/browser. RuntimepublicationDONE;localmainFFandmergedbranchdeleteNEXT,notfalselyclaimedbeforeGitresults.
