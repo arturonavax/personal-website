@@ -543,12 +543,31 @@ body::-webkit-scrollbar-thumb:hover,
   color: var(--color-btn-gold-text);
 }
 
-body {
+/* Keep the viewport gradient in its own fixed layer instead of rerasterizing
+   the document background while large software-rendered pages scroll. */
+html::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background-color: var(--color-surface-bg);
   background-image:
     radial-gradient(circle at 50% 0%, #180406 0%, transparent 75%),
     linear-gradient(to bottom, transparent, #0a0203);
-  background-attachment: fixed;
+}
+
+html[data-theme="light"]::before {
+  background-image:
+    radial-gradient(circle at 50% 0%, #edeae4 0%, transparent 75%),
+    linear-gradient(to bottom, #f5f4ef, #edeae4);
+}
+
+body {
+  position: relative;
+  z-index: 1;
+  background-color: transparent;
+  background-image: none;
   color: var(--color-text-primary);
   font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
@@ -561,10 +580,6 @@ body {
 }
 
 html[data-theme="light"] body {
-  background-color: var(--color-surface-bg);
-  background-image:
-    radial-gradient(circle at 50% 0%, #edeae4 0%, transparent 75%),
-    linear-gradient(to bottom, #f5f4ef, #edeae4);
   color: var(--color-text-primary);
 }
 
@@ -809,6 +824,10 @@ html[data-theme-transition-direction="to-light"]::view-transition-new(root),
     /* Clave para Firefox: margin 0 suprime títulos de ventana, fecha y pie de página feo */
     margin: 0mm !important;
     size: A4 portrait;
+  }
+
+  html::before {
+    display: none !important;
   }
 
   html,

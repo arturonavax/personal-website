@@ -154,6 +154,8 @@ Native dialogs/semantic controls and visible focus states MUST remain keyboard a
 
 The visual language MUST preserve the current semantic tokens rather than introduce a second palette/component system: Geist Sans/Mono families, garnet surfaces, restrained gold accents, precision borders, responsive type/spacing, and light/dark equivalents. `global.css` owns theme tokens, font fallback metrics, selection/scrollbars, content containment, print exclusions, and reduced-motion overrides. Print-specific resume behavior is specified in Platform.
 
+The viewport gradient is a fixed, pointer-transparent `html::before` layer at z-index 0 in both themes; the transparent body forms the foreground stacking context at z-index 1. Keep its dark/light colors, Matrix and foreground ordering, theme prepaint, and interactive hit targets intact. Print suppresses the gradient layer and retains the existing white background. Do not move the gradients back to the scrolling body's fixed background: on a local 3840×2020 Brave configuration with accelerated canvas and GPU rasterization disabled, that composition coincided with multi-second software-raster stalls. `tests/background-layer.spec.ts` checks the browser-visible layer arrangement across locales, themes, another route, and print media; it does not certify physical-display smoothness or full pixel equivalence.
+
 The shared `.geometric-box` MUST use one parent geometry and two pointer-transparent full-bound pseudo-element strokes:
 
 - Default radius is 0.25rem in the components layer. Actual responsive radius utilities remain authoritative via `border-radius: var(--geometric-radius, revert-layer)`; an explicit token may override them.
