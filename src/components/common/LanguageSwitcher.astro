@@ -63,8 +63,9 @@ const effectiveTargetUrl =
 </nav>
 
 <script>
-  // Keep counterpart links synchronized after native ClientRouter swaps. Astro
-  // owns fetch, history, scroll and lifecycle; no second navigation owner.
+  // Astro owns navigation and history; only the locale click's viewport offset
+  // is restored after Astro has performed its default scroll for the new page.
+  let pendingScroll: { url: string; y: number } | null = null;
   function syncLanguageSwitcherTargetUrls() {
     const targetUrls: Record<string, string> = {};
     document.head.querySelectorAll<HTMLLinkElement>('link[rel="alternate"][hreflang]').forEach((link) => {
@@ -81,7 +82,14 @@ const effectiveTargetUrl =
 
   if (!(window as Window & { __languageSwitcherInstalled?: boolean }).__languageSwitcherInstalled) {
     (window as Window & { __languageSwitcherInstalled?: boolean }).__languageSwitcherInstalled = true;
-    document.addEventListener("astro:after-swap", syncLanguageSwitcherTargetUrls);
+    document.addEventListener("astro:after-swap", () => {
+      syncLanguageSwitcherTargetUrls();
+      const pending = pendingScroll;
+      pendingScroll = null;
+      if (pending && location.href === pending.url) {
+        window.scrollTo({ top: pending.y, behavior: "instant" });
+      }
+    });
     document.addEventListener("click", (event) => {
       const link = (event.target as Element)?.closest<HTMLAnchorElement>("[data-lang-switch]");
       if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -92,6 +100,7 @@ const effectiveTargetUrl =
       if (!target.search) target.search = location.search;
       if (!target.hash) target.hash = location.hash;
       link.href = target.href;
+      pendingScroll = { url: target.href, y: window.scrollY };
       try {
         sessionStorage.setItem("preferred_locale", lang);
         sessionStorage.setItem("lang_manual_override", "true");

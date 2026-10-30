@@ -3,9 +3,10 @@
 Changing language or theme preserves the current viewport position. Ordinary page
 navigation still intentionally resets to the top.
 
-`LanguageSwitcher.astro` owns locale links, captures their current scroll offset,
-swaps localized content and restores the offset before emitting its lifecycle
-events. Header navigation must exclude `[data-lang-switch]` links from its
+`LanguageSwitcher.astro` owns locale links and captures their current scroll offset
+at the click. Astro swaps localized content and performs its default scroll; the
+switcher restores the offset on `astro:after-swap` without taking over navigation
+or history. Header navigation must exclude `[data-lang-switch]` links from its
 ordinary `nav_reset_scroll` handling: otherwise BaseLayout consumes that flag
 after the locale restoration and moves the viewport back to the top.
 
