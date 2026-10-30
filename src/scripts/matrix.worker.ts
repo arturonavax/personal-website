@@ -38,11 +38,6 @@ interface PointerMessage {
   active: boolean;
 }
 
-interface QualityMessage {
-  type: "quality";
-  level: 0 | 1 | 2;
-}
-
 interface PauseMessage {
   type: "pause";
 }
@@ -57,7 +52,6 @@ type InboundMessage =
   | ThemeMessage
   | VisibilityMessage
   | PointerMessage
-  | QualityMessage
   | PauseMessage
   | ResumeMessage;
 
@@ -161,13 +155,6 @@ scope.onmessage = (event: MessageEvent<InboundMessage>): void => {
         lastRenderTime = null;
         stopFrameLoop();
       } else {
-        scheduleNextFrame();
-      }
-      break;
-    case "quality":
-      if (quality.setMinimumLevel(msg.level)) {
-        layout(viewport.width, viewport.height, viewport.dpr);
-        stopFrameLoop();
         scheduleNextFrame();
       }
       break;

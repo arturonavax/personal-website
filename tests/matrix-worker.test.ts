@@ -212,19 +212,6 @@ describe("Matrix Worker frame independence", () => {
     expect(app.pending.size).toBe(1);
   });
 
-  it("applies a scroll quality floor without replacing the renderer or duplicating timers", () => {
-    const app = renderer();
-    app.advance(2000);
-    app.send({ type: "quality", level: 2 });
-    expect(app.canvas.width).toBe(70);
-    expect(app.pending.size).toBe(1);
-    app.send({ type: "quality", level: 2 });
-    expect(app.pending.size).toBe(1);
-    app.send({ type: "quality", level: 0 });
-    expect(app.canvas.width).toBe(140);
-    expect(app.pending.size).toBe(1);
-  });
-
   it("bounds a delayed callback without accumulating catch-up debt", () => {
     const app = renderer();
     app.advance(3500);

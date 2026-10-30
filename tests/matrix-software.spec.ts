@@ -13,6 +13,54 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     },
   });
 
+  test("scrolling with slow owner frames does not freeze the Worker Matrix", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
+      localStorage.setItem("theme", "dark");
+      // Model presentation stalls independently of inexpensive Worker draws.
+      const raf = window.requestAnimationFrame.bind(window);
+      let slow = false;
+      window.addEventListener(
+        "scroll",
+        () => {
+          slow = true;
+        },
+        { passive: true },
+      );
+      window.requestAnimationFrame = (callback) =>
+        raf((time) => {
+          if (slow) window.setTimeout(() => callback(performance.now()), 50);
+          else callback(time);
+        });
+    });
+    const ready = page.waitForEvent("worker", (worker) =>
+      worker.url().includes("matrix.worker"),
+    );
+    const base = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788";
+    await page.goto(`${base}/projects/`, { waitUntil: "networkidle" });
+    await page.mouse.move(400, 400);
+    await ready;
+    // Keep scroll activity alive across successive slow-frame windows.
+    for (let i = 0; i < 30; i++) {
+      await page.evaluate(() => window.scrollBy(0, 20));
+      await page.waitForTimeout(100);
+    }
+    // Test the rendered decoration rather than an internal quality-message API.
+    const canvas = page.locator("#matrix-canvas");
+    const frames: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      frames.push(
+        createHash("sha256")
+          .update(await canvas.screenshot())
+          .digest("hex"),
+      );
+      if (i < 2) await page.waitForTimeout(200);
+    }
+    expect(new Set(frames).size).toBe(3);
+  });
+
   test("software-rendered Matrix records Worker and presented navigation activity separately", async ({
     page,
     browser,

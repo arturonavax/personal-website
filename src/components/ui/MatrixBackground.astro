@@ -35,10 +35,7 @@ const {
 
 <script>
   import { MatrixGrid } from "../../scripts/matrix-grid";
-  import {
-    MatrixQuality,
-    MatrixScrollQuality,
-  } from "../../scripts/matrix-quality";
+  import { MatrixQuality } from "../../scripts/matrix-quality";
   import {
     resizeMatrixSurface,
     observeMatrixViewport,
@@ -53,7 +50,6 @@ const {
     lastIsDark: boolean | null;
     syncTheme: () => void;
     setPaused: (paused: boolean) => void;
-    setQuality: (level: 0 | 1 | 2) => void;
   }
 
   declare global {
@@ -63,34 +59,6 @@ const {
       __matrixDrops?: number[];
       __matrixCanvas?: HTMLCanvasElement | null;
       __matrixListenersBound?: boolean;
-    }
-  }
-
-  function observeMatrixScrollQuality(singleton: MatrixSingleton) {
-    const quality = new MatrixScrollQuality();
-    let frameId = 0;
-    let last = 0;
-    let activeUntil = 0;
-    const frame = (now: number) => {
-      if (last) {
-        const level = quality.record(now - last, now);
-        if (level !== undefined) singleton.setQuality(level);
-      }
-      last = now;
-      if (now < activeUntil) {
-        frameId = requestAnimationFrame(frame);
-      } else {
-        frameId = 0;
-        last = 0;
-        singleton.setQuality(quality.reset());
-      }
-    };
-    const activate = () => {
-      activeUntil = performance.now() + 700;
-      if (!frameId) frameId = requestAnimationFrame(frame);
-    };
-    for (const event of ["wheel", "touchmove", "scroll"]) {
-      window.addEventListener(event, activate, { passive: true });
     }
   }
 
@@ -138,7 +106,6 @@ const {
       lastIsDark: null,
       syncTheme: () => {},
       setPaused: () => {},
-      setQuality: () => {},
     };
     window.__matrixSingleton = singleton;
     window.__matrixState = {
@@ -220,11 +187,6 @@ const {
             worker.postMessage({ type: paused ? "pause" : "resume" });
           };
 
-          singleton.setQuality = (level) => {
-            worker.postMessage({ type: "quality", level });
-          };
-          observeMatrixScrollQuality(singleton);
-
           observeMatrixViewport(canvas, (width, height, dpr) => {
             worker.postMessage({ type: "resize", width, height, dpr });
           });
@@ -263,20 +225,6 @@ const {
         if (paused !== p) lastFrame = 0;
         paused = p;
       };
-
-      singleton.setQuality = (level) => {
-        if (!quality.setMinimumLevel(level)) return;
-        resizeMatrixSurface(
-          canvas,
-          ctx,
-          w,
-          h,
-          window.devicePixelRatio || 1,
-          quality.scale,
-        );
-        grid.resize(w, h);
-      };
-      observeMatrixScrollQuality(singleton);
 
       const draw = (now: number) => {
         singleton.rafId = requestAnimationFrame(draw);

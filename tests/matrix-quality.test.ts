@@ -1,71 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import {
-  MatrixQuality,
-  MatrixScrollQuality,
-} from "../src/scripts/matrix-quality";
+import { MatrixQuality } from "../src/scripts/matrix-quality";
 
 function feed(quality: MatrixQuality, cost: number, start = 0, count = 90) {
   for (let i = 0; i < count; i++) quality.record(cost, start + i * 17);
 }
-
-describe("scroll-local Matrix composition trial", () => {
-  const feed = (quality: MatrixScrollQuality, gap: number, start: number) => {
-    let change: number | undefined;
-    for (let i = 0; i < 24; i++)
-      change = quality.record(gap, start + i * gap) ?? change;
-    return change;
-  };
-
-  it("does not touch a smooth device or react to isolated missed frames", () => {
-    const quality = new MatrixScrollQuality();
-    expect(feed(quality, 16.7, 0)).toBeUndefined();
-    for (let i = 0; i < 3; i++) quality.record(50, 500 + i * 50);
-    expect(feed(quality, 16.7, 700)).toBeUndefined();
-  });
-
-  it("tries lower raster work only after sustained scroll stalls and keeps a measured win", () => {
-    const quality = new MatrixScrollQuality();
-    expect(feed(quality, 33.4, 0)).toBe(1);
-    expect(feed(quality, 16.7, 1000)).toBe(1);
-    expect(feed(quality, 16.7, 1500)).toBeUndefined();
-    expect(quality.reset()).toBe(0);
-  });
-
-  it("trials spaced missed scroll frames even when most frames stay at refresh rate", () => {
-    const quality = new MatrixScrollQuality();
-    let now = 0;
-    let change: number | undefined;
-    for (let i = 0; i < 24; i++) {
-      const gap = i === 4 || i === 16 ? 33.4 : 16.7;
-      now += gap;
-      change = quality.record(gap, now) ?? change;
-    }
-    expect(change).toBe(1);
-    for (let i = 0; i < 24; i++) {
-      now += 16.7;
-      change = quality.record(16.7, now) ?? change;
-    }
-    expect(change).toBe(1);
-  });
-
-  it("tries near-static decoration if half-rate is insufficient", () => {
-    const quality = new MatrixScrollQuality();
-    expect(feed(quality, 50, 0)).toBe(1);
-    expect(feed(quality, 50, 1300)).toBe(2);
-    expect(feed(quality, 16.7, 2600)).toBe(2);
-    expect(quality.reset()).toBe(0);
-  });
-
-  it("rejects unrelated scroll stalls and defers another trial", () => {
-    const quality = new MatrixScrollQuality();
-    expect(feed(quality, 50, 0)).toBe(1);
-    expect(feed(quality, 50, 1300)).toBe(2);
-    expect(feed(quality, 50, 2600)).toBe(0);
-    expect(feed(quality, 50, 3900)).toBeUndefined();
-    quality.reset();
-    expect(feed(quality, 50, 5000)).toBeUndefined();
-  });
-});
 
 describe("adaptive Matrix raster budget", () => {
   it("keeps the full 60 Hz canvas on capable hardware and ignores short stalls", () => {
