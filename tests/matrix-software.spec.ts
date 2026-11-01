@@ -13,6 +13,156 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     },
   });
 
+  test("fast software scroll keeps the same canvas and Worker visible", async ({
+    page,
+    browser,
+  }) => {
+    const session = await browser.newBrowserCDPSession();
+    const { gpu } = await session.send("SystemInfo.getInfo");
+    expect(gpu.featureStatus?.gpu_compositing).toBe("disabled_software");
+    await page.setViewportSize({ width: 800, height: 600 });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
+      localStorage.setItem("theme", "dark");
+    });
+    const ready = page.waitForEvent("worker", (worker) =>
+      worker.url().includes("matrix.worker"),
+    );
+    await page.goto(
+      `${process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788"}/projects/`,
+      { waitUntil: "networkidle" },
+    );
+    await page.mouse.move(400, 400);
+    await ready;
+    const canvas = await page.locator("#matrix-canvas").elementHandle();
+    const worker = await page.evaluateHandle(
+      () => window.__matrixSingleton?.worker,
+    );
+    for (let i = 0; i < 85; i++) {
+      await page.evaluate((i) => window.scrollBy(0, i % 40 < 20 ? 15 : -15), i);
+      await page.waitForTimeout(25);
+    }
+    expect(
+      await page
+        .locator("#matrix-canvas")
+        .evaluate((node) => getComputedStyle(node).visibility),
+    ).toBe("visible");
+    expect(
+      await page
+        .locator("#matrix-canvas")
+        .evaluate((node, old) => node === old, canvas),
+    ).toBe(true);
+    expect(
+      await page.evaluate(
+        (old) => window.__matrixSingleton?.worker === old,
+        worker,
+      ),
+    ).toBe(true);
+  });
+
+  test("slow canvas-dependent scroll suppresses decoration without replacing canvas or Worker", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
+      localStorage.setItem("theme", "dark");
+      const raf = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) =>
+        raf((time) => {
+          const canvas = document.getElementById("matrix-canvas");
+          window.setTimeout(
+            () => callback(performance.now()),
+            canvas &&
+              getComputedStyle(canvas).visibility === "visible" &&
+              canvas.dataset.matrixPaused !== "true"
+              ? 34
+              : 0,
+          );
+        });
+    });
+    const ready = page.waitForEvent("worker", (worker) =>
+      worker.url().includes("matrix.worker"),
+    );
+    await page.goto(
+      `${process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8788"}/projects/`,
+      { waitUntil: "networkidle" },
+    );
+    await page.mouse.move(400, 400);
+    await ready;
+    await page.waitForTimeout(850);
+    await page.evaluate(() => {
+      const target = document.getElementById("matrix-canvas")!;
+      let wasHidden =
+        getComputedStyle(target).visibility === "hidden" ||
+        getComputedStyle(target).opacity === "0";
+      (
+        window as typeof window & { __matrixReappearBlinks?: number }
+      ).__matrixReappearBlinks = 0;
+      new MutationObserver(() => {
+        const style = getComputedStyle(target);
+        const nowHidden =
+          style.visibility === "hidden" || style.opacity === "0";
+        if (wasHidden && !nowHidden) {
+          (window as typeof window & { __matrixReappearBlinks: number })
+            .__matrixReappearBlinks++;
+        }
+        if (nowHidden) wasHidden = true;
+      }).observe(target, {
+        attributes: true,
+        attributeFilter: ["style", "class"],
+      });
+    });
+    const canvas = await page.locator("#matrix-canvas").elementHandle();
+    const worker = await page.evaluateHandle(
+      () => window.__matrixSingleton?.worker,
+    );
+    for (let i = 0; i < 210; i++) {
+      await page.evaluate((i) => window.scrollBy(0, i % 40 < 20 ? 10 : -10), i);
+      await page.waitForTimeout(30);
+    }
+    expect(
+      await page.evaluate(
+        () =>
+          (window as typeof window & { __matrixReappearBlinks?: number })
+            .__matrixReappearBlinks,
+      ),
+    ).toBe(0);
+    expect(
+      await page
+        .locator("#matrix-canvas")
+        .evaluate((node) => getComputedStyle(node).visibility),
+    ).toBe("hidden");
+    expect(
+      await page
+        .locator("#matrix-canvas")
+        .evaluate((node, old) => node === old, canvas),
+    ).toBe(true);
+    expect(
+      await page.evaluate(
+        (old) => window.__matrixSingleton?.worker === old,
+        worker,
+      ),
+    ).toBe(true);
+    await page.locator('header a[href="/services/"]').first().click();
+    await page.waitForURL("**/services/");
+    expect(
+      await page
+        .locator("#matrix-canvas")
+        .evaluate((node) => getComputedStyle(node).visibility),
+    ).toBe("hidden");
+    expect(
+      await page
+        .locator("#matrix-canvas")
+        .evaluate((node, old) => node === old, canvas),
+    ).toBe(true);
+    expect(
+      await page.evaluate(
+        (old) => window.__matrixSingleton?.worker === old,
+        worker,
+      ),
+    ).toBe(true);
+  });
+
   test("scrolling with slow owner frames does not freeze the Worker Matrix", async ({
     page,
   }) => {
@@ -42,12 +192,41 @@ if (process.env.TEST_WORKER_INDEX !== undefined || !("Bun" in globalThis)) {
     await page.goto(`${base}/projects/`, { waitUntil: "networkidle" });
     await page.mouse.move(400, 400);
     await ready;
+    await page.waitForTimeout(850);
+    await page.evaluate(() => {
+      const target = document.getElementById("matrix-canvas")!;
+      (
+        window as typeof window & { __matrixBlinkHides?: number }
+      ).__matrixBlinkHides =
+        getComputedStyle(target).visibility === "hidden" ||
+        getComputedStyle(target).opacity === "0"
+          ? 1
+          : 0;
+      new MutationObserver(() => {
+        const style = getComputedStyle(target);
+        if (style.visibility === "hidden" || style.opacity === "0") {
+          (window as typeof window & { __matrixBlinkHides: number })
+            .__matrixBlinkHides++;
+        }
+      }).observe(target, {
+        attributes: true,
+        attributeFilter: ["style", "class"],
+      });
+    });
     // Keep scroll activity alive across successive slow-frame windows.
     for (let i = 0; i < 30; i++) {
-      await page.evaluate(() => window.scrollBy(0, 20));
+      await page.evaluate((i) => window.scrollBy(0, i % 10 < 5 ? 20 : -20), i);
       await page.waitForTimeout(100);
     }
-    // Test the rendered decoration rather than an internal quality-message API.
+    // Scroll ended: an inconclusive trial never hid or blinked the visible canvas.
+    await page.waitForTimeout(650);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as typeof window & { __matrixBlinkHides?: number })
+            .__matrixBlinkHides,
+      ),
+    ).toBe(0);
     const canvas = page.locator("#matrix-canvas");
     const frames: string[] = [];
     for (let i = 0; i < 3; i++) {

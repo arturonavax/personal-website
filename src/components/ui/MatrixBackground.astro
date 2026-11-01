@@ -36,6 +36,7 @@ const {
 <script>
   import { MatrixGrid } from "../../scripts/matrix-grid";
   import { MatrixQuality } from "../../scripts/matrix-quality";
+  import { MatrixScrollPressure } from "../../scripts/matrix-scroll-pressure";
   import {
     resizeMatrixSurface,
     observeMatrixViewport,
@@ -50,6 +51,7 @@ const {
     lastIsDark: boolean | null;
     syncTheme: () => void;
     setPaused: (paused: boolean) => void;
+    syncPause: () => void;
   }
 
   declare global {
@@ -72,16 +74,19 @@ const {
         existingCanvas &&
         existingCanvas === window.__matrixSingleton.canvas
       ) {
-        existingCanvas.classList.remove(
-          "opacity-0",
-          "transition-opacity",
-          "duration-700",
-        );
-        existingCanvas.classList.add("opacity-100");
+        if (
+          existingCanvas.dataset.matrixDisabled !== "true" &&
+          existingCanvas.style.visibility !== "hidden"
+        ) {
+          existingCanvas.classList.remove(
+            "opacity-0",
+            "transition-opacity",
+            "duration-700",
+          );
+          existingCanvas.classList.add("opacity-100");
+        }
         window.__matrixSingleton.syncTheme();
-        window.__matrixSingleton.setPaused(
-          document.visibilityState === "hidden",
-        );
+        window.__matrixSingleton.syncPause();
         return;
       }
     }
@@ -106,6 +111,7 @@ const {
       lastIsDark: null,
       syncTheme: () => {},
       setPaused: () => {},
+      syncPause: () => {},
     };
     window.__matrixSingleton = singleton;
     window.__matrixState = {
@@ -134,15 +140,111 @@ const {
           document.documentElement.classList.contains("dark"));
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       singleton.lastIsDark = getIsDark();
+      const pressure = new MatrixScrollPressure();
+      let scrollFrame: number | null = null;
+      let lastSample: number | null = null;
+      let scrollIdle: number | undefined;
+      let cooldownTimer: number | undefined;
+      let paused = false;
+      let disabledApplied = false;
+      const setPressureState = (state: "visible" | "trial" | "disabled") => {
+        // Never hide or dim the canvas during a trial: pausing frame commits
+        // removes compositor damage rects without causing a visible blink.
+        if (state === "disabled" && !disabledApplied) {
+          disabledApplied = true;
+          canvas.dataset.matrixDisabled = "true";
+          canvas.classList.add(
+            "transition-opacity",
+            "duration-300",
+            "ease-out",
+          );
+          canvas.classList.remove("opacity-100");
+          canvas.classList.add("opacity-0");
+          window.setTimeout(() => {
+            canvas.style.visibility = "hidden";
+          }, 320);
+        }
+        const shouldPause =
+          state !== "visible" || document.visibilityState === "hidden";
+        canvas.dataset.matrixPaused = shouldPause ? "true" : "false";
+        if (paused !== shouldPause) {
+          paused = shouldPause;
+          singleton.setPaused(shouldPause);
+        }
+      };
+      const armCooldown = () => {
+        if (!pressure.isCooling || cooldownTimer !== undefined) return;
+        cooldownTimer = window.setTimeout(() => {
+          cooldownTimer = undefined;
+          pressure.cooldownElapsed();
+        }, 5000);
+      };
+      const stopScrollObservation = () => {
+        scrollIdle = undefined;
+        if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
+        scrollFrame = null;
+        lastSample = null;
+        pressure.stop();
+        setPressureState(pressure.state);
+        armCooldown();
+      };
+      const sampleScroll = (now: number) => {
+        scrollFrame = null;
+        if (lastSample !== null) {
+          setPressureState(pressure.sample(now - lastSample));
+          armCooldown();
+        }
+        lastSample = now;
+        if (pressure.isSettled) {
+          if (scrollIdle !== undefined) {
+            window.clearTimeout(scrollIdle);
+            scrollIdle = undefined;
+          }
+          return;
+        }
+        if (!pressure.isCooling) {
+          scrollFrame = requestAnimationFrame(sampleScroll);
+        }
+      };
+      window.addEventListener(
+        "scroll",
+        () => {
+          if (
+            pressure.isSettled ||
+            pressure.isCooling ||
+            document.visibilityState === "hidden"
+          )
+            return;
+          if (scrollIdle !== undefined) window.clearTimeout(scrollIdle);
+          scrollIdle = window.setTimeout(stopScrollObservation, 220);
+          if (scrollFrame === null) {
+            lastSample = null;
+            scrollFrame = requestAnimationFrame(sampleScroll);
+          }
+        },
+        { passive: true },
+      );
+      const syncPause = () => {
+        if (document.visibilityState === "hidden") {
+          if (scrollIdle !== undefined) {
+            window.clearTimeout(scrollIdle);
+            scrollIdle = undefined;
+          }
+          stopScrollObservation();
+        }
+        setPressureState(pressure.state);
+      };
 
       const width = canvas.clientWidth || window.innerWidth;
       const height = canvas.clientHeight || window.innerHeight;
 
       const markCanvasVisible = () => {
         requestAnimationFrame(() => {
+          if (canvas.dataset.matrixDisabled === "true") return;
           canvas.classList.remove("opacity-0");
           canvas.classList.add("opacity-100");
           window.setTimeout(() => {
+            if (canvas.dataset.matrixDisabled === "true") return;
             canvas.classList.remove("transition-opacity", "duration-700");
           }, 750);
         });
@@ -186,6 +288,7 @@ const {
           singleton.setPaused = (paused: boolean) => {
             worker.postMessage({ type: paused ? "pause" : "resume" });
           };
+          singleton.syncPause = syncPause;
 
           observeMatrixViewport(canvas, (width, height, dpr) => {
             worker.postMessage({ type: "resize", width, height, dpr });
@@ -195,6 +298,7 @@ const {
           });
 
           markCanvasVisible();
+          syncPause();
           return;
         } catch {
           // Fallback to 2D context if OffscreenCanvas fails
@@ -212,7 +316,7 @@ const {
       const grid = new MatrixGrid(ctx);
       grid.setTheme(!getIsDark());
       grid.resize(w, h);
-      let paused = false;
+      let drawPaused = false;
       let lastFrame = 0;
       const frameInterval = 1000 / 60;
 
@@ -222,13 +326,21 @@ const {
         grid.setTheme(!isDark);
       };
       singleton.setPaused = (p: boolean) => {
-        if (paused !== p) lastFrame = 0;
-        paused = p;
+        if (drawPaused === p) return;
+        drawPaused = p;
+        lastFrame = 0;
+        if (p && singleton.rafId !== null) {
+          cancelAnimationFrame(singleton.rafId);
+          singleton.rafId = null;
+        } else if (!p) {
+          singleton.rafId = requestAnimationFrame(draw);
+        }
       };
+      singleton.syncPause = syncPause;
 
       const draw = (now: number) => {
         singleton.rafId = requestAnimationFrame(draw);
-        if (paused || now - lastFrame < quality.frameInterval - 1) return;
+        if (now - lastFrame < quality.frameInterval - 1) return;
         const elapsed =
           lastFrame === 0
             ? frameInterval
@@ -259,6 +371,7 @@ const {
 
       singleton.rafId = requestAnimationFrame(draw);
       markCanvasVisible();
+      syncPause();
     };
 
     const interactionEvents = [
@@ -300,19 +413,20 @@ const {
     }
 
     function resumeMatrixOnNav() {
-      const state = window.__matrixState;
-      if (state?.worker) {
-        state.worker.postMessage({ type: "resume" });
-      }
       if (singleton.initialized && singleton.canvas) {
-        singleton.canvas.classList.remove(
-          "opacity-0",
-          "transition-opacity",
-          "duration-700",
-        );
-        singleton.canvas.classList.add("opacity-100");
+        if (
+          singleton.canvas.dataset.matrixDisabled !== "true" &&
+          singleton.canvas.style.visibility !== "hidden"
+        ) {
+          singleton.canvas.classList.remove(
+            "opacity-0",
+            "transition-opacity",
+            "duration-700",
+          );
+          singleton.canvas.classList.add("opacity-100");
+        }
         singleton.syncTheme();
-        singleton.setPaused(document.visibilityState === "hidden");
+        singleton.syncPause();
       } else {
         onFirstInteraction();
       }
@@ -321,7 +435,7 @@ const {
     if (!window.__matrixListenersBound) {
       window.__matrixListenersBound = true;
       document.addEventListener("visibilitychange", () => {
-        singleton.setPaused(document.visibilityState === "hidden");
+        singleton.syncPause();
       });
       window.addEventListener("theme-changed", () => {
         singleton.syncTheme();

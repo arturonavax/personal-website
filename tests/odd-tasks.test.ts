@@ -1644,9 +1644,11 @@ describe("ODD Task 6: Persistent SPA App-Shell & Zero-Jump HUD Architecture", ()
     const matrixContent = fs.readFileSync(matrixPath, "utf8");
 
     expect(matrixContent).toContain("function resumeMatrixOnNav");
-    expect(matrixContent).toContain(
-      'state.worker.postMessage({ type: "resume" })',
-    );
+    // Resume only if the page is visible and the measured scroll-pressure
+    // detector did not disable the decoration for this session.
+    expect(matrixContent).toContain("singleton.syncPause()");
+    expect(matrixContent).toContain("setPressureState(pressure.state)");
+    expect(matrixContent).toContain("singleton.setPaused(shouldPause)");
     expect(matrixContent).toContain("astro:page-load");
     expect(matrixContent).toContain("astro:after-swap");
 

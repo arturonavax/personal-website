@@ -44,4 +44,16 @@ describe("adaptive Matrix raster budget", () => {
     quality.record(2, 12_000);
     expect(quality.level).toBe(1);
   });
+
+  it("locks the degraded floor after a failed recovery probe instead of resizing in a loop", () => {
+    const quality = new MatrixQuality();
+    feed(quality, 20, 0);
+    expect(quality.level).toBe(1);
+    feed(quality, 2, 12_000);
+    expect(quality.level).toBe(0);
+    feed(quality, 20, 14_000);
+    expect(quality.level).toBe(1);
+    feed(quality, 2, 30_000);
+    expect(quality.level).toBe(1);
+  });
 });

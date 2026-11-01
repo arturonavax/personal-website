@@ -3,6 +3,8 @@
  */
 export class MatrixQuality {
   level: 0 | 1 | 2 = 0;
+  private minLevel: 0 | 1 | 2 = 0;
+  private recoveredFrom: 0 | 1 | 2 = 0;
   private samples = 0;
   private expensive = 0;
   private cheap = 0;
@@ -20,7 +22,12 @@ export class MatrixQuality {
   record(costMs: number, now: number): boolean {
     if (!Number.isFinite(costMs) || !Number.isFinite(now) || costMs < 0)
       return false;
-    if (this.level === 2 && now - this.lastChange >= 8000) {
+    if (
+      this.level === 2 &&
+      this.minLevel < 2 &&
+      now - this.lastChange >= 8000
+    ) {
+      this.recoveredFrom = 2;
       this.change(1, now);
       return true;
     }
@@ -32,10 +39,18 @@ export class MatrixQuality {
     const recovered = this.cheap >= 80;
     this.samples = this.expensive = this.cheap = 0;
     if (stressed && this.level < 2 && now - this.lastChange >= 1000) {
-      this.change((this.level + 1) as 1 | 2, now);
+      const next = (this.level + 1) as 1 | 2;
+      if (this.recoveredFrom === next) this.minLevel = next;
+      this.change(next, now);
       return true;
     }
-    if (recovered && this.level === 1 && now - this.lastChange >= 10_000) {
+    if (
+      recovered &&
+      this.level === 1 &&
+      this.minLevel === 0 &&
+      now - this.lastChange >= 10_000
+    ) {
+      this.recoveredFrom = 1;
       this.change(0, now);
       return true;
     }
